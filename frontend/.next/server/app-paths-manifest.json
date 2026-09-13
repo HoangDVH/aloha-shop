@@ -1,0 +1,7 @@
+{
+  "/(storefront)/page": "app/(storefront)/page.js",
+  "/(storefront)/danh-muc/[slug]/page": "app/(storefront)/danh-muc/[slug]/page.js",
+  "/(storefront)/gio-hang/page": "app/(storefront)/gio-hang/page.js",
+  "/(storefront)/xac-nhan-don-hang/page": "app/(storefront)/xac-nhan-don-hang/page.js",
+  "/(storefront)/c/[cat]/p/[slug]/page": "app/(storefront)/c/[cat]/p/[slug]/page.js"
+}

@@ -1,0 +1,151 @@
+/**
+ * Server API độc lập dành riêng cho ALOHA Shop.
+ * Shop data + staff auth: SHOP_STANDALONE_DB (aloha_shop_db) — không dùng DB Garden.
+ * App nội bộ Garden giữ MONGO/DB riêng (aloha_thumua*).
+ */
+import express from 'express';
+import cookieParser from 'cookie-parser';
+import compression from 'compression';
+import { MongoClient, Db } from 'mongodb';
+import path from 'path';
+import fs from 'fs';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+import { registerShopApi } from './shopCatalog/register.js';
+import { registerShopAuthRoutes } from './shopAuth/routes.js';
+import { registerShopAddressRoutes } from './shopOrders/addressRoutes.js';
+import { registerShopCartRoutes } from './shopCart/routes.js';
+import { registerShopOrderRoutes } from './shopOrders/routes.js';
+import { registerShopPaymentRoutes } from './shopOrders/paymentRoutes.js';
+import { registerShopShippingRoutes } from './shopShipping/routes.js';
+import { registerShopCtvMeRoutes } from './shopOrders/ctvMeRoutes.js';
+import { registerShopAppearanceRoutes } from './shopAppearance/register.js';
+import { registerShopArticlesRoutes } from './shopArticles/register.js';
+import { registerShopProductsAdminRoutes } from './shopAppearance/productsAdmin.js';
+import { registerShopAccountsAdminRoutes } from './shopAuth/adminRoutes.js';
+import { registerShopCommissionAdminRoutes } from './shopOrders/commissionAdminRoutes.js';
+import { registerAuthRoutes } from './auth/routes.js';
+import { applyShopCors } from './shopCors.js';
+
+const PORT = Number(process.env.SHOP_SERVER_PORT || 3001);
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017';
+const DB_NAME = process.env.SHOP_STANDALONE_DB || 'aloha_shop_db';
+const OPS_MONGO_URI = (process.env.MONGO_URI_OPS || MONGO_URI).trim();
+/** Mặc định cùng DB shop — tài khoản admin nằm trong aloha_shop_db. */
+const OPS_DB_NAME = (process.env.OPS_DB_NAME || DB_NAME || 'aloha_shop_db').trim();
+
+let mongoClient: MongoClient | null = null;
+let dbInstance: Db | null = null;
+let opsClient: MongoClient | null = null;
+let opsDbInstance: Db | null = null;
+
+async function getDb(): Promise<Db> {
+  if (dbInstance) return dbInstance;
+  mongoClient = new MongoClient(MONGO_URI);
+  await mongoClient.connect();
+  dbInstance = mongoClient.db(DB_NAME);
+  console.log(`✅ Shop Server đã kết nối MongoDB shop [${DB_NAME}]`);
+  return dbInstance;
+}
+
+async function getOpsDb(): Promise<Db> {
+  if (opsDbInstance) return opsDbInstance;
+  if (OPS_MONGO_URI === MONGO_URI && mongoClient) {
+    opsDbInstance = mongoClient.db(OPS_DB_NAME);
+  } else {
+    opsClient = new MongoClient(OPS_MONGO_URI);
+    await opsClient.connect();
+    opsDbInstance = opsClient.db(OPS_DB_NAME);
+  }
+  console.log(`✅ Staff auth DB (ops) [${OPS_DB_NAME}]`);
+  return opsDbInstance;
+}
+
+const app = express();
+
+app.use(compression());
+app.use(cookieParser());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+app.use((req, res, next) => {
+  applyShopCors(req, res);
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+  next();
+});
+
+const uploadsDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+app.use('/uploads', express.static(uploadsDir));
+const uploadsFallbackOrigin = (
+  process.env.UPLOADS_FALLBACK_ORIGIN ||
+  process.env.SHOP_PUBLIC_URL ||
+  ''
+).replace(/\/$/, '');
+if (uploadsFallbackOrigin) {
+  app.use('/uploads', async (req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+    try {
+      const rel = String(req.path || '').replace(/^\/+/, '');
+      if (!rel || rel.includes('..')) return next();
+      const dest = path.resolve(uploadsDir, rel);
+      if (!dest.startsWith(path.resolve(uploadsDir) + path.sep)) return next();
+      const upstream = await fetch(`${uploadsFallbackOrigin}/uploads/${rel}`);
+      if (!upstream.ok) return next();
+      const buf = Buffer.from(await upstream.arrayBuffer());
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.writeFileSync(dest, buf);
+      const ct = upstream.headers.get('content-type');
+      if (ct) res.setHeader('Content-Type', ct);
+      if (req.method === 'HEAD') return res.status(200).end();
+      return res.status(200).send(buf);
+    } catch {
+      return next();
+    }
+  });
+  console.log(`[uploads] fallback → ${uploadsFallbackOrigin}`);
+}
+
+// Staff auth (ops DB) + shop storefront + admin
+registerAuthRoutes(app, getOpsDb);
+registerShopApi(app, getDb, getDb);
+registerShopAuthRoutes(app, getDb);
+registerShopAddressRoutes(app, getDb);
+registerShopCartRoutes(app, getDb);
+registerShopOrderRoutes(app, getDb, getOpsDb);
+registerShopPaymentRoutes(app, getDb, getOpsDb);
+registerShopShippingRoutes(app, getDb, getOpsDb);
+registerShopCtvMeRoutes(app, getDb, getOpsDb);
+registerShopAppearanceRoutes(app, getOpsDb, getDb);
+registerShopArticlesRoutes(app, getOpsDb, getDb);
+registerShopProductsAdminRoutes(app, getOpsDb, getDb);
+registerShopAccountsAdminRoutes(app, getOpsDb, getDb);
+registerShopCommissionAdminRoutes(app, getOpsDb, getDb);
+
+app.get('/api/health', async (_req, res) => {
+  try {
+    const db = await getDb();
+    const prodCount = await db.collection('aloha_products').countDocuments();
+    res.json({
+      status: 'ok',
+      service: 'aloha-shop-standalone-api',
+      db: DB_NAME,
+      opsDb: OPS_DB_NAME,
+      products: prodCount,
+    });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', error: err.message });
+  }
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`\n🚀 ALOHA Shop Standalone API Server đang chạy!`);
+  console.log(`   - Cổng: http://localhost:${PORT}`);
+  console.log(`   - Shop DB: ${DB_NAME}`);
+  console.log(`   - Ops DB (staff): ${OPS_DB_NAME}`);
+  console.log(`   - Health: http://localhost:${PORT}/api/health\n`);
+});

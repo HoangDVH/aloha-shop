@@ -1,0 +1,1712 @@
+/**
+ * Catalog API shop — đăng ký route + helper (tách từ shopApi.ts, hành vi giữ nguyên).
+ * Entry public vẫn là server/shopApi.ts (re-export).
+ */
+import type { Express, Request, Response } from "express";
+import type { Db } from "mongodb";
+import { redisGet, redisSet, redisReady } from "../redis.js";
+import { syncBus } from "../syncBus.js";
+import { shopRateLimitOrReject } from "../shopRateLimit.js";
+import {
+  buildCategoryPathIndex,
+  buildCategoryTreeFromKv,
+  flattenKvCategories,
+  resolveCategoryIdsFromPathIndex,
+  type CategoryNode,
+} from "../utils/categoryTree.ts";
+import { normalizeTrongLuongGram } from "../shopShipping/resolveWeight.js";
+import { mongoLoaiFilter } from "../utils/kvProductLoai.ts";
+import {
+  buildAxesAndModels,
+  compactAttributeFacets,
+  compactDvtFacetLabels,
+  dedupeCanonicalPublic,
+  findAttrSiblings,
+  findUnitPairDocs,
+  isComboOrFormulaProduct,
+  mongoAttrFilter,
+  mongoDvtFilter,
+  normalizeAttrs,
+  parseAttrQuery,
+  parseDvtQuery,
+  resolveShopDisplayTon,
+  variantGroupKey,
+} from "../shopVariantGroup.js";
+import {
+  applyPriceBookOverlay,
+  loadPriceBooksByMa,
+  overlayDocsWithPriceBooks,
+  publicPrice,
+} from "./priceOverlay.js";
+import { publicProductVideos } from "./productVideoUrl.js";
+
+type GetDb = () => Promise<Db>;
+
+const COL = "aloha_products";
+const INVOICES_COL = "aloha_sales_invoices";
+const CTV_CLICKS_COL = "aloha_shop_ctv_clicks";
+const TTL_SEC = 60;
+/** Cache xếp hạng bán chạy (chỉ key shop:* — không ghi aloha_products). */
+const BESTSELLER_TTL_SEC = 60;
+/** Cửa sổ doanh thu gần đây (ngày) — fallback toàn bộ nếu trống. */
+const BESTSELLER_DAYS = 90;
+/** Phạm vi facets/lọc trang chủ: Cây thành phẩm + top bán chạy. */
+const HOME_CAY_THANH_PHAM_PATH = "CÂY CẢNH ĐỦ LOẠI >> CÂY THÀNH PHẨM TRỒNG SẴN";
+const HOME_BESTSELLER_FACET_LIMIT = 200;
+const SHOP_ORIGIN_ALLOW = [
+  "http://localhost:3002",
+  "http://127.0.0.1:3002",
+  "https://shop.alohathegioichaucay.com",
+  "http://shop.alohathegioichaucay.com",
+  "https://alohathegioichaucay.com",
+  "https://www.alohathegioichaucay.com",
+  "http://alohathegioichaucay.com",
+  "http://www.alohathegioichaucay.com",
+];
+
+function slugify(text: string): string {
+  return String(text || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/đ/g, "d")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 140);
+}
+
+/** Regex tìm không phân biệt dấu tiếng Việt (cay ≈ cây). */
+function viLooseRegex(raw: string): RegExp {
+  const folded = String(raw || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/gi, "d")
+    .toLowerCase()
+    .trim();
+  const map: Record<string, string> = {
+    a: "[aáàảãạăắằẳẵặâấầẩẫậ]",
+    e: "[eéèẻẽẹêếềểễệ]",
+    i: "[iíìỉĩị]",
+    o: "[oóòỏõọôốồổỗộơớờởỡợ]",
+    u: "[uúùủũụưứừửữự]",
+    y: "[yýỳỷỹỵ]",
+    d: "[dđ]",
+  };
+  let pat = "";
+  for (const ch of folded) {
+    if (map[ch]) pat += map[ch];
+    else if (/[a-z0-9]/.test(ch)) pat += ch;
+    else if (/\s/.test(ch)) pat += "\\s+";
+    else pat += `\\${ch}`;
+  }
+  return new RegExp(pat || ".^", "i");
+}
+
+function regexEscapeLiteral(raw: string): string {
+  return String(raw || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Lọc nhóm hàng — khớp cả nhánh con (giống tab Hàng hóa / KiotViet). */
+function buildCategorySubtreeFilter(catList: string[]): Record<string, unknown> | null {
+  const clauses: Record<string, unknown>[] = [];
+  const numIds: number[] = [];
+  const pathSep = String.raw`\s*(?:>>|▸|>)\s*`;
+
+  for (const raw of catList) {
+    let cat = String(raw || "").trim();
+    if (!cat) continue;
+    cat = cat.replace(/\s*(?:▸|>)\s*/g, " >> ");
+    const num = Number(cat);
+    if (Number.isFinite(num) && num > 0 && String(num) === cat.replace(/\s*>>\s*/g, "")) {
+      numIds.push(num);
+      continue;
+    }
+
+    const segments = cat
+      .split(/\s*>>\s*/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (!segments.length) continue;
+
+    const fullEscaped = segments.map((s) => regexEscapeLiteral(s)).join(pathSep);
+    clauses.push({
+      nhomPath: { $regex: `^${fullEscaped}(${pathSep}|$)`, $options: "i" },
+    });
+
+    if (segments.length === 1) {
+      const seg = regexEscapeLiteral(segments[0]);
+      clauses.push(
+        { nhom: { $regex: `^${seg}$`, $options: "i" } },
+        { ancestor: { $regex: `^${seg}$`, $options: "i" } },
+        // DB shop mới: nhóm gắn qua categoryName / categoryId (không còn nhom/nhomPath)
+        { categoryName: { $regex: `^${seg}$`, $options: "i" } }
+      );
+    } else {
+      clauses.push({
+        $expr: {
+          $and: segments.map((seg, i) => ({
+            $eq: [
+              { $toLower: { $ifNull: [{ $arrayElemAt: ["$ancestor", i] }, ""] } },
+              seg.toLowerCase(),
+            ],
+          })),
+        },
+      });
+      // SP shop thường chỉ lưu tên lá trong nhom/nhomPath — khớp thêm để navbar (đường dẫn đầy đủ) vẫn ra SP
+      const leaf = segments[segments.length - 1];
+      const leafEsc = regexEscapeLiteral(leaf);
+      clauses.push(
+        { nhom: { $regex: `^${leafEsc}$`, $options: "i" } },
+        { nhomPath: { $regex: `^${leafEsc}$`, $options: "i" } },
+        { nhomPath: { $regex: `${pathSep}${leafEsc}$`, $options: "i" } },
+        { categoryName: { $regex: `^${leafEsc}$`, $options: "i" } }
+      );
+    }
+  }
+
+  if (numIds.length) {
+    clauses.push({ categoryId: { $in: numIds } });
+  }
+  if (!clauses.length) return null;
+  return { $or: clauses };
+}
+
+function parseNhomQuery(req: { query: Record<string, unknown> }): string[] {
+  const raw = req.query.nhom ?? req.query.category;
+  const out: string[] = [];
+  if (Array.isArray(raw)) {
+    for (const x of raw) {
+      const s = String(x || "").trim();
+      if (s) out.push(s);
+    }
+  } else if (raw != null && String(raw).trim()) {
+    out.push(String(raw).trim());
+  }
+  return out;
+}
+
+/** Query categoryId (số) — khóa lọc nhóm trên DB shop mới. */
+function parseCategoryIdQuery(req: { query: Record<string, unknown> }): number[] {
+  const raw = req.query.categoryId ?? req.query.categoryIds;
+  const out: number[] = [];
+  const push = (x: unknown) => {
+    const n = Number(x);
+    if (Number.isFinite(n) && n > 0) out.push(Math.round(n));
+  };
+  if (Array.isArray(raw)) raw.forEach(push);
+  else if (raw != null && String(raw).trim()) {
+    String(raw)
+      .split(/[,;\s]+/)
+      .filter(Boolean)
+      .forEach(push);
+  }
+  return [...new Set(out)];
+}
+
+/** categoryId đã chọn + mọi con trong cây categories. */
+async function resolveCategoryIdsForRootIds(db: Db, rootIds: number[]): Promise<number[]> {
+  if (!rootIds.length) return [];
+  const { tree } = await buildShopKvCategoryTree(db);
+  const idToAll = new Map<number, number[]>();
+  const walk = (node: CategoryNode): number[] => {
+    const self = node.categoryId ? [node.categoryId] : [];
+    const childIds: number[] = [];
+    for (const ch of node.children) childIds.push(...walk(ch));
+    const all = [...self, ...childIds];
+    if (node.categoryId) idToAll.set(node.categoryId, all);
+    return all;
+  };
+  tree.forEach(walk);
+  const out = new Set<number>();
+  for (const id of rootIds) {
+    const list = idToAll.get(id);
+    if (list?.length) list.forEach((x) => out.add(x));
+    else out.add(id);
+  }
+  return [...out];
+}
+
+function pathKey(s: string): string {
+  return String(s || "")
+    .trim()
+    .replace(/\s*(?:▸|>)\s*/g, " >> ")
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+/** Gom categoryId nhánh đã chọn + mọi con — khớp tab Hàng hóa. */
+async function resolveCategoryIdsForPaths(db: Db, paths: string[]): Promise<number[]> {
+  if (!paths.length) return [];
+  const { tree } = await buildShopKvCategoryTree(db);
+  const pathToIds = buildCategoryPathIndex(tree);
+  const ids = new Set<number>();
+  for (const raw of paths) {
+    resolveCategoryIdsFromPathIndex(pathToIds, raw).forEach((id) => ids.add(id));
+  }
+  return [...ids];
+}
+
+type ShopNavNode = {
+  id: number;
+  name: string;
+  path: string;
+  slug: string;
+  count: number;
+  hasChild: boolean;
+  rank: number;
+  subs: ShopNavNode[];
+};
+
+function kvNodeToShopNav(node: CategoryNode): ShopNavNode {
+  return {
+    id: Number(node.categoryId) || 0,
+    name: node.name,
+    path: node.fullPath,
+    slug: slugify(node.name) || "danh-muc",
+    count: node.count,
+    hasChild: node.children.length > 0,
+    rank: Number(node.sortOrder) || 0,
+    subs: node.children.map(kvNodeToShopNav),
+  };
+}
+
+/**
+ * Cây nhóm + đếm SP cho shop.
+ * Dùng cùng buildCategoryTreeFromKv như tab Hàng hóa, nhưng chỉ đếm SP
+ * đang hiện trên shop (shopFilterBase) — khớp số "X sản phẩm" khi lọc nhóm.
+ */
+async function buildShopKvCategoryTree(db: Db): Promise<{ tree: CategoryNode[]; items: ShopNavNode[] }> {
+  const cats = await db
+    .collection("categories")
+    .find({
+      categoryId: { $exists: true, $ne: null },
+      $expr: { $gt: [{ $toDouble: { $ifNull: ["$categoryId", 0] } }, 0] },
+    })
+    .sort({ rank: 1, categoryName: 1 })
+    .toArray();
+
+  const kvRows = flattenKvCategories(cats);
+  const productRows = await db
+    .collection(COL)
+    .find({
+      $and: [
+        { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] },
+        ...((shopFilterBase().$and as object[]) || []),
+        { categoryId: { $exists: true, $ne: null } },
+        { $expr: { $gt: [{ $toDouble: { $ifNull: ["$categoryId", 0] } }, 0] } },
+      ],
+    })
+    .project({ ma: 1, categoryId: 1, code: 1, deletedAt: 1 })
+    .toArray();
+
+  const tree = buildCategoryTreeFromKv(kvRows, productRows);
+  return { tree, items: tree.map(kvNodeToShopNav) };
+}
+
+function mergeCategoryFilters(
+  pathList: string[],
+  categoryIds: number[]
+): Record<string, unknown> | null {
+  const parts: Record<string, unknown>[] = [];
+  const pathFilter = buildCategorySubtreeFilter(pathList);
+  if (pathFilter) parts.push(pathFilter);
+  if (categoryIds.length) parts.push({ categoryId: { $in: categoryIds } });
+  if (!parts.length) return null;
+  if (parts.length === 1) return parts[0];
+  return { $or: parts };
+}
+
+/**
+ * Phạm vi trang chủ: Cây thành phẩm ∪ top bán chạy — chỉ đọc, không ghi Mongo.
+ */
+async function buildHomeScopeFilter(db: Db): Promise<Record<string, unknown> | null> {
+  const ors: Record<string, unknown>[] = [];
+  const catIds = await resolveCategoryIdsForPaths(db, [HOME_CAY_THANH_PHAM_PATH]);
+  const catFilter = mergeCategoryFilters([HOME_CAY_THANH_PHAM_PATH], catIds);
+  if (catFilter) ors.push(catFilter);
+
+  try {
+    const rank = await loadRevenueRankMap(db);
+    const topMas = [...rank.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, HOME_BESTSELLER_FACET_LIMIT)
+      .map(([ma]) => String(ma || "").trim().toUpperCase())
+      .filter(Boolean);
+    if (topMas.length) {
+      const lower = topMas.map((m) => m.toLowerCase());
+      ors.push({ ma: { $in: [...new Set([...topMas, ...lower])] } });
+    }
+  } catch {
+    /* thiếu HĐ bán → vẫn lọc theo Cây thành phẩm */
+  }
+
+  if (!ors.length) return null;
+  if (ors.length === 1) return ors[0];
+  return { $or: ors };
+}
+
+async function mapDocsToPublicWithPriceBooks(
+  db: Db,
+  docs: Record<string, unknown>[]
+): Promise<{
+  docs: Record<string, unknown>[];
+  items: ReturnType<typeof toPublicProduct>[];
+}> {
+  const mas = docs.map((d) => String(d.ma || "").trim()).filter(Boolean);
+  const pbByMa = await loadPriceBooksByMa(db, mas);
+  const overlaid = overlayDocsWithPriceBooks(docs, pbByMa);
+  const items = overlaid.map((d) => toPublicProduct(d));
+  const enriched = await enrichListDisplayTons(db, overlaid, items);
+  return { docs: overlaid, items: enriched };
+}
+
+/** Listing: combo/công thức thường ton=0 trên Mongo — resolve tồn bán được như PDP. */
+async function enrichListDisplayTons(
+  db: Db,
+  docs: Record<string, unknown>[],
+  items: ReturnType<typeof toPublicProduct>[]
+): Promise<ReturnType<typeof toPublicProduct>[]> {
+  const byMa = new Map<string, Record<string, unknown>>();
+  for (const d of docs) {
+    const ma = String(d.ma || "")
+      .trim()
+      .toUpperCase();
+    if (ma) byMa.set(ma, d);
+  }
+  const out = items.slice();
+  await Promise.all(
+    out.map(async (p, i) => {
+      const doc = byMa.get(String(p.ma || "").trim().toUpperCase());
+      if (!doc || !isComboOrFormulaProduct(doc)) return;
+      if (p.ton > 0) return;
+      try {
+        const ton = await resolveShopDisplayTon(db, COL, doc);
+        if (ton !== p.ton) out[i] = { ...p, ton };
+      } catch {
+        /* giữ ton thô */
+      }
+    })
+  );
+  return out;
+}
+
+function publicImages(doc: Record<string, unknown>): string[] {
+  const imgs = Array.isArray(doc.images)
+    ? doc.images.map((x) => String(x || "").trim()).filter(Boolean)
+    : [];
+  const anh = String(doc.anh || "").trim();
+  if (anh && !imgs.includes(anh)) imgs.unshift(anh);
+  return imgs.slice(0, 12);
+}
+
+function publicTon(doc: Record<string, unknown>): number {
+  const ton = Number(doc.ton ?? doc.onHand ?? doc.kvTon);
+  return Number.isFinite(ton) ? ton : 0;
+}
+
+function categorySlug(doc: Record<string, unknown>): string {
+  const path = String(
+    doc.nhomPath || doc.nhom || doc.categoryName || "san-pham"
+  ).trim();
+  const leaf = path.split(/\s*[▸>\/|]\s*/).filter(Boolean).pop() || path;
+  return slugify(leaf) || "san-pham";
+}
+
+function productSlug(doc: Record<string, unknown>): string {
+  const ma = String(doc.ma || doc._id || "").trim();
+  const ten = String(doc.ten || ma).trim();
+  const base = slugify(ten) || "sp";
+  const code = slugify(ma) || "x";
+  return `${base}--${code}`;
+}
+
+function shopPath(doc: Record<string, unknown>): string {
+  return `/c/${categorySlug(doc)}/p/${productSlug(doc)}`;
+}
+
+/** Field công khai — không giaVon / NCC / cost. Không ghi Mongo. */
+function toPublicProduct(doc: Record<string, unknown>) {
+  const ma = String(doc.ma || doc._id || "").trim();
+  const ten = String(doc.ten || "").trim();
+  const images = publicImages(doc);
+  const videos = publicProductVideos(doc);
+  const gia = publicPrice(doc);
+  const ton = publicTon(doc);
+  const trongLuongRaw = normalizeTrongLuongGram(Number(doc.trongLuong) || 0);
+  const trongLuong = trongLuongRaw > 0 ? trongLuongRaw : 0;
+  const attributes = normalizeAttrs(doc.attributes);
+  const webPin = Number(doc.webPin);
+  const webBadge = String(doc.webBadge || "").trim();
+  const categoryId = Number(doc.categoryId) || 0;
+  const categoryName = String(doc.categoryName || "").trim();
+  const nhom = String(doc.nhom || categoryName || "").trim();
+  const nhomPath = String(doc.nhomPath || doc.nhom || categoryName || "").trim();
+  return {
+    ma,
+    ten,
+    dvt: String(doc.dvt || "Cái").trim() || "Cái",
+    nhom,
+    nhomPath,
+    categoryId: categoryId > 0 ? categoryId : undefined,
+    categoryName: categoryName || undefined,
+    gia,
+    ton,
+    trongLuong: trongLuong > 0 ? trongLuong : undefined,
+    anh: images[0] || "",
+    images,
+    videos,
+    videoUrl: videos[0] || undefined,
+    barcode: String(doc.barcode || "").trim() || undefined,
+    description: String(doc.description || "").trim() || undefined,
+    isActive: doc.isActive !== false,
+    path: shopPath(doc),
+    categorySlug: categorySlug(doc),
+    productSlug: productSlug(doc),
+    attributes: attributes.length ? attributes : undefined,
+    hasVariants: attributes.length > 0 ? true : undefined,
+    webPin: Number.isFinite(webPin) && webPin > 0 ? Math.round(webPin) : undefined,
+    webBadge:
+      webBadge === "ban_chay" || webBadge === "moi" || webBadge === "noi_bat"
+        ? webBadge
+        : undefined,
+  };
+}
+
+function pinRank(p: { webPin?: number }) {
+  const n = Number(p.webPin);
+  return Number.isFinite(n) && n > 0 ? n : 1e9;
+}
+
+function sortPublicItems(
+  items: ReturnType<typeof toPublicProduct>[],
+  sort: string
+) {
+  const next = [...items];
+  if (sort === "price_asc") {
+    next.sort((a, b) => pinRank(a) - pinRank(b) || a.gia - b.gia);
+  } else if (sort === "price_desc") {
+    next.sort((a, b) => pinRank(a) - pinRank(b) || b.gia - a.gia);
+  } else if (sort === "ton_desc") {
+    next.sort(
+      (a, b) =>
+        pinRank(a) - pinRank(b) || b.ton - a.ton || a.ten.localeCompare(b.ten, "vi")
+    );
+  } else if (sort === "ban_chay") {
+    // Không có rank doanh thu ở nhánh gọi này → xếp tên (không dùng tồn)
+    next.sort(
+      (a, b) => pinRank(a) - pinRank(b) || a.ten.localeCompare(b.ten, "vi")
+    );
+  } else {
+    next.sort(
+      (a, b) => pinRank(a) - pinRank(b) || a.ten.localeCompare(b.ten, "vi")
+    );
+  }
+  return next;
+}
+
+function dedupeListItems(
+  docs: Record<string, unknown>[],
+  items: ReturnType<typeof toPublicProduct>[]
+) {
+  const attrsByMa = new Map<string, ReturnType<typeof normalizeAttrs>>();
+  const nhomByMa = new Map<string, string>();
+  for (const d of docs) {
+    const ma = String(d.ma || "").trim().toUpperCase();
+    if (!ma) continue;
+    attrsByMa.set(ma, normalizeAttrs(d.attributes));
+    nhomByMa.set(ma, String(d.nhomPath || d.nhom || d.categoryName || ""));
+  }
+  return dedupeCanonicalPublic(items, attrsByMa, nhomByMa);
+}
+
+function shopFilterBase(): Record<string, unknown> {
+  return {
+    $and: [
+      { $or: [{ isActive: { $ne: false } }, { isActive: { $exists: false } }] },
+      {
+        $or: [
+          { banTrucTiep: { $ne: false } },
+          { banTrucTiep: { $exists: false } },
+        ],
+      },
+      // hienThiWeb: thiếu field = hiện (parity); chỉ ẩn khi false
+      {
+        $or: [{ hienThiWeb: { $ne: false } }, { hienThiWeb: { $exists: false } }],
+      },
+    ],
+  };
+}
+
+async function cachedJson(
+  key: string,
+  producer: () => Promise<unknown>,
+  ttlSec: number = TTL_SEC
+): Promise<{ body: unknown; cache: "HIT" | "MISS" | "SKIP" | "BYPASS" }> {
+  if (ttlSec <= 0) {
+    return { body: await producer(), cache: "BYPASS" };
+  }
+  const ok = await redisReady();
+  if (ok) {
+    const hit = await redisGet(key);
+    if (hit) {
+      try {
+        return { body: JSON.parse(hit), cache: "HIT" };
+      } catch {
+        /* fall through */
+      }
+    }
+  }
+  const body = await producer();
+  if (ok) {
+    await redisSet(key, JSON.stringify(body), ttlSec);
+  }
+  return { body, cache: ok ? "MISS" : "SKIP" };
+}
+
+function normalizeMa(raw: unknown): string {
+  return String(raw || "")
+    .trim()
+    .toUpperCase();
+}
+
+function normalizeCtvCode(raw: unknown): string {
+  return String(raw || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9_-]/g, "")
+    .slice(0, 20);
+}
+
+function isValidCtvCode(code: string): boolean {
+  const c = normalizeCtvCode(code);
+  return c.length >= 3 && c.length <= 20;
+}
+
+/** Tránh lưu IP thô: chỉ lưu hash nhẹ. */
+function hashIpFvn1a32(raw: string): string {
+  const s = String(raw || "").trim();
+  if (!s) return "";
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0).toString(16);
+}
+
+/**
+ * Xếp hạng SP theo doanh thu HĐ bán (qty × giá − CK dòng).
+ * CHỈ ĐỌC aloha_sales_invoices — không update sản phẩm / store nội bộ.
+ */
+async function loadRevenueRankMap(db: Db): Promise<Map<string, number>> {
+  const cacheKey = `shop:bestsellers:revenue:v1:d${BESTSELLER_DAYS}`;
+  const { body } = await cachedJson(
+    cacheKey,
+    async () => {
+      const since = new Date();
+      since.setDate(since.getDate() - BESTSELLER_DAYS);
+      const sinceIso = since.toISOString();
+
+      const cancelRx = /cancel|void|huy|hủy|đã hủy|da huy/i;
+      const pipeline = (withDate: boolean) => {
+        const match: Record<string, unknown> = {
+          isDraft: { $ne: true },
+          $and: [
+            {
+              $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
+            },
+            {
+              $or: [
+                { statusValue: { $exists: false } },
+                { statusValue: null },
+                { statusValue: { $not: cancelRx } },
+              ],
+            },
+            {
+              $or: [
+                { status: { $exists: false } },
+                { status: null },
+                { status: { $nin: [3, "3", "Cancelled", "Void"] } },
+              ],
+            },
+          ],
+        };
+        if (withDate) {
+          (match.$and as unknown[]).push({
+            $or: [
+              { purchaseDate: { $gte: sinceIso } },
+              { createdDate: { $gte: sinceIso } },
+              { createdAt: { $gte: sinceIso } },
+            ],
+          });
+        }
+        return [
+          { $match: match },
+          {
+            $project: {
+              lines: {
+                $cond: [
+                  {
+                    $gt: [
+                      { $size: { $ifNull: ["$invoiceDetails", []] } },
+                      0,
+                    ],
+                  },
+                  "$invoiceDetails",
+                  { $ifNull: ["$items", []] },
+                ],
+              },
+            },
+          },
+          { $unwind: "$lines" },
+          {
+            $project: {
+              ma: {
+                $toUpper: {
+                  $trim: {
+                    input: {
+                      $toString: {
+                        $ifNull: [
+                          "$lines.productCode",
+                          { $ifNull: ["$lines.ma", "$lines.code"] },
+                        ],
+                      },
+                    },
+                  },
+                },
+              },
+              qty: {
+                $convert: {
+                  input: { $ifNull: ["$lines.quantity", { $ifNull: ["$lines.sl", 0] }] },
+                  to: "double",
+                  onError: 0,
+                  onNull: 0,
+                },
+              },
+              price: {
+                $convert: {
+                  input: {
+                    $ifNull: [
+                      "$lines.price",
+                      { $ifNull: ["$lines.gia", { $ifNull: ["$lines.giaBan", 0] }] },
+                    ],
+                  },
+                  to: "double",
+                  onError: 0,
+                  onNull: 0,
+                },
+              },
+              discount: {
+                $convert: {
+                  input: { $ifNull: ["$lines.discount", 0] },
+                  to: "double",
+                  onError: 0,
+                  onNull: 0,
+                },
+              },
+            },
+          },
+          { $match: { ma: { $nin: ["", "NULL", "UNDEFINED"] } } },
+          {
+            $group: {
+              _id: "$ma",
+              revenue: {
+                $sum: {
+                  $max: [
+                    0,
+                    {
+                      $subtract: [{ $multiply: ["$qty", "$price"] }, "$discount"],
+                    },
+                  ],
+                },
+              },
+            },
+          },
+          { $match: { revenue: { $gt: 0 } } },
+          { $sort: { revenue: -1 } },
+          { $limit: 3000 },
+        ];
+      };
+
+      const col = db.collection(INVOICES_COL);
+      let rows = await col
+        .aggregate(pipeline(true), { allowDiskUse: true, maxTimeMS: 25000 })
+        .toArray();
+      if (!rows.length) {
+        rows = await col
+          .aggregate(pipeline(false), { allowDiskUse: true, maxTimeMS: 25000 })
+          .toArray();
+      }
+      return {
+        items: rows.map((r) => ({
+          ma: String((r as { _id?: string })._id || ""),
+          revenue: Number((r as { revenue?: number }).revenue) || 0,
+        })),
+        at: Date.now(),
+        days: BESTSELLER_DAYS,
+      };
+    },
+    BESTSELLER_TTL_SEC
+  );
+
+  const map = new Map<string, number>();
+  const items = (body as { items?: { ma: string; revenue: number }[] })?.items || [];
+  for (const it of items) {
+    const ma = normalizeMa(it.ma);
+    if (ma && it.revenue > 0) map.set(ma, it.revenue);
+  }
+  return map;
+}
+
+function setCors(req: Request, res: Response) {
+  const origin = String(req.headers.origin || "");
+  if (origin && SHOP_ORIGIN_ALLOW.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+  } else if (!origin) {
+    /* same-origin / server fetch */
+  } else if (
+    origin.startsWith("http://localhost:") ||
+    origin.startsWith("http://127.0.0.1:")
+  ) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+  }
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (origin && (SHOP_ORIGIN_ALLOW.includes(origin) || origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:"))) {
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+  }
+}
+
+function parseMaFromProductSlug(slug: string): string | null {
+  const s = String(slug || "").trim();
+  if (!s) return null;
+  const idx = s.lastIndexOf("--");
+  if (idx >= 0) {
+    const code = s.slice(idx + 2).trim();
+    return code || null;
+  }
+  return null;
+}
+
+/** Heuristic: slugify(ma) may keep hyphens — recover by matching DB. */
+async function findByProductSlug(db: Db, slug: string) {
+  const raw = String(slug || "").trim();
+  const codePart = parseMaFromProductSlug(raw);
+  const col = db.collection(COL);
+  const active = shopFilterBase();
+
+  if (codePart) {
+    const variants = [
+      codePart,
+      codePart.toUpperCase(),
+      codePart.toLowerCase(),
+      codePart.replace(/-/g, "").toUpperCase(),
+      codePart.replace(/-/g, "").toLowerCase(),
+    ];
+    for (const ma of [...new Set(variants)]) {
+      if (!ma) continue;
+      const doc = await col.findOne({
+        $and: [
+          ...(active.$and as object[]),
+          { $or: [{ ma }, { _id: ma }] },
+        ],
+      } as any);
+      if (doc) return doc;
+    }
+  }
+
+  const want = (codePart || raw).toLowerCase();
+  const docs = await col
+    .find(active as any)
+    .project({
+      ma: 1,
+      ten: 1,
+      nhom: 1,
+      nhomPath: 1,
+      giaWeb: 1,
+      giaBan: 1,
+      giaChung: 1,
+      basePrice: 1,
+      anh: 1,
+      images: 1,
+      videos: 1,
+      videoUrl: 1,
+      ton: 1,
+      onHand: 1,
+      kvTon: 1,
+      dvt: 1,
+      barcode: 1,
+      description: 1,
+      isActive: 1,
+      banTrucTiep: 1,
+    })
+    .limit(5000)
+    .toArray();
+  for (const d of docs) {
+    const pub = toPublicProduct(d as any);
+    if (pub.productSlug === raw || slugify(String((d as any).ma || "")) === want) {
+      return d;
+    }
+  }
+  return null;
+}
+
+export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
+  /** Catalog/SP shop ưu tiên shop DB khi có getShopDb. */
+  const catalogDb = getShopDb || getDb;
+  app.options("/api/shop/*", (req, res) => {
+    setCors(req, res);
+    res.status(204).end();
+  });
+
+  app.get("/api/shop/health", async (req, res) => {
+    setCors(req, res);
+    const redis = await redisReady();
+    res.json({ ok: true, redis, at: Date.now() });
+  });
+
+  app.get("/api/shop/categories", async (req, res) => {
+    setCors(req, res);
+    try {
+      const { body, cache } = await cachedJson("shop:categories:v1", async () => {
+        const db = await catalogDb();
+        const rows = await db
+          .collection(COL)
+          .aggregate([
+            { $match: shopFilterBase() },
+            {
+              $group: {
+                _id: {
+                  nhom: { $ifNull: ["$nhom", "Khác"] },
+                  nhomPath: { $ifNull: ["$nhomPath", "$nhom"] },
+                },
+                count: { $sum: 1 },
+              },
+            },
+            { $sort: { count: -1 } },
+            { $limit: 200 },
+          ])
+          .toArray();
+        const items = rows.map((r) => {
+          const nhom = String((r as any)._id?.nhom || "Khác");
+          const nhomPath = String((r as any)._id?.nhomPath || nhom);
+          const leaf = nhomPath.split(/\s*[▸>\/|]\s*/).filter(Boolean).pop() || nhom;
+          return {
+            name: nhom,
+            path: nhomPath,
+            slug: slugify(leaf) || "khac",
+            count: Number((r as any).count) || 0,
+          };
+        });
+        return { items };
+      });
+      res.setHeader("X-Shop-Cache", cache);
+      res.json(body);
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message || "categories_failed" });
+    }
+  });
+
+  app.get("/api/shop/category-tree", async (req, res) => {
+    setCors(req, res);
+    try {
+      const { body, cache } = await cachedJson("shop:category-tree:v5", async () => {
+        const db = await catalogDb();
+        const { items } = await buildShopKvCategoryTree(db);
+        return { items };
+      });
+      res.setHeader("X-Shop-Cache", cache);
+      res.json(body);
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message || "category_tree_failed" });
+    }
+  });
+
+  app.get("/api/shop/products", async (req, res) => {
+    setCors(req, res);
+    try {
+      const q = String(req.query.q || "").trim();
+      const nhomList = parseNhomQuery(req);
+      const categoryIdList = parseCategoryIdQuery(req);
+      const homeScope = String(req.query.home || "") === "1";
+      const page = Math.max(1, Number(req.query.page) || 1);
+      const limit = Math.min(48, Math.max(1, Number(req.query.limit) || 24));
+      const minPrice = Math.max(0, Number(req.query.minPrice) || 0);
+      const maxPrice = Math.max(0, Number(req.query.maxPrice) || 0);
+      const inStock = String(req.query.inStock || "") === "1";
+      const attrFilters = parseAttrQuery(req.query.attr);
+      const dvtFilters = parseDvtQuery(req.query.dvt);
+      const loai = String(req.query.loai || "").trim();
+      const badgeRaw = String(req.query.badge || req.query.webBadge || "").trim();
+      const badge =
+        badgeRaw === "ban_chay" || badgeRaw === "moi" || badgeRaw === "noi_bat"
+          ? badgeRaw
+          : "";
+      const sortRaw = String(req.query.sort || "ten").trim();
+      const sort =
+        sortRaw === "bestsellers" || sortRaw === "ban-chay" ? "ban_chay" : sortRaw;
+      const skip = (page - 1) * limit;
+      const needPostFilter =
+        minPrice > 0 ||
+        maxPrice > 0 ||
+        inStock ||
+        sort !== "ten" ||
+        attrFilters.length > 0 ||
+        dvtFilters.length > 0 ||
+        Boolean(loai);
+      const cacheKey = `shop:products:v18:${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|${sort}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}`;
+
+      const { body, cache } = await cachedJson(cacheKey, async () => {
+        const db = await catalogDb();
+        const filter: Record<string, unknown> = { ...shopFilterBase() };
+        const and = [...((filter.$and as unknown[]) || [])];
+        if (q) {
+          const rx = viLooseRegex(q);
+          and.push({
+            $or: [
+              { ma: rx },
+              { ten: rx },
+              { barcode: rx },
+              { nhom: rx },
+              { nhomPath: rx },
+              { categoryName: rx },
+            ],
+          });
+        }
+        if (categoryIdList.length) {
+          const catIds = await resolveCategoryIdsForRootIds(db, categoryIdList);
+          if (catIds.length) and.push({ categoryId: { $in: catIds } });
+        } else if (nhomList.length) {
+          const catIds = await resolveCategoryIdsForPaths(db, nhomList);
+          const catFilter = mergeCategoryFilters(nhomList, catIds);
+          if (catFilter) and.push(catFilter);
+        } else if (homeScope) {
+          const homeFilter = await buildHomeScopeFilter(db);
+          if (homeFilter) and.push(homeFilter);
+        }
+        if (inStock) {
+          and.push({
+            $or: [{ ton: { $gt: 0 } }, { onHand: { $gt: 0 } }, { kvTon: { $gt: 0 } }],
+          });
+        }
+        const attrMongo = mongoAttrFilter(attrFilters);
+        if (attrMongo) and.push(attrMongo);
+        const dvtMongo = mongoDvtFilter(dvtFilters);
+        if (dvtMongo) and.push(dvtMongo);
+        const loaiMongo = mongoLoaiFilter(loai);
+        if (loaiMongo) and.push(loaiMongo);
+        if (badge) and.push({ webBadge: badge });
+        filter.$and = and;
+
+        const col = db.collection(COL);
+        const projection = {
+          ma: 1,
+          ten: 1,
+          dvt: 1,
+          nhom: 1,
+          nhomPath: 1,
+          categoryId: 1,
+          categoryName: 1,
+          ancestor: 1,
+          attributes: 1,
+          giaWeb: 1,
+          giaBan: 1,
+          giaChung: 1,
+          basePrice: 1,
+          anh: 1,
+          images: 1,
+          videos: 1,
+          videoUrl: 1,
+          ton: 1,
+          onHand: 1,
+          kvTon: 1,
+          barcode: 1,
+          description: 1,
+          isActive: 1,
+          banTrucTiep: 1,
+          trongLuong: 1,
+          webPin: 1,
+          webBadge: 1,
+        };
+
+        /** Bán chạy = xếp theo doanh thu HĐ (chỉ đọc). Không ghi aloha_products. */
+        if (sort === "ban_chay") {
+          const rank = await loadRevenueRankMap(db);
+          const rankedMas = [...rank.entries()]
+            .sort((a, b) => b[1] - a[1])
+            .map(([ma]) => ma);
+
+          if (rankedMas.length) {
+            const soldDocs = await col
+              .find({
+                $and: [
+                  ...and,
+                  {
+                    $expr: {
+                      $in: [{ $toUpper: { $ifNull: ["$ma", ""] } }, rankedMas],
+                    },
+                  },
+                ],
+              } as any)
+              .project(projection)
+              .toArray();
+
+            const soldMapped = await mapDocsToPublicWithPriceBooks(db, soldDocs as any[]);
+            let sold = dedupeListItems(soldMapped.docs, soldMapped.items);
+            if (minPrice > 0) sold = sold.filter((p) => p.gia >= minPrice);
+            if (maxPrice > 0) sold = sold.filter((p) => p.gia <= maxPrice);
+            if (inStock) sold = sold.filter((p) => p.ton > 0);
+            sold.sort((a, b) => {
+              const pin = pinRank(a) - pinRank(b);
+              if (pin !== 0) return pin;
+              const ra = rank.get(normalizeMa(a.ma)) || 0;
+              const rb = rank.get(normalizeMa(b.ma)) || 0;
+              if (rb !== ra) return rb - ra;
+              return a.ten.localeCompare(b.ten, "vi");
+            });
+
+            const soldMas = new Set(sold.map((p) => normalizeMa(p.ma)));
+            const totalAll = await col.countDocuments(filter as any);
+
+            if (skip < sold.length) {
+              const fromSold = sold.slice(skip, skip + limit);
+              if (fromSold.length >= limit) {
+                return {
+                  items: fromSold,
+                  total: totalAll,
+                  page,
+                  limit,
+                  pages: Math.max(1, Math.ceil(totalAll / limit)),
+                  sortMode: "ban_chay",
+                  ranked: sold.length,
+                };
+              }
+              const need = limit - fromSold.length;
+              const fillerDocs = await col
+                .find({
+                  $and: [
+                    ...and,
+                    {
+                      $expr: {
+                        $not: {
+                          $in: [{ $toUpper: { $ifNull: ["$ma", ""] } }, [...soldMas]],
+                        },
+                      },
+                    },
+                  ],
+                } as any)
+                .project(projection)
+                .sort({ ten: 1 })
+                .limit(need)
+                .toArray();
+              const fillerMapped = await mapDocsToPublicWithPriceBooks(db, fillerDocs as any[]);
+              let filler = dedupeListItems(fillerMapped.docs, fillerMapped.items);
+              if (minPrice > 0) filler = filler.filter((p) => p.gia >= minPrice);
+              if (maxPrice > 0) filler = filler.filter((p) => p.gia <= maxPrice);
+              const merged = dedupeCanonicalPublic(
+                [...fromSold, ...filler],
+                new Map(),
+                new Map()
+              ).slice(0, limit);
+              return {
+                items: merged,
+                total: totalAll,
+                page,
+                limit,
+                pages: Math.max(1, Math.ceil(totalAll / limit)),
+                sortMode: "ban_chay",
+                ranked: sold.length,
+              };
+            }
+
+            const unrankedSkip = skip - sold.length;
+            const fillerDocs = await col
+              .find({
+                $and: [
+                  ...and,
+                  {
+                    $expr: {
+                      $not: {
+                        $in: [{ $toUpper: { $ifNull: ["$ma", ""] } }, [...soldMas]],
+                      },
+                    },
+                  },
+                ],
+              } as any)
+              .project(projection)
+              .sort({ ten: 1 })
+              .skip(unrankedSkip)
+              .limit(limit)
+              .toArray();
+            const fillerMapped = await mapDocsToPublicWithPriceBooks(db, fillerDocs as any[]);
+            let filler = dedupeListItems(fillerMapped.docs, fillerMapped.items);
+            if (minPrice > 0) filler = filler.filter((p) => p.gia >= minPrice);
+            if (maxPrice > 0) filler = filler.filter((p) => p.gia <= maxPrice);
+            return {
+              items: filler,
+              total: totalAll,
+              page,
+              limit,
+              pages: Math.max(1, Math.ceil(totalAll / limit)),
+              sortMode: "ban_chay",
+              ranked: sold.length,
+            };
+          }
+          // Chưa có HĐ doanh thu → xếp theo tên (không dùng tồn)
+        }
+
+        if (!needPostFilter) {
+          // Quét đủ rồi dedupe → total/pages khớp số card (shop ~3k SP)
+          const docs = await col
+            .find(filter as any)
+            .project(projection)
+            .sort({ ten: 1 })
+            .limit(5000)
+            .toArray();
+          const mapped = await mapDocsToPublicWithPriceBooks(db, docs as any[]);
+          const all = sortPublicItems(dedupeListItems(mapped.docs, mapped.items), sort);
+          const total = all.length;
+          return {
+            items: all.slice(skip, skip + limit),
+            total,
+            page,
+            limit,
+            pages: Math.max(1, Math.ceil(total / limit)),
+          };
+        }
+
+        // Lọc giá / sort phức tạp trên bản công khai (sau khi map giá web + price books)
+        const docs = await col
+          .find(filter as any)
+          .project(projection)
+          .limit(5000)
+          .toArray();
+        const mapped = await mapDocsToPublicWithPriceBooks(db, docs as any[]);
+        let items = dedupeListItems(mapped.docs, mapped.items);
+        if (minPrice > 0) items = items.filter((p) => p.gia >= minPrice);
+        if (maxPrice > 0) items = items.filter((p) => p.gia <= maxPrice);
+        if (inStock) items = items.filter((p) => p.ton > 0);
+        items = sortPublicItems(items, sort);
+
+        const total = items.length;
+        const pageItems = items.slice(skip, skip + limit);
+        return {
+          items: pageItems,
+          total,
+          page,
+          limit,
+          pages: Math.max(1, Math.ceil(total / limit)),
+          sortMode: sort,
+        };
+      }, 0);
+      res.setHeader("Cache-Control", "no-store");
+      res.setHeader("X-Shop-Cache", cache);
+      res.json(body);
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message || "products_failed" });
+    }
+  });
+
+  /** Giá hiện tại theo mã — không cache (dùng làm mới giỏ/checkout). */
+  app.options("/api/shop/products/prices", (req, res) => {
+    setCors(req, res);
+    res.sendStatus(204);
+  });
+  app.post("/api/shop/products/prices", async (req, res) => {
+    setCors(req, res);
+    try {
+      const raw = Array.isArray(req.body?.mas) ? req.body.mas : [];
+      const mas = [
+        ...new Set(
+          raw
+            .map((x: unknown) => String(x || "").trim().toUpperCase())
+            .filter(Boolean)
+            .slice(0, 80)
+        ),
+      ];
+      if (!mas.length) {
+        res.json({ items: [] });
+        return;
+      }
+      const db = await catalogDb();
+      const docs = await db
+        .collection(COL)
+        .find({
+          $and: [
+            ...(shopFilterBase().$and as object[]),
+            {
+              $or: [
+                { ma: { $in: mas } },
+                { ma: { $in: mas.map((m) => m.toLowerCase()) } },
+              ],
+            },
+          ],
+        } as any)
+        .project({
+          ma: 1,
+          ten: 1,
+          dvt: 1,
+          anh: 1,
+          images: 1,
+          videos: 1,
+          videoUrl: 1,
+          giaWeb: 1,
+          giaBan: 1,
+          giaChung: 1,
+          basePrice: 1,
+          trongLuong: 1,
+          ton: 1,
+          onHand: 1,
+          kvTon: 1,
+          nhom: 1,
+          nhomPath: 1,
+          isActive: 1,
+          type: 1,
+          productType: 1,
+          loai: 1,
+          hasFormula: 1,
+          productFormulas: 1,
+          formulas: 1,
+          hangThanhPhan: 1,
+          attributes: 1,
+        })
+        .toArray();
+
+      const byMa = new Map<string, Record<string, unknown>>();
+      for (const d of docs) {
+        const key = String((d as any).ma || "").trim().toUpperCase();
+        if (key) byMa.set(key, d as any);
+      }
+
+      const pbByMa = await loadPriceBooksByMa(db, mas);
+      const items = [];
+      for (const ma of mas) {
+        const raw = byMa.get(ma);
+        if (!raw) continue;
+        const doc = applyPriceBookOverlay(raw, pbByMa.get(ma));
+        const p = toPublicProduct(doc);
+        let ton = p.ton;
+        if (ton <= 0 && isComboOrFormulaProduct(doc)) {
+          ton = await resolveShopDisplayTon(db, COL, doc);
+        }
+        items.push({
+          ma: p.ma,
+          gia: p.gia,
+          ton,
+          ten: p.ten,
+          anh: p.anh,
+          path: p.path,
+          dvt: p.dvt,
+          trongLuong: p.trongLuong,
+          attributes: p.attributes,
+          isActive: p.isActive,
+        });
+      }
+
+      res.setHeader("Cache-Control", "no-store");
+      res.json({ items });
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message || "prices_failed" });
+    }
+  });
+
+  app.get("/api/shop/facets", async (req, res) => {
+    setCors(req, res);
+    try {
+      const q = String(req.query.q || "").trim();
+      const nhomList = parseNhomQuery(req);
+      const categoryIdList = parseCategoryIdQuery(req);
+      const homeScope = String(req.query.home || "") === "1";
+      /** Trang «Tất cả sản phẩm» (/tim) — facets toàn catalog. */
+      const allCatalog = String(req.query.all || "") === "1";
+      // Không có mục/từ khóa → không dump cả shop; trang chủ dùng home=1; /tim dùng all=1
+      const scoped =
+        categoryIdList.length > 0 ||
+        nhomList.length > 0 ||
+        Boolean(q) ||
+        homeScope ||
+        allCatalog;
+      const cacheKey = `shop:facets:v5:${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|all=${allCatalog ? 1 : 0}|${scoped ? "1" : "0"}`;
+      const { body, cache } = await cachedJson(cacheKey, async () => {
+        if (!scoped) {
+          return { attributes: {}, dvt: ["Cái", "Cây", "Thùng", "Gói", "Bao"] };
+        }
+        const db = await catalogDb();
+        const and = [...((shopFilterBase().$and as unknown[]) || [])];
+        if (q) {
+          const rx = viLooseRegex(q);
+          and.push({
+            $or: [
+              { ma: rx },
+              { ten: rx },
+              { barcode: rx },
+              { nhom: rx },
+              { nhomPath: rx },
+              { categoryName: rx },
+            ],
+          });
+        }
+        if (categoryIdList.length) {
+          const catIds = await resolveCategoryIdsForRootIds(db, categoryIdList);
+          if (catIds.length) and.push({ categoryId: { $in: catIds } });
+        } else if (nhomList.length) {
+          const catIds = await resolveCategoryIdsForPaths(db, nhomList);
+          const catFilter = mergeCategoryFilters(nhomList, catIds);
+          if (catFilter) and.push(catFilter);
+        } else if (homeScope) {
+          const homeFilter = await buildHomeScopeFilter(db);
+          if (homeFilter) and.push(homeFilter);
+        }
+        // allCatalog: chỉ shopFilterBase — toàn bộ SP đang bán
+        const match = { $and: and };
+        const attrLimit = allCatalog ? 1200 : 500;
+        const dvtLimit = allCatalog ? 120 : 80;
+        const [attrRows, dvtRows] = await Promise.all([
+          db
+            .collection(COL)
+            .aggregate([
+              { $match: match },
+              { $unwind: { path: "$attributes", preserveNullAndEmptyArrays: false } },
+              {
+                $group: {
+                  _id: {
+                    n: {
+                      $ifNull: ["$attributes.attributeName", { $ifNull: ["$attributes.name", ""] }],
+                    },
+                    v: {
+                      $ifNull: [
+                        "$attributes.attributeValue",
+                        { $ifNull: ["$attributes.value", ""] },
+                      ],
+                    },
+                  },
+                  c: { $sum: 1 },
+                },
+              },
+              { $match: { "_id.n": { $nin: [null, ""] }, "_id.v": { $nin: [null, ""] } } },
+              { $sort: { c: -1 } },
+              { $limit: attrLimit },
+            ])
+            .toArray(),
+          db
+            .collection(COL)
+            .aggregate([
+              { $match: match },
+              { $group: { _id: { $ifNull: ["$dvt", "Cái"] }, c: { $sum: 1 } } },
+              { $match: { _id: { $nin: [null, ""] } } },
+              { $sort: { c: -1 } },
+              { $limit: dvtLimit },
+            ])
+            .toArray(),
+        ]);
+        const attributes = compactAttributeFacets(
+          attrRows.map((row) => ({
+            name: String((row as any)?._id?.n || "").trim(),
+            value: String((row as any)?._id?.v || "").trim(),
+            count: Number((row as any)?.c) || 0,
+          })),
+          allCatalog
+            ? { maxAttrs: 18, maxValues: 36 }
+            : { maxAttrs: 10, maxValues: 24 }
+        );
+        const dvt = compactDvtFacetLabels(
+          dvtRows.map((r) => ({
+            label: String((r as any)._id || "").trim(),
+            count: Number((r as any).c) || 0,
+          })),
+          allCatalog ? 24 : 10
+        );
+        return { attributes, dvt };
+      }, 30);
+      res.setHeader("X-Shop-Cache", cache);
+      res.json(body);
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message || "facets_failed" });
+    }
+  });
+
+  /** Biến thể + ĐVT — chỉ đọc Mongo. */
+  app.get("/api/shop/products/:ma/variants", async (req, res) => {
+    setCors(req, res);
+    try {
+      const ma = String(req.params.ma || "").trim();
+      if (!ma) {
+        res.status(400).json({ error: "missing_ma" });
+        return;
+      }
+      res.setHeader("Cache-Control", "no-store");
+      const db = await catalogDb();
+      const seed = await db.collection(COL).findOne({
+        $and: [
+          ...(shopFilterBase().$and as object[]),
+          {
+            $or: [
+              { ma },
+              { ma: ma.toUpperCase() },
+              { ma: ma.toLowerCase() },
+              { _id: ma },
+            ],
+          },
+        ],
+      } as any);
+      if (!seed) {
+        res.status(404).json({ error: "not_found" });
+        return;
+      }
+      const attrSiblings = await findAttrSiblings(db, COL, seed as any, 40);
+      const unitPair = await findUnitPairDocs(db, COL, seed as any);
+      const byMa = new Map<string, Record<string, unknown>>();
+      for (const d of [...attrSiblings, ...unitPair]) {
+        const k = String(d.ma || "").trim().toUpperCase();
+        if (k) byMa.set(k, d);
+      }
+      const rawDocs = [...byMa.values()];
+      const pbByMa = await loadPriceBooksByMa(
+        db,
+        rawDocs.map((d) => String(d.ma || "").trim())
+      );
+      const docs = overlayDocsWithPriceBooks(rawDocs, pbByMa);
+      byMa.clear();
+      for (const d of docs) {
+        const k = String(d.ma || "").trim().toUpperCase();
+        if (k) byMa.set(k, d);
+      }
+      const packed = buildAxesAndModels(docs, toPublicProduct as any, String((seed as any).ma || ma));
+      // Chỉ combo/công thức (ton=0): gắn tồn hiển thị — không đụng mã thường hết hàng.
+      const models = [];
+      for (const m of packed.models) {
+        const src = byMa.get(m.ma.toUpperCase());
+        if (!src || !isComboOrFormulaProduct(src) || m.ton > 0) {
+          models.push(m);
+          continue;
+        }
+        const ton = await resolveShopDisplayTon(db, COL, src, docs);
+        models.push(ton !== m.ton ? { ...m, ton } : m);
+      }
+      const currentMa = String(packed.current?.ma || (seed as any).ma || ma).toUpperCase();
+      const current = models.find((m) => m.ma.toUpperCase() === currentMa) || packed.current;
+      // Chỉ trả khi có gì để chọn
+      const useful =
+        packed.axes.length > 0 &&
+        (models.length > 1 ||
+          packed.axes.some((a) => a.values.length > 1) ||
+          (normalizeAttrs((seed as any).attributes).length > 0 && packed.axes.length > 0));
+      res.json({
+        ok: true,
+        current: current || null,
+        axes: useful ? packed.axes : [],
+        models: useful ? models : current ? [current] : [],
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message || "variants_failed" });
+    }
+  });
+
+  app.get("/api/shop/products/:ma", async (req, res) => {
+    setCors(req, res);
+    try {
+      const ma = String(req.params.ma || "").trim();
+      if (!ma) {
+        res.status(400).json({ error: "missing_ma" });
+        return;
+      }
+      // Không Redis — giá/tồn phải khớp Mongo ngay (giỏ/search đã no-cache).
+      res.setHeader("Cache-Control", "no-store");
+      const db = await catalogDb();
+      const doc = await db.collection(COL).findOne({
+        $and: [
+          ...(shopFilterBase().$and as object[]),
+          {
+            $or: [
+              { ma },
+              { ma: ma.toUpperCase() },
+              { ma: ma.toLowerCase() },
+              { _id: ma },
+              { _id: ma.toUpperCase() },
+            ],
+          },
+        ],
+      } as any);
+      if (!doc) {
+        res.status(404).json({ error: "not_found" });
+        return;
+      }
+      const maKey = String((doc as any).ma || ma).trim().toUpperCase();
+      const pbByMa = await loadPriceBooksByMa(db, [maKey]);
+      const overlaid = applyPriceBookOverlay(doc as any, pbByMa.get(maKey));
+      const item = toPublicProduct(overlaid);
+      let ton = item.ton;
+      if (ton <= 0 && isComboOrFormulaProduct(overlaid)) {
+        ton = await resolveShopDisplayTon(db, COL, overlaid);
+      }
+      res.setHeader("X-Shop-Cache", "BYPASS");
+      res.json({ item: ton !== item.ton ? { ...item, ton } : item });
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message || "product_failed" });
+    }
+  });
+
+  /** Resolve /c/.../p/... → mã SP công khai */
+  app.get("/api/shop/resolve", async (req, res) => {
+    setCors(req, res);
+    try {
+      const pathRaw = String(req.query.path || "").trim();
+      const productSlugQ = String(req.query.productSlug || "").trim();
+      let slug = productSlugQ;
+      if (!slug && pathRaw) {
+        const m = pathRaw.match(/\/p\/([^/?#]+)/i);
+        if (m) slug = decodeURIComponent(m[1]);
+      }
+      if (!slug) {
+        res.status(400).json({ error: "missing_path" });
+        return;
+      }
+      res.setHeader("Cache-Control", "no-store");
+      const db = await catalogDb();
+      const doc = await findByProductSlug(db, slug);
+      if (!doc) {
+        res.status(404).json({ error: "not_found" });
+        return;
+      }
+      const maKey = String((doc as any).ma || "").trim().toUpperCase();
+      const pbByMa = await loadPriceBooksByMa(db, [maKey]);
+      const overlaid = applyPriceBookOverlay(doc as any, pbByMa.get(maKey));
+      res.setHeader("X-Shop-Cache", "BYPASS");
+      res.json({ item: toPublicProduct(overlaid) });
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message || "resolve_failed" });
+    }
+  });
+
+  /** Ghi nhận click mở link CTV — ghi shop DB (cùng nơi engine HH đọc). */
+  app.post("/api/shop/ctv/click", async (req, res) => {
+    setCors(req, res);
+    try {
+      if (!shopRateLimitOrReject(req, res, "shop_ctv_click", 30, 60_000)) {
+        return;
+      }
+      const body = (req.body || {}) as { ctv?: unknown; ma?: unknown; path?: unknown };
+      const ctv = normalizeCtvCode(body.ctv);
+      if (!isValidCtvCode(ctv)) {
+        // Mã giả: không lộ danh sách — coi như OK nhưng không ghi
+        res.json({ ok: true, ignored: true });
+        return;
+      }
+
+      const shopDb = getShopDb ? await getShopDb() : await getDb();
+      const acc = await shopDb.collection("aloha_shop_accounts").findOne({
+        ctvCode: ctv,
+        roles: "ctv",
+        ctvStatus: "active",
+        active: { $ne: false },
+      });
+      if (!acc) {
+        res.json({ ok: true, ignored: true });
+        return;
+      }
+
+      const ma = body.ma ? String(body.ma).trim() : "";
+      const path = body.path ? String(body.path).trim() : "";
+      const safePath = path && path.startsWith("/") ? path : "";
+
+      const ua = String(req.headers["user-agent"] || "").slice(0, 200);
+      const xff = String(req.headers["x-forwarded-for"] || "");
+      const ipRaw = xff || req.ip || "";
+      const ipHash = hashIpFvn1a32(ipRaw);
+
+      const col = shopDb.collection(CTV_CLICKS_COL);
+      const now = new Date();
+      await col.insertOne({
+        ctv,
+        ma: ma || undefined,
+        path: safePath || undefined,
+        ua: ua || undefined,
+        ipHash: ipHash || undefined,
+        createdAt: now,
+        createdAtIso: now.toISOString(),
+      });
+
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message || "ctv_click_failed" });
+    }
+  });
+
+  /**
+   * SSE công khai — khi aloha_products / tồn / giá đổi (app nội bộ → shop realtime).
+   * Không JWT (giống xem catalog).
+   */
+  app.options("/api/shop/catalog/stream", (req, res) => {
+    setCors(req, res);
+    res.sendStatus(204);
+  });
+  app.get("/api/shop/catalog/stream", (req, res) => {
+    setCors(req, res);
+    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    if (typeof (res as any).flushHeaders === "function") {
+      (res as any).flushHeaders();
+    }
+
+    const writeEvent = (event: string, data: unknown) => {
+      try {
+        res.write(`event: ${event}\n`);
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+      } catch {
+        /* closed */
+      }
+    };
+    writeEvent("hello", { at: Date.now() });
+
+    const onChange = (payload: { collections?: string[]; ids?: string[]; source?: string }) => {
+      const cols = payload?.collections || [];
+      const appearanceHit = cols.some(
+        (c) =>
+          c === "aloha_shop_appearance" ||
+          c.includes("appearance") ||
+          c.includes("shop_appearance")
+      );
+      if (appearanceHit) {
+        writeEvent("appearance", {
+          collections: cols,
+          source: payload.source || "",
+          at: Date.now(),
+        });
+      }
+      const hit = cols.some(
+        (c) =>
+          c === "aloha_products" ||
+          c === "noibo_products_kv" ||
+          c.includes("product")
+      );
+      if (!hit) return;
+      writeEvent("catalog", {
+        collections: cols,
+        ids: payload.ids || [],
+        source: payload.source || "",
+        at: Date.now(),
+      });
+    };
+    syncBus.on("change", onChange);
+
+    const ping = setInterval(() => {
+      try {
+        res.write(`: ping ${Date.now()}\n\n`);
+      } catch {
+        /* closed */
+      }
+    }, 25000);
+
+    const cleanup = () => {
+      clearInterval(ping);
+      syncBus.off("change", onChange);
+    };
+    req.on("close", cleanup);
+    req.on("aborted", cleanup);
+  });
+}
