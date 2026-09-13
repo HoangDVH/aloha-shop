@@ -1,0 +1,30 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+frontend/.env
+frontend/.env.local
+frontend/.env*.local
+
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Next.js build
+frontend/.next/
+frontend/out/
+
+# Logs / OS
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Uploads / local data
+uploads/
+*.local
