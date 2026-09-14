@@ -26,6 +26,8 @@ async function ProductSectionBlock({ props }: { props: Record<string, unknown> }
     source === "ban_chay" || source === "moi" || source === "noi_bat";
 
   let products: Awaited<ReturnType<typeof fetchProducts>>["items"] = [];
+  /** Bán chạy: danh sách thực tế dùng sort doanh thu (không có nhãn tay). */
+  let banChayByRevenue = false;
   try {
     if (byBadge) {
       let res = await fetchProducts({
@@ -37,6 +39,7 @@ async function ProductSectionBlock({ props }: { props: Record<string, unknown> }
       // Mục Bán chạy: chưa gắn nhãn → fallback xếp theo doanh thu như cũ
       if (!res.items?.length && source === "ban_chay") {
         res = await fetchProducts({ page: 1, limit, sort: "ban_chay" });
+        banChayByRevenue = true;
       }
       products = res.items || [];
     } else {
@@ -63,9 +66,11 @@ async function ProductSectionBlock({ props }: { props: Record<string, unknown> }
         path: nhomPath || nhomName,
         categoryId: categoryId > 0 ? categoryId : undefined,
       })
-    : byBadge
-      ? `/tim?badge=${encodeURIComponent(source)}`
-      : "/tim?sort=ban_chay";
+    : source === "ban_chay" || banChayByRevenue
+      ? "/tim?sort=ban_chay"
+      : byBadge
+        ? `/tim?badge=${encodeURIComponent(source)}`
+        : "/tim?sort=ban_chay";
 
   return <HomeProductSection title={title} href={href} products={products} />;
 }

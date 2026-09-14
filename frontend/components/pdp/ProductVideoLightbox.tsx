@@ -57,9 +57,12 @@ export function ProductVideoLightbox({
     };
   }, [open, onClose]);
 
+  // Chỉ đồng bộ index khi lightbox đang mở — nếu gọi lúc đóng,
+  // callback inline từ parent đổi mỗi render → kéo gallery về idx cũ (thường 0) → nhấp nháy.
   useEffect(() => {
+    if (!open) return;
     onIndexChange?.(idx);
-  }, [idx, onIndexChange]);
+  }, [open, idx, onIndexChange]);
 
   /** Video lớn nhất có thể trong stage, giữ đúng tỉ lệ nguồn. */
   const fitBox = (vw: number, vh: number) => {

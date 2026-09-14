@@ -60,6 +60,46 @@ export async function sumHeldQtyByMa(
   return out;
 }
 
+/**
+ * Tồn hiển thị kiểu sàn = ton − soft-hold đang active.
+ * Không sửa Mongo sản phẩm — chỉ chỉnh payload API công khai.
+ */
+export async function availableTonAfterHold(
+  shopDb: Db,
+  ma: string,
+  ton: number
+): Promise<number> {
+  const code = String(ma || "").trim().toUpperCase();
+  const raw = Math.max(0, Math.floor(Number(ton) || 0));
+  if (!code || !shopStockHoldEnabled()) return raw;
+  const held = await sumHeldQtyByMa(shopDb, [code]);
+  return Math.max(0, raw - (held.get(code) || 0));
+}
+
+export async function subtractHeldFromPublicItems<
+  T extends { ma?: string; ton?: number },
+>(shopDb: Db, items: T[]): Promise<T[]> {
+  if (!shopStockHoldEnabled() || !items.length) return items;
+  const mas = [
+    ...new Set(
+      items
+        .map((i) => String(i.ma || "").trim().toUpperCase())
+        .filter(Boolean)
+    ),
+  ];
+  if (!mas.length) return items;
+  const held = await sumHeldQtyByMa(shopDb, mas);
+  if (!held.size) return items;
+  return items.map((i) => {
+    const ma = String(i.ma || "").trim().toUpperCase();
+    const h = held.get(ma) || 0;
+    if (!h) return i;
+    const next = Math.max(0, Math.floor(Number(i.ton) || 0) - h);
+    if (next === Number(i.ton)) return i;
+    return { ...i, ton: next };
+  });
+}
+
 export async function createShopStockHolds(opts: {
   shopDb: Db;
   orderId: string;

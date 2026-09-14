@@ -1,5 +1,6 @@
 /**
- * Gọi KiotViet qua proxy nội bộ (/kv-auth, /kv-api) — tránh lỗi SSL trên Windows.
+ * Gọi KiotViet — mặc định URL chính thức.
+ * Có thể dùng proxy nội bộ (/kv-auth, /kv-api) qua KV_AUTH_URL / KV_API_URL (Windows SSL).
  */
 import type { Db } from "mongodb";
 
@@ -14,20 +15,30 @@ const PRODUCT_QUERY =
   "&includePricebook=true&includeInventory=true&includeImages=true&includeMaterial=true";
 
 function portBase(): string {
-  const port = Number(process.env.PORT) || 3000;
+  const port =
+    Number(process.env.SHOP_SERVER_PORT) ||
+    Number(process.env.PORT) ||
+    3001;
   return `http://127.0.0.1:${port}`;
 }
 
 export function kvAuthUrl(): string {
-  return (
-    process.env.KV_AUTH_URL ||
-    "https://id.kiotviet.vn/connect/token"
-  );
+  if (process.env.KV_AUTH_URL) return String(process.env.KV_AUTH_URL);
+  // Standalone/VPS: gọi thẳng KV. Dev Windows có thể set KV_USE_LOCAL_PROXY=1.
+  if (process.env.KV_USE_LOCAL_PROXY === "1") {
+    return `${portBase()}/kv-auth/connect/token`;
+  }
+  return "https://id.kiotviet.vn/connect/token";
 }
 
 export function kvApiBase(): string {
-  const raw = process.env.KV_API_URL || "https://public.kiotapi.com";
-  return raw.replace(/\/$/, "");
+  if (process.env.KV_API_URL) {
+    return String(process.env.KV_API_URL).replace(/\/$/, "");
+  }
+  if (process.env.KV_USE_LOCAL_PROXY === "1") {
+    return `${portBase()}/kv-api`;
+  }
+  return "https://public.kiotapi.com";
 }
 
 async function fetchJson(
@@ -58,7 +69,36 @@ async function fetchJson(
   return json;
 }
 
-/** Đọc clientId/secret/retailer từ Mongo config hoặc biến môi trường. */
+function credsFromFlat(flat: Record<string, unknown> | null | undefined): KvCreds | null {
+  if (!flat) return null;
+  const clientId = String(flat.clientId || flat.client_id || "").trim();
+  const clientSecret = String(flat.clientSecret || flat.client_secret || "").trim();
+  const retailer = String(flat.retailer || "").trim();
+  if (!clientId || !clientSecret || !retailer) return null;
+  return { clientId, clientSecret, retailer };
+}
+
+async function readKvCredsFromDb(db: Db): Promise<KvCreds | null> {
+  try {
+    const doc =
+      (await db.collection("config").findOne({ id: "kiotviet" })) ||
+      (await db.collection("config").findOne({ _id: "kiotviet" as any }));
+    const flat: Record<string, unknown> = {
+      ...(doc || {}),
+      ...(((doc as any)?.value || {}) as object),
+      ...(((doc as any)?.data || {}) as object),
+    };
+    return credsFromFlat(flat);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Đọc clientId/secret/retailer từ env, rồi Mongo config.
+ * Shop standalone: catalog ở aloha_shop_db; config KV thường nằm aloha_thumua
+ * → fallback cùng cluster qua KV_CONFIG_DB (mặc định aloha_thumua).
+ */
 export async function loadKvCreds(db: Db): Promise<KvCreds | null> {
   const fromEnv =
     process.env.KV_CLIENT_ID &&
@@ -72,24 +112,22 @@ export async function loadKvCreds(db: Db): Promise<KvCreds | null> {
       : null;
   if (fromEnv) return fromEnv;
 
-  try {
-    const doc =
-      (await db.collection("config").findOne({ id: "kiotviet" })) ||
-      (await db.collection("config").findOne({ _id: "kiotviet" as any }));
-    const flat: any = {
-      ...(doc || {}),
-      ...((doc as any)?.value || {}),
-      ...((doc as any)?.data || {}),
-    };
-    if (flat?.clientId && flat?.clientSecret && flat?.retailer) {
-      return {
-        clientId: String(flat.clientId),
-        clientSecret: String(flat.clientSecret),
-        retailer: String(flat.retailer),
-      };
+  const primary = await readKvCredsFromDb(db);
+  if (primary) return primary;
+
+  const fallbackName = String(
+    process.env.KV_CONFIG_DB || process.env.OPS_KV_DB || "aloha_thumua"
+  ).trim();
+  if (fallbackName && fallbackName !== db.databaseName) {
+    try {
+      const client = (db as Db & { client?: { db: (n: string) => Db } }).client;
+      if (client?.db) {
+        const alt = await readKvCredsFromDb(client.db(fallbackName));
+        if (alt) return alt;
+      }
+    } catch {
+      /* ignore */
     }
-  } catch {
-    /* ignore */
   }
   return null;
 }

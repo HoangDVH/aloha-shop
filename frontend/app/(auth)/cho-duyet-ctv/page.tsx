@@ -4,16 +4,19 @@ import { useEffect, useState } from "react";
 import { Clock3, LogOut, RefreshCw, ShieldCheck } from "lucide-react";
 import { useShopAuth } from "@/components/ShopAuthProvider";
 import { useShopRouter } from "@/lib/useShopRouter";
+import { useShopLogoutAction, isShopLoggingOut } from "@/lib/useShopLogoutAction";
 import { CTV_PENDING_PATH, isCtvPendingBlocked } from "@/lib/ctvGate";
 import { ShopPageLoader } from "@/components/ShopPageLoader";
 
 export default function CtvPendingPage() {
-  const { user, loading, refresh, logout } = useShopAuth();
+  const { user, loading, refresh } = useShopAuth();
   const router = useShopRouter();
+  const { logout, isPending: logoutPending } = useShopLogoutAction();
   const [checking, setChecking] = useState(false);
 
   useEffect(() => {
     if (loading) return;
+    if (logoutPending || isShopLoggingOut()) return;
     if (!user) {
       router.replace(`/dang-nhap?next=${encodeURIComponent(CTV_PENDING_PATH)}`);
       return;
@@ -21,7 +24,11 @@ export default function CtvPendingPage() {
     if (!isCtvPendingBlocked(user)) {
       router.replace("/");
     }
-  }, [loading, user, router]);
+  }, [loading, user, router, logoutPending]);
+
+  if (logoutPending || isShopLoggingOut()) {
+    return null;
+  }
 
   if (loading || !user) {
     return <ShopPageLoader fullscreen={false} />;
@@ -81,10 +88,7 @@ export default function CtvPendingPage() {
         <button
           type="button"
           className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-          onClick={async () => {
-            await logout();
-            router.replace("/dang-nhap");
-          }}
+          onClick={() => logout()}
         >
           <LogOut size={16} />
           Đăng xuất

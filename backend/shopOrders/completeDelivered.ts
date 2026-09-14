@@ -165,11 +165,19 @@ export async function completeShopOrderDelivered(
       kvInvoiceCode = inv.kvInvoiceCode;
       kvInvoiceMode = "cod_delivered";
     } catch (e: any) {
-      return {
-        ok: false,
-        error: String(e?.message || e || "kv_cod_invoice_failed"),
-        code,
-      };
+      // Test tay / ĐH KV không convert được: vẫn hoàn tất đơn shop (kho + HH),
+      // không chặn nút «Giao thành công»; ghi lỗi KV để kiểm tra sau.
+      const msg = String(e?.message || e || "kv_cod_invoice_failed");
+      console.warn("[shop-delivered] kv invoice skipped", code, msg);
+      await shopDb.collection(SHOP_ORDERS).updateOne(
+        { _id: (existing as any)._id },
+        {
+          $set: {
+            kvPushError: msg.slice(0, 500),
+            updatedAt: new Date().toISOString(),
+          },
+        }
+      );
     }
   }
 

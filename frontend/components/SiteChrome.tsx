@@ -11,9 +11,7 @@ import { AccountAvatar } from "@/components/AccountAvatar";
 import { useShopAuth } from "@/components/ShopAuthProvider";
 import { CategoryMobileNav, CategoryNavBar } from "@/components/CategoryNavMenu";
 import { useShopLoginHref } from "@/lib/useShopLoginHref";
-import { useShopRouter } from "@/lib/useShopRouter";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { shopLogout } from "@/lib/auth";
+import { useShopLogoutAction } from "@/lib/useShopLogoutAction";
 import { applyNavConfig } from "@/lib/navConfig";
 import type { NavConfig, AppearanceTheme } from "@/lib/appearanceTypes";
 import { applyThemeCssVars, darkenHex } from "@/lib/themeCss";
@@ -83,8 +81,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
   const count = useCart((s) => s.lines.reduce((n, l) => n + l.qty, 0));
   const { user } = useShopAuth();
   const loginHref = useShopLoginHref();
-  const router = useShopRouter();
-  const qc = useQueryClient();
+  const { logout, isPending: logoutPending } = useShopLogoutAction();
   const [tree, setTree] = useState<ShopCategoryNavNode[]>(() =>
     categoryTree?.length ? categoryTree : []
   );
@@ -92,13 +89,6 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
   const [theme, setTheme] = useState<AppearanceTheme | null>(null);
   const [mobileNav, setMobileNav] = useState(false);
   const chromeRef = useRef<HTMLElement | null>(null);
-
-  const logoutMut = useMutation({
-    mutationFn: shopLogout,
-    onSuccess: () => {
-      qc.clear();
-    },
-  });
 
   /** Chiều cao header+nav → banner đầy khung hình (trừ chrome). */
   useEffect(() => {
@@ -341,15 +331,10 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                   </Link>
                   <button
                     type="button"
-                    disabled={logoutMut.isPending}
-                    onClick={async () => {
-                      try {
-                        await logoutMut.mutateAsync();
-                      } catch {
-                        /* soft */
-                      }
+                    disabled={logoutPending}
+                    onClick={() => {
                       closeMenus();
-                      router.push("/");
+                      logout();
                     }}
                     className="flex min-h-11 w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-[#fff1f0] hover:text-red-600"
                   >

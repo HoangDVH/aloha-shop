@@ -228,25 +228,54 @@ export async function ensureCodDeliveredInvoice(
   }
 
   const amount = Math.max(0, Math.round(Number(opts.totalPayment) || 0));
-  const inv = await createKvInvoice(opts.mainDb, {
+  const base = {
     customerName: opts.customerName,
     customerPhone: opts.customerPhone,
     address: opts.address,
     orderDetails: opts.orderDetails,
-    usingCod: true,
-    method: "Cash",
+    usingCod: true as const,
+    method: "Cash" as const,
     description: opts.description.slice(0, 500),
     totalPayment: amount,
     shippingFee: opts.shippingFee,
-    awaitingBankTransfer: false,
-    orderId:
-      opts.kvOrderId != null && opts.kvOrderId !== ""
-        ? opts.kvOrderId
-        : undefined,
-  });
-
-  return {
-    kvInvoiceId: inv.kvInvoiceId,
-    kvInvoiceCode: inv.kvInvoiceCode,
+    awaitingBankTransfer: false as const,
   };
+
+  const linkOrderId =
+    opts.kvOrderId != null && opts.kvOrderId !== "" ? opts.kvOrderId : undefined;
+
+  try {
+    const inv = await createKvInvoice(opts.mainDb, {
+      ...base,
+      orderId: linkOrderId,
+    });
+    return {
+      kvInvoiceId: inv.kvInvoiceId,
+      kvInvoiceCode: inv.kvInvoiceCode,
+    };
+  } catch (e: any) {
+    const msg = String(e?.message || e || "");
+    // KV: đơn Đặt hàng đang ở trạng thái không convert sang HĐ được
+    // (vd. Đang giao / đã có HĐ) → tạo HĐ độc lập, không đụng phiếu đặt hàng.
+    const canRetryUnlinked =
+      Boolean(linkOrderId) &&
+      /invalid old invoice status|trạng thái|status/i.test(msg);
+    if (!canRetryUnlinked) throw e;
+
+    console.warn(
+      "[kv-cod-invoice] link order failed, retry without orderId:",
+      msg
+    );
+    const inv = await createKvInvoice(opts.mainDb, {
+      ...base,
+      description: `${base.description} | (HĐ tách — không gắn ĐH KV)`.slice(
+        0,
+        500
+      ),
+    });
+    return {
+      kvInvoiceId: inv.kvInvoiceId,
+      kvInvoiceCode: inv.kvInvoiceCode,
+    };
+  }
 }

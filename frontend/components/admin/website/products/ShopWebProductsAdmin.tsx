@@ -6,9 +6,8 @@ import { toast } from "@/components/admin/toast";
 import { FilterSearchSelect } from "@/components/admin/ui/FilterSearchSelect";
 import { InstantTextInput } from "@/components/admin/ui/InstantTextInput";
 import { ThuMuaListPagination } from "@/components/admin/ui/ThuMuaListPagination";
+import { ShopCategorySelect } from "@/components/ShopCategorySelect";
 import { websiteApi } from "../api";
-import { ShopCategoryPicker } from "../appearance/ShopCategoryPicker";
-import type { CatNode } from "../nav/ShopWebNavEditor";
 import { WbBtn, WbLoading } from "../ui";
 
 type Row = {
@@ -59,9 +58,8 @@ export function ShopWebProductsAdmin() {
   const [badgeFilter, setBadgeFilter] = useState<
     "all" | "auto" | "ban_chay" | "moi" | "noi_bat"
   >("all");
-  const [nhomPath, setNhomPath] = useState("");
-  const [categoryId, setCategoryId] = useState(0);
-  const [cats, setCats] = useState<CatNode[]>([]);
+  /** Đường dẫn nhóm — cùng ShopCategorySelect trang chủ shop */
+  const [selectedNhoms, setSelectedNhoms] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(40);
   const [rows, setRows] = useState<Row[]>([]);
@@ -72,12 +70,6 @@ export function ShopWebProductsAdmin() {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const suggestSeq = useRef(0);
 
-  useEffect(() => {
-    void websiteApi<{ items: CatNode[] }>("/api/shop/category-tree")
-      .then((r) => setCats(r.items || []))
-      .catch(() => setCats([]));
-  }, []);
-
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -87,8 +79,10 @@ export function ShopWebProductsAdmin() {
         visible,
       });
       if (appliedQ.trim()) params.set("q", appliedQ.trim());
-      if (categoryId > 0) params.set("categoryId", String(categoryId));
-      else if (nhomPath.trim()) params.set("nhom", nhomPath.trim());
+      for (const n of selectedNhoms) {
+        const p = String(n || "").trim();
+        if (p) params.append("nhom", p);
+      }
       if (badgeFilter !== "all") params.set("badge", badgeFilter);
       const r = await websiteApi<{
         items: Row[];
@@ -99,10 +93,12 @@ export function ShopWebProductsAdmin() {
       setTotal(r.total || 0);
     } catch (e: any) {
       toast.error(e?.message || "Không tải được danh sách");
+      setRows([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, appliedQ, visible, nhomPath, categoryId, badgeFilter]);
+  }, [page, pageSize, appliedQ, visible, selectedNhoms, badgeFilter]);
 
   useEffect(() => {
     void load();
@@ -125,8 +121,10 @@ export function ShopWebProductsAdmin() {
         visible,
         q: term,
       });
-      if (categoryId > 0) params.set("categoryId", String(categoryId));
-      else if (nhomPath.trim()) params.set("nhom", nhomPath.trim());
+      for (const n of selectedNhoms) {
+        const p = String(n || "").trim();
+        if (p) params.append("nhom", p);
+      }
       if (badgeFilter !== "all") params.set("badge", badgeFilter);
       void websiteApi<{ items: Row[] }>(`/api/shop/admin/products?${params}`)
         .then((r) => {
@@ -142,7 +140,7 @@ export function ShopWebProductsAdmin() {
         });
     }, 220);
     return () => clearTimeout(t);
-  }, [draft, visible, nhomPath, categoryId, badgeFilter]);
+  }, [draft, visible, selectedNhoms, badgeFilter]);
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
@@ -340,16 +338,13 @@ export function ShopWebProductsAdmin() {
               </div>
             ) : null}
           </div>
-          <div className="relative z-10 min-w-0">
-            <ShopCategoryPicker
-              cats={cats}
-              valuePath={nhomPath}
-              valueCategoryId={categoryId}
+          <div className="relative z-10 min-w-[220px] max-w-sm flex-1">
+            <ShopCategorySelect
+              value={selectedNhoms}
               placeholder="Tất cả nhóm hàng"
-              onChange={(picked) => {
+              onChange={(paths) => {
                 setPage(1);
-                setNhomPath(picked.path);
-                setCategoryId(picked.categoryId || 0);
+                setSelectedNhoms(paths);
               }}
             />
           </div>

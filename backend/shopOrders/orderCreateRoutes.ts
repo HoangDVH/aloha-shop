@@ -43,6 +43,7 @@ import {
 import {
   shopAllowTransferPayment,
   shopRequireShippingQuote,
+  isShopTestBuyerEmail,
 } from "./checkoutFlags.js";
 import { normalizeCtvCode } from "../shopAuth/models.js";
 import { notifyOrderStatus } from "./notifyOrderStatus.js";
@@ -126,8 +127,15 @@ export function registerShopOrderCreateRoutes(
           }
         }
 
+        const userEarly = await shopDb
+          .collection(SHOP_ACCOUNTS)
+          .findOne(shopAccountIdQuery(req.shopAuth!.userId));
+        const buyerEmail = userEarly?.email ? String(userEarly.email) : "";
+
         const mainDbEarly = await getMainDb();
-        const priced = await applyCatalogPrices(mainDbEarly, orderDetails);
+        const priced = await applyCatalogPrices(mainDbEarly, orderDetails, {
+          buyerEmail,
+        });
         if (!priced.ok) {
           return res.status(400).json({ error: priced.error });
         }
@@ -240,13 +248,13 @@ export function registerShopOrderCreateRoutes(
           return res.status(400).json({ error: stock.error });
         }
 
-        const user = await shopDb
-          .collection(SHOP_ACCOUNTS)
-          .findOne(shopAccountIdQuery(req.shopAuth!.userId));
+        const user = userEarly;
 
+        const hasZeroPriceTestItem = orderDetails.some((d) => !(Number(d.price) > 0));
         const isTest =
           Boolean(body.isTest) ||
-          String(customerNote || "").toUpperCase().includes("[TEST-WEB]");
+          String(customerNote || "").toUpperCase().includes("[TEST-WEB]") ||
+          (hasZeroPriceTestItem && isShopTestBuyerEmail(buyerEmail));
         const ctvNote =
           ctvCodes.length > 0 ? `CTV:${ctvCodes.join(",")}` : "";
 

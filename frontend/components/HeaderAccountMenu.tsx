@@ -13,8 +13,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { useShopAuth } from "@/components/ShopAuthProvider";
-import { useShopLogoutMutation } from "@/lib/authQueries";
-import { useShopRouter } from "@/lib/useShopRouter";
+import { useShopLogoutAction } from "@/lib/useShopLogoutAction";
 import { useShopLoginHref } from "@/lib/useShopLoginHref";
 import { AccountAvatar } from "@/components/AccountAvatar";
 
@@ -34,8 +33,7 @@ function accountRoleLabel(user: {
 
 export function HeaderAccountMenu() {
   const { user, loading } = useShopAuth();
-  const logoutMut = useShopLogoutMutation();
-  const router = useShopRouter();
+  const { logout, isPending: logoutPending } = useShopLogoutAction();
   const loginHref = useShopLoginHref();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -166,15 +164,10 @@ export function HeaderAccountMenu() {
             <button
               type="button"
               role="menuitem"
-              disabled={logoutMut.isPending}
-              onClick={async () => {
+              disabled={logoutPending}
+              onClick={() => {
                 setOpen(false);
-                try {
-                  await logoutMut.mutateAsync();
-                } catch {
-                  /* logout fail mềm */
-                }
-                router.push("/");
+                logout();
               }}
               className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold text-slate-700 hover:bg-[#fff1f0] hover:text-red-600"
             >

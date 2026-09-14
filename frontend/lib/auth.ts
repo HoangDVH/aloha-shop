@@ -83,7 +83,16 @@ export async function shopRegister(body: {
 
 export async function shopLogout(): Promise<{ ok: boolean }> {
   try {
-    await shopAuthFetch("/logout", { method: "POST" });
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 2500);
+    try {
+      await shopAuthFetch("/logout", {
+        method: "POST",
+        signal: ctrl.signal,
+      });
+    } finally {
+      clearTimeout(t);
+    }
   } catch {
     /* logout fail mềm — client vẫn xóa session */
   }

@@ -7,6 +7,7 @@ import {
   publicPrice,
 } from "../shopCatalog/priceOverlay.js";
 import { applyShopCors } from "../shopCors.js";
+import { isShopTestBuyerEmail } from "./checkoutFlags.js";
 
 /** Helper dùng chung route đơn shop (tạo đơn / me / thanh toán). */
 
@@ -65,14 +66,16 @@ export function parseOrderDetails(raw: unknown): ShopOrderDetail[] {
     .filter((d) => d.productCode);
 }
 
-/** Ghi đè giá/tên theo catalog. Reject nếu thiếu SP hoặc giá public <= 0. */
+/** Ghi đè giá/tên theo catalog. Reject nếu thiếu SP hoặc giá public <= 0 (trừ test buyer). */
 export async function applyCatalogPrices(
   mainDb: Db,
-  details: ShopOrderDetail[]
+  details: ShopOrderDetail[],
+  opts?: { buyerEmail?: string | null }
 ): Promise<
   | { ok: true; details: ShopOrderDetail[] }
   | { ok: false; error: string }
 > {
+  const allowZeroPrice = isShopTestBuyerEmail(opts?.buyerEmail);
   const mas = [...new Set(details.map((d) => d.productCode).filter(Boolean))];
   if (!mas.length) return { ok: false, error: "Giỏ hàng trống hoặc thiếu sản phẩm" };
   const docs = await mainDb
@@ -109,7 +112,7 @@ export async function applyCatalogPrices(
     }
     const doc = applyPriceBookOverlay(raw, pbByMa.get(d.productCode));
     const gia = publicPrice(doc);
-    if (!(gia > 0)) {
+    if (!(gia > 0) && !allowZeroPrice) {
       return {
         ok: false,
         error: `${d.productCode} chưa có giá bán web — không thể đặt hàng`,

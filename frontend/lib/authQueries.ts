@@ -59,8 +59,16 @@ export function useShopLogoutMutation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => shopLogout(),
+    onMutate: () => {
+      // Xóa session trên UI ngay — không chờ API / không clear toàn bộ cache
+      // (qc.clear() khiến /me + trang chủ refetch → overlay vài giây).
+      qc.setQueryData(shopMeQueryKey, null);
+    },
     onSettled: () => {
       qc.setQueryData(shopMeQueryKey, null);
+      // Chỉ bỏ query gắn tài khoản, giữ catalog/cache trang chủ
+      qc.removeQueries({ queryKey: ["shop", "orders"] });
+      qc.removeQueries({ queryKey: ["shop", "ctv"] });
     },
   });
 }

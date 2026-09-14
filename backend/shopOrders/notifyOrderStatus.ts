@@ -292,6 +292,7 @@ async function sendResendEmail(opts: {
 /**
  * Gửi notify cho đơn shop. Idempotent theo (orderCode, event).
  * Không có email / chưa cấu hình mail → log skip, không chặn nghiệp vụ.
+ * COD đẩy KV có mã DH* — vẫn gửi nếu source=shop_web (không mail đơn KV thuần).
  */
 export async function notifyOrderStatus(
   shopDb: Db,
@@ -303,12 +304,17 @@ export async function notifyOrderStatus(
   }
 
   const code = String(order.code || order.id || "").trim();
-  if (!code || !code.toUpperCase().startsWith("WEB")) {
-    return { sent: false, skipped: "not_shop_web_order" };
+  if (!code) {
+    return { sent: false, skipped: "no_code" };
   }
   const source = String(order.source || "shop_web");
   if (source && source !== "shop_web") {
     return { sent: false, skipped: "wrong_source" };
+  }
+  // Chỉ chặn mã rõ ràng không phải đơn web (tránh mail nhầm). Cho phép WEB* và DH* (COD KV).
+  const upper = code.toUpperCase();
+  if (!upper.startsWith("WEB") && !upper.startsWith("DH")) {
+    return { sent: false, skipped: "not_shop_web_order" };
   }
 
   if (await alreadySent(shopDb, code, event)) {

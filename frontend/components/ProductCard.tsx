@@ -8,6 +8,8 @@ import { usePathname } from "next/navigation";
 import { useCart } from "@/lib/cart";
 import { useToast } from "@/components/Toast";
 import { formatVnd, type ShopProduct } from "@/lib/api";
+import { useShopAuth } from "@/components/ShopAuthProvider";
+import { canPurchaseZeroPrice } from "@/lib/testBuyer";
 
 function ImagePendingOverlay({ force }: { force: boolean }) {
   const { pending } = useLinkStatus();
@@ -34,12 +36,15 @@ export function ProductCard({
   const add = useCart((s) => s.add);
   const toast = useToast();
   const pathname = usePathname();
+  const { user } = useShopAuth();
   const displayTon = liveTon != null && Number.isFinite(liveTon) ? liveTon : product.ton;
   const soldOut = displayTon <= 0;
   const lowStock = !soldOut && displayTon > 0 && displayTon <= 8;
   const manualBadge = product.webBadge;
   const [navPending, setNavPending] = useState(false);
   const displayGia = liveGia != null && liveGia >= 0 ? liveGia : product.gia;
+  const zeroPriceBlocked = !(displayGia > 0) && !canPurchaseZeroPrice(user?.email);
+  const purchaseBlocked = soldOut || zeroPriceBlocked;
 
   useEffect(() => {
     setNavPending(false);
@@ -49,6 +54,10 @@ export function ProductCard({
     e?.preventDefault();
     e?.stopPropagation();
     if (soldOut) return;
+    if (zeroPriceBlocked) {
+      toast.push("Sản phẩm này chưa mở bán");
+      return;
+    }
     const r = add({ ...product, gia: displayGia, ton: displayTon }, 1);
     if (!r.ok) {
       toast.push(
@@ -71,7 +80,7 @@ export function ProductCard({
 
   const markPending = () => setNavPending(true);
 
-  const addBtn = soldOut ? null : (
+  const addBtn = purchaseBlocked ? null : (
     <button
       type="button"
       onClick={onAdd}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Maximize2, Play } from "lucide-react";
 import { ProductVideoLightbox } from "@/components/pdp/ProductVideoLightbox";
 
@@ -55,10 +55,14 @@ export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
   useEffect(() => {
     setIdx(0);
     setMediaLightbox(false);
-  }, [resetKey, media[0]?.src]);
+  }, [resetKey]);
 
   useEffect(() => {
-    if (idx >= media.length) setIdx(0);
+    if (media.length === 0) {
+      if (idx !== 0) setIdx(0);
+      return;
+    }
+    if (idx >= media.length) setIdx(media.length - 1);
   }, [idx, media.length]);
 
   const goTo = (i: number) => {
@@ -66,6 +70,10 @@ export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
     const next = ((i % media.length) + media.length) % media.length;
     setIdx(next);
   };
+
+  const onLightboxIndex = useCallback((i: number) => {
+    setIdx(i);
+  }, []);
 
   const openMediaLightbox = (atIndex?: number) => {
     const i = atIndex ?? idx;
@@ -123,6 +131,7 @@ export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
             <img
+              key={current.src}
               src={current.src}
               alt={alt}
               className="absolute inset-0 h-full w-full cursor-zoom-in object-contain"
@@ -199,7 +208,7 @@ export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
         poster={poster}
         alt={alt}
         onClose={() => setMediaLightbox(false)}
-        onIndexChange={(i) => setIdx(i)}
+        onIndexChange={onLightboxIndex}
       />
     </div>
   );

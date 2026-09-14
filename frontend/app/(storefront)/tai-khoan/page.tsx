@@ -21,10 +21,8 @@ import { useShopAuth } from "@/components/ShopAuthProvider";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { AddressBookPanel } from "@/components/AddressBookPanel";
 import { OrdersPanel } from "@/components/OrdersPanel";
-import {
-  useShopLogoutMutation,
-  useShopUpdateMeMutation,
-} from "@/lib/authQueries";
+import { useShopUpdateMeMutation } from "@/lib/authQueries";
+import { useShopLogoutAction, isShopLoggingOut } from "@/lib/useShopLogoutAction";
 import {
   becomeCtvSchema,
   profileSchema,
@@ -58,7 +56,7 @@ export default function AccountPage() {
 
 function AccountPageInner() {
   const { user, loading } = useShopAuth();
-  const logoutMut = useShopLogoutMutation();
+  const { logout, isPending: logoutPending } = useShopLogoutAction();
   const updateMut = useShopUpdateMeMutation();
   const router = useShopRouter();
   const searchParams = useSearchParams();
@@ -76,8 +74,10 @@ function AccountPageInner() {
   });
 
   useEffect(() => {
+    // Đăng xuất về "/" — đừng redirect sang /dang-nhap (race + overlay kép)
+    if (logoutPending || isShopLoggingOut()) return;
     if (!loading && !user) router.replace("/dang-nhap?next=/tai-khoan");
-  }, [user, loading, router]);
+  }, [user, loading, router, logoutPending]);
 
   useEffect(() => {
     const t = parseTab(searchParams.get("tab"));
@@ -93,6 +93,10 @@ function AccountPageInner() {
       ctvForm.reset({ ctvCode: user.ctvCode || "" });
     }
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (logoutPending || isShopLoggingOut()) {
+    return null;
+  }
 
   if (loading || !user) {
     return <ShopPageLoader fullscreen={false} />;
@@ -173,7 +177,7 @@ function AccountPageInner() {
   );
 
   return (
-    <div className="mx-auto max-w-6xl space-y-4 px-4 py-6">
+    <div className="mx-auto max-w-7xl space-y-4 px-4 py-6">
       <nav className="text-sm text-slate-500">
         <Link href="/" className="hover:text-[var(--aloha-green)]">
           Trang chủ
@@ -204,15 +208,8 @@ function AccountPageInner() {
           </div>
           <button
             type="button"
-            disabled={logoutMut.isPending}
-            onClick={async () => {
-              try {
-                await logoutMut.mutateAsync();
-              } catch {
-                /* soft */
-              }
-              router.push("/");
-            }}
+            disabled={logoutPending}
+            onClick={() => logout()}
             className="shrink-0 rounded-full p-2 text-slate-500 hover:bg-white hover:text-red-600"
             aria-label="Đăng xuất"
           >
@@ -255,15 +252,8 @@ function AccountPageInner() {
 
           <button
             type="button"
-            disabled={logoutMut.isPending}
-            onClick={async () => {
-              try {
-                await logoutMut.mutateAsync();
-              } catch {
-                /* logout fail mềm */
-              }
-              router.push("/");
-            }}
+            disabled={logoutPending}
+            onClick={() => logout()}
             className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-semibold text-slate-600 hover:bg-[#fff1f0] hover:text-red-600"
           >
             <LogOut size={18} />

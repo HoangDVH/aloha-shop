@@ -9,6 +9,11 @@ import {
 import { redisInvalidateShopCache } from "../redis.js";
 import { syncBus } from "../syncBus.js";
 import { normalizeString } from "../utils/helpers.ts";
+import {
+  buildShopCategoryMongoFilter,
+  parseCategoryIdList,
+  parseNhomList,
+} from "../shopCatalog/categoryQueryFilter.js";
 
 const COL = "aloha_products";
 
@@ -50,10 +55,6 @@ function productMatchesQuery(
   return tokens.every((t) => hay.includes(t) || hay.replace(/\s+/g, "").includes(t));
 }
 
-function escapeRegex(s: string) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 export function registerShopProductsAdminRoutes(
   app: Express,
   getDb: GetDb,
@@ -69,7 +70,10 @@ export function registerShopProductsAdminRoutes(
       try {
         const db = await productsDb();
         const q = String(req.query.q || "").trim();
-        const nhom = String(req.query.nhom || "").trim();
+        const nhomList = parseNhomList(req.query as Record<string, unknown>);
+        const categoryIdList = parseCategoryIdList(
+          req.query as Record<string, unknown>
+        );
         const visible = String(req.query.visible || "all");
         const badge = String(req.query.badge || "all").trim();
         const page = Math.max(1, Number(req.query.page) || 1);
@@ -78,23 +82,11 @@ export function registerShopProductsAdminRoutes(
         const and: object[] = [
           { $or: [{ isActive: { $ne: false } }, { isActive: { $exists: false } }] },
         ];
-        if (nhom) {
-          const rx = escapeRegex(nhom);
-          const categoryId = Number(req.query.categoryId) || 0;
-          const or: object[] = [
-            { nhomPath: nhom },
-            { nhom },
-            { categoryName: nhom },
-            { nhomPath: { $regex: `^${rx}(\\s*>>|$)`, $options: "i" } },
-            { nhomPath: { $regex: rx, $options: "i" } },
-            { categoryName: { $regex: `^${rx}$`, $options: "i" } },
-          ];
-          if (categoryId > 0) or.unshift({ categoryId });
-          and.push({ $or: or });
-        } else {
-          const categoryId = Number(req.query.categoryId) || 0;
-          if (categoryId > 0) and.push({ categoryId });
-        }
+        const catFilter = await buildShopCategoryMongoFilter(db, {
+          nhomList,
+          categoryIdList,
+        });
+        if (catFilter) and.push(catFilter);
         if (visible === "1" || visible === "0") {
           if (visible === "0") and.push({ hienThiWeb: false });
           else

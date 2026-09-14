@@ -33,7 +33,8 @@ export function ProductStickyCta({
             <p className="truncate text-[11px] text-red-600">Hết hàng</p>
           ) : null}
         </div>
-        <div className="flex shrink-0 items-center gap-2.5">
+        {/* gap rõ + không dính cạnh — tránh bị gộp thành 1 khối trên mobile */}
+        <div className="flex shrink-0 items-center" style={{ gap: 10 }}>
           <button
             type="button"
             disabled={purchaseDisabled}

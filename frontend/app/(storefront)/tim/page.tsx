@@ -68,9 +68,11 @@ async function CatalogBody({
   let total = 0;
   let pages = 1;
   let err = "";
+  let effectiveSort = sort;
+  let effectiveBadge = badge;
 
   try {
-    const prod = await fetchProducts({
+    let prod = await fetchProducts({
       q: q || undefined,
       nhom: nhomList.length ? nhomList : undefined,
       attr: attrList.length ? attrList : undefined,
@@ -84,6 +86,28 @@ async function CatalogBody({
       sort,
       badge,
     });
+    // /tim?badge=ban_chay: nếu chưa gắn nhãn tay → fallback xếp theo doanh thu
+    // (cùng logic mục «Sản phẩm bán chạy» trên trang chủ)
+    if (
+      badge === "ban_chay" &&
+      !(prod.items || []).length &&
+      !q &&
+      !nhomList.length &&
+      !attrList.length &&
+      !dvtList.length &&
+      !loai &&
+      !minPrice &&
+      !maxPrice &&
+      !inStock
+    ) {
+      prod = await fetchProducts({
+        page,
+        limit: 24,
+        sort: "ban_chay",
+      });
+      effectiveSort = "ban_chay";
+      effectiveBadge = undefined;
+    }
     items = prod.items;
     total = prod.total;
     pages = prod.pages;
@@ -93,19 +117,17 @@ async function CatalogBody({
 
   const pageTitle = q
     ? undefined
-    : badge === "moi"
+    : effectiveBadge === "moi"
       ? "Sản phẩm mới"
-      : badge === "noi_bat"
+      : effectiveBadge === "noi_bat"
         ? "Sản phẩm nổi bật"
-        : badge === "ban_chay"
+        : effectiveBadge === "ban_chay" || effectiveSort === "ban_chay"
           ? "Sản phẩm bán chạy"
-          : sort === "ban_chay"
-            ? "Sản phẩm bán chạy"
-            : sort === "price_asc"
-              ? "Giá thấp → cao"
-              : sort === "price_desc"
-                ? "Giá cao → thấp"
-                : undefined;
+          : sort === "price_asc"
+            ? "Giá thấp → cao"
+            : sort === "price_desc"
+              ? "Giá cao → thấp"
+              : undefined;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">

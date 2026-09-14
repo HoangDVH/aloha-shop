@@ -28,6 +28,12 @@ import { registerShopAccountsAdminRoutes } from './shopAuth/adminRoutes.js';
 import { registerShopCommissionAdminRoutes } from './shopOrders/commissionAdminRoutes.js';
 import { registerAuthRoutes } from './auth/routes.js';
 import { applyShopCors } from './shopCors.js';
+import { syncBus } from './syncBus.js';
+import { redisReady, redisSubscribeChanges } from './redis.js';
+import {
+  startShopKvStockPoller,
+  runShopKvStockPoll,
+} from './shopCatalog/kvStockPoller.js';
 
 const PORT = Number(process.env.SHOP_SERVER_PORT || 3001);
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017';
@@ -126,6 +132,59 @@ registerShopProductsAdminRoutes(app, getOpsDb, getDb);
 registerShopAccountsAdminRoutes(app, getOpsDb, getDb);
 registerShopCommissionAdminRoutes(app, getOpsDb, getDb);
 
+/** Nhận pub/sub Redis từ app nội bộ (patch giá) → SSE shop realtime. */
+void redisReady().then((ok) => {
+  if (ok) console.log("[redis] shop sync ready");
+});
+void redisSubscribeChanges((payload) => {
+  syncBus.emit("change", payload);
+});
+
+/**
+ * Notify nội bộ (localhost) — app ops gọi sau patch-prices khi cùng VPS.
+ * Không JWT; chỉ 127.0.0.1 hoặc header secret.
+ */
+app.post("/api/shop/catalog/notify", (req, res) => {
+  const ip = String(req.ip || req.socket.remoteAddress || "");
+  const okLocal =
+    ip === "127.0.0.1" ||
+    ip === "::1" ||
+    ip === "::ffff:127.0.0.1" ||
+    ip.endsWith("127.0.0.1");
+  const secret = String(process.env.SHOP_INTERNAL_NOTIFY_SECRET || "").trim();
+  const hdr = String(req.headers["x-aloha-notify"] || "");
+  if (!okLocal && !(secret && hdr === secret)) {
+    return res.status(403).json({ error: "forbidden" });
+  }
+  const ids = Array.isArray(req.body?.ids)
+    ? req.body.ids.map((x: unknown) => String(x || "").trim()).filter(Boolean).slice(0, 200)
+    : [];
+  const source = String(req.body?.source || "catalog-notify").slice(0, 80);
+  syncBus.publish(["aloha_products"], source, { ids });
+  res.json({ ok: true, ids: ids.length });
+});
+
+/** Nội bộ: chạy poll tồn KV → shop ngay (full nếu body.full=true). */
+app.post("/api/shop/catalog/kv-stock-sync", async (req, res) => {
+  const ip = String(req.ip || req.socket.remoteAddress || "");
+  const okLocal =
+    ip === "127.0.0.1" ||
+    ip === "::1" ||
+    ip === "::ffff:127.0.0.1" ||
+    ip.endsWith("127.0.0.1");
+  const secret = String(process.env.SHOP_INTERNAL_NOTIFY_SECRET || "").trim();
+  const hdr = String(req.headers["x-aloha-notify"] || "");
+  if (!okLocal && !(secret && hdr === secret)) {
+    return res.status(403).json({ error: "forbidden" });
+  }
+  const forceFull = req.body?.full === true || req.body?.full === "1";
+  const result = await runShopKvStockPoll(getDb, {
+    forceFull,
+    source: "kv-stock-sync-api",
+  });
+  res.status(result.ok ? 200 : 500).json(result);
+});
+
 app.get('/api/health', async (_req, res) => {
   try {
     const db = await getDb();
@@ -148,4 +207,5 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`   - Shop DB: ${DB_NAME}`);
   console.log(`   - Ops DB (staff): ${OPS_DB_NAME}`);
   console.log(`   - Health: http://localhost:${PORT}/api/health\n`);
+  startShopKvStockPoller(getDb);
 });

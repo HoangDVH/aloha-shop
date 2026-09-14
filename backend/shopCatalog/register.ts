@@ -38,6 +38,15 @@ import {
   overlayDocsWithPriceBooks,
   publicPrice,
 } from "./priceOverlay.js";
+import { isShopTestBuyerEmail } from "../shopOrders/checkoutFlags.js";
+import {
+  availableTonAfterHold,
+  subtractHeldFromPublicItems,
+} from "../shopOrders/stockHold.js";
+import {
+  ACCESS_COOKIE,
+  verifyShopAccessToken,
+} from "../shopAuth/tokens.js";
 import { publicProductVideos } from "./productVideoUrl.js";
 
 type GetDb = () => Promise<Db>;
@@ -388,7 +397,8 @@ async function enrichListDisplayTons(
       }
     })
   );
-  return out;
+  // Có thể bán = ton − soft-hold (giống sàn TMĐT).
+  return subtractHeldFromPublicItems(db, out);
 }
 
 function publicImages(doc: Record<string, unknown>): string[] {
@@ -536,6 +546,25 @@ function shopFilterBase(): Record<string, unknown> {
       },
     ],
   };
+}
+
+/** Email từ cookie phiên shop — dùng ẩn/hiện SP giá 0đ (test). */
+function requestShopBuyerEmail(req: Request): string {
+  try {
+    const token = String(req.cookies?.[ACCESS_COOKIE] || "").trim();
+    if (!token) return "";
+    return String(verifyShopAccessToken(token).email || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+function filterZeroPriceUnlessTestBuyer<T extends { gia: number }>(
+  items: T[],
+  buyerEmail: string
+): T[] {
+  if (isShopTestBuyerEmail(buyerEmail)) return items;
+  return items.filter((p) => Number(p.gia) > 0);
 }
 
 async function cachedJson(
@@ -962,6 +991,8 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
       const sort =
         sortRaw === "bestsellers" || sortRaw === "ban-chay" ? "ban_chay" : sortRaw;
       const skip = (page - 1) * limit;
+      const buyerEmail = requestShopBuyerEmail(req);
+      const showZeroPrice = isShopTestBuyerEmail(buyerEmail);
       const needPostFilter =
         minPrice > 0 ||
         maxPrice > 0 ||
@@ -970,7 +1001,7 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
         attrFilters.length > 0 ||
         dvtFilters.length > 0 ||
         Boolean(loai);
-      const cacheKey = `shop:products:v18:${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|${sort}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}`;
+      const cacheKey = `shop:products:v19:${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|${sort}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
 
       const { body, cache } = await cachedJson(cacheKey, async () => {
         const db = await catalogDb();
@@ -1180,7 +1211,10 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
             .limit(5000)
             .toArray();
           const mapped = await mapDocsToPublicWithPriceBooks(db, docs as any[]);
-          const all = sortPublicItems(dedupeListItems(mapped.docs, mapped.items), sort);
+          const all = filterZeroPriceUnlessTestBuyer(
+            sortPublicItems(dedupeListItems(mapped.docs, mapped.items), sort),
+            buyerEmail
+          );
           const total = all.length;
           return {
             items: all.slice(skip, skip + limit),
@@ -1198,7 +1232,10 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
           .limit(5000)
           .toArray();
         const mapped = await mapDocsToPublicWithPriceBooks(db, docs as any[]);
-        let items = dedupeListItems(mapped.docs, mapped.items);
+        let items = filterZeroPriceUnlessTestBuyer(
+          dedupeListItems(mapped.docs, mapped.items),
+          buyerEmail
+        );
         if (minPrice > 0) items = items.filter((p) => p.gia >= minPrice);
         if (maxPrice > 0) items = items.filter((p) => p.gia <= maxPrice);
         if (inStock) items = items.filter((p) => p.ton > 0);
@@ -1327,7 +1364,7 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
       }
 
       res.setHeader("Cache-Control", "no-store");
-      res.json({ items });
+      res.json({ items: await subtractHeldFromPublicItems(db, items) });
     } catch (e: any) {
       res.status(500).json({ error: e?.message || "prices_failed" });
     }
@@ -1506,19 +1543,24 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
         const ton = await resolveShopDisplayTon(db, COL, src, docs);
         models.push(ton !== m.ton ? { ...m, ton } : m);
       }
+      const modelsAvail = await subtractHeldFromPublicItems(db, models);
       const currentMa = String(packed.current?.ma || (seed as any).ma || ma).toUpperCase();
-      const current = models.find((m) => m.ma.toUpperCase() === currentMa) || packed.current;
+      const current =
+        modelsAvail.find((m) => m.ma.toUpperCase() === currentMa) ||
+        (packed.current
+          ? (await subtractHeldFromPublicItems(db, [packed.current]))[0]
+          : null);
       // Chỉ trả khi có gì để chọn
       const useful =
         packed.axes.length > 0 &&
-        (models.length > 1 ||
+        (modelsAvail.length > 1 ||
           packed.axes.some((a) => a.values.length > 1) ||
           (normalizeAttrs((seed as any).attributes).length > 0 && packed.axes.length > 0));
       res.json({
         ok: true,
         current: current || null,
         axes: useful ? packed.axes : [],
-        models: useful ? models : current ? [current] : [],
+        models: useful ? modelsAvail : current ? [current] : [],
       });
     } catch (e: any) {
       res.status(500).json({ error: e?.message || "variants_failed" });
@@ -1558,10 +1600,18 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
       const pbByMa = await loadPriceBooksByMa(db, [maKey]);
       const overlaid = applyPriceBookOverlay(doc as any, pbByMa.get(maKey));
       const item = toPublicProduct(overlaid);
+      if (
+        !(Number(item.gia) > 0) &&
+        !isShopTestBuyerEmail(requestShopBuyerEmail(req))
+      ) {
+        res.status(404).json({ error: "not_found" });
+        return;
+      }
       let ton = item.ton;
       if (ton <= 0 && isComboOrFormulaProduct(overlaid)) {
         ton = await resolveShopDisplayTon(db, COL, overlaid);
       }
+      ton = await availableTonAfterHold(db, item.ma, ton);
       res.setHeader("X-Shop-Cache", "BYPASS");
       res.json({ item: ton !== item.ton ? { ...item, ton } : item });
     } catch (e: any) {
@@ -1594,8 +1644,17 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
       const maKey = String((doc as any).ma || "").trim().toUpperCase();
       const pbByMa = await loadPriceBooksByMa(db, [maKey]);
       const overlaid = applyPriceBookOverlay(doc as any, pbByMa.get(maKey));
+      const item = toPublicProduct(overlaid);
+      if (
+        !(Number(item.gia) > 0) &&
+        !isShopTestBuyerEmail(requestShopBuyerEmail(req))
+      ) {
+        res.status(404).json({ error: "not_found" });
+        return;
+      }
+      const ton = await availableTonAfterHold(db, item.ma, item.ton);
       res.setHeader("X-Shop-Cache", "BYPASS");
-      res.json({ item: toPublicProduct(overlaid) });
+      res.json({ item: ton !== item.ton ? { ...item, ton } : item });
     } catch (e: any) {
       res.status(500).json({ error: e?.message || "resolve_failed" });
     }

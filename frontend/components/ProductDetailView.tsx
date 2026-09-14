@@ -24,6 +24,7 @@ import {
   setAffiliateCtvCode,
   setGuestCtvCode,
 } from "@/lib/ctv";
+import { canPurchaseZeroPrice } from "@/lib/testBuyer";
 
 function plainDescription(raw: string): string {
   return String(raw || "")
@@ -93,6 +94,13 @@ export function ProductDetailView({
         : [];
     return imgs.filter(Boolean);
   }, [variantGallery, activeProduct]);
+
+  const galleryVideos = useMemo(() => {
+    if (activeProduct.videos?.length) return activeProduct.videos;
+    if (activeProduct.videoUrl) return [activeProduct.videoUrl];
+    return [] as string[];
+  }, [activeProduct.videos, activeProduct.videoUrl]);
+
   const [qty, setQty] = useState(1);
   const [affiliateCtv, setAffiliateCtv] = useState(() => getAffiliateCtvCode());
   const reportedKeyRef = useRef<string>("");
@@ -108,7 +116,10 @@ export function ProductDetailView({
       : variantAxes.length > 0
         ? !selection.canPurchase
         : liveTon <= 0;
-  const purchaseDisabled = soldOut || needPick || variantsLoading;
+  const zeroPriceBlocked =
+    !(Number(liveGia) > 0) && !canPurchaseZeroPrice(user?.email);
+  const purchaseDisabled =
+    soldOut || needPick || variantsLoading || zeroPriceBlocked;
   const desc = useMemo(
     () => plainDescription(product.description || ""),
     [product.description]
@@ -279,6 +290,7 @@ export function ProductDetailView({
   const addCart = (buyNow = false) => {
     if (purchaseDisabled) {
       if (needPick) toast.push("Chọn đủ thuộc tính / đơn vị trước khi mua");
+      else if (zeroPriceBlocked) toast.push("Sản phẩm này chưa mở bán");
       return;
     }
     const codeFromLink = normalizeCtvCode(ctvFromLink);
@@ -355,13 +367,7 @@ export function ProductDetailView({
             <div className="min-w-0 max-w-full">
             <ProductGallery
               images={gallery}
-              videos={
-                activeProduct.videos?.length
-                  ? activeProduct.videos
-                  : activeProduct.videoUrl
-                    ? [activeProduct.videoUrl]
-                    : []
-              }
+              videos={galleryVideos}
               alt={product.ten}
               resetKey={activeProduct.ma}
             />

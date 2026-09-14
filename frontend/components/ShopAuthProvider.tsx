@@ -11,6 +11,7 @@ import {
 import type { LoginInput, RegisterInput } from "@/lib/authSchemas";
 import type { ShopUser } from "@/lib/auth";
 import { useShopLoadingWhile } from "@/lib/useShopLoadingWhile";
+import { markShopLoggingOut } from "@/lib/useShopLogoutAction";
 
 export type ShopAuthAction = "login" | "logout" | "register" | null;
 
@@ -35,8 +36,9 @@ const Ctx = createContext<AuthCtx | null>(null);
 
 /** Một overlay toàn trang cho session boot + đăng nhập/đăng xuất. */
 function ShopAuthLoadingSync() {
-  const { loading, authBusy } = useShopAuth();
-  useShopLoadingWhile(loading || authBusy);
+  const { loading, authBusy, authAction } = useShopAuth();
+  // Logout optimistic — không cần overlay toàn trang
+  useShopLoadingWhile(loading || (authBusy && authAction !== "logout"));
   return null;
 }
 
@@ -71,7 +73,9 @@ export function ShopAuthProvider({ children }: { children: ReactNode }) {
       await registerMut.mutateAsync(body);
     },
     logout: async () => {
-      await logoutMut.mutateAsync();
+      // Không await API — onMutate đã xóa session trên UI
+      markShopLoggingOut();
+      void logoutMut.mutateAsync();
     },
     updateMe: async (body) => {
       await updateMut.mutateAsync(body);
