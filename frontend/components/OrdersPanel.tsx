@@ -6,6 +6,7 @@ import { ChevronRight, Package, Receipt } from "lucide-react";
 import { formatVnd } from "@/lib/api";
 import {
   cancelUnpaidOrder,
+  displayShopOrderCode,
   listMyOrders,
   renewPaymentOrder,
   subscribeShopOrdersStream,
@@ -103,15 +104,30 @@ export function OrdersPanel({ highlightCode }: { highlightCode?: string }) {
   return (
     <section className="space-y-3">
       {highlightCode ? (
-        <p className="rounded-xl bg-[var(--aloha-green-light)] px-4 py-3 text-sm font-semibold text-[var(--aloha-green-mid)]">
-          Đơn {highlightCode} đã ghi nhận.{" "}
-          <Link
-            href={`/don-hang/${encodeURIComponent(highlightCode)}`}
-            className="underline underline-offset-2"
-          >
-            Xem trạng thái
-          </Link>
-        </p>
+        (() => {
+          const matched = orders.find(
+            (o) =>
+              o.code === highlightCode ||
+              o.kvInvoiceCode === highlightCode ||
+              o.kvOrderCode === highlightCode ||
+              o.id === highlightCode
+          );
+          const shown = matched
+            ? displayShopOrderCode(matched)
+            : highlightCode;
+          const pathCode = matched ? displayShopOrderCode(matched) : highlightCode;
+          return (
+            <p className="rounded-xl bg-[var(--aloha-green-light)] px-4 py-3 text-sm font-semibold text-[var(--aloha-green-mid)]">
+              Đơn {shown} đã ghi nhận.{" "}
+              <Link
+                href={`/don-hang/${encodeURIComponent(pathCode)}`}
+                className="underline underline-offset-2"
+              >
+                Xem trạng thái
+              </Link>
+            </p>
+          );
+        })()
       ) : null}
       {orders.map((o) => (
         <article
@@ -121,22 +137,16 @@ export function OrdersPanel({ highlightCode }: { highlightCode?: string }) {
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
               <Link
-                href={`/don-hang/${encodeURIComponent(o.code)}`}
+                href={`/don-hang/${encodeURIComponent(displayShopOrderCode(o) || o.code)}`}
                 className="group inline-flex items-center gap-1 text-sm font-extrabold text-[#1a2e1a] hover:text-[var(--aloha-green)]"
               >
-                {o.kvInvoiceCode || o.code}
+                {displayShopOrderCode(o)}
                 <ChevronRight
                   size={16}
                   className="opacity-40 transition group-hover:opacity-100"
                 />
               </Link>
               <p className="mt-0.5 text-xs text-slate-500">
-                {o.kvInvoiceCode ? (
-                  <>
-                    Đơn web {o.code}
-                    {" · "}
-                  </>
-                ) : null}
                 {(o.createdAt || o.purchaseDate || "").slice(0, 16).replace("T", " ")}
               </p>
             </div>
@@ -207,7 +217,7 @@ export function OrdersPanel({ highlightCode }: { highlightCode?: string }) {
           </div>
 
           <Link
-            href={`/don-hang/${encodeURIComponent(o.code)}`}
+            href={`/don-hang/${encodeURIComponent(displayShopOrderCode(o) || o.code)}`}
             className="mt-3 inline-flex w-full items-center justify-center gap-1 rounded-xl border border-[#C5D5C0] py-2 text-sm font-bold text-[var(--aloha-green)] hover:bg-[var(--aloha-green-light)]"
           >
             Xem trạng thái đơn
@@ -239,7 +249,7 @@ export function OrdersPanel({ highlightCode }: { highlightCode?: string }) {
                 {busyCode === o.code ? "Đang tạo…" : "Tạo mã QR mới"}
               </button>
               <Link
-                href={`/don-hang/${encodeURIComponent(o.code)}`}
+                href={`/don-hang/${encodeURIComponent(displayShopOrderCode(o) || o.code)}`}
                 className="inline-flex w-full items-center justify-center rounded-lg border border-[#C5D5C0] py-2 text-sm font-bold text-[var(--aloha-green)] hover:bg-[var(--aloha-green-light)]"
               >
                 Mở trang thanh toán

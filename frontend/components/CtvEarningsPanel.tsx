@@ -40,6 +40,9 @@ type Overview = {
 
 type ConversionRow = {
   orderCode: string;
+  shopOrderCode?: string | null;
+  kvInvoiceCode?: string | null;
+  kvOrderCode?: string | null;
   purchasedAt: string | null;
   clickAt: string | null;
   completedAt: string | null;
@@ -205,8 +208,9 @@ export function CtvEarningsPanel() {
     [range.from, range.to]
   );
 
-  const loadConversions = useCallback(async () => {
-    setConvLoading(true);
+  const loadConversions = useCallback(async (silent = false) => {
+    // Poll im lặng: không hiện «Đang tải…» / không reset trang → tránh bảng nhấp nháy
+    if (!silent) setConvLoading(true);
     try {
       const qs = new URLSearchParams({
         from: fFrom,
@@ -219,11 +223,11 @@ export function CtvEarningsPanel() {
         `/api/shop/ctv/me/conversions?${qs.toString()}`
       );
       setConversions(r.data || []);
-      setPage(1);
+      if (!silent) setPage(1);
     } catch (e: any) {
-      setErr(e?.message || "Không tải báo cáo chuyển đổi");
+      if (!silent) setErr(e?.message || "Không tải báo cáo chuyển đổi");
     } finally {
-      setConvLoading(false);
+      if (!silent) setConvLoading(false);
     }
   }, [fFrom, fTo, fOrderCode, fOrderStatus, fPayStatus]);
 
@@ -232,7 +236,7 @@ export function CtvEarningsPanel() {
   }, [loadCore]);
 
   useEffect(() => {
-    if (subTab === "chuyen-doi") void loadConversions();
+    if (subTab === "chuyen-doi") void loadConversions(false);
   }, [subTab, loadConversions]);
 
   useEffect(() => {
@@ -240,7 +244,7 @@ export function CtvEarningsPanel() {
       if (typeof document !== "undefined" && document.visibilityState !== "visible")
         return;
       void loadCore(true);
-      if (subTab === "chuyen-doi") void loadConversions();
+      if (subTab === "chuyen-doi") void loadConversions(true);
     };
     const id = window.setInterval(tick, 15_000);
     const onVis = () => {
@@ -593,7 +597,7 @@ export function CtvEarningsPanel() {
                 <input
                   value={fOrderCode}
                   onChange={(e) => setFOrderCode(e.target.value)}
-                  placeholder="Tìm theo mã đơn (vd. WEB-260907-…)"
+                  placeholder="Tìm theo mã HĐ / đơn (vd. HD021986, WEB-…, DH…)"
                   className="mt-1 w-full rounded-lg border border-[var(--aloha-line)] bg-white px-2.5 py-2 text-xs font-medium text-[var(--aloha-ink)] focus:border-[var(--aloha-green)] focus:outline-none focus:ring-1 focus:ring-[var(--aloha-green)]"
                 />
               </label>
@@ -666,7 +670,10 @@ export function CtvEarningsPanel() {
                     </tr>
                   ) : (
                     pageRows.map((r) => (
-                      <tr key={r.orderCode} className="hover:bg-[#FBF8F1]/60">
+                      <tr
+                        key={r.shopOrderCode || r.orderCode}
+                        className="hover:bg-[#FBF8F1]/60"
+                      >
                         <td className="whitespace-nowrap px-3 py-3 text-slate-600">
                           {formatDt(r.clickAt)}
                         </td>

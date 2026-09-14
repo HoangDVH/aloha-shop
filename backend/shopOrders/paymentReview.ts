@@ -113,6 +113,11 @@ export async function flagPaymentForReview(
   const alertDoc = {
     type: "payment_review",
     orderCode: String((order as any).code),
+    displayOrderCode:
+      String((order as any).kvInvoiceCode || "").trim() ||
+      String((order as any).kvOrderCode || "").trim() ||
+      String((order as any).code || ""),
+    kvInvoiceCode: (order as any).kvInvoiceCode || null,
     customerName: (order as any).customerName || "",
     customerPhone: (order as any).customerPhone || "",
     paymentCode: (order as any).paymentCode || "",
@@ -143,9 +148,12 @@ export async function flagPaymentForReview(
 }
 
 function buildPaymentReviewText(alert: Record<string, unknown>): string {
+  const shown =
+    String(alert.displayOrderCode || "").trim() ||
+    String(alert.orderCode || "").trim();
   return (
     `[ALOHA] Cần kiểm tra CK\n` +
-    `Đơn: ${alert.orderCode}\n` +
+    `Đơn: ${shown}\n` +
     `KH: ${alert.customerName || ""} · ${alert.customerPhone || ""}\n` +
     `Lý do: ${reasonLabel(String(alert.reason) as PaymentReviewReason)}\n` +
     `Cần thu: ${Number(alert.expected || 0).toLocaleString("vi-VN")}đ\n` +

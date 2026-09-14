@@ -890,7 +890,7 @@ function KyThang({ onDone }: { onDone: () => void }) {
               className="flex justify-between rounded-lg border border-slate-100 px-3 py-2 text-xs"
             >
               <span>
-                {r.orderCode} · {r.ma} · {r.ctvCode}
+                {r.displayOrderCode || r.orderCode} · {r.ma} · {r.ctvCode}
               </span>
               <b>{formatVnd(r.amount)}</b>
             </div>
@@ -927,7 +927,9 @@ function CanhBao({ onDone }: { onDone: () => void }) {
         >
           <div className="font-bold text-slate-800">
             {r.type} · {r.ctvCode}
-            {r.orderCode ? ` · ${r.orderCode}` : ""}
+            {r.displayOrderCode || r.orderCode
+              ? ` · ${r.displayOrderCode || r.orderCode}`
+              : ""}
           </div>
           <div className="mt-1 text-xs text-slate-500">
             {(r.details || []).join(" · ") || "—"} ·{" "}

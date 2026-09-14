@@ -21,6 +21,7 @@ import {
 import { formatVnd } from "@/lib/api";
 import {
   cancelUnpaidOrder,
+  displayShopOrderCode,
   getMyOrder,
   renewPaymentOrder,
   reportPaidOrder,
@@ -285,7 +286,7 @@ export default function DonHangStatusPage() {
   };
 
   if (showThanks && isPaid) {
-    const invoiceCode = String(order.kvInvoiceCode || "").trim();
+    const invoiceCode = displayShopOrderCode(order);
     return (
       <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#F7F3EA] px-4 pt-[env(safe-area-inset-top,0px)]">
         <div className="w-full max-w-md animate-fade-up rounded-3xl bg-white px-6 py-10 text-center shadow-xl ring-1 ring-[#E8E2D6]">
@@ -302,15 +303,13 @@ export default function DonHangStatusPage() {
           {invoiceCode ? (
             <div className="mt-4 inline-flex flex-col items-center gap-1 rounded-xl bg-[#F4F8F2] px-4 py-3">
               <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                Mã hóa đơn
+                {order.kvInvoiceCode ? "Mã hóa đơn" : "Mã đơn"}
               </span>
               <span className="font-mono text-lg font-extrabold text-[var(--aloha-green)]">
                 {invoiceCode}
               </span>
             </div>
-          ) : (
-            <p className="mt-3 font-mono text-sm font-bold text-[#1a2e1a]">{order.code}</p>
-          )}
+          ) : null}
           <button
             type="button"
             className="mt-8 w-full rounded-xl bg-[var(--aloha-green)] py-3.5 text-sm font-bold text-white hover:bg-[var(--aloha-green-mid)]"
@@ -346,22 +345,31 @@ export default function DonHangStatusPage() {
                   </h1>
                   <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{hero.subtitle}</p>
                   <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                    {order.kvInvoiceCode ? (
-                      <>
-                        <span className="text-xs font-semibold text-slate-500">Mã HĐ</span>
-                        <span className="rounded-lg bg-[var(--aloha-green)] px-2.5 py-1 font-mono text-sm font-bold text-white">
-                          {order.kvInvoiceCode}
-                        </span>
-                        <CopyOrderCode code={order.kvInvoiceCode} />
-                      </>
-                    ) : (
-                      <>
-                        <span className="rounded-lg bg-[#1a2e1a]/5 px-2.5 py-1 font-mono text-sm font-bold text-[#1a2e1a]">
-                          {order.code}
-                        </span>
-                        <CopyOrderCode code={order.code} />
-                      </>
-                    )}
+                    {(() => {
+                      const shown = displayShopOrderCode(order);
+                      const label = order.kvInvoiceCode
+                        ? "Mã HĐ"
+                        : order.kvOrderCode
+                          ? "Mã ĐH"
+                          : "Mã đơn";
+                      return (
+                        <>
+                          <span className="text-xs font-semibold text-slate-500">
+                            {label}
+                          </span>
+                          <span
+                            className={
+                              order.kvInvoiceCode
+                                ? "rounded-lg bg-[var(--aloha-green)] px-2.5 py-1 font-mono text-sm font-bold text-white"
+                                : "rounded-lg bg-[#1a2e1a]/5 px-2.5 py-1 font-mono text-sm font-bold text-[#1a2e1a]"
+                            }
+                          >
+                            {shown}
+                          </span>
+                          <CopyOrderCode code={shown} />
+                        </>
+                      );
+                    })()}
                     {justConfirmed ? (
                       <span className="rounded-full bg-[var(--aloha-green)] px-2.5 py-1 text-[11px] font-bold text-white">
                         Vừa xác nhận
@@ -560,7 +568,7 @@ export default function DonHangStatusPage() {
               <div className="min-w-0">
                 <p className="truncate text-sm font-extrabold text-[#1a2e1a]">{hero.title}</p>
                 <p className="truncate text-[11px] text-slate-500">
-                  {order.code}
+                  {displayShopOrderCode(order)}
                   {order.method === "Transfer" ? " · Chuyển khoản" : " · COD"}
                 </p>
               </div>

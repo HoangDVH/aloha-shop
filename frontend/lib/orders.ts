@@ -76,6 +76,33 @@ export type ShopOrder = {
   purchaseDate?: string;
 };
 
+/** Mã hiển thị cho khách: HĐ KV (CK) → ĐH KV (COD) → mã shop. */
+export function displayShopOrderCode(
+  order: {
+    code?: string | null;
+    kvInvoiceCode?: string | null;
+    kvOrderCode?: string | null;
+  } | null | undefined
+): string {
+  if (!order) return "";
+  return (
+    String(order.kvInvoiceCode || "").trim() ||
+    String(order.kvOrderCode || "").trim() ||
+    String(order.code || "").trim()
+  );
+}
+
+/** Mã dùng cho URL /don-hang/… — ưu tiên HD/DH nếu có (API tìm được cả WEB). */
+export function shopOrderPathCode(
+  order: {
+    code?: string | null;
+    kvInvoiceCode?: string | null;
+    kvOrderCode?: string | null;
+  } | null | undefined
+): string {
+  return displayShopOrderCode(order);
+}
+
 async function shopFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     cache: "no-store",
@@ -152,6 +179,8 @@ export async function placeShopOrder(body: PlaceOrderInput) {
       code: string;
       kvOrderId: number | string | null;
       kvOrderCode: string | null;
+      kvInvoiceId?: number | string | null;
+      kvInvoiceCode?: string | null;
       total: number;
       status: string;
       statusValue: string;

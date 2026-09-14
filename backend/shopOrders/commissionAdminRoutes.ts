@@ -300,6 +300,41 @@ export function registerShopCommissionAdminRoutes(
         .skip((page - 1) * limit)
         .limit(limit)
         .toArray();
+      const orderCodes = [
+        ...new Set(
+          rows
+            .map((r) => String((r as any).orderCode || "").trim())
+            .filter(Boolean)
+        ),
+      ];
+      const orderDocs = orderCodes.length
+        ? await shopDb
+            .collection("aloha_shop_orders")
+            .find({
+              $or: [
+                { code: { $in: orderCodes } },
+                { id: { $in: orderCodes } },
+                { legacyCodes: { $in: orderCodes } },
+              ],
+            })
+            .project({ code: 1, id: 1, kvInvoiceCode: 1, kvOrderCode: 1, legacyCodes: 1 })
+            .toArray()
+        : [];
+      const displayByShopCode = new Map<string, string>();
+      for (const o of orderDocs) {
+        const shop = String((o as any).code || (o as any).id || "").trim();
+        const display =
+          String((o as any).kvInvoiceCode || "").trim() ||
+          String((o as any).kvOrderCode || "").trim() ||
+          shop;
+        if (shop) displayByShopCode.set(shop, display);
+        for (const leg of Array.isArray((o as any).legacyCodes)
+          ? (o as any).legacyCodes
+          : []) {
+          const L = String(leg || "").trim();
+          if (L) displayByShopCode.set(L, display);
+        }
+      }
       const sumEligible = await col
         .aggregate([
           { $match: { status: "eligible" } },
@@ -323,7 +358,12 @@ export function registerShopCommissionAdminRoutes(
         },
         data: rows.map((r) => {
           const { _id, ...rest } = r as any;
-          return { id: String(_id), ...rest };
+          const shopCode = String(rest.orderCode || "").trim();
+          return {
+            id: String(_id),
+            ...rest,
+            displayOrderCode: displayByShopCode.get(shopCode) || shopCode,
+          };
         }),
       });
     } catch (e: any) {
@@ -456,11 +496,53 @@ export function registerShopCommissionAdminRoutes(
         .sort({ createdAt: -1 })
         .limit(limit)
         .toArray();
+      const orderCodes = [
+        ...new Set(
+          rows
+            .map((r) => String((r as any).orderCode || "").trim())
+            .filter(Boolean)
+        ),
+      ];
+      const orderDocs = orderCodes.length
+        ? await shopDb
+            .collection("aloha_shop_orders")
+            .find({
+              $or: [
+                { code: { $in: orderCodes } },
+                { id: { $in: orderCodes } },
+                { legacyCodes: { $in: orderCodes } },
+              ],
+            })
+            .project({ code: 1, id: 1, kvInvoiceCode: 1, kvOrderCode: 1, legacyCodes: 1 })
+            .toArray()
+        : [];
+      const displayByShopCode = new Map<string, string>();
+      for (const o of orderDocs) {
+        const shop = String((o as any).code || (o as any).id || "").trim();
+        const display =
+          String((o as any).kvInvoiceCode || "").trim() ||
+          String((o as any).kvOrderCode || "").trim() ||
+          shop;
+        if (shop) displayByShopCode.set(shop, display);
+        for (const leg of Array.isArray((o as any).legacyCodes)
+          ? (o as any).legacyCodes
+          : []) {
+          const L = String(leg || "").trim();
+          if (L) displayByShopCode.set(L, display);
+        }
+      }
       return res.json({
         ok: true,
         data: rows.map((r) => {
           const { _id, ...rest } = r as any;
-          return { id: String(_id), ...rest };
+          const shopCode = String(rest.orderCode || "").trim();
+          return {
+            id: String(_id),
+            ...rest,
+            displayOrderCode: shopCode
+              ? displayByShopCode.get(shopCode) || shopCode
+              : null,
+          };
         }),
       });
     } catch (e: any) {

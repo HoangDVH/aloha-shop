@@ -193,7 +193,7 @@ export async function fetchProducts(
     /** Lọc theo nhãn tay: ban_chay | moi | noi_bat */
     badge?: "ban_chay" | "moi" | "noi_bat";
   },
-  /** Mặc định revalidate 30s cho catalog. Khi cần realtime (checkout/giỏ): truyền { cache: "no-store" }. */
+  /** Mặc định no-store (danh sách cần tồn mới). SP liên quan trên PDP: truyền revalidate. */
   cacheOpts?: { revalidate?: number; cache?: RequestCache }
 ) {
   const sp = new URLSearchParams();
@@ -236,7 +236,7 @@ export async function fetchProducts(
       ? { cache: cacheOpts.cache, revalidate: cacheOpts.revalidate }
       : cacheOpts?.revalidate != null
         ? { revalidate: cacheOpts.revalidate }
-        : { revalidate: 3600 };
+        : { cache: "no-store" as const };
   return shopFetch<{
     items: ShopProduct[];
     total: number;

@@ -788,6 +788,9 @@ export function registerShopCtvMeRoutes(
         .limit(200)
         .project({
           code: 1,
+          kvInvoiceCode: 1,
+          kvOrderCode: 1,
+          legacyCodes: 1,
           customerPhone: 1,
           customerName: 1,
           total: 1,
@@ -873,7 +876,23 @@ export function registerShopCtvMeRoutes(
       const rows: Array<Record<string, unknown>> = [];
       for (const o of orders) {
         const code = String((o as any).code || "").trim();
-        if (orderQ && !code.toUpperCase().includes(orderQ)) continue;
+        const kvInvoiceCode = String((o as any).kvInvoiceCode || "").trim();
+        const kvOrderCode = String((o as any).kvOrderCode || "").trim();
+        /** Ưu tiên mã HĐ KV (CK), rồi ĐH KV (COD), rồi mã shop WEB-/DH- */
+        const displayCode = kvInvoiceCode || kvOrderCode || code;
+        const legacy = Array.isArray((o as any).legacyCodes)
+          ? (o as any).legacyCodes.map((x: unknown) => String(x || "").toUpperCase())
+          : [];
+        if (
+          orderQ &&
+          !displayCode.toUpperCase().includes(orderQ) &&
+          !code.toUpperCase().includes(orderQ) &&
+          !kvInvoiceCode.toUpperCase().includes(orderQ) &&
+          !kvOrderCode.toUpperCase().includes(orderQ) &&
+          !legacy.some((x: string) => x.includes(orderQ))
+        ) {
+          continue;
+        }
         const stRaw = String((o as any).orderStatus || "").toLowerCase();
         const st =
           stRaw === "cho" || stRaw === "cho_xu_ly"
@@ -958,7 +977,10 @@ export function registerShopCtvMeRoutes(
         ].slice(0, 3);
 
         rows.push({
-          orderCode: code,
+          orderCode: displayCode,
+          shopOrderCode: code,
+          kvInvoiceCode: kvInvoiceCode || null,
+          kvOrderCode: kvOrderCode || null,
           purchasedAt,
           clickAt,
           completedAt: completedAt ? String(completedAt) : null,

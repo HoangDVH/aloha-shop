@@ -127,7 +127,11 @@ function formatItemsRows(order: Record<string, unknown>): string {
 }
 
 function eventBodyHtml(event: ShopNotifyEvent, order: Record<string, unknown>): string {
-  const code = String(order.code || order.id || "");
+  const shopCode = String(order.code || order.id || "");
+  const displayCode =
+    String(order.kvInvoiceCode || "").trim() ||
+    String(order.kvOrderCode || "").trim() ||
+    shopCode;
   const name = String(order.customerName || "Quý khách");
   const phone = String(order.customerPhone || "").trim();
   const subtotal = Number(order.subtotal ?? 0);
@@ -140,9 +144,11 @@ function eventBodyHtml(event: ShopNotifyEvent, order: Record<string, unknown>): 
     district: String(order.district || ""),
     province: String(order.province || ""),
   });
-  const copy = eventCopy(event, code);
+  const copy = eventCopy(event, displayCode);
   const pay = paymentLabel(order);
-  const orderUrl = `${SHOP_URL.replace(/\/$/, "")}/don-hang/${encodeURIComponent(code)}`;
+  // URL vẫn dùng mã shop (WEB/DH) — luôn resolve được; HD cũng OK nếu lookup hỗ trợ
+  const pathCode = displayCode || shopCode;
+  const orderUrl = `${SHOP_URL.replace(/\/$/, "")}/don-hang/${encodeURIComponent(pathCode)}`;
 
   return `<!DOCTYPE html>
 <html lang="vi">
@@ -169,7 +175,7 @@ function eventBodyHtml(event: ShopNotifyEvent, order: Record<string, unknown>): 
               <tr>
                 <td style="padding:14px 16px;">
                   <div style="font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.04em;">Mã đơn hàng</div>
-                  <div style="margin-top:4px;font-size:18px;font-weight:700;color:#14532d;letter-spacing:0.03em;">${escapeHtml(code)}</div>
+                  <div style="margin-top:4px;font-size:18px;font-weight:700;color:#14532d;letter-spacing:0.03em;">${escapeHtml(displayCode)}</div>
                 </td>
               </tr>
             </table>

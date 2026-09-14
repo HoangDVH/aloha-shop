@@ -7,6 +7,7 @@ import { shopMeQueryKey } from "@/lib/authQueries";
 import type { AddressDraft } from "@/components/GhnAddressFields";
 import {
   createAddress,
+  displayShopOrderCode,
   placeShopOrder,
   type ShopAddress,
 } from "@/lib/orders";
@@ -267,7 +268,7 @@ export function usePlaceOrder({
           };
         }),
       });
-      const orderCode = String(res.data?.code || "").trim();
+      const orderCode = displayShopOrderCode(res.data) || String(res.data?.code || "").trim();
 
       // Lần đầu chưa có SĐT trên hồ sơ → lưu từ checkout (không chặn đặt hàng nếu lỗi).
       if (profilePhoneEmpty(user?.phone) && customerPhone) {
