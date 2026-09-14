@@ -142,8 +142,8 @@ export function extractSepayOrderRefs(
 }
 
 export function transferTtlMinutes(): number {
-  const n = Number(process.env.SHOP_TRANSFER_TTL_MIN || 30);
-  return Number.isFinite(n) && n > 0 ? Math.min(24 * 60, Math.floor(n)) : 30;
+  const n = Number(process.env.SHOP_TRANSFER_TTL_MIN || 10);
+  return Number.isFinite(n) && n > 0 ? Math.min(24 * 60, Math.floor(n)) : 10;
 }
 
 export function normalizeAddresses(raw: unknown): ShopAddress[] {

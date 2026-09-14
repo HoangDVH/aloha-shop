@@ -1,7 +1,25 @@
 {
-  "/(storefront)/page": "app/(storefront)/page.js",
-  "/(storefront)/danh-muc/[slug]/page": "app/(storefront)/danh-muc/[slug]/page.js",
+  "/icon.png/route": "app/icon.png/route.js",
+  "/robots.txt/route": "app/robots.txt/route.js",
+  "/sitemap.xml/route": "app/sitemap.xml/route.js",
+  "/apple-icon.png/route": "app/apple-icon.png/route.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/(auth)/dang-ky/page": "app/(auth)/dang-ky/page.js",
+  "/(auth)/dang-nhap/page": "app/(auth)/dang-nhap/page.js",
+  "/(storefront)/don-hang/[code]/page": "app/(storefront)/don-hang/[code]/page.js",
+  "/(storefront)/tai-khoan/page": "app/(storefront)/tai-khoan/page.js",
   "/(storefront)/gio-hang/page": "app/(storefront)/gio-hang/page.js",
+  "/(auth)/cho-duyet-ctv/page": "app/(auth)/cho-duyet-ctv/page.js",
   "/(storefront)/xac-nhan-don-hang/page": "app/(storefront)/xac-nhan-don-hang/page.js",
-  "/(storefront)/c/[cat]/p/[slug]/page": "app/(storefront)/c/[cat]/p/[slug]/page.js"
+  "/(storefront)/bai-viet/page": "app/(storefront)/bai-viet/page.js",
+  "/(storefront)/c/[cat]/p/[slug]/page": "app/(storefront)/c/[cat]/p/[slug]/page.js",
+  "/(storefront)/bai-viet/[slug]/page": "app/(storefront)/bai-viet/[slug]/page.js",
+  "/(storefront)/page": "app/(storefront)/page.js",
+  "/(storefront)/tim/page": "app/(storefront)/tim/page.js",
+  "/(storefront)/danh-muc/[slug]/page": "app/(storefront)/danh-muc/[slug]/page.js",
+  "/(storefront)/sp/[ma]/page": "app/(storefront)/sp/[ma]/page.js",
+  "/admin/page": "app/admin/page.js",
+  "/admin/dang-nhap/page": "app/admin/dang-nhap/page.js",
+  "/admin/website/page": "app/admin/website/page.js",
+  "/admin/ctv/page": "app/admin/ctv/page.js"
 }

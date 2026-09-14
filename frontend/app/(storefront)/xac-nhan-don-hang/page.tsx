@@ -252,7 +252,7 @@ function CheckoutConfirm() {
     orderPlacedRef,
   });
 
-  if (authLoading) {
+  if (authLoading || (orderPlacedRef.current && submitting)) {
     return <ShopPageLoader fullscreen={false} />;
   }
 

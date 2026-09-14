@@ -291,7 +291,10 @@ export function usePlaceOrder({
       setError(e?.message || "Đặt hàng thất bại");
     } finally {
       placingLockRef.current = false;
-      setSubmitting(false);
+      // Nếu đã đặt hàng thành công và đang chuyển trang, giữ submitting=true để màn hình chuyển mượt mà
+      if (!orderPlacedRef.current) {
+        setSubmitting(false);
+      }
     }
   };
 

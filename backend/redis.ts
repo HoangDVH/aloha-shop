@@ -190,12 +190,60 @@ export function cacheKeyForCollection(coll: string, query = ""): string {
   return `aloha:cache:${coll}:${query || "all"}`;
 }
 
-/** Xóa cache web bán (prefix shop:). */
-export async function redisInvalidateShopCache(): Promise<void> {
+/** Bộ nhớ đệm RAM dự phòng nhẹ khi Redis offline hoặc chạy local không bật Redis */
+type MemoryCacheEntry = { value: string; expiresAt: number };
+const memoryCache = new Map<string, MemoryCacheEntry>();
+
+export function memoryCacheGet(key: string): string | null {
+  const entry = memoryCache.get(key);
+  if (!entry) return null;
+  if (entry.expiresAt <= Date.now()) {
+    memoryCache.delete(key);
+    return null;
+  }
+  return entry.value;
+}
+
+export function memoryCacheSet(key: string, value: string, ttlSec = 60): void {
+  if (memoryCache.size > 2000) {
+    const now = Date.now();
+    for (const [k, v] of memoryCache) {
+      if (v.expiresAt <= now) memoryCache.delete(k);
+    }
+  }
+  memoryCache.set(key, { value, expiresAt: Date.now() + ttlSec * 1000 });
+}
+
+export function memoryCacheClear(pattern = "shop:"): void {
+  for (const k of memoryCache.keys()) {
+    if (k.startsWith(pattern) || k.includes(pattern)) {
+      memoryCache.delete(k);
+    }
+  }
+}
+
+/** Xóa cache web bán (Cấp độ 1: Danh sách sản phẩm + chi tiết sản phẩm cụ thể nếu có). */
+export async function redisInvalidateShopCache(targetMa?: string): Promise<void> {
+  // 1. Luôn xóa bộ nhớ đệm RAM cho danh sách sản phẩm
+  memoryCacheClear("shop:products:");
+  if (targetMa) {
+    const norm = String(targetMa).trim().toLowerCase();
+    memoryCacheClear(`shop:product:${norm}`);
+  }
+
+  // 2. Xóa trên Redis (nếu có kết nối)
   if (!(await connectMain()) || !client) return;
   try {
-    for await (const key of client.scanIterator({ MATCH: "shop:*", COUNT: 80 })) {
+    // Xóa toàn bộ key danh sách catalog sản phẩm
+    for await (const key of client.scanIterator({ MATCH: "shop:products:*", COUNT: 80 })) {
       await client.del(key);
+    }
+    // Nếu có mã sản phẩm cụ thể, xóa thêm key liên quan sản phẩm đó
+    if (targetMa) {
+      const norm = String(targetMa).trim().toLowerCase();
+      for await (const key of client.scanIterator({ MATCH: `shop:product:*${norm}*`, COUNT: 80 })) {
+        await client.del(key);
+      }
     }
   } catch {
     /* ignore */

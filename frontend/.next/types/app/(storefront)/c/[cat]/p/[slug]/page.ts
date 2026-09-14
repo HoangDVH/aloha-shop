@@ -1,4 +1,4 @@
-// File: C:\Users\dauvu\Downloads\aloha-shop-standalone\aloha-shop-standalone\frontend\app\(storefront)\c\[cat]\p\[slug]\page.tsx
+// File: D:\Documents\aloha-shop\frontend\app\(storefront)\c\[cat]\p\[slug]\page.tsx
 import * as entry from '../../../../../../../../app/(storefront)/c/[cat]/p/[slug]/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

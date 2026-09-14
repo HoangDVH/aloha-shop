@@ -12,13 +12,13 @@ export function getShopBankConfig(): ShopBankPublicConfig {
   const accountNumber = String(process.env.SHOP_BANK_ACCOUNT || "").trim();
   const accountName = String(process.env.SHOP_BANK_ACCOUNT_NAME || "").trim();
   const bankName = String(process.env.SHOP_BANK_NAME || "").trim() || "Ngân hàng";
-  const ttlMin = Number(process.env.SHOP_TRANSFER_TTL_MIN || 30);
+  const ttlMin = Number(process.env.SHOP_TRANSFER_TTL_MIN || 10);
   return {
     bin,
     accountNumber,
     accountName,
     bankName,
-    ttlMin: Number.isFinite(ttlMin) && ttlMin > 0 ? Math.floor(ttlMin) : 30,
+    ttlMin: Number.isFinite(ttlMin) && ttlMin > 0 ? Math.floor(ttlMin) : 10,
     configured: Boolean(bin && accountNumber && accountName),
   };
 }

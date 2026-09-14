@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:3000").replace(
+const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:3001").replace(
   /\/$/,
   ""
 );

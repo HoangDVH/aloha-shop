@@ -216,7 +216,7 @@ export default function DonHangStatusPage() {
     });
     const poll = setInterval(() => {
       void reload(true);
-    }, 5000);
+    }, 3000);
     return () => {
       unsub();
       clearInterval(poll);

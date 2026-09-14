@@ -32,7 +32,8 @@ class SyncBus extends EventEmitter {
       payload.collections.map((c) => redisInvalidateCollection(c))
     ).then(async () => {
       if (payload.collections.some((c) => c === "aloha_products" || c.includes("product"))) {
-        await redisInvalidateShopCache();
+        const targetMa = payload.ids?.[0];
+        await redisInvalidateShopCache(targetMa);
       }
       await redisPublishChange(payload.collections, source, { ids });
     });

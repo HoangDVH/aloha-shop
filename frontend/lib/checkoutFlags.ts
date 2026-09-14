@@ -14,9 +14,9 @@ function envOn(name: string, defaultOn = false): boolean {
   return v === "1" || v === "true" || v === "yes" || v === "on";
 }
 
-/** Hiện chọn CK/QR trên checkout. Mặc định tắt (chỉ COD). */
+/** Hiện chọn CK/QR trên checkout. Mặc định bật. */
 export function shopShowTransferPayment(): boolean {
-  return envOn("NEXT_PUBLIC_SHOP_SHOW_TRANSFER", false);
+  return envOn("NEXT_PUBLIC_SHOP_SHOW_TRANSFER", true);
 }
 
 /** Hiện khối vận chuyển + phí ship. Mặc định tắt (theo yêu cầu phase hiện tại). */

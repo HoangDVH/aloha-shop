@@ -87,7 +87,7 @@ export function shopApiBase(): string {
   return (
     process.env.SHOP_API_INTERNAL ||
     process.env.NEXT_PUBLIC_API_BASE ||
-    "http://127.0.0.1:3000"
+    "http://127.0.0.1:3001"
   ).replace(/\/$/, "");
 }
 
@@ -193,8 +193,8 @@ export async function fetchProducts(
     /** Lọc theo nhãn tay: ban_chay | moi | noi_bat */
     badge?: "ban_chay" | "moi" | "noi_bat";
   },
-  /** Mặc định no-store (danh sách cần tồn mới). SP liên quan trên PDP: truyền revalidate. */
-  cacheOpts?: { revalidate?: number }
+  /** Mặc định revalidate 30s cho catalog. Khi cần realtime (checkout/giỏ): truyền { cache: "no-store" }. */
+  cacheOpts?: { revalidate?: number; cache?: RequestCache }
 ) {
   const sp = new URLSearchParams();
   if (opts.q) sp.set("q", opts.q);
@@ -232,9 +232,11 @@ export async function fetchProducts(
   }
   const qs = sp.toString();
   const fetchInit =
-    cacheOpts?.revalidate != null
-      ? { revalidate: cacheOpts.revalidate }
-      : { cache: "no-store" as const };
+    cacheOpts?.cache != null
+      ? { cache: cacheOpts.cache, revalidate: cacheOpts.revalidate }
+      : cacheOpts?.revalidate != null
+        ? { revalidate: cacheOpts.revalidate }
+        : { revalidate: 3600 };
   return shopFetch<{
     items: ShopProduct[];
     total: number;

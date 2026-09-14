@@ -18,6 +18,11 @@ const SHOP_URL =
   String(process.env.SHOP_PUBLIC_URL || "").trim() ||
   "https://shop.alohathegioichaucay.com";
 
+function shopMailEnabled(): boolean {
+  const v = String(process.env.SHOP_MAIL_ENABLED || "0").trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes" || v === "on";
+}
+
 function mailProvider(): string {
   return String(process.env.SHOP_MAIL_PROVIDER || "resend")
     .trim()
@@ -293,6 +298,10 @@ export async function notifyOrderStatus(
   order: Record<string, unknown>,
   event: ShopNotifyEvent
 ): Promise<{ sent: boolean; skipped?: string }> {
+  if (!shopMailEnabled()) {
+    return { sent: false, skipped: "mail_disabled" };
+  }
+
   const code = String(order.code || order.id || "").trim();
   if (!code || !code.toUpperCase().startsWith("WEB")) {
     return { sent: false, skipped: "not_shop_web_order" };

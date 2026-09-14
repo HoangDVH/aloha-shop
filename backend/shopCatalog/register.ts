@@ -4,7 +4,7 @@
  */
 import type { Express, Request, Response } from "express";
 import type { Db } from "mongodb";
-import { redisGet, redisSet, redisReady } from "../redis.js";
+import { redisGet, redisSet, redisReady, memoryCacheGet, memoryCacheSet, redisInvalidateShopCache } from "../redis.js";
 import { syncBus } from "../syncBus.js";
 import { shopRateLimitOrReject } from "../shopRateLimit.js";
 import {
@@ -45,7 +45,7 @@ type GetDb = () => Promise<Db>;
 const COL = "aloha_products";
 const INVOICES_COL = "aloha_sales_invoices";
 const CTV_CLICKS_COL = "aloha_shop_ctv_clicks";
-const TTL_SEC = 60;
+const TTL_SEC = Number(process.env.SHOP_CATALOG_TTL_SEC || 86400); // 24 giờ (xóa theo sự kiện)
 /** Cache xếp hạng bán chạy (chỉ key shop:* — không ghi aloha_products). */
 const BESTSELLER_TTL_SEC = 60;
 /** Cửa sổ doanh thu gần đây (ngày) — fallback toàn bộ nếu trống. */
@@ -556,12 +556,25 @@ async function cachedJson(
         /* fall through */
       }
     }
+  } else {
+    // RAM Memory Cache Fallback khi Redis không khả dụng
+    const memHit = memoryCacheGet(key);
+    if (memHit) {
+      try {
+        return { body: JSON.parse(memHit), cache: "HIT" };
+      } catch {
+        /* fall through */
+      }
+    }
   }
   const body = await producer();
+  const strVal = JSON.stringify(body);
   if (ok) {
-    await redisSet(key, JSON.stringify(body), ttlSec);
+    await redisSet(key, strVal, ttlSec);
+  } else {
+    memoryCacheSet(key, strVal, ttlSec);
   }
-  return { body, cache: ok ? "MISS" : "SKIP" };
+  return { body, cache: "MISS" };
 }
 
 function normalizeMa(raw: unknown): string {
@@ -1201,8 +1214,15 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
           pages: Math.max(1, Math.ceil(total / limit)),
           sortMode: sort,
         };
-      }, 0);
-      res.setHeader("Cache-Control", "no-store");
+      }, TTL_SEC);
+      if (cache === "BYPASS") {
+        res.setHeader("Cache-Control", "no-store");
+      } else {
+        res.setHeader(
+          "Cache-Control",
+          `public, max-age=3600, s-maxage=${TTL_SEC}, stale-while-revalidate=86400`
+        );
+      }
       res.setHeader("X-Shop-Cache", cache);
       res.json(body);
     } catch (e: any) {
@@ -1708,5 +1728,46 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
     };
     req.on("close", cleanup);
     req.on("aborted", cleanup);
+  });
+
+  /**
+   * Endpoint nội bộ nhận lệnh xóa Cache (Cấp độ 1):
+   * Bên project nội bộ gọi khi lưu sản phẩm / sửa giá / đổi tên.
+   * Header: x-internal-key: <token> hoặc query ?token=<token>
+   */
+  app.options("/api/shop/cache/clear", (req, res) => {
+    setCors(req, res);
+    res.sendStatus(204);
+  });
+  app.post("/api/shop/cache/clear", async (req, res) => {
+    setCors(req, res);
+    const keyHeader = String(req.headers["x-internal-key"] || "");
+    const keyQuery = String(req.query.token || "");
+    const keyBody = String(req.body?.token || "");
+    const token = keyHeader || keyQuery || keyBody;
+    const expected = (process.env.INTERNAL_SYNC_SECRET || "aloha-secret-token-2026").trim();
+
+    if (token !== expected) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+
+    const body = req.body || {};
+    const targetMa = body.ma ? String(body.ma).trim() : undefined;
+    const collection = String(body.collection || "aloha_products").trim();
+
+    // 1. Phát event syncBus để các luồng realtime (SSE) cập nhật
+    syncBus.publish(collection, "internal_http", { ids: targetMa ? [targetMa] : [] });
+
+    // 2. Xóa Cache Cấp độ 1 (xóa list shop:products:* và chi tiết mã nếu có)
+    await redisInvalidateShopCache(targetMa);
+
+    res.json({
+      ok: true,
+      cleared: true,
+      level: 1,
+      targetMa: targetMa || "all_products",
+      at: Date.now(),
+    });
   });
 }

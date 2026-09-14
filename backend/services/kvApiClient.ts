@@ -21,12 +21,12 @@ function portBase(): string {
 export function kvAuthUrl(): string {
   return (
     process.env.KV_AUTH_URL ||
-    `${portBase()}/kv-auth/connect/token`
+    "https://id.kiotviet.vn/connect/token"
   );
 }
 
 export function kvApiBase(): string {
-  const raw = process.env.KV_API_URL || `${portBase()}/kv-api`;
+  const raw = process.env.KV_API_URL || "https://public.kiotapi.com";
   return raw.replace(/\/$/, "");
 }
 

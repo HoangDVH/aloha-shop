@@ -14,7 +14,7 @@ function envOn(name: string, defaultOn = false): boolean {
 }
 
 export function shopAllowTransferPayment(): boolean {
-  return envOn("SHOP_ALLOW_TRANSFER", false);
+  return envOn("SHOP_ALLOW_TRANSFER", true);
 }
 
 export function shopRequireShippingQuote(): boolean {
