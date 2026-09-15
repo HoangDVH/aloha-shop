@@ -17,9 +17,8 @@ export type ShopProduct = {
   trongLuong?: number;
   anh: string;
   images: string[];
-  /** Video SP (R2 / YouTube) — videos[0] = video chính */
+  /** Video SP (R2 / YouTube) */
   videos?: string[];
-  videoUrl?: string;
   barcode?: string;
   description?: string;
   isActive: boolean;

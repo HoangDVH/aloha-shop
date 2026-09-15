@@ -24,7 +24,7 @@ import {
   ensureAwaitingInvoice,
   shopKiotQrAwaitingEnabled,
 } from "../shopInvoices/invoiceService.js";
-import { shopPaymentQrForOrder } from "./bankConfig.js";
+import { shopPaymentQrForOrder, resolveShopPaymentQrForOrder } from "./bankConfig.js";
 import { syncBus } from "../syncBus.js";
 import { shopRateLimitOrReject } from "../shopRateLimit.js";
 import {
@@ -177,6 +177,7 @@ export function registerShopOrderCustomerActionRoutes(
                 oldInv != null && oldInv !== ""
                   ? now
                   : ((existing as any).kvInvoiceCancelledAt ?? null),
+              kiotvietQr: null,
               updatedAt: now,
             },
           },
@@ -219,7 +220,7 @@ export function registerShopOrderCustomerActionRoutes(
           ids: [String((doc as any).code)],
         });
         const { _id, ...rest } = doc as any;
-        const qr = shopPaymentQrForOrder(rest);
+        const qr = await resolveShopPaymentQrForOrder(doc as any, shopDb);
         return res.json({
           ok: true,
           data: {
@@ -228,6 +229,8 @@ export function registerShopOrderCustomerActionRoutes(
             bank: qr.bank,
             qrKind: qr.qrKind,
             transferContent: qr.addInfo,
+            kovCode: (qr as any).kovCode,
+            qrString: (qr as any).qrString,
           },
         });
       } catch (e: any) {

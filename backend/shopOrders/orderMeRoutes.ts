@@ -7,7 +7,7 @@ import {
 } from "../shopAuth/routes.js";
 import { SHOP_ORDERS } from "./models.js";
 import { expireUnpaidShopOrders } from "./markPaid.js";
-import { shopPaymentQrForOrder } from "./bankConfig.js";
+import { shopPaymentQrForOrder, resolveShopPaymentQrForOrder } from "./bankConfig.js";
 import { syncBus } from "../syncBus.js";
 import {
   type GetMainDb,
@@ -63,13 +63,15 @@ export function registerShopOrderMeRoutes(
           const details = Array.isArray(rest.orderDetails) ? rest.orderDetails : [];
           rest.orderDetails = await enrichOrderDetailsImages(mainDb, details);
           if (rest.paymentStatus === "unpaid" && (rest.paymentCode || rest.kvInvoiceCode)) {
-            const qr = shopPaymentQrForOrder(rest);
+            const qr = await resolveShopPaymentQrForOrder(d as any, db);
             data.push({
               ...rest,
               qrUrl: qr.qrUrl,
               bank: qr.bank,
               qrKind: qr.qrKind,
               transferContent: qr.addInfo,
+              kovCode: (qr as any).kovCode,
+              qrString: (qr as any).qrString,
             });
           } else {
             data.push(rest);
@@ -102,14 +104,23 @@ export function registerShopOrderMeRoutes(
         });
         if (!doc) return res.status(404).json({ error: "Không tìm thấy đơn" });
 
-        // Đơn CK chưa paid: đối soát HĐ KV ngay khi khách poll trang đơn
+        // Đơn CK chưa paid: đối soát HĐ KV có điều tiết (throttle) tối đa 20s/lần tránh spam token API
         const ps = String((doc as any).paymentStatus || "");
         const method = String((doc as any).method || "");
+        const lastRec = (doc as any).lastKvReconcileAt ? new Date((doc as any).lastKvReconcileAt).getTime() : 0;
+        const isReported = Boolean((doc as any).customerReportedPaidAt);
+        const shouldReconcile = isReported || Date.now() - lastRec > 20000;
+
         if (
+          shouldReconcile &&
           method === "Transfer" &&
           (ps === "unpaid" || ps === "processing" || ps === "underpaid" || ps === "expired") &&
           (doc as any).kvInvoiceId != null
         ) {
+          await db.collection(SHOP_ORDERS).updateOne(
+            { _id: (doc as any)._id },
+            { $set: { lastKvReconcileAt: new Date().toISOString() } }
+          );
           const r = await reconcileShopOrderAgainstKv({
             shopDb: db,
             mainDb,
@@ -125,7 +136,7 @@ export function registerShopOrderMeRoutes(
         rest.orderDetails = await enrichOrderDetailsImages(mainDb, details);
         noStoreOrderJson(req, res);
         if (rest.paymentStatus === "unpaid" && (rest.paymentCode || rest.kvInvoiceCode)) {
-          const qr = shopPaymentQrForOrder(rest);
+          const qr = await resolveShopPaymentQrForOrder(doc as any, db);
           return res.json({
             ok: true,
             data: {
@@ -134,6 +145,8 @@ export function registerShopOrderMeRoutes(
               bank: qr.bank,
               qrKind: qr.qrKind,
               transferContent: qr.addInfo,
+              kovCode: (qr as any).kovCode,
+              qrString: (qr as any).qrString,
             },
           });
         }

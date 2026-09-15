@@ -79,7 +79,6 @@ export function ProductDetailView({
       videos: selectedModel.videos?.length
         ? selectedModel.videos
         : product.videos,
-      videoUrl: selectedModel.videos?.[0] || product.videoUrl,
       path: selectedModel.path || product.path,
       attributes: selectedModel.attributes,
     };

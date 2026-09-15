@@ -1,0 +1,15 @@
+{
+  "name": "get-private-token-kv",
+  "version": "1.0.0",
+  "description": "Module độc lập tự động lấy Private Token và sinh mã QR thanh toán KiotViet",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "test": "node test.js",
+    "start": "node test.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "puppeteer": "^24.4.0"
+  }
+}
