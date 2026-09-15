@@ -19,6 +19,8 @@ export type ShopProduct = {
   images: string[];
   /** Video SP (R2 / YouTube) */
   videos?: string[];
+  /** Legacy single video URL */
+  videoUrl?: string;
   barcode?: string;
   description?: string;
   isActive: boolean;
@@ -42,6 +44,7 @@ export type ShopVariantModel = {
   anh: string;
   images: string[];
   videos?: string[];
+  videoUrl?: string;
   path: string;
   attributes: ShopProductAttr[];
 };
