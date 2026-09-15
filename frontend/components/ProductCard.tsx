@@ -116,7 +116,7 @@ export function ProductCard({
 
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent opacity-0 transition-opacity duration-300 md:group-hover:opacity-100" />
 
-          {product.videos?.length || product.videoUrl ? (
+          {Boolean(product.videos?.length) ? (
             <span
               className="absolute bottom-2 left-2 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white shadow-sm backdrop-blur-[1px]"
               title="Có video"

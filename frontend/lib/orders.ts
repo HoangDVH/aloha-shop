@@ -69,6 +69,8 @@ export type ShopOrder = {
   qrUrl?: string | null;
   qrKind?: "kiotviet" | "vietqr" | string | null;
   transferContent?: string | null;
+  kovCode?: string | null;
+  qrString?: string | null;
   bank?: ShopBankInfo | null;
   /** Khách bấm “Tôi đã chuyển khoản” — chờ nhân viên xác nhận */
   customerReportedPaidAt?: string | null;

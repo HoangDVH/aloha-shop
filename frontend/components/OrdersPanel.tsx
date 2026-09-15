@@ -255,6 +255,7 @@ export function OrdersPanel({ highlightCode }: { highlightCode?: string }) {
                 transferContent={o.transferContent}
                 qrKind={o.qrKind}
                 kvInvoiceCode={o.kvInvoiceCode}
+                kovCode={o.kovCode}
                 bank={o.bank}
                 qrUrl={o.qrUrl}
                 expiresAt={o.expiresAt}

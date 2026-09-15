@@ -362,7 +362,6 @@ type Publicizer = (doc: Record<string, unknown>) => {
   anh: string;
   images: string[];
   videos?: string[];
-  videoUrl?: string;
   path: string;
 };
 
@@ -379,7 +378,7 @@ export function toVariantModel(
     ton: p.ton,
     anh: p.anh,
     images: p.images,
-    videos: p.videos?.length ? p.videos : p.videoUrl ? [p.videoUrl] : undefined,
+    videos: p.videos?.length ? p.videos : undefined,
     path: p.path,
     attributes: normalizeAttrs(doc.attributes),
     masterCode: doc.masterCode != null ? String(doc.masterCode).trim() || null : null,
@@ -403,7 +402,6 @@ const SIBLING_PROJ = {
   anh: 1,
   images: 1,
   videos: 1,
-  videoUrl: 1,
   ton: 1,
   onHand: 1,
   kvTon: 1,

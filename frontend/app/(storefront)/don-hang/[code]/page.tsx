@@ -216,7 +216,7 @@ export default function DonHangStatusPage() {
     });
     const poll = setInterval(() => {
       void reload(true);
-    }, 3000);
+    }, 6000);
     return () => {
       unsub();
       clearInterval(poll);
@@ -653,6 +653,7 @@ export default function DonHangStatusPage() {
                           transferContent={order.transferContent}
                           qrKind={order.qrKind}
                           kvInvoiceCode={order.kvInvoiceCode}
+                          kovCode={order.kovCode}
                           bank={order.bank}
                           qrUrl={order.qrUrl}
                           expiresAt={order.expiresAt}
@@ -663,11 +664,11 @@ export default function DonHangStatusPage() {
                     <>
                       {qrExpired ? (
                         <p className="text-xs font-semibold text-[#EE6055]">
-                          QR hết hạn — tạo mã mới để tiếp tục.
+                           QR hết hạn — tạo mã mới để tiếp tục.
                         </p>
                       ) : null}
                       <BankTransferQrPanel
-                        compact
+                        compact={false}
                         amount={Number(order.totalPayment ?? order.total) || 0}
                         paymentCode={
                           order.transferContent ||
@@ -678,6 +679,7 @@ export default function DonHangStatusPage() {
                         transferContent={order.transferContent}
                         qrKind={order.qrKind}
                         kvInvoiceCode={order.kvInvoiceCode}
+                        kovCode={order.kovCode}
                         bank={order.bank}
                         qrUrl={order.qrUrl}
                         expiresAt={order.expiresAt}

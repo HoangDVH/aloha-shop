@@ -21,7 +21,7 @@ import {
   ensureShopStockHoldIndexes,
   shopStockHoldEnabled,
 } from "./stockHold.js";
-import { shopPaymentQrForOrder } from "./bankConfig.js";
+import { shopPaymentQrForOrder, resolveShopPaymentQrForOrder } from "./bankConfig.js";
 import { syncBus } from "../syncBus.js";
 import { hashQuoteItems, verifyQuoteToken } from "../shopShipping/quoteToken.js";
 import { qualifiesFreeShip } from "../shopShipping/freeShip.js";
@@ -262,7 +262,7 @@ export function registerShopOrderCreateRoutes(
           });
           if (existing) {
             const { _id, ...rest } = existing as any;
-            const qr = rest.method === "Transfer" ? shopPaymentQrForOrder(rest) : null;
+            const qr = rest.method === "Transfer" ? await resolveShopPaymentQrForOrder(existing as any, shopDb) : null;
             return res.status(200).json({
               ok: true,
               reused: true,
@@ -286,6 +286,8 @@ export function registerShopOrderCreateRoutes(
                 bank: qr?.bank || null,
                 qrKind: qr?.qrKind || null,
                 transferContent: qr?.addInfo || null,
+                kovCode: (qr as any)?.kovCode || null,
+                qrString: (qr as any)?.qrString || null,
               },
             });
           }
@@ -517,7 +519,7 @@ export function registerShopOrderCreateRoutes(
           }
         }
 
-        const qr = isTransfer ? shopPaymentQrForOrder(doc as any) : null;
+        const qr = isTransfer ? await resolveShopPaymentQrForOrder(doc as any, shopDb) : null;
 
         return res.status(201).json({
           ok: true,
@@ -541,6 +543,8 @@ export function registerShopOrderCreateRoutes(
             bank: qr?.bank || null,
             qrKind: qr?.qrKind || null,
             transferContent: qr?.addInfo || null,
+            kovCode: (qr as any)?.kovCode || null,
+            qrString: (qr as any)?.qrString || null,
           },
         });
       } catch (e: any) {

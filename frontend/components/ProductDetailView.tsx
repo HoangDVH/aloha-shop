@@ -78,7 +78,6 @@ export function ProductDetailView({
       videos: selectedModel.videos?.length
         ? selectedModel.videos
         : product.videos,
-      videoUrl: selectedModel.videos?.[0] || product.videoUrl,
       path: selectedModel.path || product.path,
       attributes: selectedModel.attributes,
     };
@@ -355,13 +354,7 @@ export function ProductDetailView({
             <div className="min-w-0 max-w-full">
             <ProductGallery
               images={gallery}
-              videos={
-                activeProduct.videos?.length
-                  ? activeProduct.videos
-                  : activeProduct.videoUrl
-                    ? [activeProduct.videoUrl]
-                    : []
-              }
+              videos={activeProduct.videos || []}
               alt={product.ten}
               resetKey={activeProduct.ma}
             />
