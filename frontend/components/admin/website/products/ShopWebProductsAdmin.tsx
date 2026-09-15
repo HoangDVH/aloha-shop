@@ -241,7 +241,7 @@ export function ShopWebProductsAdmin() {
           </p>
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.1fr)_minmax(180px,0.85fr)_minmax(150px,0.65fr)_minmax(150px,0.65fr)_auto]">
+        <div className="mt-4 grid items-center gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.1fr)_minmax(180px,0.85fr)_minmax(150px,0.65fr)_minmax(150px,0.65fr)_auto]">
           <div ref={wrapRef} className="relative z-20 min-w-0">
             <div className="relative flex h-9 items-center rounded-md border border-[#D4CDC0] bg-white px-2.5 transition focus-within:border-[#3D6B3A] focus-within:ring-1 focus-within:ring-[#3D6B3A]/25">
               <Search className="mr-2 h-4 w-4 shrink-0 text-gray-400" />
@@ -338,10 +338,11 @@ export function ShopWebProductsAdmin() {
               </div>
             ) : null}
           </div>
-          <div className="relative z-10 min-w-[220px] max-w-sm flex-1">
+          <div className="relative z-10 min-w-0">
             <ShopCategorySelect
               value={selectedNhoms}
               placeholder="Tất cả nhóm hàng"
+              showLabel={false}
               onChange={(paths) => {
                 setPage(1);
                 setSelectedNhoms(paths);
@@ -374,7 +375,7 @@ export function ShopWebProductsAdmin() {
               }}
             />
           </div>
-          <WbBtn variant="secondary" onClick={() => void load()} className="!h-9 self-end">
+          <WbBtn variant="secondary" onClick={() => void load()} className="!h-9">
             <RefreshCw className="h-3.5 w-3.5" /> Làm mới
           </WbBtn>
         </div>

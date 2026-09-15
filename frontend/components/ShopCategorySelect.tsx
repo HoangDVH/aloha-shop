@@ -191,10 +191,13 @@ export function ShopCategorySelect({
   value,
   onChange,
   placeholder = "Chọn nhóm hàng",
+  showLabel = true,
 }: {
   value: string[];
   onChange: (paths: string[]) => void;
   placeholder?: string;
+  /** false = chỉ nút chọn (toolbar admin ngang hàng với search/filter) */
+  showLabel?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -483,20 +486,22 @@ export function ShopCategorySelect({
 
   return (
     <div ref={rootRef} className="relative w-full min-w-0">
-      <div className="mb-1 flex items-center justify-between gap-2">
-        <span className="text-[12.5px] font-semibold text-[#1F3A24]">
-          Nhóm hàng{value.length ? ` (${value.length})` : ""}
-        </span>
-        {value.length > 0 ? (
-          <button
-            type="button"
-            onClick={handleClearAll}
-            className="text-[12px] font-semibold text-[#0090da] hover:underline"
-          >
-            Bỏ lọc nhóm
-          </button>
-        ) : null}
-      </div>
+      {showLabel ? (
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <span className="text-[12.5px] font-semibold text-[#1F3A24]">
+            Nhóm hàng{value.length ? ` (${value.length})` : ""}
+          </span>
+          {value.length > 0 ? (
+            <button
+              type="button"
+              onClick={handleClearAll}
+              className="text-[12px] font-semibold text-[#0090da] hover:underline"
+            >
+              Bỏ lọc nhóm
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <button
         type="button"
@@ -509,10 +514,10 @@ export function ShopCategorySelect({
           placePanel();
           setOpen(true);
         }}
-        className="flex h-9 w-full items-center gap-1.5 rounded border px-2.5 text-left text-[13px]"
+        className="flex h-9 w-full items-center gap-1.5 rounded-md border px-2.5 text-left text-[13px]"
         style={{
           background: "#fff",
-          borderColor: open ? "#0070e0" : "#d9d9d9",
+          borderColor: open ? "#0070e0" : "#D4CDC0",
           boxShadow: open ? "0 0 0 2px rgba(0,112,224,0.2)" : undefined,
           color: value.length ? "#0070e0" : "#555",
           fontWeight: value.length ? 700 : 400,
