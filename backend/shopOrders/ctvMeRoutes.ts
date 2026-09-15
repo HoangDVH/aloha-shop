@@ -809,7 +809,19 @@ export function registerShopCtvMeRoutes(
       const codes = orders
         .map((o) => String((o as any).code || "").trim())
         .filter(Boolean);
-      const [comms, clicks] = await Promise.all([
+      const productMas = new Set<string>();
+      for (const o of orders) {
+        const details = Array.isArray((o as any).orderDetails)
+          ? (o as any).orderDetails
+          : [];
+        for (const d of details) {
+          const ma = String(d?.productCode || d?.ma || "")
+            .trim()
+            .toUpperCase();
+          if (ma) productMas.add(ma);
+        }
+      }
+      const [comms, clicks, productDocs] = await Promise.all([
         codes.length
           ? ctx.shopDb
               .collection(SHOP_COMMISSIONS)
@@ -842,6 +854,23 @@ export function registerShopCtvMeRoutes(
           .limit(300)
           .project({ ma: 1, createdAt: 1, createdAtIso: 1 })
           .toArray(),
+        productMas.size
+          ? (async () => {
+              const mas = [...productMas];
+              const mainDb = await getDb();
+              return mainDb
+                .collection("aloha_products")
+                .find({
+                  deletedAt: null,
+                  $or: [
+                    { ma: { $in: mas } },
+                    { ma: { $in: mas.map((m) => m.toLowerCase()) } },
+                  ],
+                })
+                .project({ ma: 1, ten: 1, anh: 1, images: 1 })
+                .toArray();
+            })()
+          : Promise.resolve([]),
       ]);
 
       const commByOrder = new Map<string, typeof comms>();
@@ -862,6 +891,23 @@ export function registerShopCtvMeRoutes(
         if (!ma || clickByMa.has(ma)) continue;
         const at = (c as any).createdAtIso || (c as any).createdAt;
         if (at) clickByMa.set(ma, String(at));
+      }
+
+      const productByMa = new Map<string, { ten: string; anh: string }>();
+      for (const p of productDocs) {
+        const ma = String((p as any).ma || "")
+          .trim()
+          .toUpperCase();
+        if (!ma) continue;
+        const anh =
+          String((p as any).anh || "").trim() ||
+          String(
+            (Array.isArray((p as any).images) && (p as any).images[0]) || ""
+          ).trim();
+        productByMa.set(ma, {
+          ten: String((p as any).ten || "").trim(),
+          anh,
+        });
       }
 
       // Đếm số đơn theo SĐT để phân loại khách mới / đã tồn tại
@@ -963,18 +1009,46 @@ export function registerShopCtvMeRoutes(
         const completedAt = (o as any).deliveredAt || (o as any).completedAt || null;
         const clickAt = firstMa ? clickByMa.get(firstMa) || null : null;
 
-        const productNames = [
-          ...new Set(
-            [
-              ...details.map((d: any) =>
-                String(d.productName || d.ten || d.productCode || d.ma || "").trim()
-              ),
-              ...orderComms.map((c: any) =>
-                String(c.productName || c.ma || "").trim()
-              ),
-            ].filter(Boolean)
-          ),
-        ].slice(0, 3);
+        const productItems: Array<{
+          ma: string;
+          name: string;
+          imageUrl: string;
+        }> = [];
+        const seenMa = new Set<string>();
+        for (const d of details) {
+          const ma = String(d.productCode || d.ma || "")
+            .trim()
+            .toUpperCase();
+          if (!ma || seenMa.has(ma)) continue;
+          seenMa.add(ma);
+          const cat = productByMa.get(ma);
+          const name =
+            String(d.productName || d.ten || "").trim() ||
+            cat?.ten ||
+            ma;
+          const imageUrl =
+            String(d.imageUrl || d.anh || "").trim() || cat?.anh || "";
+          productItems.push({ ma, name, imageUrl });
+          if (productItems.length >= 3) break;
+        }
+        if (!productItems.length) {
+          for (const c of orderComms) {
+            const ma = String((c as any).ma || "")
+              .trim()
+              .toUpperCase();
+            if (!ma || seenMa.has(ma)) continue;
+            seenMa.add(ma);
+            const cat = productByMa.get(ma);
+            productItems.push({
+              ma,
+              name:
+                String((c as any).productName || "").trim() || cat?.ten || ma,
+              imageUrl: cat?.anh || "",
+            });
+            if (productItems.length >= 3) break;
+          }
+        }
+        const productNames = productItems.map((p) => p.name);
 
         rows.push({
           orderCode: displayCode,
@@ -992,6 +1066,7 @@ export function registerShopCtvMeRoutes(
           itemCommission: totalCommission,
           totalCommission,
           buyerStatus,
+          products: productItems,
           productSummary: productNames.join(", ") || "—",
           commissionStatus:
             orderComms.length === 0

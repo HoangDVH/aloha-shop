@@ -61,10 +61,16 @@ export async function findShopOrderByKvInvoice(
   return doc as Record<string, unknown> | null;
 }
 
-/** Query tìm đơn theo mã khách gõ (kể cả WEB- trong legacyCodes). */
+/** Query tìm đơn theo mã khách gõ (WEB-, HD…, DH…, legacyCodes). */
 export function shopOrderLookupFilter(ref: string): Record<string, unknown> {
   const id = String(ref || "").trim();
   return {
-    $or: [{ id }, { code: id }, { kvOrderCode: id }, { legacyCodes: id }],
+    $or: [
+      { id },
+      { code: id },
+      { kvOrderCode: id },
+      { kvInvoiceCode: id },
+      { legacyCodes: id },
+    ],
   };
 }

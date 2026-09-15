@@ -15,6 +15,7 @@ import {
   setShopCors,
 } from "./orderRouteShared.js";
 import { reconcileShopOrderAgainstKv } from "./kvPaymentReconcile.js";
+import { shopOrderLookupFilter } from "./findShopOrder.js";
 
 function noStoreOrderJson(
   req: { headers?: Record<string, unknown> | null },
@@ -100,7 +101,7 @@ export function registerShopOrderMeRoutes(
         const id = String(req.params.id || "").trim();
         let doc = await db.collection(SHOP_ORDERS).findOne({
           shopAccountId: req.shopAuth!.userId,
-          $or: [{ id }, { code: id }, { kvOrderCode: id }, { legacyCodes: id }],
+          ...shopOrderLookupFilter(id),
         });
         if (!doc) return res.status(404).json({ error: "Không tìm thấy đơn" });
 

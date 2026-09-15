@@ -177,7 +177,7 @@ function AccountPageInner() {
   );
 
   return (
-    <div className="mx-auto max-w-7xl space-y-4 px-4 py-6">
+    <div className="mx-auto max-w-7xl space-y-4 overflow-x-hidden px-4 py-6">
       <nav className="text-sm text-slate-500">
         <Link href="/" className="hover:text-[var(--aloha-green)]">
           Trang chủ
@@ -262,7 +262,7 @@ function AccountPageInner() {
         </aside>
 
         {/* Main */}
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           {tab === "tai-khoan" ? (
             <>
               <section className="flex flex-wrap items-center gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[#E5DFD2]">
@@ -419,7 +419,7 @@ function AccountPageInner() {
           ) : null}
 
           {tab === "hoa-hong" ? (
-            <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[#E5DFD2]">
+            <section className="min-w-0 overflow-hidden rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[#E5DFD2]">
               <h2 className="mb-4 text-base font-extrabold text-[#1a2e1a]">Hoa hồng cộng tác viên</h2>
               <CtvEarningsPanel />
             </section>

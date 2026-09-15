@@ -54,6 +54,7 @@ type ConversionRow = {
   itemCommission: number;
   totalCommission: number;
   buyerStatus: string;
+  products?: Array<{ ma: string; name: string; imageUrl: string }>;
   productSummary: string;
   commissionStatus: string;
 };
@@ -370,9 +371,9 @@ export function CtvEarningsPanel() {
         "Trạng thái đơn",
         "Thanh toán",
         "Hoàn thành",
-        "HH item",
-        "Tổng HH",
-        "Trạng thái HH",
+        "Hoa hồng item",
+        "Tổng hoa hồng",
+        "Trạng thái hoa hồng",
         "Người mua",
         "Sản phẩm",
       ],
@@ -411,7 +412,7 @@ export function CtvEarningsPanel() {
   ];
 
   return (
-    <div className="space-y-5">
+    <div className="min-w-0 max-w-full space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-slate-600">
           Mã CTV:{" "}
@@ -538,8 +539,8 @@ export function CtvEarningsPanel() {
 
       {/* ===== BÁO CÁO CHUYỂN ĐỔI ===== */}
       {subTab === "chuyen-doi" ? (
-        <div className="space-y-4">
-          <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[#E8E2D6] sm:p-5">
+        <div className="min-w-0 max-w-full space-y-4">
+          <section className="min-w-0 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[#E8E2D6] sm:p-5">
             <h3 className="mb-4 text-base font-extrabold text-[#1a2e1a]">
               Báo cáo chuyển đổi
             </h3>
@@ -592,35 +593,40 @@ export function CtvEarningsPanel() {
                   <option value="underpaid">Thiếu tiền CK</option>
                 </select>
               </label>
-              <label className="block text-xs font-semibold text-slate-600 sm:col-span-2 lg:col-span-2">
+              <label className="block text-xs font-semibold text-slate-600 sm:col-span-2 lg:col-span-3">
                 Mã đơn hàng
-                <input
-                  value={fOrderCode}
-                  onChange={(e) => setFOrderCode(e.target.value)}
-                  placeholder="Tìm theo mã HĐ / đơn (vd. HD021986, WEB-…, DH…)"
-                  className="mt-1 w-full rounded-lg border border-[var(--aloha-line)] bg-white px-2.5 py-2 text-xs font-medium text-[var(--aloha-ink)] focus:border-[var(--aloha-green)] focus:outline-none focus:ring-1 focus:ring-[var(--aloha-green)]"
-                />
+                <div className="mt-1 flex items-center gap-2">
+                  <input
+                    value={fOrderCode}
+                    onChange={(e) => setFOrderCode(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") void loadConversions();
+                    }}
+                    placeholder="Tìm theo mã HĐ / đơn (vd. HD021986, WEB-…, DH…)"
+                    className="min-w-0 flex-1 rounded-lg border border-[var(--aloha-line)] bg-white px-2.5 py-2 text-xs font-medium text-[var(--aloha-ink)] focus:border-[var(--aloha-green)] focus:outline-none focus:ring-1 focus:ring-[var(--aloha-green)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void loadConversions()}
+                    className="shrink-0 rounded-lg bg-[var(--aloha-green)] px-4 py-2 text-xs font-bold text-white hover:bg-[var(--aloha-green-mid)]"
+                  >
+                    Tìm kiếm
+                  </button>
+                </div>
               </label>
-              <div className="flex flex-wrap items-end gap-2">
+              <div className="flex flex-nowrap items-center gap-2 sm:col-span-2 lg:col-span-3">
                 <button
                   type="button"
                   onClick={resetConversionFilters}
-                  className="rounded-lg bg-white px-3 py-2 text-xs font-bold text-[var(--aloha-ink)] ring-1 ring-[var(--aloha-line)] hover:bg-[var(--aloha-cream)]"
+                  className="shrink-0 rounded-lg bg-white px-3 py-2 text-xs font-bold text-[var(--aloha-ink)] ring-1 ring-[var(--aloha-line)] hover:bg-[var(--aloha-cream)]"
                 >
                   Thiết lập lại
                 </button>
                 <button
                   type="button"
-                  onClick={() => void loadConversions()}
-                  className="rounded-lg bg-[var(--aloha-green)] px-4 py-2 text-xs font-bold text-white hover:bg-[var(--aloha-green-mid)]"
-                >
-                  Tìm kiếm
-                </button>
-                <button
-                  type="button"
                   onClick={doExport}
                   disabled={!conversions.length}
-                  className="rounded-lg bg-[var(--aloha-green-dark)] px-4 py-2 text-xs font-bold text-white hover:opacity-95 disabled:opacity-40"
+                  className="shrink-0 rounded-lg bg-[var(--aloha-green-dark)] px-4 py-2 text-xs font-bold text-white hover:opacity-95 disabled:opacity-40"
                 >
                   Xuất dữ liệu
                 </button>
@@ -630,23 +636,27 @@ export function CtvEarningsPanel() {
 
           <div className="rounded-xl bg-[var(--aloha-green-light)] px-4 py-3 text-[12px] leading-relaxed text-[var(--aloha-ink)] ring-1 ring-[var(--aloha-line)]">
             Hoa hồng chỉ phát sinh sau khi đơn giao thành công. Đơn đang xử lý /
-            COD chưa giao vẫn hiện trong báo cáo nhưng cột HH có thể = 0.
+            COD chưa giao vẫn hiện trong báo cáo nhưng cột hoa hồng có thể = 0.
           </div>
 
-          <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[#E8E2D6]">
-            <div className="overflow-x-auto">
-              <table className="min-w-[960px] w-full text-left text-xs">
+          <section className="min-w-0 max-w-full overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[#E8E2D6]">
+            <div className="max-w-full overflow-x-auto overscroll-x-contain">
+              <table className="min-w-[1180px] w-max text-left text-xs">
                 <thead className="bg-[#FBF8F1] text-[11px] font-bold uppercase tracking-wide text-slate-500">
                   <tr>
-                    <th className="px-3 py-3">Thời gian click</th>
-                    <th className="px-3 py-3">Thời gian mua</th>
-                    <th className="px-3 py-3">Mã đơn</th>
-                    <th className="px-3 py-3">Trạng thái đơn</th>
-                    <th className="px-3 py-3">Hoàn thành</th>
-                    <th className="px-3 py-3 text-right">HH (đ)</th>
-                    <th className="px-3 py-3">Trạng thái HH</th>
-                    <th className="px-3 py-3">Người mua</th>
-                    <th className="px-3 py-3">Sản phẩm</th>
+                    <th className="whitespace-nowrap px-4 py-3.5">Thời gian click</th>
+                    <th className="whitespace-nowrap px-4 py-3.5">Thời gian mua</th>
+                    <th className="whitespace-nowrap px-4 py-3.5">Mã đơn</th>
+                    <th className="min-w-[240px] px-4 py-3.5">Sản phẩm</th>
+                    <th className="whitespace-nowrap px-4 py-3.5 text-right">
+                      Hoa hồng (₫)
+                    </th>
+                    <th className="whitespace-nowrap px-4 py-3.5">Trạng thái đơn</th>
+                    <th className="whitespace-nowrap px-4 py-3.5">Hoàn thành</th>
+                    <th className="whitespace-nowrap px-4 py-3.5">
+                      Trạng thái hoa hồng
+                    </th>
+                    <th className="whitespace-nowrap px-4 py-3.5">Người mua</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#EFE9DD]">
@@ -654,7 +664,7 @@ export function CtvEarningsPanel() {
                     <tr>
                       <td
                         colSpan={9}
-                        className="px-3 py-8 text-center text-slate-500"
+                        className="px-4 py-8 text-center text-slate-500"
                       >
                         Đang tải…
                       </td>
@@ -663,53 +673,100 @@ export function CtvEarningsPanel() {
                     <tr>
                       <td
                         colSpan={9}
-                        className="px-3 py-8 text-center text-slate-500"
+                        className="px-4 py-8 text-center text-slate-500"
                       >
                         Không có đơn trong bộ lọc.
                       </td>
                     </tr>
                   ) : (
-                    pageRows.map((r) => (
+                    pageRows.map((r) => {
+                      const products =
+                        r.products?.length
+                          ? r.products
+                          : r.productSummary && r.productSummary !== "—"
+                            ? [
+                                {
+                                  ma: "",
+                                  name: r.productSummary,
+                                  imageUrl: "",
+                                },
+                              ]
+                            : [];
+                      return (
                       <tr
                         key={r.shopOrderCode || r.orderCode}
                         className="hover:bg-[#FBF8F1]/60"
                       >
-                        <td className="whitespace-nowrap px-3 py-3 text-slate-600">
+                        <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                           {formatDt(r.clickAt)}
                         </td>
-                        <td className="whitespace-nowrap px-3 py-3 text-slate-600">
+                        <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                           {formatDt(r.purchasedAt)}
                         </td>
-                        <td className="px-3 py-3 font-bold text-[#1a2e1a]">
+                        <td className="whitespace-nowrap px-4 py-3.5 font-bold text-[#1a2e1a]">
                           {r.orderCode}
                         </td>
-                        <td className="px-3 py-3">
-                          <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700">
+                        <td className="min-w-[240px] max-w-[320px] px-4 py-3.5">
+                          {products.length ? (
+                            <div className="flex flex-col gap-2">
+                              {products.map((p, i) => (
+                                <div
+                                  key={`${p.ma || p.name}-${i}`}
+                                  className="flex items-center gap-2.5"
+                                >
+                                  <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md bg-[#F3EEE4] ring-1 ring-[#E8E2D6]">
+                                    {p.imageUrl ? (
+                                      // eslint-disable-next-line @next/next/no-img-element
+                                      <img
+                                        src={p.imageUrl}
+                                        alt=""
+                                        className="h-full w-full object-cover"
+                                        loading="lazy"
+                                      />
+                                    ) : (
+                                      <div className="flex h-full w-full items-center justify-center text-[9px] font-bold text-slate-400">
+                                        SP
+                                      </div>
+                                    )}
+                                  </div>
+                                  <span
+                                    className="line-clamp-2 text-[11px] leading-snug text-slate-700"
+                                    title={p.name}
+                                  >
+                                    {p.name}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3.5 text-right font-extrabold text-[#1a2e1a]">
+                          {formatVnd(r.totalCommission)}
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-700">
                             {r.orderLabel}
                           </span>
-                          <span className="mt-1 block text-[10px] text-slate-500">
+                          <span className="mt-1 block whitespace-nowrap text-[10px] text-slate-500">
                             {r.payLabel}
                           </span>
                         </td>
-                        <td className="whitespace-nowrap px-3 py-3 text-slate-600">
+                        <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                           {formatDt(r.completedAt)}
                         </td>
-                        <td className="px-3 py-3 text-right font-extrabold text-[#1a2e1a]">
-                          {formatVnd(r.totalCommission)}
-                        </td>
-                        <td className="px-3 py-3">
+                        <td className="whitespace-nowrap px-4 py-3.5">
                           <span className="text-[11px] font-semibold text-slate-600">
                             {r.commissionStatus}
                           </span>
                         </td>
-                        <td className="px-3 py-3 text-slate-600">
+                        <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
                           {r.buyerStatus}
                         </td>
-                        <td className="max-w-[180px] truncate px-3 py-3 text-slate-600">
-                          {r.productSummary}
-                        </td>
                       </tr>
-                    ))
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -821,14 +878,14 @@ export function CtvEarningsPanel() {
             </div>
           </section>
 
-          <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[#E8E2D6]">
-            <div className="overflow-x-auto">
-              <table className="min-w-[720px] w-full text-left text-xs">
+          <section className="min-w-0 max-w-full overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[#E8E2D6]">
+            <div className="max-w-full overflow-x-auto">
+              <table className="min-w-[720px] w-max text-left text-xs">
                 <thead className="bg-[#FBF8F1] text-[11px] font-bold uppercase tracking-wide text-slate-500">
                   <tr>
                     <th className="px-4 py-3">Kỳ hoa hồng</th>
                     <th className="px-4 py-3">Tháng đơn</th>
-                    <th className="px-4 py-3 text-right">HH đủ ĐK (đ)</th>
+                    <th className="px-4 py-3 text-right">Hoa hồng đủ ĐK (₫)</th>
                     <th className="px-4 py-3 text-right">Thực nhận (đ)</th>
                     <th className="px-4 py-3">Trạng thái</th>
                     <th className="px-4 py-3">Thao tác</th>
@@ -922,7 +979,7 @@ export function CtvEarningsPanel() {
                     <span className="font-bold">{billDetail.orderCount}</span>
                   </li>
                   <li className="flex justify-between">
-                    <span>HH đủ điều kiện</span>
+                    <span>Hoa hồng đủ điều kiện</span>
                     <span className="font-bold">
                       {formatVnd(billDetail.gross ?? billDetail.net)}
                     </span>

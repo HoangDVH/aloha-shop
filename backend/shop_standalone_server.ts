@@ -46,26 +46,86 @@ let mongoClient: MongoClient | null = null;
 let dbInstance: Db | null = null;
 let opsClient: MongoClient | null = null;
 let opsDbInstance: Db | null = null;
+let shopDbReadyLogged = false;
+let opsDbReadyLogged = false;
+
+async function clientAlive(client: MongoClient | null): Promise<boolean> {
+  if (!client) return false;
+  try {
+    await client.db("admin").command({ ping: 1 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function closeClient(client: MongoClient | null) {
+  if (!client) return;
+  try {
+    await client.close();
+  } catch {
+    /* ignore */
+  }
+}
 
 async function getDb(): Promise<Db> {
-  if (dbInstance) return dbInstance;
-  mongoClient = new MongoClient(MONGO_URI);
-  await mongoClient.connect();
-  dbInstance = mongoClient.db(DB_NAME);
-  console.log(`✅ Shop Server đã kết nối MongoDB shop [${DB_NAME}]`);
+  if (dbInstance && (await clientAlive(mongoClient))) return dbInstance;
+
+  await closeClient(mongoClient);
+  mongoClient = null;
+  dbInstance = null;
+  // Cùng URI → ops cũng phải bỏ cache client chết (tránh Topology is closed).
+  if (OPS_MONGO_URI === MONGO_URI) {
+    opsClient = null;
+    opsDbInstance = null;
+  }
+
+  const client = new MongoClient(MONGO_URI);
+  try {
+    await client.connect();
+  } catch (e) {
+    await closeClient(client);
+    throw e;
+  }
+  mongoClient = client;
+  dbInstance = client.db(DB_NAME);
+  if (!shopDbReadyLogged) {
+    console.log(`✅ Shop Server đã kết nối MongoDB shop [${DB_NAME}]`);
+    shopDbReadyLogged = true;
+  }
   return dbInstance;
 }
 
 async function getOpsDb(): Promise<Db> {
-  if (opsDbInstance) return opsDbInstance;
-  if (OPS_MONGO_URI === MONGO_URI && mongoClient) {
-    opsDbInstance = mongoClient.db(OPS_DB_NAME);
-  } else {
-    opsClient = new MongoClient(OPS_MONGO_URI);
-    await opsClient.connect();
-    opsDbInstance = opsClient.db(OPS_DB_NAME);
+  if (OPS_MONGO_URI === MONGO_URI) {
+    await getDb();
+    opsDbInstance = mongoClient!.db(OPS_DB_NAME);
+    if (!opsDbReadyLogged) {
+      console.log(`✅ Staff auth DB (ops) [${OPS_DB_NAME}]`);
+      opsDbReadyLogged = true;
+    }
+    return opsDbInstance;
   }
-  console.log(`✅ Staff auth DB (ops) [${OPS_DB_NAME}]`);
+
+  if (opsDbInstance && (await clientAlive(opsClient))) return opsDbInstance;
+
+  await closeClient(opsClient);
+  opsClient = null;
+  opsDbInstance = null;
+
+  const client = new MongoClient(OPS_MONGO_URI);
+  try {
+    await client.connect();
+  } catch (e) {
+    await closeClient(client);
+    throw e;
+  }
+  opsClient = client;
+  opsDbInstance = client.db(OPS_DB_NAME);
+  if (!opsDbReadyLogged) {
+    console.log(`✅ Staff auth DB (ops) [${OPS_DB_NAME}]`);
+    opsDbReadyLogged = true;
+  }
   return opsDbInstance;
 }
 

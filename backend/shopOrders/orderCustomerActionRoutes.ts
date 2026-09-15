@@ -32,6 +32,7 @@ import {
   fullAddressForKv,
   setShopCors,
 } from "./orderRouteShared.js";
+import { shopOrderLookupFilter } from "./findShopOrder.js";
 
 /** POST renew-payment / cancel / reported-paid — thao tác đơn của khách. */
 export function registerShopOrderCustomerActionRoutes(
@@ -62,7 +63,7 @@ export function registerShopOrderCustomerActionRoutes(
         const id = String(req.params.id || "").trim();
         const existing = await shopDb.collection(SHOP_ORDERS).findOne({
           shopAccountId: req.shopAuth!.userId,
-          $or: [{ id }, { code: id }],
+          ...shopOrderLookupFilter(id),
           method: "Transfer",
           paymentStatus: { $in: ["unpaid", "expired"] },
         });
@@ -255,7 +256,7 @@ export function registerShopOrderCustomerActionRoutes(
           {
             shopAccountId: req.shopAuth!.userId,
             $and: [
-              { $or: [{ id }, { code: id }, { kvOrderCode: id }, { legacyCodes: id }] },
+              shopOrderLookupFilter(id),
               {
                 $or: [
                   {
@@ -340,7 +341,7 @@ export function registerShopOrderCustomerActionRoutes(
         const r = await db.collection(SHOP_ORDERS).findOneAndUpdate(
           {
             shopAccountId: req.shopAuth!.userId,
-            $or: [{ id }, { code: id }],
+            ...shopOrderLookupFilter(id),
             paymentStatus: "unpaid",
             method: "Transfer",
           },
