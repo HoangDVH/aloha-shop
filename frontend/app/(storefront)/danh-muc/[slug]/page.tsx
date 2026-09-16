@@ -9,7 +9,6 @@ import { parseAttrList, parseDvtList } from "@/lib/parseShopFilters";
 import { ProductGrid } from "@/components/ProductCard";
 import { CatalogLayout } from "@/components/CatalogLayout";
 import { NOINDEX_FOLLOW, SHOP_ORIGIN, shouldNoIndexCatalog } from "@/lib/seo";
-import { fetchAppearance } from "@/lib/appearance";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -90,39 +89,16 @@ export async function generateMetadata({
   const title = name;
   const description = `Mua ${name} tại ALOHA Thế Giới Chậu Cây — chọn nhanh, giá rõ, giao TP.HCM.`;
 
-  let resolvedTitle = title;
-  let resolvedDescription = description;
-  try {
-    const app = await fetchAppearance().catch(() => null);
-    if (app?.theme?.seo) {
-      const { resolveCategorySeo } = await import("@/lib/seoTemplates");
-      const r = resolveCategorySeo({
-        titleTemplate: app.theme.seo.categoryTitleTemplate,
-        descriptionTemplate: app.theme.seo.categoryDescriptionTemplate,
-        vars: {
-          tenDanhMuc: name,
-          tenCuaHang: app.theme.siteName || "ALOHA Thế Giới Chậu Cây",
-        },
-        fallbackTitle: title,
-        fallbackDescription: description,
-      });
-      resolvedTitle = r.title;
-      resolvedDescription = r.description;
-    }
-  } catch {
-    /* keep fallback */
-  }
-
   return {
-    title: resolvedTitle,
-    description: resolvedDescription,
+    title,
+    description,
     alternates: { canonical },
     openGraph: {
       type: "website",
       locale: "vi_VN",
       url: canonical,
-      title: resolvedTitle,
-      description: resolvedDescription,
+      title,
+      description,
     },
   };
 }
