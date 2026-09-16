@@ -147,9 +147,16 @@ function toMiniProduct(doc: Record<string, unknown>) {
     "";
   const gia = Number(doc.giaWeb ?? doc.giaBan ?? doc.giaChung ?? doc.basePrice ?? 0);
   const ton = Number(doc.ton ?? doc.onHand ?? doc.kvTon ?? 0);
-  const nhom = String(doc.nhom || "").trim();
-  const nhomPath = String(doc.nhomPath || nhom).trim();
-  const catSlug = slugifyVi(nhom.split(">>").pop()?.trim() || "sp") || "sp";
+  const categoryName = String(doc.categoryName || "").trim();
+  const nhom = String(doc.nhom || categoryName || "").trim();
+  const nhomPath = String(doc.nhomPath || nhom || categoryName || "").trim();
+  // Khớp shopCatalog.categorySlug — tránh rơi về /c/sp/ khi chỉ có categoryName
+  const catLeaf =
+    nhomPath.split(/\s*[▸>\/|]+\s*/).filter(Boolean).pop() ||
+    nhom.split(/\s*[▸>\/|]+\s*/).filter(Boolean).pop() ||
+    categoryName ||
+    "san-pham";
+  const catSlug = slugifyVi(catLeaf) || "san-pham";
   const pSlug = `${slugifyVi(ten) || "sp"}--${slugifyVi(ma) || "x"}`;
   const webBadge = String(doc.webBadge || "").trim();
   return {
@@ -316,6 +323,7 @@ export function registerShopArticlesRoutes(
           ten: 1,
           nhom: 1,
           nhomPath: 1,
+          categoryName: 1,
           updatedAt: 1,
         })
         .limit(20000)

@@ -15,18 +15,35 @@ export const seoHomeSchema = z.object({
 
 export type SeoHomeInput = z.infer<typeof seoHomeSchema>;
 
-export const seoProductTplSchema = z.object({
-  productTitleTemplate: z
-    .string()
-    .trim()
-    .min(1, "Nhập template tiêu đề")
-    .max(120),
-  productDescriptionTemplate: z
-    .string()
-    .trim()
-    .min(1, "Nhập template mô tả")
-    .max(320),
-});
+export const seoProductTplSchema = z
+  .object({
+    productTitleTemplate: z
+      .string()
+      .trim()
+      .min(1, "Nhập template tiêu đề")
+      .max(120),
+    productDescriptionTemplate: z
+      .string()
+      .trim()
+      .min(1, "Nhập template mô tả")
+      .max(320),
+  })
+  .superRefine((val, ctx) => {
+    if (!val.productTitleTemplate.includes("[Tên sản phẩm]")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["productTitleTemplate"],
+        message: "Template tiêu đề phải có biến [Tên sản phẩm] (không ghi cứng 1 SP).",
+      });
+    }
+    if (!val.productDescriptionTemplate.includes("[Tên sản phẩm]")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["productDescriptionTemplate"],
+        message: "Template mô tả phải có biến [Tên sản phẩm].",
+      });
+    }
+  });
 
 export type SeoProductTplInput = z.infer<typeof seoProductTplSchema>;
 
