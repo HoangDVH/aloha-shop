@@ -68,17 +68,32 @@ export function SeoSocialPreview({
   description: string;
   imageUrl?: string;
 }) {
+  const src = String(imageUrl || "").trim();
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
       <div className="aspect-[1.91/1] bg-slate-100">
-        {imageUrl ? (
+        {src ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <div className="flex h-full items-center justify-center text-[12px] text-slate-400">
-            Chưa có ảnh chia sẻ
-          </div>
-        )}
+          <img
+            src={src}
+            alt=""
+            className="h-full w-full object-cover"
+            referrerPolicy="no-referrer"
+            onError={(e) => {
+              const el = e.currentTarget;
+              el.style.display = "none";
+              const fallback = el.parentElement?.querySelector("[data-seo-img-fallback]");
+              if (fallback instanceof HTMLElement) fallback.hidden = false;
+            }}
+          />
+        ) : null}
+        <div
+          data-seo-img-fallback
+          hidden={Boolean(src)}
+          className="flex h-full items-center justify-center text-[12px] text-slate-400"
+        >
+          Chưa có ảnh chia sẻ
+        </div>
       </div>
       <div className="space-y-1 p-3">
         <p className="line-clamp-2 text-[14px] font-bold text-slate-900">

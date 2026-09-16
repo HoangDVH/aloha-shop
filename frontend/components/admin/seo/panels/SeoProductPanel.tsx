@@ -37,14 +37,25 @@ export function SeoProductPanel() {
   const siteName = q.data?.draft?.theme?.siteName || "ALOHA Thế Giới Chậu Cây";
 
   const sampleProduct = useQuery({
-    queryKey: ["admin", "seo", "sample-product", "CKCL01"],
-    queryFn: () => fetchProducts({ q: "CKCL01", limit: 1 }),
+    queryKey: ["admin", "seo", "sample-product", "KCL1"],
+    queryFn: async () => {
+      // Mã thật trên shop là KCL1 (không phải CKCL01).
+      const byMa = await fetchProducts({ q: "KCL1", limit: 3 });
+      const hit =
+        byMa.items?.find((p) => String(p.ma || "").toUpperCase() === "KCL1") ||
+        byMa.items?.[0];
+      if (hit?.anh || (hit?.images && hit.images[0])) return { items: [hit] };
+      const byName = await fetchProducts({ q: "kim cuong lun", limit: 1 });
+      return byName;
+    },
     staleTime: 60_000,
   });
   const sampleItem = sampleProduct.data?.items?.[0];
   const sampleImage =
-    sampleItem?.anh ||
-    (Array.isArray(sampleItem?.images) ? sampleItem.images[0] : "") ||
+    String(sampleItem?.anh || "").trim() ||
+    (Array.isArray(sampleItem?.images)
+      ? String(sampleItem.images[0] || "").trim()
+      : "") ||
     "";
 
   const form = useForm<SeoProductTplInput>({
@@ -69,7 +80,7 @@ export function SeoProductPanel() {
       productSeoVars({
         ten: sampleItem?.ten || "CHẬU KIM CƯƠNG LÙN",
         gia: formatVnd(Number(sampleItem?.gia) || 46000),
-        ma: sampleItem?.ma || "CKCL01",
+        ma: sampleItem?.ma || "KCL1",
         danhMuc: sampleItem?.nhom || sampleItem?.categoryName || "Chậu trồng cây",
         tenCuaHang: siteName,
       }),
