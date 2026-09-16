@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "@/components/admin/toast";
 import { wbInput } from "@/components/admin/website/ui";
-import { fetchProducts, formatVnd } from "@/lib/api";
+import { fetchProducts, formatVnd, type ShopProduct } from "@/lib/api";
 import { applySeoTemplate, PRODUCT_SEO_VARS, productSeoVars } from "@/lib/seoTemplates";
 import { SeoEditorLayout } from "../SeoEditorLayout";
 import {
@@ -29,6 +29,14 @@ function insertAtEnd(cur: string, token: string) {
   return `${cur || ""}${token}`;
 }
 
+function productImage(p?: ShopProduct | null): string {
+  if (!p) return "";
+  const a = String(p.anh || "").trim();
+  if (a) return a;
+  if (Array.isArray(p.images) && p.images[0]) return String(p.images[0]).trim();
+  return "";
+}
+
 export function SeoProductPanel() {
   const q = useSeoAppearanceDraft();
   const save = useSaveSeoDraft();
@@ -36,27 +44,35 @@ export function SeoProductPanel() {
   const seo = q.data?.draft?.theme?.seo;
   const siteName = q.data?.draft?.theme?.siteName || "ALOHA Thế Giới Chậu Cây";
 
-  const sampleProduct = useQuery({
-    queryKey: ["admin", "seo", "sample-product", "KCL1"],
-    queryFn: async () => {
-      // Mã thật trên shop là KCL1 (không phải CKCL01).
-      const byMa = await fetchProducts({ q: "KCL1", limit: 3 });
-      const hit =
-        byMa.items?.find((p) => String(p.ma || "").toUpperCase() === "KCL1") ||
-        byMa.items?.[0];
-      if (hit?.anh || (hit?.images && hit.images[0])) return { items: [hit] };
-      const byName = await fetchProducts({ q: "kim cuong lun", limit: 1 });
-      return byName;
-    },
-    staleTime: 60_000,
+  /** SP dùng để xem trước (ảnh + biến) — độc lập với nội dung template. */
+  const [sampleQ, setSampleQ] = useState("KCL1");
+  const [sampleMa, setSampleMa] = useState("KCL1");
+
+  const sampleSearch = useQuery({
+    queryKey: ["admin", "seo", "sample-search", sampleQ],
+    queryFn: () => fetchProducts({ q: sampleQ.trim() || "KCL1", limit: 8 }),
+    staleTime: 30_000,
+    enabled: sampleQ.trim().length >= 1,
   });
-  const sampleItem = sampleProduct.data?.items?.[0];
-  const sampleImage =
-    String(sampleItem?.anh || "").trim() ||
-    (Array.isArray(sampleItem?.images)
-      ? String(sampleItem.images[0] || "").trim()
-      : "") ||
-    "";
+
+  const sampleItem = useMemo(() => {
+    const items = sampleSearch.data?.items || [];
+    const byMa = items.find(
+      (p) => String(p.ma || "").toUpperCase() === sampleMa.toUpperCase()
+    );
+    return byMa || items[0] || null;
+  }, [sampleSearch.data, sampleMa]);
+
+  useEffect(() => {
+    const items = sampleSearch.data?.items || [];
+    if (!items.length) return;
+    const stillThere = items.some(
+      (p) => String(p.ma || "").toUpperCase() === sampleMa.toUpperCase()
+    );
+    if (!stillThere && items[0]?.ma) setSampleMa(String(items[0].ma));
+  }, [sampleSearch.data, sampleMa]);
+
+  const sampleImage = productImage(sampleItem);
 
   const form = useForm<SeoProductTplInput>({
     resolver: zodResolver(seoProductTplSchema),
@@ -95,8 +111,13 @@ export function SeoProductPanel() {
     watched.productDescriptionTemplate || "",
     sampleVars
   );
-  const previewPath =
-    sampleItem?.path || "/c/chau-trong-cay/p/chau-kim-cuong-lun";
+  const previewPath = sampleItem?.path || "/c/chau-trong-cay/p/chau-kim-cuong-lun";
+
+  const looksHardcoded = useMemo(() => {
+    const t = watched.productTitleTemplate || "";
+    const d = watched.productDescriptionTemplate || "";
+    return !t.includes("[") && !d.includes("[") && (t.length > 20 || d.length > 20);
+  }, [watched.productTitleTemplate, watched.productDescriptionTemplate]);
 
   const onSave = form.handleSubmit(async (values) => {
     try {
@@ -129,10 +150,34 @@ export function SeoProductPanel() {
       dirty={q.data?.dirty}
       preview={
         <>
-          <p className="text-[11px] text-slate-500">
-            Xem với mẫu: {sampleItem?.ten || "CHẬU KIM CƯƠNG LÙN"} (ảnh = ảnh đầu
-            SP)
-          </p>
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-semibold text-slate-500">
+              Xem trước với sản phẩm
+            </label>
+            <input
+              className={wbInput}
+              value={sampleQ}
+              onChange={(e) => setSampleQ(e.target.value)}
+              placeholder="Tìm mã hoặc tên SP… (vd. CBDVDP)"
+            />
+            {(sampleSearch.data?.items?.length || 0) > 0 ? (
+              <select
+                className={wbInput}
+                value={sampleItem?.ma || ""}
+                onChange={(e) => setSampleMa(e.target.value)}
+              >
+                {(sampleSearch.data?.items || []).map((p) => (
+                  <option key={p.ma} value={p.ma}>
+                    {p.ma} — {p.ten}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+            <p className="text-[11px] text-slate-500">
+              Ảnh MXH = ảnh đầu của SP đang chọn
+              {sampleItem?.ten ? `: ${sampleItem.ten}` : ""}.
+            </p>
+          </div>
           <SeoGooglePreview
             title={previewTitle}
             description={previewDesc}
@@ -147,10 +192,22 @@ export function SeoProductPanel() {
       }
     >
       <div className="rounded-xl bg-sky-50 px-3 py-2.5 text-[12px] leading-relaxed text-sky-900 ring-1 ring-sky-100">
-        Ảnh chia sẻ mặc định lấy từ ảnh đầu của sản phẩm. Có thể ghi đè title/mô
-        tả từng SP trong tab Hàng hóa web. Màn này chỉ chỉnh{" "}
-        <strong>template chung</strong> (dùng biến như [Tên sản phẩm]).
+        Màn này chỉnh <strong>template chung</strong> cho mọi SP (dùng biến như{" "}
+        <code className="rounded bg-white/80 px-1">[Tên sản phẩm]</code>). Gõ tên
+        một SP vào ô bên trái <em>không</em> đổi ảnh — hãy chọn SP ở cột xem
+        trước bên phải. SEO riêng từng SP: tab Hàng hóa web.
       </div>
+
+      {looksHardcoded ? (
+        <div className="rounded-xl bg-amber-50 px-3 py-2.5 text-[12px] leading-relaxed text-amber-950 ring-1 ring-amber-100">
+          Đang nhập chữ cố định (vd. Combo Đế Vương…). Nên dùng biến để mọi SP
+          tự điền, ví dụ:{" "}
+          <code className="rounded bg-white/80 px-1">
+            [Tên sản phẩm] | [Giá] · [Tên cửa hàng]
+          </code>
+          . Còn SEO riêng Combo Đế Vương → Hàng hóa web → SEO mã CBDVDP.
+        </div>
+      ) : null}
 
       <SeoCharField
         label="Tiêu đề liên kết"
