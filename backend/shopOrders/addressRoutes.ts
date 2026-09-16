@@ -14,6 +14,10 @@ import { ensureOneDefault, newAddressId, normalizeAddresses } from "./models.js"
 const SHOP_ORIGIN_ALLOW = new Set([
   "http://localhost:3002",
   "http://127.0.0.1:3002",
+  "https://alohathegioichaucay.com",
+  "https://www.alohathegioichaucay.com",
+  "http://alohathegioichaucay.com",
+  "http://www.alohathegioichaucay.com",
   "https://shop.alohathegioichaucay.com",
   "http://shop.alohathegioichaucay.com",
 ]);

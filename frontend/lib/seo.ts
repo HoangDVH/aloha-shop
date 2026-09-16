@@ -6,7 +6,7 @@ import { parseAttrList, parseDvtList } from "@/lib/parseShopFilters";
 export const SHOP_ORIGIN = (
   process.env.NEXT_PUBLIC_SHOP_ORIGIN ||
   process.env.NEXT_PUBLIC_SITE_URL ||
-  "https://shop.alohathegioichaucay.com"
+  "https://alohathegioichaucay.com"
 ).replace(/\/$/, "");
 
 export const NOINDEX_FOLLOW: Metadata["robots"] = { index: false, follow: true };

@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 const SHOP_ORIGIN = (
   process.env.NEXT_PUBLIC_SHOP_ORIGIN ||
   process.env.NEXT_PUBLIC_SITE_URL ||
-  "https://shop.alohathegioichaucay.com"
+  "https://alohathegioichaucay.com"
 ).replace(/\/$/, "");
 
 /** Cột bài viết căn giữa — đủ rộng cho ảnh 1400×800 */

@@ -65,12 +65,13 @@ const HOME_BESTSELLER_FACET_LIMIT = 200;
 const SHOP_ORIGIN_ALLOW = [
   "http://localhost:3002",
   "http://127.0.0.1:3002",
-  "https://shop.alohathegioichaucay.com",
-  "http://shop.alohathegioichaucay.com",
   "https://alohathegioichaucay.com",
   "https://www.alohathegioichaucay.com",
   "http://alohathegioichaucay.com",
   "http://www.alohathegioichaucay.com",
+  // Giữ subdomain cũ trong giai đoạn chuyển miền / redirect
+  "https://shop.alohathegioichaucay.com",
+  "http://shop.alohathegioichaucay.com",
 ];
 
 function slugify(text: string): string {

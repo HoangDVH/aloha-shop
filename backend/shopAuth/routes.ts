@@ -131,7 +131,7 @@ function googleConfigured(): boolean {
 }
 
 function defaultShopOrigin(): string {
-  return (process.env.NEXT_PUBLIC_SHOP_ORIGIN || "https://shop.alohathegioichaucay.com").replace(
+  return (process.env.NEXT_PUBLIC_SHOP_ORIGIN || "https://alohathegioichaucay.com").replace(
     /\/$/,
     ""
   );
@@ -156,7 +156,7 @@ function resolveShopReturnOrigin(raw: unknown, referer?: string): string {
 function googleRedirectUri(): string {
   return (
     process.env.GOOGLE_REDIRECT_URI ||
-    "https://shop.alohathegioichaucay.com/api/shop/auth/google/callback"
+    "https://alohathegioichaucay.com/api/shop/auth/google/callback"
   );
 }
 

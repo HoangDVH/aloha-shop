@@ -16,7 +16,7 @@ const COL_SENT = "aloha_shop_order_notify_sent";
 const BRAND = "ALOHA Thế giới chậu cây";
 const SHOP_URL =
   String(process.env.SHOP_PUBLIC_URL || "").trim() ||
-  "https://shop.alohathegioichaucay.com";
+  "https://alohathegioichaucay.com";
 
 function shopMailEnabled(): boolean {
   const v = String(process.env.SHOP_MAIL_ENABLED || "0").trim().toLowerCase();
