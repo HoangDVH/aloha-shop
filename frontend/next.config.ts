@@ -22,8 +22,50 @@ const nextConfig: NextConfig = {
       static: 180,
     },
   },
+  /**
+   * URL cũ KiotViet → trang shop mới (301).
+   * Bổ sung admin SEO redirects khi backend `/api/shop/redirects` đã deploy.
+   */
+  async redirects() {
+    return [
+      {
+        source: "/page/ve-chung-toi-14387a",
+        destination: "/",
+        permanent: true,
+      },
+      {
+        source: "/page/khuyen-mai-1c107c",
+        destination: "/",
+        permanent: true,
+      },
+      {
+        source: "/branches",
+        destination: "/",
+        permanent: true,
+      },
+      {
+        source: "/c/cay-phong-thuy-3ac9d3",
+        destination: "/danh-muc/cay-phong-thuy",
+        permanent: true,
+      },
+      {
+        source: "/c/cay-binh-an-a476a9",
+        destination: "/danh-muc/cay-binh-an",
+        permanent: true,
+      },
+      {
+        source: "/c/chau-men-hoa-bien-406561",
+        destination: "/",
+        permanent: true,
+      },
+    ];
+  },
   async rewrites() {
     return [
+      {
+        source: "/favicon.ico",
+        destination: "/brand/logo-icon.png",
+      },
       {
         source: "/api/shop/:path*",
         destination: `${API_BASE}/api/shop/:path*`,
