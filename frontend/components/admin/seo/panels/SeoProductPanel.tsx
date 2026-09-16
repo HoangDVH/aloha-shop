@@ -3,13 +3,11 @@
 import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "@/components/admin/toast";
 import { wbInput } from "@/components/admin/website/ui";
+import { fetchProducts, formatVnd } from "@/lib/api";
 import { applySeoTemplate, PRODUCT_SEO_VARS, productSeoVars } from "@/lib/seoTemplates";
-
-function formatVnd(n: number) {
-  return `${Math.round(n || 0).toLocaleString("vi-VN")}đ`;
-}
 import { SeoEditorLayout } from "../SeoEditorLayout";
 import {
   SeoCharField,
@@ -38,6 +36,17 @@ export function SeoProductPanel() {
   const seo = q.data?.draft?.theme?.seo;
   const siteName = q.data?.draft?.theme?.siteName || "ALOHA Thế Giới Chậu Cây";
 
+  const sampleProduct = useQuery({
+    queryKey: ["admin", "seo", "sample-product", "CKCL01"],
+    queryFn: () => fetchProducts({ q: "CKCL01", limit: 1 }),
+    staleTime: 60_000,
+  });
+  const sampleItem = sampleProduct.data?.items?.[0];
+  const sampleImage =
+    sampleItem?.anh ||
+    (Array.isArray(sampleItem?.images) ? sampleItem.images[0] : "") ||
+    "";
+
   const form = useForm<SeoProductTplInput>({
     resolver: zodResolver(seoProductTplSchema),
     defaultValues: {
@@ -58,13 +67,13 @@ export function SeoProductPanel() {
   const sampleVars = useMemo(
     () =>
       productSeoVars({
-        ten: "CHẬU KIM CƯƠNG LÙN",
-        gia: formatVnd(46000),
-        ma: "CKCL01",
-        danhMuc: "Chậu trồng cây",
+        ten: sampleItem?.ten || "CHẬU KIM CƯƠNG LÙN",
+        gia: formatVnd(Number(sampleItem?.gia) || 46000),
+        ma: sampleItem?.ma || "CKCL01",
+        danhMuc: sampleItem?.nhom || sampleItem?.categoryName || "Chậu trồng cây",
         tenCuaHang: siteName,
       }),
-    [siteName]
+    [sampleItem, siteName]
   );
 
   const previewTitle = applySeoTemplate(
@@ -75,6 +84,8 @@ export function SeoProductPanel() {
     watched.productDescriptionTemplate || "",
     sampleVars
   );
+  const previewPath =
+    sampleItem?.path || "/c/chau-trong-cay/p/chau-kim-cuong-lun";
 
   const onSave = form.handleSubmit(async (values) => {
     try {
@@ -108,24 +119,26 @@ export function SeoProductPanel() {
       preview={
         <>
           <p className="text-[11px] text-slate-500">
-            Xem với mẫu: CHẬU KIM CƯƠNG LÙN
+            Xem với mẫu: {sampleItem?.ten || "CHẬU KIM CƯƠNG LÙN"} (ảnh = ảnh đầu
+            SP)
           </p>
           <SeoGooglePreview
             title={previewTitle}
             description={previewDesc}
-            path="/c/chau-trong-cay/p/chau-kim-cuong-lun"
+            path={previewPath}
           />
           <SeoSocialPreview
             title={previewTitle}
             description={previewDesc}
-            imageUrl="/brand/logo-aloha.png"
+            imageUrl={sampleImage || undefined}
           />
         </>
       }
     >
       <div className="rounded-xl bg-sky-50 px-3 py-2.5 text-[12px] leading-relaxed text-sky-900 ring-1 ring-sky-100">
         Ảnh chia sẻ mặc định lấy từ ảnh đầu của sản phẩm. Có thể ghi đè title/mô
-        tả từng SP trong tab Hàng hóa web.
+        tả từng SP trong tab Hàng hóa web. Màn này chỉ chỉnh{" "}
+        <strong>template chung</strong> (dùng biến như [Tên sản phẩm]).
       </div>
 
       <SeoCharField
