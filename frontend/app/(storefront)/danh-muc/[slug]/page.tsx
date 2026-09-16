@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import { permanentRedirect } from "next/navigation";
 import { ShopPageLoader } from "@/components/ShopPageLoader";
 import { fetchCategories, fetchCategoryTree, fetchProducts } from "@/lib/api";
 import type { ShopCategoryNavNode } from "@/lib/api";
@@ -8,6 +9,7 @@ import { parseAttrList, parseDvtList } from "@/lib/parseShopFilters";
 import { ProductGrid } from "@/components/ProductCard";
 import { CatalogLayout } from "@/components/CatalogLayout";
 import { NOINDEX_FOLLOW, SHOP_ORIGIN, shouldNoIndexCatalog } from "@/lib/seo";
+import { fetchAppearance } from "@/lib/appearance";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -88,16 +90,39 @@ export async function generateMetadata({
   const title = name;
   const description = `Mua ${name} tại ALOHA Thế Giới Chậu Cây — chọn nhanh, giá rõ, giao TP.HCM.`;
 
+  let resolvedTitle = title;
+  let resolvedDescription = description;
+  try {
+    const app = await fetchAppearance().catch(() => null);
+    if (app?.theme?.seo) {
+      const { resolveCategorySeo } = await import("@/lib/seoTemplates");
+      const r = resolveCategorySeo({
+        titleTemplate: app.theme.seo.categoryTitleTemplate,
+        descriptionTemplate: app.theme.seo.categoryDescriptionTemplate,
+        vars: {
+          tenDanhMuc: name,
+          tenCuaHang: app.theme.siteName || "ALOHA Thế Giới Chậu Cây",
+        },
+        fallbackTitle: title,
+        fallbackDescription: description,
+      });
+      resolvedTitle = r.title;
+      resolvedDescription = r.description;
+    }
+  } catch {
+    /* keep fallback */
+  }
+
   return {
-    title,
-    description,
+    title: resolvedTitle,
+    description: resolvedDescription,
     alternates: { canonical },
     openGraph: {
       type: "website",
       locale: "vi_VN",
       url: canonical,
-      title,
-      description,
+      title: resolvedTitle,
+      description: resolvedDescription,
     },
   };
 }
@@ -122,87 +147,100 @@ async function CategoryBody({
   const inStock = String(sp.inStock || "") === "1";
   const sort = String(sp.sort || "ten");
 
-  let categories: Awaited<ReturnType<typeof fetchCategories>>["items"] = [];
   let items: Awaited<ReturnType<typeof fetchProducts>>["items"] = [];
   let total = 0;
   let pages = 1;
   let err = "";
   let title = slug;
 
-  try {
-    const needsTree = !nhomList.length && !categoryIdList.length;
-    const listOpts = {
-      attr: attrList.length ? attrList : undefined,
-      dvt: dvtList.length ? dvtList : undefined,
-      loai: loai || undefined,
-      page,
-      limit: 36,
-      minPrice: minPrice || undefined,
-      maxPrice: maxPrice || undefined,
-      inStock: inStock || undefined,
-      sort,
-    };
-    const productEarly =
-      categoryIdList.length > 0
-        ? fetchProducts({
-            categoryId: categoryIdList,
-            ...listOpts,
-          })
-        : nhomList.length > 0
-          ? fetchProducts({
-              nhom: nhomList,
-              ...listOpts,
-            })
-          : null;
+  const listOpts = {
+    attr: attrList.length ? attrList : undefined,
+    dvt: dvtList.length ? dvtList : undefined,
+    loai: loai || undefined,
+    page,
+    limit: 36,
+    minPrice: minPrice || undefined,
+    maxPrice: maxPrice || undefined,
+    inStock: inStock || undefined,
+    sort,
+  };
 
+  let treeNode: ShopCategoryNavNode | null = null;
+  let bySlug: { name: string; path: string; slug: string; count: number } | undefined;
+  let defaultPath = "";
+  let defaultCategoryId = 0;
+
+  try {
+    // Luôn lấy cây để resolve slug → categoryId (link Google/sitelink thường chỉ có /danh-muc/{slug}).
     const [cats, treeRes] = await Promise.all([
       fetchCategories(),
-      needsTree
-        ? fetchCategoryTree()
-        : Promise.resolve({ items: [] as ShopCategoryNavNode[] }),
+      fetchCategoryTree(),
     ]);
-    categories = cats.items;
+    treeNode = findTreeBySlug(treeRes.items || [], slug);
+    bySlug = cats.items.find((c) => c.slug === slug);
+    defaultPath = treeNode?.path || bySlug?.path || bySlug?.name || "";
+    defaultCategoryId = Number(treeNode?.id) || 0;
+  } catch (e: any) {
+    err = e?.message || "Lỗi tải danh mục";
+  }
 
-    let treeNode = findTreeBySlug(treeRes.items, slug);
-    if (!treeNode && (categoryIdList.length > 0 || nhomList.length > 0)) {
-      try {
-        const tree = await fetchCategoryTree();
-        treeNode = findTreeBySlug(tree.items || [], slug);
-      } catch {
-        treeNode = null;
-      }
+  // Canonical: gắn categoryId/nhom vào URL — ngoài try/catch để permanentRedirect không bị nuốt.
+  if (
+    !err &&
+    !categoryIdList.length &&
+    !nhomList.length &&
+    (defaultCategoryId > 0 || defaultPath)
+  ) {
+    const qs = new URLSearchParams();
+    if (defaultCategoryId > 0) qs.set("categoryId", String(defaultCategoryId));
+    if (defaultPath) qs.set("nhom", defaultPath);
+    for (const [k, v] of Object.entries(sp)) {
+      if (k === "categoryId" || k === "nhom") continue;
+      if (v == null) continue;
+      if (Array.isArray(v)) v.forEach((x) => qs.append(k, String(x)));
+      else if (String(v).trim()) qs.set(k, String(v));
     }
+    permanentRedirect(`/danh-muc/${encodeURIComponent(slug)}?${qs.toString()}`);
+  }
 
-    const bySlug = categories.find((c) => c.slug === slug);
-    const defaultPath = treeNode?.path || bySlug?.path || bySlug?.name || "";
-    const defaultCategoryId = Number(treeNode?.id) || 0;
+  try {
+    const resolvedCategoryIds =
+      categoryIdList.length > 0
+        ? categoryIdList
+        : defaultCategoryId > 0
+          ? [defaultCategoryId]
+          : [];
     const filterNhoms = nhomList.length
       ? nhomList
       : defaultPath
         ? [defaultPath]
         : [];
+
     title =
-      categoryIdList.length === 1
+      resolvedCategoryIds.length === 1
         ? treeNode?.name || bySlug?.name || slug
         : nhomList.length === 1
           ? nhomList[0].split(/\s*>>\s*/).pop() || nhomList[0]
-          : nhomList.length > 1 || categoryIdList.length > 1
-            ? `${Math.max(nhomList.length, categoryIdList.length)} nhóm hàng`
+          : nhomList.length > 1 || resolvedCategoryIds.length > 1
+            ? `${Math.max(nhomList.length, resolvedCategoryIds.length)} nhóm hàng`
             : treeNode?.name || bySlug?.name || slug;
 
-    const prod = productEarly
-      ? await productEarly
-      : await fetchProducts({
-          categoryId: defaultCategoryId > 0 ? defaultCategoryId : undefined,
-          nhom:
-            !(defaultCategoryId > 0) && filterNhoms.length
-              ? filterNhoms
-              : undefined,
-          ...listOpts,
-        });
-    items = prod.items;
-    total = prod.total;
-    pages = prod.pages;
+    // Không bao giờ trả cả shop khi đang ở /danh-muc/[slug] mà không resolve được nhóm.
+    if (!resolvedCategoryIds.length && !filterNhoms.length) {
+      if (!err) err = "Không tìm thấy nhóm hàng tương ứng.";
+      items = [];
+      total = 0;
+      pages = 1;
+    } else {
+      const prod = await fetchProducts({
+        categoryId: resolvedCategoryIds.length ? resolvedCategoryIds : undefined,
+        nhom: !resolvedCategoryIds.length && filterNhoms.length ? filterNhoms : undefined,
+        ...listOpts,
+      });
+      items = prod.items;
+      total = prod.total;
+      pages = prod.pages;
+    }
   } catch (e: any) {
     err = e?.message || "Lỗi tải danh mục";
   }

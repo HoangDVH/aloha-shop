@@ -33,6 +33,9 @@ export type ShopProduct = {
   webPin?: number;
   /** Badge tay; thiếu = dùng hot tự động */
   webBadge?: "ban_chay" | "moi" | "noi_bat";
+  /** Override SEO — ưu tiên hơn template appearance */
+  seoTitle?: string;
+  seoDescription?: string;
 };
 
 export type ShopVariantModel = {
@@ -160,15 +163,16 @@ export function categoryHref(node: {
   name: string;
   slug: string;
   path?: string;
+  /** Tree KV dùng `id`; một số chỗ cũ truyền `categoryId`. */
+  id?: number;
   categoryId?: number;
 }) {
   const sp = new URLSearchParams();
-  const cid = Number(node.categoryId) || 0;
+  const cid = Number(node.id) || Number(node.categoryId) || 0;
   if (cid > 0) sp.set("categoryId", String(cid));
-  else {
-    const nhom = (node.path || node.name).trim();
-    if (nhom) sp.set("nhom", nhom);
-  }
+  const nhom = (node.path || node.name).trim();
+  // Luôn kèm nhom khi có — dự phòng nếu categoryId không resolve trên API.
+  if (nhom) sp.set("nhom", nhom);
   const qs = sp.toString();
   return `/danh-muc/${encodeURIComponent(node.slug)}${qs ? `?${qs}` : ""}`;
 }
