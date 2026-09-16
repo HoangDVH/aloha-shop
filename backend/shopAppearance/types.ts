@@ -36,6 +36,14 @@ export type AppearanceFontFamily = "system" | "be_vietnam" | "nunito" | "roboto"
 export type AppearanceSeo = {
   title: string;
   description: string;
+  ogImageUrl?: string;
+  productTitleTemplate?: string;
+  productDescriptionTemplate?: string;
+  categoryTitleTemplate?: string;
+  categoryDescriptionTemplate?: string;
+  enableProductJsonLd?: boolean;
+  enableOrgJsonLd?: boolean;
+  googleSiteVerification?: string;
 };
 
 export type AppearancePopup = {
@@ -144,5 +152,15 @@ export function defaultSeo(): AppearanceSeo {
     title: "ALOHA Thế Giới Chậu Cây",
     description:
       "Mua chậu cây & cây cảnh tại ALOHA Thế Giới Chậu Cây — TP.HCM. Xanh mát, dễ chọn, giao nhanh.",
+    ogImageUrl: "",
+    productTitleTemplate: "[Tên sản phẩm] | [Giá] · [Tên cửa hàng]",
+    productDescriptionTemplate:
+      "[Tên sản phẩm] — Giá [Giá]. Mua tại [Tên cửa hàng].",
+    categoryTitleTemplate: "[Tên danh mục] · [Tên cửa hàng]",
+    categoryDescriptionTemplate:
+      "Khám phá [Tên danh mục] đa dạng, chất lượng tại [Tên cửa hàng].",
+    enableProductJsonLd: true,
+    enableOrgJsonLd: true,
+    googleSiteVerification: "",
   };
 }

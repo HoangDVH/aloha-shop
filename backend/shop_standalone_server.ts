@@ -24,6 +24,7 @@ import { registerShopCtvMeRoutes } from './shopOrders/ctvMeRoutes.js';
 import { registerShopAppearanceRoutes } from './shopAppearance/register.js';
 import { registerShopArticlesRoutes } from './shopArticles/register.js';
 import { registerShopProductsAdminRoutes } from './shopAppearance/productsAdmin.js';
+import { registerShopSeoRedirectRoutes } from './shopSeo/redirects.js';
 import { registerShopAccountsAdminRoutes } from './shopAuth/adminRoutes.js';
 import { registerShopCommissionAdminRoutes } from './shopOrders/commissionAdminRoutes.js';
 import { registerAuthRoutes } from './auth/routes.js';
@@ -189,6 +190,7 @@ registerShopCtvMeRoutes(app, getDb, getOpsDb);
 registerShopAppearanceRoutes(app, getOpsDb, getDb);
 registerShopArticlesRoutes(app, getOpsDb, getDb);
 registerShopProductsAdminRoutes(app, getOpsDb, getDb);
+registerShopSeoRedirectRoutes(app, getOpsDb, getDb);
 registerShopAccountsAdminRoutes(app, getOpsDb, getDb);
 registerShopCommissionAdminRoutes(app, getOpsDb, getDb);
 

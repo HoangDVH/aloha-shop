@@ -46,7 +46,18 @@ export type AppearanceTheme = {
   headerBg: string;
   fontFamily?: AppearanceFontFamily;
   faviconUrl?: string;
-  seo?: { title: string; description: string };
+  seo?: {
+    title: string;
+    description: string;
+    ogImageUrl?: string;
+    productTitleTemplate?: string;
+    productDescriptionTemplate?: string;
+    categoryTitleTemplate?: string;
+    categoryDescriptionTemplate?: string;
+    enableProductJsonLd?: boolean;
+    enableOrgJsonLd?: boolean;
+    googleSiteVerification?: string;
+  };
   popup?: {
     enabled: boolean;
     campaignId: string;

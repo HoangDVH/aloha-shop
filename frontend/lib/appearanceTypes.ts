@@ -24,6 +24,14 @@ export type AppearanceFontFamily = "system" | "be_vietnam" | "nunito" | "roboto"
 export type AppearanceSeo = {
   title: string;
   description: string;
+  ogImageUrl?: string;
+  productTitleTemplate?: string;
+  productDescriptionTemplate?: string;
+  categoryTitleTemplate?: string;
+  categoryDescriptionTemplate?: string;
+  enableProductJsonLd?: boolean;
+  enableOrgJsonLd?: boolean;
+  googleSiteVerification?: string;
 };
 
 export type AppearancePopup = {

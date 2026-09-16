@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { Eye, EyeOff, Loader2, RefreshCw, Search, X } from "lucide-react";
 import { toast } from "@/components/admin/toast";
 import { FilterSearchSelect } from "@/components/admin/ui/FilterSearchSelect";
@@ -21,6 +21,8 @@ type Row = {
   hienThiWeb: boolean;
   webPin?: number;
   webBadge?: string;
+  seoTitle?: string;
+  seoDescription?: string;
 };
 
 function fmtVnd(n: number) {
@@ -66,6 +68,7 @@ export function ShopWebProductsAdmin() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [busyMa, setBusyMa] = useState<string | null>(null);
+  const [seoOpenMa, setSeoOpenMa] = useState<string | null>(null);
   const draftRef = useRef("");
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const suggestSeq = useRef(0);
@@ -212,6 +215,29 @@ export function ShopWebProductsAdmin() {
       toast.success(`Đã lưu ghim/nhãn ${row.ma}`);
     } catch (e: any) {
       toast.error(e?.message || "Lưu ghim/nhãn thất bại");
+      void load();
+    } finally {
+      setBusyMa(null);
+    }
+  };
+
+  const saveSeo = async (
+    row: Row,
+    patch: { seoTitle?: string; seoDescription?: string }
+  ) => {
+    setBusyMa(row.ma);
+    try {
+      await websiteApi(
+        `/api/shop/admin/products/${encodeURIComponent(row.ma)}/seo`,
+        {
+          method: "PATCH",
+          body: JSON.stringify(patch),
+        }
+      );
+      patchRow(row.ma, patch);
+      toast.success(`Đã lưu SEO ${row.ma}`);
+    } catch (e: any) {
+      toast.error(e?.message || "Lưu SEO thất bại");
       void load();
     } finally {
       setBusyMa(null);
@@ -412,15 +438,15 @@ export function ShopWebProductsAdmin() {
                 </tr>
               ) : (
                 rows.map((row) => (
+                  <Fragment key={row.ma}>
                   <tr
-                    key={row.ma}
                     className="border-b border-gray-50 transition hover:bg-gray-50/80"
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-gray-100 ring-1 ring-gray-200">
                           {row.anh ? (
-                            <img src={row.anh} alt="" className="h-full w-full object-cover" />
+                            <img src={row.anh} alt={row.ten || ""} className="h-full w-full object-cover" />
                           ) : null}
                         </div>
                         <div className="min-w-0">
@@ -430,6 +456,16 @@ export function ShopWebProductsAdmin() {
                           <div className="truncate font-mono text-[11px] text-gray-400">
                             {row.ma}
                           </div>
+                          <button
+                            type="button"
+                            className="mt-0.5 text-[11px] font-bold text-[#3D6B3A] hover:underline"
+                            onClick={() =>
+                              setSeoOpenMa((m) => (m === row.ma ? null : row.ma))
+                            }
+                          >
+                            {seoOpenMa === row.ma ? "Đóng SEO" : "SEO"}
+                            {row.seoTitle ? " · đã ghi đè" : ""}
+                          </button>
                         </div>
                       </div>
                     </td>
@@ -518,6 +554,50 @@ export function ShopWebProductsAdmin() {
                       </button>
                     </td>
                   </tr>
+                  {seoOpenMa === row.ma ? (
+                    <tr className="border-b border-gray-100 bg-[#F7F9F6]">
+                      <td colSpan={7} className="px-4 py-3">
+                        <p className="mb-2 text-[12px] font-semibold text-slate-700">
+                          SEO trên Google — để trống = dùng template chung
+                        </p>
+                        <div className="grid gap-2 md:grid-cols-2">
+                          <input
+                            className="h-9 rounded-lg border border-gray-200 bg-white px-3 text-[13px] outline-none focus:border-[#3D6B3A]"
+                            placeholder="Tiêu đề SEO (ghi đè)"
+                            defaultValue={row.seoTitle || ""}
+                            id={`seo-title-${row.ma}`}
+                          />
+                          <input
+                            className="h-9 rounded-lg border border-gray-200 bg-white px-3 text-[13px] outline-none focus:border-[#3D6B3A]"
+                            placeholder="Mô tả SEO (ghi đè)"
+                            defaultValue={row.seoDescription || ""}
+                            id={`seo-desc-${row.ma}`}
+                          />
+                        </div>
+                        <div className="mt-2">
+                          <WbBtn
+                            variant="primary"
+                            disabled={busyMa === row.ma}
+                            onClick={() => {
+                              const titleEl = document.getElementById(
+                                `seo-title-${row.ma}`
+                              ) as HTMLInputElement | null;
+                              const descEl = document.getElementById(
+                                `seo-desc-${row.ma}`
+                              ) as HTMLInputElement | null;
+                              void saveSeo(row, {
+                                seoTitle: titleEl?.value || "",
+                                seoDescription: descEl?.value || "",
+                              });
+                            }}
+                          >
+                            Lưu SEO
+                          </WbBtn>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : null}
+                  </Fragment>
                 ))
               )}
             </tbody>

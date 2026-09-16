@@ -9,7 +9,10 @@ import {
   RelatedProductsSection,
   RelatedProductsSkeleton,
 } from "@/components/RelatedProductsSection";
+import { fetchAppearance, fallbackAppearance } from "@/lib/appearance";
 import { SHOP_ORIGIN, absUrl, plainText } from "@/lib/seo";
+import { resolveProductSeo } from "@/lib/seoTemplates";
+import { buildBreadcrumbJsonLd } from "@/lib/seoSchema";
 
 export const revalidate = 30;
 
@@ -35,47 +38,59 @@ export async function generateMetadata({
     : `${SHOP_ORIGIN}${path}`;
 
   try {
-    const { item } = await getProductByPath(path);
+    const [{ item }, app] = await Promise.all([
+      getProductByPath(path),
+      fetchAppearance().catch(() => fallbackAppearance()),
+    ]);
     if (!item) return { title: "Sản phẩm" };
 
     const price = formatVnd(item.gia);
     const stock =
       item.ton > 0 ? `Còn khoảng ${item.ton} ${item.dvt || ""}`.trim() : "Hết hàng";
     const descPlain = plainText(item.description || "");
-    const description =
+    const fallbackDescription =
       descPlain.slice(0, 140) ||
       `${item.ten} — Giá ${price}. ${stock}. Mua tại ALOHA Thế Giới Chậu Cây.`;
+    const siteName = app.theme?.siteName?.trim() || "ALOHA Thế Giới Chậu Cây";
+    const seo = app.theme?.seo;
+
+    const resolved = resolveProductSeo({
+      overrideTitle: item.seoTitle,
+      overrideDescription: item.seoDescription,
+      titleTemplate: seo?.productTitleTemplate,
+      descriptionTemplate: seo?.productDescriptionTemplate,
+      vars: {
+        ten: item.ten,
+        gia: price,
+        ma: item.ma,
+        danhMuc: item.categoryName || item.nhom || "",
+        tenCuaHang: siteName,
+      },
+      fallbackTitle: `${item.ten} | ${price}`,
+      fallbackDescription,
+    });
 
     const image =
       absUrl(item.anh || item.images?.[0] || "") ||
       absUrl("/brand/logo-aloha.png");
 
-    const title = `${item.ten} | ${price}`;
-
     return {
-      title: item.ten,
-      description,
+      title: resolved.title,
+      description: resolved.description,
       alternates: { canonical: `${SHOP_ORIGIN}${path}` },
       openGraph: {
         type: "website",
-        siteName: "ALOHA Thế Giới Chậu Cây",
+        siteName,
         locale: "vi_VN",
-        url: pageUrl,
-        title,
-        description,
-        images: [
-          {
-            url: image,
-            width: 800,
-            height: 800,
-            alt: item.ten,
-          },
-        ],
+        url: pageUrl.split("?")[0],
+        title: resolved.title,
+        description: resolved.description,
+        images: [{ url: image, width: 800, height: 800, alt: item.ten }],
       },
       twitter: {
         card: "summary_large_image",
-        title,
-        description,
+        title: resolved.title,
+        description: resolved.description,
         images: [image],
       },
       other: {
@@ -98,19 +113,39 @@ export default async function ProductDetailPage({
   const { cat, slug } = await params;
   const path = `/c/${cat}/p/${slug}`;
   let item: Awaited<ReturnType<typeof getProductByPath>>["item"] | null = null;
+  let app = fallbackAppearance();
   try {
-    const res = await getProductByPath(path);
-    item = res.item;
+    const [prod, appearance] = await Promise.all([
+      getProductByPath(path),
+      fetchAppearance().catch(() => fallbackAppearance()),
+    ]);
+    item = prod.item;
+    app = appearance;
   } catch {
     item = null;
   }
   if (!item) notFound();
 
   const pageUrl = `${SHOP_ORIGIN}${item.path || path}`;
+  const showProductJsonLd = app.theme?.seo?.enableProductJsonLd !== false;
+  const crumbs = [
+    { name: "Trang chủ", path: "/" },
+    {
+      name: item.categoryName || item.nhom || "Sản phẩm",
+      path: item.categorySlug ? `/danh-muc/${item.categorySlug}` : "/tim",
+    },
+    { name: item.ten, path: item.path || path },
+  ];
 
   return (
     <>
-      <ProductJsonLd product={item} pageUrl={pageUrl} />
+      {showProductJsonLd ? <ProductJsonLd product={item} pageUrl={pageUrl} /> : null}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(buildBreadcrumbJsonLd(crumbs)),
+        }}
+      />
       <ProductDetailView product={item} />
       <Suspense fallback={<RelatedProductsSkeleton />}>
         <RelatedProductsSection nhom={item.nhom || ""} ma={item.ma} />

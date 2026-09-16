@@ -812,37 +812,31 @@ export function ShopAppearanceEditor() {
                     {
                       id: "seo",
                       label: "SEO trang chủ",
-                      hint: seo.title || "Tiêu đề & mô tả Google",
+                      hint: "Chỉnh trong tab Tối ưu SEO",
                       Icon: Globe,
                       body: (
                         <div className="space-y-3">
-                          <p className="text-[11px] text-gray-500">
-                            Tiêu đề SEO độc lập với chữ lớn trên banner (H1).
+                          <p className="text-[12px] leading-relaxed text-slate-600">
+                            Tiêu đề, mô tả, ảnh OG và template sản phẩm/danh mục
+                            được quản lý tại tab{" "}
+                            <strong>Tối ưu SEO</strong> (sidebar).
                           </p>
-                          <WbField label="Tiêu đề SEO">
-                            <input
-                              className={wbInput}
-                              value={seo.title || ""}
-                              onChange={(e) =>
-                                patchTheme({
-                                  seo: { ...seo, title: e.target.value },
-                                })
-                              }
-                              placeholder="ALOHA Thế Giới Chậu Cây"
-                            />
-                          </WbField>
-                          <WbField label="Mô tả SEO">
-                            <textarea
-                              className={`${wbInput} min-h-[72px] resize-y`}
-                              value={seo.description || ""}
-                              onChange={(e) =>
-                                patchTheme({
-                                  seo: { ...seo, description: e.target.value },
-                                })
-                              }
-                              placeholder="Mô tả ngắn cho Google…"
-                            />
-                          </WbField>
+                          <a
+                            href="/admin/seo"
+                            className="inline-flex h-9 items-center rounded-lg bg-[var(--aloha-green)] px-3.5 text-[13px] font-semibold text-white shadow-sm hover:bg-[#2F5530]"
+                          >
+                            Mở tab Tối ưu SEO
+                          </a>
+                          {(seo.title || seo.description) && (
+                            <div className="rounded-lg bg-slate-50 px-3 py-2 text-[12px] text-slate-600">
+                              <p className="font-semibold text-slate-800">
+                                {seo.title || "—"}
+                              </p>
+                              <p className="mt-0.5 line-clamp-2">
+                                {seo.description || ""}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       ),
                     },

@@ -7,6 +7,7 @@ import {
   Globe,
   LayoutDashboard,
   LogOut,
+  Search,
   Users,
 } from "lucide-react";
 import { useAdminSession } from "@/components/admin/auth/useAdminSession";
@@ -15,6 +16,7 @@ const NAV = [
   { href: "/admin", label: "Tổng quan", Icon: LayoutDashboard, exact: true },
   { href: "/admin/ctv", label: "CTV / Hoa hồng", Icon: Users },
   { href: "/admin/website", label: "Website bán hàng", Icon: Globe },
+  { href: "/admin/seo", label: "Tối ưu SEO", Icon: Search },
 ];
 
 export function AdminSidebar() {

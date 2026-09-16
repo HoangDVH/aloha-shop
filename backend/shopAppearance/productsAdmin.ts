@@ -133,6 +133,8 @@ export function registerShopProductsAdminRoutes(
           webPin: 1,
           webBadge: 1,
           barcode: 1,
+          seoTitle: 1,
+          seoDescription: 1,
         };
 
         let rows: any[];
@@ -179,6 +181,8 @@ export function registerShopProductsAdminRoutes(
             d.webBadge === "noi_bat"
               ? String(d.webBadge)
               : "",
+          seoTitle: String(d.seoTitle || ""),
+          seoDescription: String(d.seoDescription || ""),
         }));
 
         res.json({
@@ -232,6 +236,47 @@ export function registerShopProductsAdminRoutes(
         res.json({ ok: true, ma, ...$set });
       } catch (e: any) {
         res.status(500).json({ error: e?.message || "merchandising_failed" });
+      }
+    }
+  );
+
+  app.patch(
+    "/api/shop/admin/products/:ma/seo",
+    ...gate,
+    async (req: AuthRequest, res: Response) => {
+      try {
+        const db = await productsDb();
+        const ma = String(req.params.ma || "").trim();
+        if (!ma) {
+          res.status(400).json({ error: "missing_ma" });
+          return;
+        }
+        const $set: Record<string, unknown> = {
+          seoUpdatedAt: new Date().toISOString(),
+        };
+        if (req.body?.seoTitle !== undefined) {
+          $set.seoTitle = String(req.body.seoTitle || "").trim().slice(0, 120);
+        }
+        if (req.body?.seoDescription !== undefined) {
+          $set.seoDescription = String(req.body.seoDescription || "")
+            .trim()
+            .slice(0, 320);
+        }
+        const r = await db.collection(COL).updateOne(
+          {
+            $or: [{ ma }, { ma: ma.toUpperCase() }, { ma: ma.toLowerCase() }],
+          } as any,
+          { $set }
+        );
+        if (!r.matchedCount) {
+          res.status(404).json({ error: "not_found" });
+          return;
+        }
+        await redisInvalidateShopCache();
+        syncBus.publish(["aloha_products"], "web-seo", { ids: [ma] });
+        res.json({ ok: true, ma, ...$set });
+      } catch (e: any) {
+        res.status(500).json({ error: e?.message || "seo_patch_failed" });
       }
     }
   );

@@ -24,18 +24,42 @@ import {
   type AppearanceHistoryEntry,
   type AppearanceLayout,
   type AppearancePopup,
+  type AppearanceSeo,
   type NavConfig,
 } from "./types.js";
 import type { GetShopDb } from "../shopOrders/routes.js";
 
-const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
-const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 const FONT_IDS = new Set<AppearanceFontFamily>([
   "system",
   "be_vietnam",
   "nunito",
   "roboto",
 ]);
+
+function normalizeSeo(raw: Partial<AppearanceSeo> | null | undefined): AppearanceSeo {
+  const base = defaultSeo();
+  const s = raw && typeof raw === "object" ? raw : {};
+  return {
+    title: String(s.title || "").trim() || base.title,
+    description: String(s.description || "").trim() || base.description,
+    ogImageUrl: String(s.ogImageUrl || "").trim(),
+    productTitleTemplate:
+      String(s.productTitleTemplate || "").trim() || base.productTitleTemplate,
+    productDescriptionTemplate:
+      String(s.productDescriptionTemplate || "").trim() ||
+      base.productDescriptionTemplate,
+    categoryTitleTemplate:
+      String(s.categoryTitleTemplate || "").trim() || base.categoryTitleTemplate,
+    categoryDescriptionTemplate:
+      String(s.categoryDescriptionTemplate || "").trim() ||
+      base.categoryDescriptionTemplate,
+    enableProductJsonLd: s.enableProductJsonLd !== false,
+    enableOrgJsonLd: s.enableOrgJsonLd !== false,
+    googleSiteVerification: String(s.googleSiteVerification || "").trim(),
+  };
+}
+const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
+const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 /** Khớp createApp static /uploads (cwd = project root khi chạy server.ts). */
 function resolveAppearanceUploadsDir() {
@@ -97,12 +121,7 @@ function normalizeLayout(raw: Partial<AppearanceLayout> | null | undefined): App
       fontFamily,
       faviconUrl:
         String(raw.theme?.faviconUrl || "").trim() || base.theme.faviconUrl,
-      seo: {
-        title:
-          String(seoIn?.title || "").trim() || defaultSeo().title,
-        description:
-          String(seoIn?.description || "").trim() || defaultSeo().description,
-      },
+      seo: normalizeSeo(seoIn),
       popup: normalizePopup(raw.theme?.popup),
       footer: {
         address:
