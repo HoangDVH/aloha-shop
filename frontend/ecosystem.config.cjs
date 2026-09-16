@@ -9,7 +9,7 @@ module.exports = {
         NODE_ENV: "production",
         PORT: "3002",
         NEXT_PUBLIC_SHOP_ORIGIN: "https://alohathegioichaucay.com",
-        SHOP_API_INTERNAL: "http://127.0.0.1:3000",
+        SHOP_API_INTERNAL: "http://127.0.0.1:3001",
       },
     },
   ],
