@@ -24,17 +24,12 @@ const nextConfig: NextConfig = {
   },
   /**
    * URL cũ KiotViet → trang shop mới (301).
-   * Bổ sung admin SEO redirects khi backend `/api/shop/redirects` đã deploy.
+   * Pattern slug-hash hàng loạt (+ alias) xử lý trong middleware.
    */
   async redirects() {
     return [
       {
-        source: "/page/ve-chung-toi-14387a",
-        destination: "/",
-        permanent: true,
-      },
-      {
-        source: "/page/khuyen-mai-1c107c",
+        source: "/page/:path*",
         destination: "/",
         permanent: true,
       },
@@ -44,18 +39,8 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
-        source: "/c/cay-phong-thuy-3ac9d3",
-        destination: "/danh-muc/cay-phong-thuy",
-        permanent: true,
-      },
-      {
-        source: "/c/cay-binh-an-a476a9",
-        destination: "/danh-muc/cay-binh-an",
-        permanent: true,
-      },
-      {
-        source: "/c/chau-men-hoa-bien-406561",
-        destination: "/",
+        source: "/products/:path*",
+        destination: "/tim",
         permanent: true,
       },
     ];

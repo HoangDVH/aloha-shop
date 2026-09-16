@@ -11,8 +11,39 @@ const BUILTIN_REDIRECTS: Record<string, string> = {
   "/branches": "/",
   "/c/cay-phong-thuy-3ac9d3": "/danh-muc/cay-phong-thuy",
   "/c/cay-binh-an-a476a9": "/danh-muc/cay-binh-an",
-  "/c/chau-men-hoa-bien-406561": "/",
+  "/c/chau-men-hoa-bien-406561": "/danh-muc/chau-men-hoa-bien",
 };
+
+/** Slug KiotViet ≠ slug shop (một số nhóm đổi tên). */
+const SLUG_ALIASES: Record<string, string> = {
+  "cay-canh": "cay-canh-du-loai",
+};
+
+/** Path gốc shop — không coi là URL KiotViet dạng slug-hash. */
+const RESERVED_ROOT = new Set([
+  "admin",
+  "api",
+  "bai-viet",
+  "brand",
+  "c",
+  "cho-duyet-ctv",
+  "dang-ky",
+  "dang-nhap",
+  "danh-muc",
+  "don-hang",
+  "gio-hang",
+  "page",
+  "products",
+  "sp",
+  "tai-khoan",
+  "tim",
+  "uploads",
+  "xac-nhan-don-hang",
+  "branches",
+]);
+
+/** `/foo-bar-53d07e` hoặc `/c/foo-bar-53d07e` → slug không gồm hash. */
+const KV_HASH_SUFFIX = /^(.+)-([a-f0-9]{4,8})$/i;
 
 function apiOrigin(): string {
   return (
@@ -49,6 +80,44 @@ async function getRedirectMap(): Promise<Record<string, string>> {
   }
 }
 
+function resolveKiotVietPath(path: string): string | null {
+  if (!path || path === "/") return null;
+
+  // /page/... → trang chủ
+  if (path === "/page" || path.startsWith("/page/")) return "/";
+
+  // /products/... → tìm kiếm (PDP cũ KiotViet)
+  if (path === "/products" || path.startsWith("/products/")) return "/tim";
+
+  // /branches → trang chủ
+  if (path === "/branches") return "/";
+
+  // /c/{slug-hash} (không có /p/ — danh mục KV) → /danh-muc/{slug}
+  const cOnly = path.match(/^\/c\/([^/]+)$/);
+  if (cOnly) {
+    const seg = cOnly[1];
+    const m = seg.match(KV_HASH_SUFFIX);
+    if (m) {
+      const slug = SLUG_ALIASES[m[1]] || m[1];
+      return `/danh-muc/${slug}`;
+    }
+  }
+
+  // /{slug-hash} gốc → /danh-muc/{slug}
+  const root = path.match(/^\/([^/]+)$/);
+  if (root) {
+    const seg = root[1];
+    if (RESERVED_ROOT.has(seg.toLowerCase())) return null;
+    const m = seg.match(KV_HASH_SUFFIX);
+    if (m) {
+      const slug = SLUG_ALIASES[m[1]] || m[1];
+      return `/danh-muc/${slug}`;
+    }
+  }
+
+  return null;
+}
+
 /**
  * 301 SEO redirects + fail-nhanh Server Action ID giả.
  */
@@ -57,7 +126,8 @@ export async function middleware(req: NextRequest) {
     const path = req.nextUrl.pathname.replace(/\/$/, "") || "/";
     if (path !== "/") {
       const map = await getRedirectMap();
-      const to = map[path] || map[req.nextUrl.pathname];
+      const to =
+        map[path] || map[req.nextUrl.pathname] || resolveKiotVietPath(path);
       if (to && to !== path && to !== req.nextUrl.pathname) {
         const url = req.nextUrl.clone();
         if (to.startsWith("http")) {
@@ -65,9 +135,7 @@ export async function middleware(req: NextRequest) {
         }
         url.pathname = to.split("?")[0] || to;
         const q = to.includes("?") ? to.slice(to.indexOf("?") + 1) : "";
-        if (q) {
-          url.search = `?${q}`;
-        }
+        url.search = q ? `?${q}` : "";
         return NextResponse.redirect(url, 301);
       }
     }
