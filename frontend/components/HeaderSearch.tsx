@@ -7,6 +7,7 @@ import { Loader2, Search, X } from "lucide-react";
 import { searchProductsClient, type ShopProduct } from "@/lib/api";
 import { prefetchShopPath, prefetchShopPaths } from "@/lib/prefetchShop";
 import { useShopRouter } from "@/lib/useShopRouter";
+import { notifyShopNavStart } from "@/lib/shopLoading";
 import { SearchResultLink } from "@/components/SearchResultLink";
 
 const DEBOUNCE_MS = 280;
@@ -161,9 +162,8 @@ export function HeaderSearch({ onSubmitExtra }: { onSubmitExtra?: () => void }) 
     const href = String(path || "").trim() || "/tim";
     setOpen(false);
     onSubmitExtra?.();
-    startTransition(() => {
-      router.push(href);
-    });
+    notifyShopNavStart();
+    window.location.assign(href);
   };
 
   const onSubmit = (e: FormEvent) => {

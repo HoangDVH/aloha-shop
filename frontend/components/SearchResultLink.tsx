@@ -1,30 +1,18 @@
 "use client";
 
-import Link from "next/link";
-import { useLinkStatus } from "next/link";
 import { Loader2 } from "lucide-react";
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { formatVnd, type ShopProduct } from "@/lib/api";
 import { prefetchShopPath } from "@/lib/prefetchShop";
 import { notifyShopNavStart } from "@/lib/shopLoading";
 
-function RowPending() {
-  const { pending } = useLinkStatus();
-  if (!pending) return null;
-  return (
-    <span className="absolute inset-0 z-10 flex items-center justify-center bg-white/55">
-      <Loader2 className="h-6 w-6 animate-spin text-[var(--aloha-green)]" aria-hidden />
-    </span>
-  );
-}
-
+/** Dropdown search: luôn dùng /sp/MÃ — ngắn, chắc mở được, tránh soft-nav /c/... bị hủy. */
 function productHref(product: ShopProduct): string {
-  const path = String(product.path || "").trim();
-  if (path.startsWith("/") && !path.startsWith("//") && path.length > 1) {
-    return path;
-  }
   const ma = String(product.ma || "").trim();
-  return ma ? `/sp/${encodeURIComponent(ma)}` : "/tim";
+  if (ma) return `/sp/${encodeURIComponent(ma)}`;
+  const path = String(product.path || "").trim();
+  if (path.startsWith("/") && !path.startsWith("//") && path.length > 1) return path;
+  return "/tim";
 }
 
 export function SearchResultLink({
@@ -42,17 +30,29 @@ export function SearchResultLink({
 }) {
   const href = productHref(product);
 
+  const go = () => {
+    onPick();
+    notifyShopNavStart();
+    // Hard navigation — App Router soft-nav hay bị hủy khi portal dropdown unmount.
+    window.location.assign(href);
+  };
+
   return (
-    <Link
+    <a
       href={href}
-      prefetch
-      onClick={(e) => {
-        // Tránh unmount portal (đóng dropdown) hủy soft-nav của <Link> → phải bấm 2 lần.
+      role="option"
+      aria-selected={active}
+      onMouseDown={(e) => {
+        if (e.button !== 0) return;
+        // Chặn blur ô tìm + đảm bảo đi ngay từ lần bấm đầu (không chờ click).
         e.preventDefault();
         e.stopPropagation();
-        onPick();
-        notifyShopNavStart();
-        router.push(href);
+        go();
+      }}
+      onClick={(e) => {
+        // Đã xử lý ở mousedown
+        e.preventDefault();
+        e.stopPropagation();
       }}
       onMouseEnter={() => {
         onHover();
@@ -79,7 +79,6 @@ export function SearchResultLink({
         </span>
       </span>
       <span className="shrink-0 text-sm font-bold text-[var(--aloha-gold)]">{formatVnd(product.gia)}</span>
-      <RowPending />
-    </Link>
+    </a>
   );
 }
