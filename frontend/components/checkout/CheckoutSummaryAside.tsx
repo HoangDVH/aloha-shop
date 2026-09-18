@@ -18,6 +18,8 @@ type Props = {
   agree: boolean;
   onAgreeChange: (v: boolean) => void;
   onPlaceOrder: () => void;
+  hasPreOrder?: boolean;
+  payMethod?: "Cash" | "Transfer";
 };
 
 /**
@@ -37,6 +39,8 @@ export function CheckoutSummaryAside({
   agree,
   onAgreeChange,
   onPlaceOrder,
+  hasPreOrder = false,
+  payMethod = "Cash",
 }: Props) {
   const showShip = shopShowCheckoutShipping();
 
@@ -115,14 +119,18 @@ export function CheckoutSummaryAside({
           type="button"
           disabled={!canSubmit}
           onClick={onPlaceOrder}
-          className="mt-4 w-full rounded-full bg-[var(--aloha-green)] py-3.5 text-sm font-bold text-white transition hover:bg-[var(--aloha-green-mid)] disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="mt-4 w-full rounded-full bg-[var(--aloha-green)] py-3.5 text-sm font-bold text-white transition hover:bg-[var(--aloha-green-hover)] disabled:cursor-not-allowed disabled:bg-slate-300"
         >
           {submitting ? "Đang đặt hàng…" : "Đặt hàng"}
         </button>
         <p className="mt-2 text-center text-[11px] leading-snug text-slate-500">
-          {showShip
-            ? "Đặt hàng lưu đơn trên web. Hóa đơn KiotViet chỉ tạo sau khi chuyển khoản thành công hoặc nhân viên xác nhận thanh toán."
-            : "Đặt hàng COD — cửa hàng xử lý giao trên KiotViet. Bạn thanh toán khi nhận hàng."}
+          {hasPreOrder
+            ? payMethod === "Cash"
+              ? "Đơn đặt trước COD — giao khi shop có hàng; thanh toán khi nhận."
+              : "Đơn có sản phẩm đặt trước — thanh toán chuyển khoản; giao khi shop có hàng."
+            : payMethod === "Transfer" || showShip
+              ? "Đặt hàng lưu đơn trên web. Hóa đơn KiotViet chỉ tạo sau khi chuyển khoản thành công hoặc nhân viên xác nhận thanh toán."
+              : "Đặt hàng COD — cửa hàng xử lý giao trên KiotViet. Bạn thanh toán khi nhận hàng."}
         </p>
       </section>
     </aside>

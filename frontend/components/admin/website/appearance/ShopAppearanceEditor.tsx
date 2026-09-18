@@ -59,20 +59,20 @@ const SHOP_PREVIEW_URL =
   "http://localhost:3002";
 
 const COLOR_PRESETS = [
-  "#3D6B3A",
+  "#16C45A",
+  "#12A34A",
+  "#22C55E",
   "#0D9488",
-  "#0891B2",
-  "#2563EB",
+  "#3DDC84",
   "#4F46E5",
   "#7C3AED",
   "#DB2777",
   "#DC2626",
-  "#EA580C",
+  "#F59E0B",
   "#CA8A04",
-  "#65A30D",
-  "#059669",
   "#334155",
-  "#0F172A",
+  "#134E2E",
+  "#FFFFFF",
 ];
 
 type SidePanel = "brand" | "home" | "menu" | "footer";
@@ -695,7 +695,7 @@ export function ShopAppearanceEditor() {
                                     theme: {
                                       ...draft.theme,
                                       primaryColor: c,
-                                      headerBg: c,
+                                      headerBg: "#12A34A",
                                     },
                                   })
                                 }
@@ -723,7 +723,7 @@ export function ShopAppearanceEditor() {
                                   theme: {
                                     ...draft.theme,
                                     primaryColor: e.target.value,
-                                    headerBg: e.target.value,
+                                    headerBg: "#12A34A",
                                   },
                                 })
                               }
@@ -823,7 +823,7 @@ export function ShopAppearanceEditor() {
                           </p>
                           <a
                             href="/admin/seo"
-                            className="inline-flex h-9 items-center rounded-lg bg-[var(--aloha-green)] px-3.5 text-[13px] font-semibold text-white shadow-sm hover:bg-[#2F5530]"
+                            className="inline-flex h-9 items-center rounded-lg bg-[var(--aloha-green)] px-3.5 text-[13px] font-semibold text-white shadow-sm hover:bg-[var(--aloha-green-mid)]"
                           >
                             Mở tab Tối ưu SEO
                           </a>
@@ -979,7 +979,7 @@ export function ShopAppearanceEditor() {
                       <button
                         type="button"
                         onClick={addProductSection}
-                        className="inline-flex h-8 items-center gap-1 rounded-lg border border-solid border-[#3D6B3A]/40 bg-[#E8EFE4] px-2.5 text-[11px] font-bold text-[#2F5530] shadow-sm hover:bg-[#DCE8D6]"
+                        className="inline-flex h-8 items-center gap-1 rounded-lg border border-solid border-[var(--aloha-green)]/40 bg-[var(--aloha-green-light)] px-2.5 text-[11px] font-bold text-[var(--aloha-green-mid)] shadow-sm hover:brightness-95"
                         style={{ borderStyle: "solid" }}
                       >
                         <Plus className="h-3.5 w-3.5" /> Thêm mục SP
@@ -987,7 +987,7 @@ export function ShopAppearanceEditor() {
                       <button
                         type="button"
                         onClick={addArticleSection}
-                        className="inline-flex h-8 items-center gap-1 rounded-lg border border-solid border-[#3D6B3A]/40 bg-white px-2.5 text-[11px] font-bold text-[#2F5530] shadow-sm hover:bg-[#E8EFE4]"
+                        className="inline-flex h-8 items-center gap-1 rounded-lg border border-solid border-[var(--aloha-green)]/40 bg-white px-2.5 text-[11px] font-bold text-[var(--aloha-green-mid)] shadow-sm hover:bg-[var(--aloha-green-light)]"
                         style={{ borderStyle: "solid" }}
                       >
                         <FileText className="h-3.5 w-3.5" /> Thêm bài viết

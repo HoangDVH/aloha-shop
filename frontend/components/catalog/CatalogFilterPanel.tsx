@@ -182,7 +182,7 @@ export function CatalogFilterPanel({
           type="checkbox"
           checked={inStock}
           onChange={(e) => onInStockChange(e.target.checked)}
-          className="accent-[#3D6B3A]"
+          className="accent-[var(--aloha-green)]"
         />
         Chỉ hiện còn hàng
       </label>

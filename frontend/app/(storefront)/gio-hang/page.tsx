@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useShopRouter } from "@/lib/useShopRouter";
 import { ShoppingBag, Trash2, Plus, Ticket, ChevronRight } from "lucide-react";
-import { stockMax, useCart } from "@/lib/cart";
+import { isPreOrderTon, stockMax, useCart } from "@/lib/cart";
 import { formatVnd } from "@/lib/api";
 import { formatVariantLabel } from "@/lib/cartVariant";
 import { useShopAuth } from "@/components/ShopAuthProvider";
@@ -105,7 +105,7 @@ export default function CartPage() {
               <p className="mt-1 text-sm text-slate-500">Lướt cửa hàng, mua sắm ngay</p>
               <Link
                 href="/tim"
-                className="mt-5 rounded-full bg-[var(--aloha-green)] px-6 py-2.5 text-sm font-bold text-white hover:bg-[var(--aloha-green-mid)]"
+                className="mt-5 rounded-full bg-[var(--aloha-green)] px-6 py-2.5 text-sm font-bold text-white hover:bg-[var(--aloha-green-hover)]"
               >
                 Tiếp tục mua sắm
               </Link>
@@ -215,15 +215,23 @@ export default function CartPage() {
                         >
                           {l.ten}
                         </Link>
-                        <span className="mt-1 inline-flex rounded border border-[var(--aloha-line)] px-2 py-0.5 text-[11px] font-semibold text-slate-600">
-                          {formatVariantLabel(l) || l.dvt || "Cái"}
-                        </span>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          <span className="inline-flex rounded border border-[var(--aloha-line)] px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+                            {formatVariantLabel(l) || l.dvt || "Cái"}
+                          </span>
+                          {isPreOrderTon(l.ton) ? (
+                            <span className="inline-flex rounded border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-800">
+                              Đặt trước
+                            </span>
+                          ) : null}
+                        </div>
                         {/* Mobile price/qty */}
                         <div className="mt-2 flex flex-wrap items-center gap-3 md:hidden">
                           <span className="text-sm text-slate-700">{formatVnd(l.gia)}</span>
                           <QtyCtrl
                             qty={l.qty}
                             plusDisabled={
+                              !isPreOrderTon(l.ton) &&
                               stockMax(l.ton) != null &&
                               l.qty >= (stockMax(l.ton) || 0)
                             }
@@ -251,13 +259,18 @@ export default function CartPage() {
                       <QtyCtrl
                         qty={l.qty}
                         plusDisabled={
+                          !isPreOrderTon(l.ton) &&
                           stockMax(l.ton) != null &&
                           l.qty >= (stockMax(l.ton) || 0)
                         }
                         onMinus={() => setQty(l.ma, l.qty - 1)}
                         onPlus={() => setQty(l.ma, l.qty + 1)}
                       />
-                      {stockMax(l.ton) != null ? (
+                      {isPreOrderTon(l.ton) ? (
+                        <span className="mt-1 text-[10px] font-semibold text-amber-700">
+                          Đặt trước
+                        </span>
+                      ) : stockMax(l.ton) != null ? (
                         <span className="mt-1 text-[10px] text-slate-400">
                           Còn {stockMax(l.ton)}
                         </span>
@@ -314,7 +327,7 @@ export default function CartPage() {
               onClick={handleCheckout}
               className={`mt-4 hidden w-full items-center justify-center rounded-lg py-3 text-sm font-bold text-white lg:flex ${
                 selectedQty > 0
-                  ? "bg-[var(--aloha-green)] hover:bg-[var(--aloha-green-mid)]"
+                  ? "bg-[var(--aloha-green)] hover:bg-[var(--aloha-green-hover)]"
                   : "cursor-not-allowed bg-slate-300"
               }`}
             >

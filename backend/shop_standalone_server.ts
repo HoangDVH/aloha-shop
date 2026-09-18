@@ -27,6 +27,12 @@ import { registerShopProductsAdminRoutes } from './shopAppearance/productsAdmin.
 import { registerShopSeoRedirectRoutes } from './shopSeo/redirects.js';
 import { registerShopAccountsAdminRoutes } from './shopAuth/adminRoutes.js';
 import { registerShopCommissionAdminRoutes } from './shopOrders/commissionAdminRoutes.js';
+import { registerShopOrdersAdminRoutes } from './shopOrders/adminRoutes.js';
+import { registerKvInvoiceWebhookRoutes } from './shopOrders/kvInvoiceWebhook.js';
+import { startKvDeliveryReconcile } from './shopOrders/kvDeliveryReconcile.js';
+import { startKvPaymentReconcile } from './shopOrders/kvPaymentReconcile.js';
+import { registerShopCtvApiDocs } from './shopOrders/ctvApiDocs.js';
+import { registerShopCatalogSyncFromOpsRoutes } from './shopCatalog/syncCatalogFromOps.js';
 import { registerAuthRoutes } from './auth/routes.js';
 import { applyShopCors } from './shopCors.js';
 import { syncBus } from './syncBus.js';
@@ -42,6 +48,13 @@ const DB_NAME = process.env.SHOP_STANDALONE_DB || 'aloha_shop_db';
 const OPS_MONGO_URI = (process.env.MONGO_URI_OPS || MONGO_URI).trim();
 /** Mặc định cùng DB shop — tài khoản admin nằm trong aloha_shop_db. */
 const OPS_DB_NAME = (process.env.OPS_DB_NAME || DB_NAME || 'aloha_shop_db').trim();
+/** Nguồn cây nhóm/SP để sync menu (Garden KV mirror). */
+const CATALOG_SOURCE_DB = (
+  process.env.SHOP_CATEGORY_SOURCE_DB ||
+  process.env.KV_CONFIG_DB ||
+  process.env.OPS_KV_DB ||
+  'aloha_thumua'
+).trim();
 
 let mongoClient: MongoClient | null = null;
 let dbInstance: Db | null = null;
@@ -130,6 +143,12 @@ async function getOpsDb(): Promise<Db> {
   return opsDbInstance;
 }
 
+/** DB nguồn sync categories/SP (aloha_thumua) — cùng cluster shop URI. */
+async function getCatalogSourceDb(): Promise<Db> {
+  await getDb();
+  return mongoClient!.db(CATALOG_SOURCE_DB);
+}
+
 const app = express();
 
 app.use(compression());
@@ -190,9 +209,14 @@ registerShopCtvMeRoutes(app, getDb, getOpsDb);
 registerShopAppearanceRoutes(app, getOpsDb, getDb);
 registerShopArticlesRoutes(app, getOpsDb, getDb);
 registerShopProductsAdminRoutes(app, getOpsDb, getDb);
+registerShopCatalogSyncFromOpsRoutes(app, getOpsDb, getDb, getCatalogSourceDb);
 registerShopSeoRedirectRoutes(app, getOpsDb, getDb);
 registerShopAccountsAdminRoutes(app, getOpsDb, getDb);
 registerShopCommissionAdminRoutes(app, getOpsDb, getDb);
+registerShopOrdersAdminRoutes(app, getOpsDb, getDb);
+/** KV: CK mark-paid + COD/CK delivery → shop orderStatus → HH khi hoan_thanh */
+registerKvInvoiceWebhookRoutes(app, getDb, getOpsDb);
+registerShopCtvApiDocs(app, getOpsDb);
 
 /** Nhận pub/sub Redis từ app nội bộ (patch giá) → SSE shop realtime. */
 void redisReady().then((ok) => {
@@ -268,6 +292,9 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`   - Cổng: http://localhost:${PORT}`);
   console.log(`   - Shop DB: ${DB_NAME}`);
   console.log(`   - Ops DB (staff): ${OPS_DB_NAME}`);
+  console.log(`   - Catalog source (sync): ${CATALOG_SOURCE_DB}`);
   console.log(`   - Health: http://localhost:${PORT}/api/health\n`);
   startShopKvStockPoller(getDb);
+  startKvPaymentReconcile(getDb, getOpsDb);
+  startKvDeliveryReconcile(getDb, getOpsDb);
 });

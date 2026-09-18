@@ -1114,4 +1114,59 @@ export function registerShopCtvMeRoutes(
       return res.status(500).json({ error: e?.message || "rate_failed" });
     }
   });
+
+  app.get("/api/shop/ctv/me/payout-bank", auth, async (req: ShopAuthRequest, res) => {
+    try {
+      const ctx = await requireActiveCtv(req, res);
+      if (!ctx) return;
+      const pb = (ctx.doc as any).payoutBank || null;
+      return res.json({
+        ok: true,
+        payoutBank: pb
+          ? {
+              bankBin: String(pb.bankBin || ""),
+              bankName: String(pb.bankName || ""),
+              accountNumber: String(pb.accountNumber || ""),
+              accountName: String(pb.accountName || ""),
+              updatedAt: pb.updatedAt ? String(pb.updatedAt) : null,
+            }
+          : null,
+      });
+    } catch (e: any) {
+      return res.status(500).json({ error: e?.message || "payout_bank_failed" });
+    }
+  });
+
+  app.put("/api/shop/ctv/me/payout-bank", auth, async (req: ShopAuthRequest, res) => {
+    try {
+      const ctx = await requireActiveCtv(req, res);
+      if (!ctx) return;
+      const bankBin = String(req.body?.bankBin || "").trim();
+      const bankName = String(req.body?.bankName || "").trim();
+      const accountNumber = String(req.body?.accountNumber || "")
+        .trim()
+        .replace(/\s+/g, "");
+      const accountName = String(req.body?.accountName || "").trim();
+      if (!bankBin || !bankName || !accountNumber || !accountName) {
+        return res.status(400).json({ error: "missing_fields" });
+      }
+      if (!/^[0-9]{5,30}$/.test(accountNumber)) {
+        return res.status(400).json({ error: "invalid_account_number" });
+      }
+      const payoutBank = {
+        bankBin: bankBin.slice(0, 20),
+        bankName: bankName.slice(0, 120),
+        accountNumber,
+        accountName: accountName.slice(0, 120),
+        updatedAt: new Date().toISOString(),
+      };
+      await ctx.shopDb.collection(SHOP_ACCOUNTS).updateOne(
+        shopAccountIdQuery(String((ctx.doc as any)._id)),
+        { $set: { payoutBank, updatedAt: new Date() } }
+      );
+      return res.json({ ok: true, payoutBank });
+    } catch (e: any) {
+      return res.status(500).json({ error: e?.message || "payout_bank_save_failed" });
+    }
+  });
 }

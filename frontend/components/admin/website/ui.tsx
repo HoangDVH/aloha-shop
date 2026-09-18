@@ -3,26 +3,26 @@
 import React from "react";
 import { Loader2 } from "lucide-react";
 
-/** Brand ALOHA — dùng thống nhất toàn bộ Website bán hàng */
+/** Brand shop — palette Aloha (xanh accent #0F9D58) */
 export const WB = {
-  accent: "#3D6B3A",
-  accentSoft: "rgba(61, 107, 58, 0.08)",
-  accentHover: "#345C32",
-  canvas: "#FFFFFF",
-  panel: "#FFFFFF",
-  border: "#E8EAED",
+  accent: "#0F9D58",
+  accentSoft: "rgba(15, 157, 88, 0.08)",
+  accentHover: "#0C8048",
+  canvas: "#FFFBF0",
+  panel: "#FFFDF8",
+  border: "#E5EBE6",
   borderStrong: "#D6D9DE",
-  text: "#1A1D21",
-  muted: "#6B7280",
-  subtle: "#9CA3AF",
-  rowActive: "rgba(61, 107, 58, 0.06)",
+  text: "#163A2A",
+  muted: "#607D70",
+  subtle: "#8A9A8E",
+  rowActive: "rgba(15, 157, 88, 0.06)",
 } as const;
 
 export const wbInput =
-  "h-9 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-[#3D6B3A]/50 focus:ring-2 focus:ring-[#3D6B3A]/15";
+  "h-9 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-[#0F9D58]/50 focus:ring-2 focus:ring-[#0F9D58]/15";
 
 export const wbSelect =
-  "h-9 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-[#3D6B3A]/50 focus:ring-2 focus:ring-[#3D6B3A]/15";
+  "h-9 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-[#0F9D58]/50 focus:ring-2 focus:ring-[#0F9D58]/15";
 
 export function WbBtn({
   children,
@@ -47,9 +47,9 @@ export function WbBtn({
     "inline-flex h-9 items-center justify-center gap-1.5 rounded-lg px-3.5 text-[13px] font-semibold transition disabled:pointer-events-none disabled:opacity-45";
   const variants: Record<string, string> = {
     primary:
-      "border-0 bg-[#3D6B3A] text-white shadow-sm hover:bg-[#2F5530] hover:shadow-md",
+      "border-0 bg-[#0F9D58] text-white shadow-sm hover:bg-[#0C8048] hover:shadow-md",
     secondary:
-      "border border-solid border-slate-300 bg-white text-slate-800 shadow-sm hover:border-[#3D6B3A]/45 hover:bg-[#F4F8F2] hover:text-[#2F5530]",
+      "border border-solid border-slate-300 bg-white text-slate-800 shadow-sm hover:border-[#0F9D58]/45 hover:bg-[#E8F5E9] hover:text-[#0C8048]",
     ghost:
       "border border-solid border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-slate-100 hover:text-slate-900",
     danger:
@@ -86,8 +86,8 @@ export function WbToggle({
       aria-checked={on}
       title={title}
       onClick={onChange}
-      className={`inline-flex h-[22px] w-[40px] shrink-0 items-center rounded-full border-0 p-[2px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3D6B3A]/35 ${
-        on ? "justify-end bg-[#3D6B3A]" : "justify-start bg-[#D1D5DB]"
+      className={`inline-flex h-[22px] w-[40px] shrink-0 items-center rounded-full border-0 p-[2px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F9D58]/35 ${
+        on ? "justify-end bg-[#0F9D58]" : "justify-start bg-[#D1D5DB]"
       }`}
       style={{ border: "none", boxSizing: "border-box" }}
     >
@@ -129,7 +129,7 @@ export function WbSegment<T extends string>({
               size === "sm" ? "h-7 px-2.5 text-xs" : "h-8 px-3 text-[13px]"
             } ${
               active
-                ? "bg-white text-[#2F5530] shadow-sm ring-1 ring-slate-200"
+                ? "bg-white text-[#0C8048] shadow-sm ring-1 ring-slate-200"
                 : "bg-transparent text-slate-600 hover:bg-white/70 hover:text-slate-900"
             }`}
             style={{ border: "none" }}
@@ -137,7 +137,7 @@ export function WbSegment<T extends string>({
             {Icon ? (
               <Icon
                 className={`${size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4"} ${
-                  active ? "text-[#3D6B3A]" : ""
+                  active ? "text-[#0F9D58]" : ""
                 }`}
               />
             ) : null}
@@ -170,7 +170,7 @@ export function WbIconSegment<T extends string>({
             onClick={() => onChange(id)}
             className={`flex h-8 w-8 items-center justify-center rounded-lg border-0 transition ${
               active
-                ? "bg-white text-[#3D6B3A] shadow-sm ring-1 ring-slate-200"
+                ? "bg-white text-[#0F9D58] shadow-sm ring-1 ring-slate-200"
                 : "bg-transparent text-slate-500 hover:bg-white/70 hover:text-slate-800"
             }`}
             style={{ border: "none" }}
@@ -221,7 +221,7 @@ export function WbField({
 export function WbLoading({ label = "Đang tải…" }: { label?: string }) {
   return (
     <div className="flex h-[min(60vh,480px)] items-center justify-center gap-2 text-sm text-gray-500">
-      <Loader2 className="h-4 w-4 animate-spin text-[#3D6B3A]" />
+      <Loader2 className="h-4 w-4 animate-spin text-[#0F9D58]" />
       {label}
     </div>
   );
@@ -236,7 +236,7 @@ export function WbBadge({
 }) {
   const tones = {
     neutral: "bg-slate-200 text-slate-700",
-    success: "bg-[#E8EFE4] text-[#2F5530] ring-1 ring-[#3D6B3A]/20",
+    success: "bg-[#E8F5E9] text-[#0C8048] ring-1 ring-[#0F9D58]/20",
     warn: "bg-amber-100 text-amber-900 ring-1 ring-amber-200",
     info: "bg-sky-100 text-sky-800 ring-1 ring-sky-200",
   };

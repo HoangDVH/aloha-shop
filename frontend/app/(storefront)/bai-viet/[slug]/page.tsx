@@ -101,7 +101,7 @@ export default async function BaiVietDetailPage({ params }: Props) {
   }
 
   return (
-    <div className="bg-[#F7F3EA]/40 py-8">
+    <div className="bg-[var(--aloha-cream)]/40 py-8">
       <div className={`${ARTICLE_COL} px-4`}>
         <nav
           className="mb-5 flex min-w-0 flex-nowrap items-center gap-1.5 overflow-hidden whitespace-nowrap text-sm text-slate-500"

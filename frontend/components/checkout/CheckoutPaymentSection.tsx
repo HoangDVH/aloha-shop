@@ -3,7 +3,10 @@
 import { Banknote, Check, QrCode } from "lucide-react";
 import { formatVnd } from "@/lib/api";
 import type { ShopBankInfo } from "@/lib/bankTransfer";
-import { shopShowTransferPayment } from "@/lib/checkoutFlags";
+import {
+  shopPreOrderCodMaxVnd,
+  shopShowTransferPayment,
+} from "@/lib/checkoutFlags";
 import type { PayMethod } from "./checkoutTypes";
 
 type Props = {
@@ -11,6 +14,10 @@ type Props = {
   onPayChange: (p: PayMethod) => void;
   bankInfo: ShopBankInfo | null;
   grandTotal: number;
+  /** Có SP đặt trước */
+  hasPreOrder?: boolean;
+  /** Vượt ngưỡng → chỉ CK */
+  requireTransfer?: boolean;
 };
 
 /** Phương thức thanh toán + thông tin chuyển khoản (CK ẩn khi flag tắt — không xóa). */
@@ -19,11 +26,22 @@ export function CheckoutPaymentSection({
   onPayChange,
   bankInfo,
   grandTotal,
+  hasPreOrder = false,
+  requireTransfer = false,
 }: Props) {
   const showTransfer = shopShowTransferPayment();
+  const codMax = shopPreOrderCodMaxVnd();
   const methods = (
     [
-      { id: "Cash" as const, label: "Thanh toán khi nhận hàng", Icon: Banknote },
+      ...(requireTransfer
+        ? []
+        : [
+            {
+              id: "Cash" as const,
+              label: "Thanh toán khi nhận hàng",
+              Icon: Banknote,
+            },
+          ]),
       ...(showTransfer
         ? [
             {
@@ -39,6 +57,14 @@ export function CheckoutPaymentSection({
   return (
     <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[var(--aloha-line)]">
       <h2 className="mb-4 text-base font-extrabold text-[var(--aloha-ink)]">Phương thức thanh toán</h2>
+      {hasPreOrder ? (
+        <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900 ring-1 ring-amber-200/80">
+          Đơn có sản phẩm <strong>đặt trước</strong> — giao khi shop có hàng
+          {requireTransfer && codMax > 0
+            ? `. Tổng trên ${formatVnd(codMax)} nên vui lòng chuyển khoản.`
+            : ". Có thể COD hoặc chuyển khoản. Bấm Đặt hàng sẽ hiện xác nhận nếu chọn COD."}
+        </p>
+      ) : null}
       <div className="space-y-2">
         {methods.map(({ id, label, Icon }) => (
           <button
@@ -65,8 +91,17 @@ export function CheckoutPaymentSection({
       </div>
       {!showTransfer ? (
         <p className="mt-3 rounded-lg bg-[var(--aloha-green-light)] px-3 py-2 text-xs text-[var(--aloha-green-mid)]">
-          Hiện chỉ hỗ trợ <strong>thanh toán khi nhận hàng (COD)</strong>. Cửa hàng sẽ liên hệ và
-          giao hàng; bạn trả tiền khi nhận.
+          {requireTransfer ? (
+            <>
+              Đơn đặt trước cần <strong>chuyển khoản</strong> nhưng shop chưa bật CK.
+              Vui lòng liên hệ cửa hàng.
+            </>
+          ) : (
+            <>
+              Hiện chỉ hỗ trợ <strong>thanh toán khi nhận hàng (COD)</strong>. Cửa hàng sẽ liên hệ và
+              giao hàng; bạn trả tiền khi nhận.
+            </>
+          )}
         </p>
       ) : null}
       {showTransfer && pay === "Transfer" ? (
@@ -78,20 +113,17 @@ export function CheckoutPaymentSection({
                 STK <strong>{bankInfo.accountNumber}</strong> — {bankInfo.accountName}
               </p>
               <p className="mt-1 text-xs text-slate-600">
-                Số tiền dự kiến:{" "}
-                <strong className="text-[var(--aloha-price)]">{formatVnd(grandTotal)}</strong>
+                Số tiền: <strong>{formatVnd(grandTotal)}</strong>
+              </p>
+              <p className="mt-2 text-[11px] text-slate-500">
+                Sau khi đặt hàng, hệ thống hiện QR và mã chuyển khoản trên trang đơn.
               </p>
             </div>
           ) : (
-            <p className="rounded-lg bg-[var(--aloha-cream)] px-3 py-2 text-xs text-slate-600">
-              Chưa cấu hình TK nhận. Liên hệ shop trước khi đặt chuyển khoản.
+            <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              Đang tải thông tin ngân hàng…
             </p>
           )}
-          <p className="rounded-lg bg-[var(--aloha-green-light)] px-3 py-2 text-xs text-[var(--aloha-green-mid)]">
-            Sau khi đặt, trang Đơn mua hiện <strong>QR hóa đơn KiotViet</strong> (nội dung mã HĐ{" "}
-            <strong>HD…</strong>). Quét → chuyển khoản đúng số tiền. Hệ thống tự xác nhận khi
-            KiotViet nhận tiền.
-          </p>
         </div>
       ) : null}
     </section>

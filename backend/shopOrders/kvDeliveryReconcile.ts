@@ -413,11 +413,18 @@ export function startKvDeliveryReconcile(
   if (timer) return;
   const interval = deliveryReconcileIntervalMs();
   const tick = () => {
-    void reconcileOpenCodDeliveries(getShopDb, getMainDb).then((r) => {
-      if (r.acted > 0) {
-        console.log("[kv-delivery-reconcile] tick", r);
-      }
-    });
+    void reconcileOpenCodDeliveries(getShopDb, getMainDb)
+      .then((r) => {
+        if (r.acted > 0) {
+          console.log("[kv-delivery-reconcile] tick", r);
+        }
+      })
+      .catch((e: any) => {
+        console.warn(
+          "[kv-delivery-reconcile] tick lỗi (Mongo/KV tạm thời?):",
+          e?.message || e
+        );
+      });
   };
   tick();
   timer = setInterval(tick, interval);

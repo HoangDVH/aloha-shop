@@ -47,8 +47,84 @@ function readTon(doc: Record<string, unknown>): number {
   return Number.isFinite(ton) ? ton : 0;
 }
 
+/** Tồn hiển thị (combo/công thức resolve thành phần). */
+export async function resolveDetailDisplayTon(
+  mainDb: Db,
+  ma: string
+): Promise<{ ok: true; displayTon: number } | { ok: false; error: string }> {
+  const code = String(ma || "").trim().toUpperCase();
+  if (!code) return { ok: false, error: "Thiếu mã sản phẩm" };
+  const product = await mainDb.collection(PRODUCTS_COL).findOne(productQuery(code));
+  if (!product) {
+    return { ok: false, error: `Không tìm thấy sản phẩm ${code}` };
+  }
+  let displayTon = readTon(product as any);
+  if (displayTon <= 0 && isComboOrFormulaProduct(product as any)) {
+    displayTon = await resolveShopDisplayTon(
+      mainDb,
+      PRODUCTS_COL,
+      product as any
+    );
+  }
+  return { ok: true, displayTon: Math.max(0, Math.floor(displayTon)) };
+}
+
+/**
+ * Gắn preOrder theo tồn lúc submit (displayTon − soft-hold < qty).
+ * Dòng còn đủ tồn → không preOrder.
+ */
+export async function annotatePreOrderDetails(
+  mainDb: Db,
+  details: ShopOrderDetail[],
+  shopDb?: Db,
+  opts?: { excludeOrderId?: string }
+): Promise<
+  { ok: true; details: ShopOrderDetail[] } | { ok: false; error: string }
+> {
+  const mas = details
+    .map((d) => String(d.productCode || "").trim().toUpperCase())
+    .filter(Boolean);
+  const heldByMa =
+    shopDb && shopStockHoldEnabled()
+      ? await sumHeldQtyByMa(shopDb, mas, opts?.excludeOrderId)
+      : new Map<string, number>();
+
+  const out: ShopOrderDetail[] = [];
+  for (const d of details) {
+    const ma = String(d.productCode || "").trim().toUpperCase();
+    if (!ma) {
+      out.push(d);
+      continue;
+    }
+    const tonRes = await resolveDetailDisplayTon(mainDb, ma);
+    if (!tonRes.ok) return tonRes;
+    const held = heldByMa.get(ma) || 0;
+    const available = Math.max(0, tonRes.displayTon - held);
+    // Chỉ đặt trước khi hết tồn (available ≤ 0). Còn hàng nhưng thiếu SL → assertStock xử lý.
+    const preOrder = available <= 0;
+    const note = String(d.note || "").trim();
+    const stockHint = "Sản phẩm đã hết hàng, cần nhập hàng ngay";
+    let nextNote = note || undefined;
+    if (preOrder) {
+      const hasHint =
+        note.toLowerCase().includes("hết hàng") ||
+        note.toUpperCase().includes("DAT-TRUOC");
+      nextNote = hasHint
+        ? note.slice(0, 200)
+        : `[DAT-TRUOC] ${stockHint}${note ? ` — ${note}` : ""}`.slice(0, 200);
+    }
+    out.push({
+      ...d,
+      preOrder: preOrder || undefined,
+      note: nextNote,
+    });
+  }
+  return { ok: true, details: out };
+}
+
 /**
  * Kiểm tra tồn đủ trước khi tạo đơn.
+ * Bỏ qua dòng preOrder (đặt trước khi hết hàng).
  * shopDb: trừ soft-hold đang active (collection riêng).
  */
 export async function assertStockAvailable(
@@ -58,7 +134,8 @@ export async function assertStockAvailable(
   opts?: { excludeOrderId?: string }
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const col = mainDb.collection(PRODUCTS_COL);
-  const mas = details
+  const checkDetails = details.filter((d) => !d.preOrder);
+  const mas = checkDetails
     .map((d) => String(d.productCode || "").trim().toUpperCase())
     .filter(Boolean);
   const heldByMa =
@@ -66,7 +143,7 @@ export async function assertStockAvailable(
       ? await sumHeldQtyByMa(shopDb, mas, opts?.excludeOrderId)
       : new Map<string, number>();
 
-  for (const d of details) {
+  for (const d of checkDetails) {
     const ma = String(d.productCode || "").trim().toUpperCase();
     const qty = Math.max(1, Math.floor(Number(d.quantity) || 1));
     if (!ma) continue;
@@ -110,6 +187,7 @@ export async function applyShopOrderStockDeduct(
   const now = new Date().toISOString();
 
   for (const d of details) {
+    if (d.preOrder) continue;
     const ma = String(d.productCode || "").trim().toUpperCase();
     const qty = Math.max(1, Math.floor(Number(d.quantity) || 1));
     if (!ma || !(qty > 0)) continue;

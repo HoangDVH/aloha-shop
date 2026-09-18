@@ -87,9 +87,9 @@ export function OrdersPanel({ highlightCode }: { highlightCode?: string }) {
 
   if (!orders.length) {
     return (
-      <section className="rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-[#E5DFD2]">
+      <section className="rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-[var(--aloha-line)]">
         <Receipt className="mx-auto text-[var(--aloha-green)]" size={36} />
-        <h2 className="mt-3 text-lg font-extrabold text-[#1a2e1a]">Đơn mua</h2>
+        <h2 className="mt-3 text-lg font-extrabold text-[var(--aloha-ink)]">Đơn mua</h2>
         <p className="mt-1 text-sm text-slate-500">Chưa có đơn trên web.</p>
         <Link
           href="/tim"
@@ -132,13 +132,13 @@ export function OrdersPanel({ highlightCode }: { highlightCode?: string }) {
       {orders.map((o) => (
         <article
           key={o.id || o.code}
-          className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[#E5DFD2] sm:p-5"
+          className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[var(--aloha-line)] sm:p-5"
         >
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
               <Link
                 href={`/don-hang/${encodeURIComponent(displayShopOrderCode(o) || o.code)}`}
-                className="group inline-flex items-center gap-1 text-sm font-extrabold text-[#1a2e1a] hover:text-[var(--aloha-green)]"
+                className="group inline-flex items-center gap-1 text-sm font-extrabold text-[var(--aloha-ink)] hover:text-[var(--aloha-green)]"
               >
                 {displayShopOrderCode(o)}
                 <ChevronRight
@@ -161,7 +161,7 @@ export function OrdersPanel({ highlightCode }: { highlightCode?: string }) {
               ) : null}
             </div>
           </div>
-          <ul className="mt-3 space-y-2.5 border-t border-[#E5DFD2] pt-3">
+          <ul className="mt-3 space-y-2.5 border-t border-[var(--aloha-line)] pt-3">
             {(o.orderDetails || []).slice(0, 4).map((d, i) => (
               <li key={`${d.productCode}-${i}`} className="flex items-center gap-2.5 text-sm">
                 {d.imageUrl ? (
@@ -172,14 +172,14 @@ export function OrdersPanel({ highlightCode }: { highlightCode?: string }) {
                     className="h-11 w-11 shrink-0 rounded-lg object-cover ring-1 ring-[#E8E2D6]"
                   />
                 ) : (
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[#F7F3EA]">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[var(--aloha-cream)]">
                     <Package size={16} className="text-[var(--aloha-green)]" />
                   </div>
                 )}
                 <span className="min-w-0 flex-1 line-clamp-2 text-slate-700">
                   {d.productName} × {d.quantity}
                 </span>
-                <span className="shrink-0 font-semibold text-[#1a2e1a]">
+                <span className="shrink-0 font-semibold text-[var(--aloha-ink)]">
                   {formatVnd(d.price * d.quantity)}
                 </span>
               </li>
@@ -190,7 +190,7 @@ export function OrdersPanel({ highlightCode }: { highlightCode?: string }) {
               </li>
             ) : null}
           </ul>
-          <div className="mt-3 space-y-1 border-t border-[#E5DFD2] pt-3 text-sm">
+          <div className="mt-3 space-y-1 border-t border-[var(--aloha-line)] pt-3 text-sm">
             {o.subtotal != null && (o.shippingFee ?? 0) > 0 ? (
               <>
                 <div className="flex justify-between text-slate-600">
@@ -232,7 +232,7 @@ export function OrdersPanel({ highlightCode }: { highlightCode?: string }) {
               <button
                 type="button"
                 disabled={busyCode === o.code}
-                className="w-full rounded-lg bg-[var(--aloha-green)] py-2 text-sm font-bold text-white hover:bg-[var(--aloha-green-mid)] disabled:opacity-50"
+                className="w-full rounded-lg bg-[var(--aloha-green)] py-2 text-sm font-bold text-white hover:bg-[var(--aloha-green-hover)] disabled:opacity-50"
                 onClick={async () => {
                   setBusyCode(o.code);
                   setError("");
@@ -266,6 +266,7 @@ export function OrdersPanel({ highlightCode }: { highlightCode?: string }) {
                 qrKind={o.qrKind}
                 kvInvoiceCode={o.kvInvoiceCode}
                 kovCode={o.kovCode}
+                qrString={o.qrString}
                 bank={o.bank}
                 qrUrl={o.qrUrl}
                 expiresAt={o.expiresAt}
@@ -275,7 +276,7 @@ export function OrdersPanel({ highlightCode }: { highlightCode?: string }) {
                 <button
                   type="button"
                   disabled={busyCode === o.code}
-                  className="w-full rounded-lg bg-[var(--aloha-green)] py-2 text-sm font-bold text-white hover:bg-[var(--aloha-green-mid)] disabled:opacity-50"
+                  className="w-full rounded-lg bg-[var(--aloha-green)] py-2 text-sm font-bold text-white hover:bg-[var(--aloha-green-hover)] disabled:opacity-50"
                   onClick={async () => {
                     setBusyCode(o.code);
                     setError("");

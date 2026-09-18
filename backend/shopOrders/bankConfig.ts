@@ -9,6 +9,86 @@ export type ShopBankPublicConfig = {
   configured: boolean;
 };
 
+/** Đọc 1 TLV EMVCo (ID 2 ký tự + length 2 số + value). */
+function emvGet(payload: string, id: string): string | null {
+  let i = 0;
+  const s = String(payload || "");
+  while (i + 4 <= s.length) {
+    const tag = s.slice(i, i + 2);
+    const len = Number.parseInt(s.slice(i + 2, i + 4), 10);
+    if (!Number.isFinite(len) || len < 0 || i + 4 + len > s.length) return null;
+    const val = s.slice(i + 4, i + 4 + len);
+    if (tag === id) return val;
+    i += 4 + len;
+  }
+  return null;
+}
+
+/** Lấy nội dung CK thật trong chuỗi VietQR (field 62 → 08) — khớp lời nhắn MoMo. */
+export function extractVietQrAddInfo(qrString?: string | null): string | null {
+  const raw = String(qrString || "").trim();
+  if (!raw) return null;
+  const f62 = emvGet(raw, "62");
+  if (!f62) return null;
+  const purpose = emvGet(f62, "08") || emvGet(f62, "01");
+  const out = String(purpose || "").trim();
+  return out || null;
+}
+
+/** Ghép nội dung CK chuẩn KiotQR (có mã KOV) — cùng format MoMo đọc từ QR.
+ * Lưu ý: `kov_code` từ KV thường đã kèm hậu tố " V" (vd. "KOVQR… V").
+ */
+export function buildKiotTransferContent(
+  kovCode?: string | null,
+  kvInvoiceCode?: string | null
+): string {
+  const kov = String(kovCode || "").trim();
+  const hd = String(kvInvoiceCode || "").trim();
+  if (kov && hd) {
+    // Tránh "… V V bill …" khi kov_code đã có sẵn chữ V
+    if (/\bV$/i.test(kov)) return `${kov} bill ${hd}`;
+    return `${kov} V bill ${hd}`;
+  }
+  if (kov) return /\bV$/i.test(kov) ? `${kov} bill` : `${kov} V bill`;
+  return "";
+}
+
+/**
+ * Ưu tiên: nội dung trong qr_string → transferContent đủ KOV → ghép kov+HD → HD/paymentCode.
+ * Tránh cache cũ chỉ còn mã HĐ (HD…) trong khi QR thật vẫn chứa KOVQR…
+ */
+export function resolveTransferContent(opts: {
+  transferContent?: string | null;
+  kovCode?: string | null;
+  kvInvoiceCode?: string | null;
+  paymentCode?: string | null;
+  qrString?: string | null;
+}): string {
+  const fromQr = extractVietQrAddInfo(opts.qrString);
+  if (fromQr) return fromQr;
+
+  const kov = String(opts.kovCode || "").trim();
+  const hd = String(opts.kvInvoiceCode || "").trim();
+  const stored = String(opts.transferContent || "").trim();
+  const built = buildKiotTransferContent(kov, hd);
+
+  // Cache/DB cũ có thể lưu nhầm chỉ "HD…" dù đã có kovCode; hoặc thiếu chữ V như MoMo
+  if (stored) {
+    const isBareInvoice = Boolean(hd && stored === hd);
+    const hasKov = /KOVQR/i.test(stored) || (kov && stored.includes(kov));
+    const hasBill = /\bbill\b/i.test(stored);
+    if (!isBareInvoice && hasKov && hasBill) {
+      if (built && stored !== built && !/\bV\s+bill\b/i.test(stored)) return built;
+      return stored;
+    }
+    if (built) return built;
+    if (!isBareInvoice) return stored;
+  }
+
+  if (built) return built;
+  return hd || String(opts.paymentCode || "").trim();
+}
+
 export function getShopBankConfig(): ShopBankPublicConfig {
   const bin = String(process.env.SHOP_BANK_BIN || "").trim();
   const accountNumber = String(process.env.SHOP_BANK_ACCOUNT || "").trim();
@@ -34,7 +114,7 @@ export function buildVietQrImageUrl(opts: {
   const cfg = getShopBankConfig();
   if (!cfg.configured) return null;
   const amount = Math.max(0, Math.round(Number(opts.amount) || 0));
-  const addInfo = encodeURIComponent(String(opts.addInfo || "").trim().slice(0, 30));
+  const addInfo = encodeURIComponent(String(opts.addInfo || "").trim().slice(0, 70));
   const name = encodeURIComponent(
     String(opts.accountName || cfg.accountName || "").trim().slice(0, 50)
   );
@@ -119,16 +199,24 @@ export function shopPaymentQrForOrder(order: {
       ttlMin: Number(process.env.SHOP_TRANSFER_TTL_MIN || 15),
       configured: true,
     };
+    const kovCode = order.kiotvietQr.kovCode || null;
+    const qrString = order.kiotvietQr.qrString || null;
     return {
       qrUrl: order.kiotvietQr.qrUrl,
       bank: kvBank,
       amount,
-      addInfo: order.kiotvietQr.transferContent || `${order.kiotvietQr.kovCode || ""} bill ${kvInvoiceCode}`.trim(),
+      addInfo: resolveTransferContent({
+        transferContent: order.kiotvietQr.transferContent,
+        kovCode,
+        kvInvoiceCode,
+        paymentCode,
+        qrString,
+      }),
       qrKind: "kiotviet" as const,
       kvInvoiceCode: kvInvoiceCode || null,
       paymentCode: paymentCode || null,
-      kovCode: order.kiotvietQr.kovCode || null,
-      qrString: order.kiotvietQr.qrString || null,
+      kovCode,
+      qrString,
     };
   }
 
@@ -203,16 +291,41 @@ export async function resolveShopPaymentQrForOrder(
         ttlMin: Number(process.env.SHOP_TRANSFER_TTL_MIN || 15),
         configured: true,
       };
+      const kovCode = order.kiotvietQr.kovCode;
+      const qrString = order.kiotvietQr.qrString || null;
+      const addInfo = resolveTransferContent({
+        transferContent: order.kiotvietQr.transferContent,
+        kovCode,
+        kvInvoiceCode,
+        paymentCode,
+        qrString,
+      });
+      // Sửa cache cũ lưu nhầm chỉ mã HD…
+      if (
+        shopDb &&
+        addInfo &&
+        String(order.kiotvietQr.transferContent || "").trim() !== addInfo
+      ) {
+        try {
+          const query = order._id ? { _id: order._id } : { code: order.code };
+          await shopDb.collection(SHOP_ORDERS).updateOne(query, {
+            $set: { "kiotvietQr.transferContent": addInfo },
+          });
+          (order.kiotvietQr as any).transferContent = addInfo;
+        } catch {
+          /* ignore */
+        }
+      }
       return {
         qrUrl: order.kiotvietQr.qrUrl,
         bank: kvBank,
         amount,
-        addInfo: order.kiotvietQr.transferContent || `${order.kiotvietQr.kovCode} bill ${kvInvoiceCode}`,
+        addInfo,
         qrKind: "kiotviet" as const,
         kvInvoiceCode,
         paymentCode: paymentCode || null,
-        kovCode: order.kiotvietQr.kovCode,
-        qrString: order.kiotvietQr.qrString || null,
+        kovCode,
+        qrString,
       };
     }
 
@@ -251,7 +364,11 @@ export async function resolveShopPaymentQrForOrder(
         const kovCode = String(kvRes.body.kov_code || "").trim();
         const qrUrl = String(kvRes.body.image || "");
         const qrString = String(kvRes.body.qr_string || "");
-        const transferContent = kovCode ? `${kovCode} bill ${kvInvoiceCode}` : `bill ${kvInvoiceCode}`;
+        const transferContent = resolveTransferContent({
+          kovCode,
+          kvInvoiceCode,
+          qrString,
+        });
 
         // Lưu liên kết mã QR với hóa đơn KiotViet (save-dynamic-code) để KiotViet tự động gạch nợ khi tiền về
         const transactionId = kvRes.body.transaction_id;

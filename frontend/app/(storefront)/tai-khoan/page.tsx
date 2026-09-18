@@ -6,7 +6,6 @@ import { useSearchParams } from "next/navigation";
 import { useShopRouter } from "@/lib/useShopRouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CtvEarningsPanel } from "@/components/CtvEarningsPanel";
 import {
   Check,
   CreditCard,
@@ -15,7 +14,6 @@ import {
   MapPin,
   Receipt,
   User as UserIcon,
-  Wallet,
 } from "lucide-react";
 import { useShopAuth } from "@/components/ShopAuthProvider";
 import { AccountAvatar } from "@/components/AccountAvatar";
@@ -31,15 +29,14 @@ import {
 } from "@/lib/authSchemas";
 import { ShopPageLoader } from "@/components/ShopPageLoader";
 
-type Tab = "tai-khoan" | "dia-chi" | "don-mua" | "thanh-toan" | "hoa-hong";
+type Tab = "tai-khoan" | "dia-chi" | "don-mua" | "thanh-toan";
 
 function parseTab(raw: string | null): Tab {
   if (
     raw === "dia-chi" ||
     raw === "don-mua" ||
     raw === "thanh-toan" ||
-    raw === "tai-khoan" ||
-    raw === "hoa-hong"
+    raw === "tai-khoan"
   ) {
     return raw;
   }
@@ -79,7 +76,15 @@ function AccountPageInner() {
     if (!loading && !user) router.replace("/dang-nhap?next=/tai-khoan");
   }, [user, loading, router, logoutPending]);
 
+  /** Path CTV cũ — chuyển hẳn sang portal */
   useEffect(() => {
+    if (searchParams.get("tab") === "hoa-hong") {
+      router.replace("/cong-tac-vien");
+    }
+  }, [searchParams, router]);
+
+  useEffect(() => {
+    if (searchParams.get("tab") === "hoa-hong") return;
     const t = parseTab(searchParams.get("tab"));
     setTab(t);
   }, [searchParams]);
@@ -155,9 +160,6 @@ function AccountPageInner() {
     { id: "dia-chi", label: "Địa chỉ", icon: <MapPin size={16} /> },
     { id: "don-mua", label: "Đơn mua", icon: <Receipt size={16} /> },
     { id: "thanh-toan", label: "Thanh toán", icon: <CreditCard size={16} /> },
-    ...(user.roles.includes("ctv")
-      ? [{ id: "hoa-hong" as Tab, label: "Hoa hồng", icon: <Wallet size={16} /> }]
-      : []),
   ];
 
   const navBtn = (id: Tab, label: string, icon: ReactNode) => (
@@ -168,7 +170,7 @@ function AccountPageInner() {
       className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-semibold transition ${
         tab === id
           ? "bg-[var(--aloha-green-light)] text-[var(--aloha-green)]"
-          : "text-slate-600 hover:bg-[#F7F3EA]"
+          : "text-slate-600 hover:bg-[var(--aloha-cream)]"
       }`}
     >
       {icon}
@@ -183,11 +185,11 @@ function AccountPageInner() {
           Trang chủ
         </Link>
         <span className="mx-1.5">/</span>
-        <span className="font-semibold text-[#1a2e1a]">Tài khoản</span>
+        <span className="font-semibold text-[var(--aloha-ink)]">Tài khoản</span>
       </nav>
 
       {/* Mobile tabs ngang */}
-      <div className="sticky top-[calc(env(safe-area-inset-top,0px)+3.5rem)] z-30 -mx-4 border-b border-[#E5DFD2] bg-[#F7F3EA]/95 px-4 backdrop-blur lg:hidden">
+      <div className="sticky top-[calc(env(safe-area-inset-top,0px)+3.5rem)] z-30 -mx-4 border-b border-[var(--aloha-line)] bg-[var(--aloha-cream)]/95 px-4 backdrop-blur lg:hidden">
         <div className="flex items-center gap-2">
           <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto py-2">
             {tabItems.map((t) => (
@@ -198,7 +200,7 @@ function AccountPageInner() {
                 className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ${
                   tab === t.id
                     ? "bg-[var(--aloha-green)] text-white"
-                    : "bg-white text-slate-600 ring-1 ring-[#E5DFD2]"
+                    : "bg-white text-slate-600 ring-1 ring-[var(--aloha-line)]"
                 }`}
               >
                 {t.icon}
@@ -220,11 +222,11 @@ function AccountPageInner() {
 
       <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
         {/* Sidebar desktop */}
-        <aside className="hidden h-fit space-y-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[#E5DFD2] lg:block">
-          <div className="flex items-center gap-3 border-b border-[#E5DFD2] pb-4">
+        <aside className="hidden h-fit space-y-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[var(--aloha-line)] lg:block">
+          <div className="flex items-center gap-3 border-b border-[var(--aloha-line)] pb-4">
             <AccountAvatar user={user} size={56}  />
             <div className="min-w-0">
-              <div className="truncate text-sm font-bold text-[#1a2e1a]">
+              <div className="truncate text-sm font-bold text-[var(--aloha-ink)]">
                 {user.fullName || "Khách ALOHA"}
               </div>
               <div className="truncate text-xs text-slate-500">{user.email}</div>
@@ -245,9 +247,15 @@ function AccountPageInner() {
             {navBtn("dia-chi", "Sổ địa chỉ", <MapPin size={18} />)}
             {navBtn("don-mua", "Đơn mua", <Receipt size={18} />)}
             {navBtn("thanh-toan", "Thanh toán", <CreditCard size={18} />)}
-            {user.roles.includes("ctv")
-              ? navBtn("hoa-hong", "Hoa hồng CTV", <Wallet size={18} />)
-              : null}
+            {user.roles.includes("ctv") && user.ctvStatus === "active" ? (
+              <Link
+                href="/cong-tac-vien"
+                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-semibold text-slate-600 transition hover:bg-[var(--aloha-cream)]"
+              >
+                <Link2 size={18} />
+                Dashboard CTV
+              </Link>
+            ) : null}
           </div>
 
           <button
@@ -265,11 +273,11 @@ function AccountPageInner() {
         <div className="min-w-0 space-y-4">
           {tab === "tai-khoan" ? (
             <>
-              <section className="flex flex-wrap items-center gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[#E5DFD2]">
+              <section className="flex flex-wrap items-center gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[var(--aloha-line)]">
                 <AccountAvatar user={user} size={64}  />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h1 className="text-lg font-extrabold text-[#1a2e1a]">
+                    <h1 className="text-lg font-extrabold text-[var(--aloha-ink)]">
                       {user.fullName || "Khách ALOHA"}
                     </h1>
                     {hasGoogle ? (
@@ -292,8 +300,8 @@ function AccountPageInner() {
                 </button>
               </section>
 
-              <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[#E5DFD2]">
-                <h2 className="text-base font-extrabold text-[#1a2e1a]">Thông tin cá nhân</h2>
+              <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[var(--aloha-line)]">
+                <h2 className="text-base font-extrabold text-[var(--aloha-ink)]">Thông tin cá nhân</h2>
                 <p className="mt-1 text-sm text-slate-500">Dùng khi đặt hàng và giao nhận.</p>
 
                 <form onSubmit={onSave} className="mt-5 space-y-4" noValidate>
@@ -304,7 +312,7 @@ function AccountPageInner() {
                     <input
                       value={user.email}
                       disabled
-                      className="w-full rounded-lg border border-[#E5DFD2] bg-[#F7F3EA] px-3 py-2.5 text-sm text-slate-600"
+                      className="w-full rounded-lg border border-[var(--aloha-line)] bg-[var(--aloha-cream)] px-3 py-2.5 text-sm text-slate-600"
                     />
                     <p className="mt-1 text-xs text-slate-400">Email không thể đổi tại đây.</p>
                   </div>
@@ -361,7 +369,7 @@ function AccountPageInner() {
                   <button
                     type="submit"
                     disabled={updateMut.isPending}
-                    className="rounded-lg bg-[var(--aloha-green)] px-5 py-2.5 text-sm font-bold text-white hover:bg-[var(--aloha-green-mid)] disabled:opacity-60"
+                    className="rounded-lg bg-[var(--aloha-green)] px-5 py-2.5 text-sm font-bold text-white hover:bg-[var(--aloha-green-hover)] disabled:opacity-60"
                   >
                     Lưu hồ sơ
                   </button>
@@ -369,8 +377,8 @@ function AccountPageInner() {
               </section>
 
               {!user.roles.includes("ctv") ? (
-                <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[#E5DFD2]">
-                  <h2 className="text-base font-extrabold text-[#1a2e1a]">
+                <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[var(--aloha-line)]">
+                  <h2 className="text-base font-extrabold text-[var(--aloha-ink)]">
                     Đăng ký làm cộng tác viên
                   </h2>
                   <form onSubmit={onBecomeCtv} className="mt-4 space-y-3" noValidate>
@@ -409,19 +417,12 @@ function AccountPageInner() {
           {tab === "don-mua" ? <OrdersPanel highlightCode={datCode || undefined} /> : null}
 
           {tab === "thanh-toan" ? (
-            <section className="rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-[#E5DFD2]">
+            <section className="rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-[var(--aloha-line)]">
               <CreditCard className="mx-auto text-[var(--aloha-green)]" size={36} />
-              <h2 className="mt-3 text-lg font-extrabold text-[#1a2e1a]">Thanh toán</h2>
+              <h2 className="mt-3 text-lg font-extrabold text-[var(--aloha-ink)]">Thanh toán</h2>
               <p className="mt-1 text-sm text-slate-500">
                 Chọn COD hoặc chuyển khoản khi xác nhận đơn hàng trên web.
               </p>
-            </section>
-          ) : null}
-
-          {tab === "hoa-hong" ? (
-            <section className="min-w-0 overflow-hidden rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[#E5DFD2]">
-              <h2 className="mb-4 text-base font-extrabold text-[#1a2e1a]">Hoa hồng cộng tác viên</h2>
-              <CtvEarningsPanel />
             </section>
           ) : null}
         </div>

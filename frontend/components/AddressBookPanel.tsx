@@ -148,9 +148,9 @@ export function AddressBookPanel() {
   }
 
   return (
-    <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[#E5DFD2] sm:p-6">
+    <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[var(--aloha-line)] sm:p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-lg font-extrabold text-[#1a2e1a]">
+        <h2 className="flex items-center gap-2 text-lg font-extrabold text-[var(--aloha-ink)]">
           <MapPin size={20} className="text-[var(--aloha-green)]" />
           Sổ địa chỉ
         </h2>
@@ -178,11 +178,11 @@ export function AddressBookPanel() {
           editingId === a.id ? null : (
             <li
               key={a.id}
-              className="rounded-xl border border-[#E5DFD2] bg-[#FBF9F4] px-4 py-3"
+              className="rounded-xl border border-[var(--aloha-line)] bg-[var(--aloha-cream)] px-4 py-3"
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <p className="text-sm font-bold text-[#1a2e1a]">
+                  <p className="text-sm font-bold text-[var(--aloha-ink)]">
                     {a.fullName} · {a.phone}
                     {a.isDefault ? (
                       <span className="ml-2 rounded bg-[var(--aloha-green)] px-1.5 py-0.5 text-[10px] text-white">
@@ -232,7 +232,7 @@ export function AddressBookPanel() {
 
       {adding || editingId ? (
         <div className="mt-4 space-y-3 rounded-xl border border-[#D5E3D0] bg-[#F7FBF5] p-4">
-          <p className="text-sm font-bold text-[#1a2e1a]">
+          <p className="text-sm font-bold text-[var(--aloha-ink)]">
             {editingId ? "Sửa địa chỉ" : "Thêm địa chỉ mới"}
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -293,7 +293,7 @@ export function AddressBookPanel() {
           <label className="flex items-center gap-2 text-sm text-slate-700">
             <input
               type="checkbox"
-              className="accent-[#3D6B3A]"
+              className="accent-[var(--aloha-green)]"
               checked={draft.isDefault}
               onChange={(e) => setDraft((d) => ({ ...d, isDefault: e.target.checked }))}
             />

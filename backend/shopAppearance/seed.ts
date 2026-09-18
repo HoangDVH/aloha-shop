@@ -14,8 +14,8 @@ export function buildDefaultAppearanceLayout(): AppearanceLayout {
     theme: {
       siteName: "ALOHA Thế Giới Chậu Cây",
       logoUrl: "/brand/logo-header-on-theme.png?v=1",
-      primaryColor: "#3D6B3A",
-      headerBg: "#3D6B3A",
+      primaryColor: "#16C45A",
+      headerBg: "#12A34A",
       fontFamily: "system",
       faviconUrl: "/brand/logo-icon.png",
       seo: defaultSeo(),

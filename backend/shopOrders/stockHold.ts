@@ -110,6 +110,7 @@ export async function createShopStockHolds(opts: {
   if (!shopStockHoldEnabled()) return;
   const now = new Date();
   const docs = opts.details
+    .filter((d) => !d.preOrder)
     .map((d) => {
       const ma = String(d.productCode || "").trim().toUpperCase();
       const qty = Math.max(1, Math.floor(Number(d.quantity) || 1));

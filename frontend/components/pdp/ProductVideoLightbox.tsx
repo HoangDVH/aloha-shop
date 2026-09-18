@@ -18,10 +18,9 @@ type Props = {
 };
 
 /**
- * Phóng to kiểu TGDD:
- * - Khung player rộng gần full màn (chiều dài dài)
- * - Video phóng tối đa theo đúng tỉ lệ → không cắt nội dung
- * - Nền mờ hai bên khi video dọc (không để khoảng trống “trống trải”)
+ * Phóng to kiểu TGDD.
+ * Index: chỉ nhận startIndex lúc mở — không sync 2 chiều với parent khi đang mở
+ * (tránh nhảy ảnh / nhấp nháy).
  */
 export function ProductVideoLightbox({
   open,
@@ -36,17 +35,38 @@ export function ProductVideoLightbox({
   const [box, setBox] = useState<{ w: number; h: number }>({ w: 960, h: 540 });
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const wasOpen = useRef(false);
+  const onIndexChangeRef = useRef(onIndexChange);
+  onIndexChangeRef.current = onIndexChange;
 
-  const current = media[idx];
+  const safeIdx =
+    media.length > 0
+      ? Math.min(Math.max(0, idx), media.length - 1)
+      : 0;
+  const current = media[safeIdx];
 
+  // Chỉ seed index khi vừa mở lightbox — không theo startIndex khi đang mở.
   useEffect(() => {
-    if (open) setIdx(startIndex);
-  }, [open, startIndex]);
+    if (open && !wasOpen.current) {
+      const i =
+        media.length > 0
+          ? Math.min(Math.max(0, startIndex), media.length - 1)
+          : 0;
+      setIdx(i);
+    }
+    wasOpen.current = open;
+  }, [open, startIndex, media.length]);
 
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
+      if (media.length < 2) return;
+      if (e.key === "ArrowRight") {
+        setIdx((v) => (v + 1) % media.length);
+      } else if (e.key === "ArrowLeft") {
+        setIdx((v) => (v - 1 + media.length) % media.length);
+      }
     };
     window.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
@@ -55,17 +75,16 @@ export function ProductVideoLightbox({
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
     };
-  }, [open, onClose]);
+  }, [open, onClose, media.length]);
 
-  // Chỉ đồng bộ index khi lightbox đang mở — nếu gọi lúc đóng,
-  // callback inline từ parent đổi mỗi render → kéo gallery về idx cũ (thường 0) → nhấp nháy.
+  // Báo parent (đồng bộ thumb ngoài) — không để parent ghi ngược startIndex lúc đang mở.
   useEffect(() => {
     if (!open) return;
-    onIndexChange?.(idx);
-  }, [open, idx, onIndexChange]);
+    onIndexChangeRef.current?.(safeIdx);
+  }, [open, safeIdx]);
 
-  /** Video lớn nhất có thể trong stage, giữ đúng tỉ lệ nguồn. */
-  const fitBox = (vw: number, vh: number) => {
+  /** Video: fit theo tỉ lệ nguồn. Ảnh dùng CSS object-contain (ổn định, không nhảy size). */
+  const fitVideoBox = (vw: number, vh: number) => {
     if (typeof window === "undefined") return;
     const stage = stageRef.current;
     const maxW = stage
@@ -88,42 +107,37 @@ export function ProductVideoLightbox({
     setBox({ w: Math.round(w), h: Math.round(h) });
   };
 
-  const refitFromMedia = () => {
-    const el = videoRef.current;
-    if (el && el.videoWidth && el.videoHeight) {
-      fitBox(el.videoWidth, el.videoHeight);
-      return;
-    }
-    if (current?.kind === "video" && !current.file) {
-      // YouTube / ngang: khung rộng gần full như TGDD (16:9)
-      fitBox(16, 9);
-      return;
-    }
-    if (current?.kind === "image") {
-      const img = new Image();
-      img.onload = () => fitBox(img.naturalWidth || 1, img.naturalHeight || 1);
-      img.src = current.src;
-    }
-  };
-
   useEffect(() => {
-    if (!open) return;
-    const onResize = () => refitFromMedia();
+    if (!open || !current || current.kind !== "video") return;
+    if (!current.file) {
+      fitVideoBox(16, 9);
+    }
+    const onResize = () => {
+      const el = videoRef.current;
+      if (el && el.videoWidth && el.videoHeight) {
+        fitVideoBox(el.videoWidth, el.videoHeight);
+      } else if (!current.file) {
+        fitVideoBox(16, 9);
+      }
+    };
     window.addEventListener("resize", onResize);
     const t = window.setTimeout(onResize, 0);
-    const t2 = window.setTimeout(onResize, 80);
     return () => {
       window.removeEventListener("resize", onResize);
       window.clearTimeout(t);
-      window.clearTimeout(t2);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, current]);
+  }, [open, current?.kind, current?.src]);
 
   if (!open || !current) return null;
 
   const isImage = current.kind === "image";
   const showBlurBg = current.kind === "video" && current.file;
+
+  const goTo = (i: number) => {
+    if (!media.length) return;
+    setIdx(((i % media.length) + media.length) % media.length);
+  };
 
   return (
     <div
@@ -147,10 +161,9 @@ export function ProductVideoLightbox({
         <X size={24} />
       </button>
 
-      {/* Khung player rộng full — chiều dài dài như TGDD */}
       <div
         ref={stageRef}
-        className="relative flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden"
+        className="relative flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden px-2 py-2"
       >
         {isImage ? (
           <div className="absolute inset-0 bg-[#f5f5f5]" aria-hidden />
@@ -184,14 +197,21 @@ export function ProductVideoLightbox({
           <div className="absolute inset-0 bg-[#111]" aria-hidden />
         )}
 
-        <div
-          className={`relative z-[1] overflow-hidden shadow-2xl ${
-            isImage ? "bg-white ring-1 ring-black/5" : "bg-black/20"
-          }`}
-          style={{ width: box.w, height: box.h, maxWidth: "100%", maxHeight: "100%" }}
-        >
-          {current.kind === "video" ? (
-            current.file ? (
+        {isImage ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={current.src}
+            src={current.src}
+            alt={alt}
+            className="relative z-[1] max-h-full max-w-full rounded-lg bg-white object-contain shadow-2xl ring-1 ring-black/5"
+            draggable={false}
+          />
+        ) : (
+          <div
+            className="relative z-[1] overflow-hidden bg-black/20 shadow-2xl"
+            style={{ width: box.w, height: box.h, maxWidth: "100%", maxHeight: "100%" }}
+          >
+            {current.kind === "video" && current.file ? (
               // eslint-disable-next-line jsx-a11y/media-has-caption
               <video
                 key={current.src}
@@ -205,11 +225,11 @@ export function ProductVideoLightbox({
                 onLoadedMetadata={(e) => {
                   const v = e.currentTarget;
                   if (v.videoWidth && v.videoHeight) {
-                    fitBox(v.videoWidth, v.videoHeight);
+                    fitVideoBox(v.videoWidth, v.videoHeight);
                   }
                 }}
               />
-            ) : (
+            ) : current.kind === "video" ? (
               <iframe
                 key={current.src}
                 src={`${current.src}${current.src.includes("?") ? "&" : "?"}autoplay=1&rel=0&playsinline=1`}
@@ -218,20 +238,9 @@ export function ProductVideoLightbox({
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
               />
-            )
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={current.src}
-              alt={alt}
-              className="h-full w-full object-contain"
-              onLoad={(e) => {
-                const im = e.currentTarget;
-                fitBox(im.naturalWidth || 1, im.naturalHeight || 1);
-              }}
-            />
-          )}
-        </div>
+            ) : null}
+          </div>
+        )}
       </div>
 
       {media.length > 0 ? (
@@ -247,7 +256,7 @@ export function ProductVideoLightbox({
               isImage ? "text-slate-400" : "text-white/55"
             }`}
           >
-            {idx + 1}/{media.length}
+            {safeIdx + 1}/{media.length}
           </p>
           <div className="mx-auto w-full max-w-5xl overflow-x-auto pb-0.5">
             <div className="mx-auto flex w-max min-w-full justify-center gap-1.5 px-1 sm:gap-2">
@@ -255,9 +264,9 @@ export function ProductVideoLightbox({
                 <button
                   key={`vlb-${item.kind}-${item.src}-${i}`}
                   type="button"
-                  onClick={() => setIdx(i)}
+                  onClick={() => goTo(i)}
                   className={`relative aspect-square h-11 w-11 shrink-0 overflow-hidden rounded-md border-2 bg-[var(--aloha-cream)] sm:h-12 sm:w-12 ${
-                    i === idx
+                    i === safeIdx
                       ? "border-[var(--aloha-green)]"
                       : isImage
                         ? "border-transparent opacity-80 hover:opacity-100"

@@ -131,7 +131,7 @@ export function ShopAttributeFilter({
                 onClick={() => setOpenName(isOpen ? null : name)}
                 className={`flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-left text-sm font-semibold uppercase tracking-wide transition ${
                   isOpen
-                    ? "border-[var(--aloha-green)] text-[#1a2e1a] ring-1 ring-[var(--aloha-green)]/30"
+                    ? "border-[var(--aloha-green)] text-[var(--aloha-ink)] ring-1 ring-[var(--aloha-green)]/30"
                     : nSel
                       ? "border-[var(--aloha-green)] bg-[var(--aloha-green-light)] text-[var(--aloha-green)]"
                       : "border-[#ddd] text-slate-600 hover:border-[var(--aloha-green)]"
@@ -193,7 +193,7 @@ export function ShopAttributeFilter({
                   className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm ${
                     active
                       ? "bg-[var(--aloha-green-light)] font-semibold text-[var(--aloha-green)]"
-                      : "text-slate-700 hover:bg-[#F7F3EA]"
+                      : "text-slate-700 hover:bg-[var(--aloha-cream)]"
                   }`}
                 >
                   <span

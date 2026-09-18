@@ -298,7 +298,7 @@ export function HeaderSearch({ onSubmitExtra }: { onSubmitExtra?: () => void }) 
           </div>
           <button
             type="submit"
-            className="relative z-10 shrink-0 border-l border-white/20 bg-[var(--aloha-green-mid)] px-3 text-sm font-bold text-white hover:bg-[var(--aloha-green-dark)] sm:px-4"
+            className="relative z-10 shrink-0 border-l border-white/20 bg-[var(--aloha-green-dark)] px-3 text-sm font-bold text-white hover:opacity-90 sm:px-4"
           >
             {loading ? <Loader2 size={16} className="animate-spin" /> : "Tìm kiếm"}
           </button>

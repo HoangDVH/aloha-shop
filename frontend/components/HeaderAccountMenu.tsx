@@ -48,16 +48,16 @@ export function HeaderAccountMenu() {
   }, [open]);
 
   if (loading) {
-    return <span className="hidden px-2 text-xs text-white/70 sm:inline">…</span>;
+    return <span className="hidden px-2 text-xs text-[var(--aloha-muted)] sm:inline">…</span>;
   }
 
   if (!user) {
     return (
       <Link
         href={loginHref}
-        className="hidden items-center gap-1.5 rounded-md px-2 py-1.5 text-white hover:bg-white/15 sm:inline-flex"
+        className="hidden items-center gap-1.5 rounded-md px-2 py-1.5 text-white hover:bg-white/10 sm:inline-flex"
       >
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 text-white">
           <UserCog size={18} />
         </span>
         <span className="text-xs font-semibold">Đăng nhập</span>
@@ -69,7 +69,7 @@ export function HeaderAccountMenu() {
   const shortName =
     user.fullName.trim().split(/\s+/).slice(-2).join(" ") || user.email.split("@")[0];
   const roleLabel = accountRoleLabel(user);
-  const isCtv = user.roles.includes("ctv");
+  const isCtv = user.roles.includes("ctv") && user.ctvStatus === "active";
 
   const itemClass =
     "flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-[var(--aloha-green-light)] hover:text-[var(--aloha-green)]";
@@ -79,7 +79,7 @@ export function HeaderAccountMenu() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex max-w-[220px] items-center gap-2 rounded-md px-1.5 py-1 text-white hover:bg-white/15"
+        className="inline-flex max-w-[220px] items-center gap-2 rounded-md px-1.5 py-1 text-white hover:bg-white/10"
         aria-expanded={open}
         aria-haspopup="menu"
       >
@@ -97,7 +97,7 @@ export function HeaderAccountMenu() {
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 top-[calc(100%+8px)] z-[70] w-[280px] overflow-hidden rounded-xl border border-[#E5DFD2] bg-white shadow-xl"
+          className="absolute right-0 top-[calc(100%+8px)] z-[70] w-[280px] overflow-hidden rounded-xl border border-[var(--aloha-line)] bg-white shadow-xl"
         >
           <div className="bg-[var(--aloha-green)] px-4 py-3 text-white">
             <div className="flex items-center gap-3">
@@ -152,13 +152,13 @@ export function HeaderAccountMenu() {
             </Link>
             {isCtv ? (
               <Link
-                href="/tai-khoan?tab=hoa-hong"
+                href="/cong-tac-vien"
                 role="menuitem"
                 onClick={() => setOpen(false)}
                 className={itemClass}
               >
                 <Wallet size={18} className="text-[var(--aloha-green)]" />
-                Hoa hồng CTV
+                Dashboard CTV
               </Link>
             ) : null}
             <button

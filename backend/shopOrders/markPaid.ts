@@ -28,6 +28,7 @@ function orderDetailsOf(doc: Record<string, unknown>): ShopOrderDetail[] {
     quantity: Math.max(1, Math.floor(Number(it?.quantity ?? it?.qty ?? 1) || 1)),
     price: Math.max(0, Number(it?.price ?? it?.gia ?? 0) || 0),
     discount: Number(it?.discount || 0) || 0,
+    preOrder: Boolean(it?.preOrder) || undefined,
   }));
 }
 

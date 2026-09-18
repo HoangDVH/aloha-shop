@@ -190,11 +190,18 @@ export function startKvPaymentReconcile(
   }
   const interval = reconcileIntervalMs();
   const tick = () => {
-    void reconcileAwaitingKvPayments(getShopDb, getMainDb).then((r) => {
-      if (r.paid > 0) {
-        console.log("[kv-pay-reconcile] tick", r);
-      }
-    });
+    void reconcileAwaitingKvPayments(getShopDb, getMainDb)
+      .then((r) => {
+        if (r.paid > 0) {
+          console.log("[kv-pay-reconcile] tick", r);
+        }
+      })
+      .catch((e: any) => {
+        console.warn(
+          "[kv-pay-reconcile] tick lỗi (Mongo/KV tạm thời?):",
+          e?.message || e
+        );
+      });
   };
   setTimeout(tick, 15_000);
   timer = setInterval(tick, interval);

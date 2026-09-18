@@ -1,8 +1,8 @@
 /**
  * Link SP trên web bán alohathegioichaucay.com (xuất Excel / in bảng giá).
- * Mục tiêu: URL thật dạng /c/.../p/slug-hex (trang chi tiết),
- * ví dụ https://alohathegioichaucay.com/c/cay-phong-thuy-nhieu-loai/p/cay-thien-hoang-0dfe2e
- * Tem in (A4 / nhiệt / POS): chỉ mã SP. Link nội bộ (?sp=) gắn khi quét bằng nút trên app.
+ * Chuẩn shop mới: /c/{danh-muc}/p/{slug}--{ma}
+ * ví dụ …/c/binh-tuoi-cay/p/binh-xit-1-5l--bx1500ml
+ * (Không dùng slug-hash KiotViet cũ kiểu …-1fe117 — trang sẽ “Không tìm thấy SP”.)
  */
 import { normalizeString } from './helpers';
 
@@ -39,14 +39,18 @@ export function bindInternalSpToBrowser(ma: string): string {
   return link;
 }
 
-/** CDN sitemap KiotViet Web (+ bản sao trên domain shop). */
+/**
+ * Ưu tiên sitemap shop standalone (slug--mã).
+ * CDN KiotViet Web chỉ còn dự phòng — URL hash cũ dễ 404 trên shop mới.
+ */
 const SITEMAP_URLS = [
-  'https://cdn-kvweb.citigo.net/sitemaps/906762/product1/product.xml',
   'https://alohathegioichaucay.com/sitemap.xml',
+  'https://cdn-kvweb.citigo.net/sitemaps/906762/product1/product.xml',
 ] as const;
 
-const CACHE_KEY = 'aloha_shop_product_url_map_v6';
-const CACHE_AT_KEY = 'aloha_shop_product_url_map_at_v6';
+/** v7: bỏ cache map URL hash KiotViet cũ. */
+const CACHE_KEY = 'aloha_shop_product_url_map_v7';
+const CACHE_AT_KEY = 'aloha_shop_product_url_map_at_v7';
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 /** Map trong RAM — tránh mất link khi localStorage đầy / lỗi ghi. */
@@ -60,11 +64,15 @@ export function slugifyShop(text: string): string {
     .slice(0, 140);
 }
 
-/** Điểm ưu tiên: /c/.../p/... (chuẩn web hiện tại) > /products/... */
+/** Điểm ưu tiên URL — slug--mã (shop mới) cao hơn slug-hash (KV cũ). */
 function detailUrlScore(url: string): number {
-  if (/\/c\/[^/]+\/p\//i.test(url)) return 3;
-  if (/\/p\//i.test(url)) return 2;
-  if (/\/products\//i.test(url)) return 1;
+  const path = String(url || '').split(/[?#]/)[0] || '';
+  if (/\/c\/[^/]+\/p\/[^/]+--[^/]+$/i.test(path)) return 6;
+  if (/\/sp\/[^/]+$/i.test(path)) return 5;
+  if (/\/c\/[^/]+\/p\/[^/]+-[a-f0-9]{5,8}$/i.test(path)) return 2; // KV hex cũ
+  if (/\/c\/[^/]+\/p\//i.test(path)) return 4;
+  if (/\/p\//i.test(path)) return 3;
+  if (/\/products\//i.test(path)) return 1;
   return 0;
 }
 
@@ -77,13 +85,13 @@ function isShopDetailUrl(url: string): boolean {
   return detailUrlScore(url) > 0 && /alohathegioichaucay\.com/i.test(url);
 }
 
-/** Khi chưa khớp sitemap — tìm trên web bán (không mở app nội bộ). */
+/** Khi chưa khớp sitemap — /sp/{mã} luôn mở được trên shop mới. */
 export function shopProductUrlFallback(ma: string, ten?: string): string {
   const code = String(ma || '').trim();
+  if (code) return `${SHOP_ORIGIN}/sp/${encodeURIComponent(code)}`;
   const name = String(ten || '').trim();
-  const q = name || code;
-  if (!q) return SHOP_ORIGIN;
-  return `${SHOP_ORIGIN}/?q=${encodeURIComponent(q)}`;
+  if (!name) return SHOP_ORIGIN;
+  return `${SHOP_ORIGIN}/tim?q=${encodeURIComponent(name)}`;
 }
 
 /** Các biến thể slug tên để khớp sitemap (bỏ ngoặc, rút ngắn…). */
@@ -117,11 +125,28 @@ function readCachedMap(): UrlMap | null {
     const raw = localStorage.getItem(CACHE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as UrlMap;
-    if (parsed && Object.keys(parsed).length > 50) memoryMap = parsed;
+    if (parsed && Object.keys(parsed).length > 50) {
+      if (mapLooksStale(parsed)) return null;
+      memoryMap = parsed;
+    }
     return parsed;
   } catch {
     return null;
   }
+}
+
+/** Cache toàn URL hash KV → coi cũ, tải lại sitemap shop. */
+function mapLooksStale(map: UrlMap): boolean {
+  const vals = Object.values(map);
+  if (!vals.length) return true;
+  let neu = 0;
+  let hex = 0;
+  for (const u of vals) {
+    const path = String(u || '').split(/[?#]/)[0] || '';
+    if (/\/p\/[^/]+--[^/]+$/i.test(path) || /\/sp\//i.test(path)) neu += 1;
+    else if (/\/p\/[^/]+-[a-f0-9]{5,8}$/i.test(path)) hex += 1;
+  }
+  return neu < 30 && hex > neu;
 }
 
 function writeCachedMap(map: UrlMap) {
@@ -176,12 +201,16 @@ function pickFromMap(cached: UrlMap, ma: string, ten: string): string | null {
     if (!isShopDetailUrl(url)) continue;
     best = preferDetailUrl(best || undefined, url);
   }
+  // Không trả URL hash KV cũ nếu đã có mã — dùng /sp/{mã} chắc chắn mở được.
+  if (best && code && detailUrlScore(best) <= 2) {
+    return shopProductUrlFallback(code, name);
+  }
   return best;
 }
 
 /**
  * Link trang chi tiết SP trên alohathegioichaucay.com
- * (vd. /c/cay-phong-thuy-nhieu-loai/p/cay-thien-hoang-0dfe2e).
+ * (vd. /c/binh-tuoi-cay/p/binh-xit-1-5l--bx1500ml).
  */
 export function shopProductUrl(ma: string, ten?: string): string {
   const code = String(ma || '').trim().toUpperCase();
@@ -194,7 +223,7 @@ export function shopProductUrl(ma: string, ten?: string): string {
   return shopProductUrlFallback(code, name);
 }
 
-/** Parse sitemap KV Web → map mã / slug / tên → URL đầy đủ /c/.../p/... */
+/** Parse sitemap → map mã / slug / tên → URL đầy đủ. */
 export function parseSitemapToMap(xml: string): UrlMap {
   const map: UrlMap = {};
   const put = (key: string, url: string) => {
@@ -206,15 +235,25 @@ export function parseSitemapToMap(xml: string): UrlMap {
     const locM = block.match(/<loc>(https:\/\/alohathegioichaucay\.com\/[^<]+)<\/loc>/i);
     if (!locM) continue;
     const url = locM[1].trim();
-    // Chỉ trang chi tiết (/c/.../p/... hoặc /products/...)
-    if (!/\/p\//i.test(url) && !/\/products\//i.test(url)) continue;
+    if (!/\/p\//i.test(url) && !/\/products\//i.test(url) && !/\/sp\//i.test(url)) continue;
 
     let slugPart = '';
     const pMatch = url.match(/\/p\/([^/?#]+)/i);
+    const spMatch = url.match(/\/sp\/([^/?#]+)/i);
     const prodMatch = url.match(/\/products\/([^/?#]+)\/([a-f0-9]{5,8})/i);
     if (pMatch) slugPart = decodeURIComponent(pMatch[1]);
-    else if (prodMatch) slugPart = `${prodMatch[1]}-${prodMatch[2]}`;
+    else if (spMatch) {
+      put(decodeURIComponent(spMatch[1]).toUpperCase(), url);
+      continue;
+    } else if (prodMatch) slugPart = `${prodMatch[1]}-${prodMatch[2]}`;
     else slugPart = decodeURIComponent(url.split('/').pop() || '');
+
+    // Shop mới: slug--MA
+    const dd = slugPart.match(/^(.*)--([A-Za-z0-9][A-Za-z0-9._-]*)$/);
+    if (dd) {
+      put(dd[2].toUpperCase(), url);
+      if (dd[1]) put(`SLUG:${dd[1].toLowerCase()}`, url);
+    }
 
     const parts = slugPart.split('-').filter(Boolean);
     let withoutHex = slugPart;
@@ -248,21 +287,25 @@ export async function ensureShopProductUrlMap(force = false): Promise<number> {
   if (!force) {
     const cached = readCachedMap();
     if (cached && Object.keys(cached).length > 50) {
-      // Chỉ chấp nhận cache đã có ít nhất 1 link /c/.../p/
-      const hasDetail = Object.values(cached).some((u) => /\/c\/[^/]+\/p\//i.test(u));
-      if (hasDetail) return Object.keys(cached).length;
+      const hasDetail = Object.values(cached).some(
+        (u) => /\/c\/[^/]+\/p\/[^/]+--/i.test(u) || /\/sp\//i.test(u) || /\/c\/[^/]+\/p\//i.test(u)
+      );
+      if (hasDetail && !mapLooksStale(cached)) return Object.keys(cached).length;
     }
   } else {
     memoryMap = null;
     try {
       localStorage.removeItem(CACHE_KEY);
       localStorage.removeItem(CACHE_AT_KEY);
+      // Xóa luôn cache v6 cũ nếu còn
+      localStorage.removeItem('aloha_shop_product_url_map_v6');
+      localStorage.removeItem('aloha_shop_product_url_map_at_v6');
     } catch {
       /* ignore */
     }
   }
   try {
-    const res = await fetch('/api/shop-product-map', { credentials: 'same-origin' });
+    const res = await fetch('/api/shop-product-map?fresh=1', { credentials: 'same-origin' });
     if (res.ok) {
       const json = (await res.json()) as { ok?: boolean; map?: UrlMap; count?: number };
       if (json?.map && Object.keys(json.map).length) {
@@ -271,7 +314,7 @@ export async function ensureShopProductUrlMap(force = false): Promise<number> {
       }
     }
   } catch {
-    /* thử CDN */
+    /* thử CDN / shop sitemap */
   }
   for (const sitemapUrl of SITEMAP_URLS) {
     try {

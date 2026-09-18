@@ -48,6 +48,11 @@ import {
   verifyShopAccessToken,
 } from "../shopAuth/tokens.js";
 import { publicProductVideos } from "./productVideoUrl.js";
+import {
+  loadCategoryMetaById,
+  overlayProductCategoryFields,
+  overlayProductCategoryFieldsMany,
+} from "./categoryMeta.ts";
 
 type GetDb = () => Promise<Db>;
 
@@ -117,11 +122,10 @@ function regexEscapeLiteral(raw: string): string {
   return String(raw || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/** Lọc nhóm hàng — khớp cả nhánh con (giống tab Hàng hóa / KiotViet). */
+/** Lọc nhóm hàng — ưu tiên categoryId; path chỉ dùng resolve id / ancestor / categoryName. */
 function buildCategorySubtreeFilter(catList: string[]): Record<string, unknown> | null {
   const clauses: Record<string, unknown>[] = [];
   const numIds: number[] = [];
-  const pathSep = String.raw`\s*(?:>>|▸|>)\s*`;
 
   for (const raw of catList) {
     let cat = String(raw || "").trim();
@@ -139,17 +143,10 @@ function buildCategorySubtreeFilter(catList: string[]): Record<string, unknown> 
       .filter(Boolean);
     if (!segments.length) continue;
 
-    const fullEscaped = segments.map((s) => regexEscapeLiteral(s)).join(pathSep);
-    clauses.push({
-      nhomPath: { $regex: `^${fullEscaped}(${pathSep}|$)`, $options: "i" },
-    });
-
     if (segments.length === 1) {
       const seg = regexEscapeLiteral(segments[0]);
       clauses.push(
-        { nhom: { $regex: `^${seg}$`, $options: "i" } },
         { ancestor: { $regex: `^${seg}$`, $options: "i" } },
-        // DB shop mới: nhóm gắn qua categoryName / categoryId (không còn nhom/nhomPath)
         { categoryName: { $regex: `^${seg}$`, $options: "i" } }
       );
     } else {
@@ -163,15 +160,9 @@ function buildCategorySubtreeFilter(catList: string[]): Record<string, unknown> 
           })),
         },
       });
-      // SP shop thường chỉ lưu tên lá trong nhom/nhomPath — khớp thêm để navbar (đường dẫn đầy đủ) vẫn ra SP
       const leaf = segments[segments.length - 1];
       const leafEsc = regexEscapeLiteral(leaf);
-      clauses.push(
-        { nhom: { $regex: `^${leafEsc}$`, $options: "i" } },
-        { nhomPath: { $regex: `^${leafEsc}$`, $options: "i" } },
-        { nhomPath: { $regex: `${pathSep}${leafEsc}$`, $options: "i" } },
-        { categoryName: { $regex: `^${leafEsc}$`, $options: "i" } }
-      );
+      clauses.push({ categoryName: { $regex: `^${leafEsc}$`, $options: "i" } });
     }
   }
 
@@ -318,13 +309,12 @@ function mergeCategoryFilters(
   pathList: string[],
   categoryIds: number[]
 ): Record<string, unknown> | null {
-  const parts: Record<string, unknown>[] = [];
-  const pathFilter = buildCategorySubtreeFilter(pathList);
-  if (pathFilter) parts.push(pathFilter);
-  if (categoryIds.length) parts.push({ categoryId: { $in: categoryIds } });
-  if (!parts.length) return null;
-  if (parts.length === 1) return parts[0];
-  return { $or: parts };
+  // Chỉ lọc theo categoryId (+ đã expand subtree). Path chỉ dùng để resolve id.
+  if (categoryIds.length) {
+    return { categoryId: { $in: categoryIds } };
+  }
+  // Fallback hiếm: resolve path thất bại → khớp ancestor/categoryName
+  return buildCategorySubtreeFilter(pathList);
 }
 
 /**
@@ -333,7 +323,10 @@ function mergeCategoryFilters(
 async function buildHomeScopeFilter(db: Db): Promise<Record<string, unknown> | null> {
   const ors: Record<string, unknown>[] = [];
   const catIds = await resolveCategoryIdsForPaths(db, [HOME_CAY_THANH_PHAM_PATH]);
-  const catFilter = mergeCategoryFilters([HOME_CAY_THANH_PHAM_PATH], catIds);
+  const allIds = catIds.length
+    ? await resolveCategoryIdsForRootIds(db, catIds)
+    : [];
+  const catFilter = mergeCategoryFilters([HOME_CAY_THANH_PHAM_PATH], allIds);
   if (catFilter) ors.push(catFilter);
 
   try {
@@ -363,9 +356,11 @@ async function mapDocsToPublicWithPriceBooks(
   docs: Record<string, unknown>[];
   items: ReturnType<typeof toPublicProduct>[];
 }> {
-  const mas = docs.map((d) => String(d.ma || "").trim()).filter(Boolean);
+  const metaById = await loadCategoryMetaById(db);
+  const withCat = overlayProductCategoryFieldsMany(docs, metaById);
+  const mas = withCat.map((d) => String(d.ma || "").trim()).filter(Boolean);
   const pbByMa = await loadPriceBooksByMa(db, mas);
-  const overlaid = overlayDocsWithPriceBooks(docs, pbByMa);
+  const overlaid = overlayDocsWithPriceBooks(withCat, pbByMa);
   const items = overlaid.map((d) => toPublicProduct(d));
   const enriched = await enrichListDisplayTons(db, overlaid, items);
   return { docs: overlaid, items: enriched };
@@ -418,10 +413,32 @@ function publicTon(doc: Record<string, unknown>): number {
 
 function categorySlug(doc: Record<string, unknown>): string {
   const path = String(
-    doc.nhomPath || doc.nhom || doc.categoryName || "san-pham"
+    deriveNhomPath(doc) || doc.categoryName || "san-pham"
   ).trim();
   const leaf = path.split(/\s*[▸>\/|]\s*/).filter(Boolean).pop() || path;
   return slugify(leaf) || "san-pham";
+}
+
+/** Map ảo nhom/nhomPath từ categoryName + ancestor (đã overlay từ cây categories khi đọc API). */
+function deriveNhomPath(doc: Record<string, unknown>): string {
+  const leaf = String(doc.categoryName || "").trim();
+  const ancestor = Array.isArray(doc.ancestor)
+    ? doc.ancestor.map((x) => String(x || "").trim()).filter(Boolean)
+    : [];
+  if (ancestor.length) {
+    const last = ancestor[ancestor.length - 1] || "";
+    if (leaf && last !== leaf) return [...ancestor, leaf].join(" >> ");
+    return ancestor.join(" >> ");
+  }
+  return leaf || String(doc.nhomPath || doc.nhom || "").trim();
+}
+
+function deriveNhom(doc: Record<string, unknown>): string {
+  const categoryName = String(doc.categoryName || "").trim();
+  if (categoryName) return categoryName;
+  const path = deriveNhomPath(doc);
+  if (!path) return "";
+  return path.split(/\s*[▸>\/|]\s*/).filter(Boolean).pop() || path;
 }
 
 function productSlug(doc: Record<string, unknown>): string {
@@ -451,8 +468,8 @@ function toPublicProduct(doc: Record<string, unknown>) {
   const webBadge = String(doc.webBadge || "").trim();
   const categoryId = Number(doc.categoryId) || 0;
   const categoryName = String(doc.categoryName || "").trim();
-  const nhom = String(doc.nhom || categoryName || "").trim();
-  const nhomPath = String(doc.nhomPath || doc.nhom || categoryName || "").trim();
+  const nhom = deriveNhom(doc);
+  const nhomPath = deriveNhomPath(doc) || nhom;
   return {
     ma,
     ten,
@@ -460,7 +477,7 @@ function toPublicProduct(doc: Record<string, unknown>) {
     nhom,
     nhomPath,
     categoryId: categoryId > 0 ? categoryId : undefined,
-    categoryName: categoryName || undefined,
+    categoryName: categoryName || nhom || undefined,
     gia,
     ton,
     trongLuong: trongLuong > 0 ? trongLuong : undefined,
@@ -480,6 +497,8 @@ function toPublicProduct(doc: Record<string, unknown>) {
       webBadge === "ban_chay" || webBadge === "moi" || webBadge === "noi_bat"
         ? webBadge
         : undefined,
+    seoTitle: String(doc.seoTitle || "").trim() || undefined,
+    seoDescription: String(doc.seoDescription || "").trim() || undefined,
   };
 }
 
@@ -525,7 +544,7 @@ function dedupeListItems(
     const ma = String(d.ma || "").trim().toUpperCase();
     if (!ma) continue;
     attrsByMa.set(ma, normalizeAttrs(d.attributes));
-    nhomByMa.set(ma, String(d.nhomPath || d.nhom || d.categoryName || ""));
+    nhomByMa.set(ma, deriveNhomPath(d) || deriveNhom(d));
   }
   return dedupeCanonicalPublic(items, attrsByMa, nhomByMa);
 }
@@ -866,8 +885,9 @@ async function findByProductSlug(db: Db, slug: string) {
     .project({
       ma: 1,
       ten: 1,
-      nhom: 1,
-      nhomPath: 1,
+      categoryId: 1,
+      categoryName: 1,
+      ancestor: 1,
       giaWeb: 1,
       giaBan: 1,
       giaChung: 1,
@@ -912,37 +932,33 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
   app.get("/api/shop/categories", async (req, res) => {
     setCors(req, res);
     try {
-      const { body, cache } = await cachedJson("shop:categories:v1", async () => {
+      const { body, cache } = await cachedJson("shop:categories:v4", async () => {
         const db = await catalogDb();
-        const rows = await db
-          .collection(COL)
-          .aggregate([
-            { $match: shopFilterBase() },
-            {
-              $group: {
-                _id: {
-                  nhom: { $ifNull: ["$nhom", "Khác"] },
-                  nhomPath: { $ifNull: ["$nhomPath", "$nhom"] },
-                },
-                count: { $sum: 1 },
-              },
-            },
-            { $sort: { count: -1 } },
-            { $limit: 200 },
-          ])
-          .toArray();
-        const items = rows.map((r) => {
-          const nhom = String((r as any)._id?.nhom || "Khác");
-          const nhomPath = String((r as any)._id?.nhomPath || nhom);
-          const leaf = nhomPath.split(/\s*[▸>\/|]\s*/).filter(Boolean).pop() || nhom;
-          return {
-            name: nhom,
-            path: nhomPath,
-            slug: slugify(leaf) || "khac",
-            count: Number((r as any).count) || 0,
-          };
-        });
-        return { items };
+        const { tree } = await buildShopKvCategoryTree(db);
+        const items: Array<{
+          name: string;
+          path: string;
+          slug: string;
+          count: number;
+        }> = [];
+        const walk = (nodes: CategoryNode[], prefix: string[]) => {
+          for (const n of nodes) {
+            const name = String(n.name || "").trim() || "Khác";
+            const pathSegs = [...prefix, name];
+            const path = pathSegs.join(" >> ");
+            const leaf = name;
+            items.push({
+              name,
+              path,
+              slug: slugify(leaf) || "khac",
+              count: Number(n.productCount ?? n.count ?? 0) || 0,
+            });
+            if (n.children?.length) walk(n.children, pathSegs);
+          }
+        };
+        walk(tree, []);
+        items.sort((a, b) => b.count - a.count);
+        return { items: items.slice(0, 200) };
       });
       res.setHeader("X-Shop-Cache", cache);
       res.json(body);
@@ -954,7 +970,7 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
   app.get("/api/shop/category-tree", async (req, res) => {
     setCors(req, res);
     try {
-      const { body, cache } = await cachedJson("shop:category-tree:v5", async () => {
+      const { body, cache } = await cachedJson("shop:category-tree:v8", async () => {
         const db = await catalogDb();
         const { items } = await buildShopKvCategoryTree(db);
         return { items };
@@ -1000,7 +1016,7 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
         attrFilters.length > 0 ||
         dvtFilters.length > 0 ||
         Boolean(loai);
-      const cacheKey = `shop:products:v19:${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|${sort}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
+      const cacheKey = `shop:products:v21:${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|${sort}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
 
       const { body, cache } = await cachedJson(cacheKey, async () => {
         const db = await catalogDb();
@@ -1013,9 +1029,8 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
               { ma: rx },
               { ten: rx },
               { barcode: rx },
-              { nhom: rx },
-              { nhomPath: rx },
               { categoryName: rx },
+              { ancestor: rx },
             ],
           });
         }
@@ -1049,8 +1064,6 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
           ma: 1,
           ten: 1,
           dvt: 1,
-          nhom: 1,
-          nhomPath: 1,
           categoryId: 1,
           categoryName: 1,
           ancestor: 1,
@@ -1315,8 +1328,9 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
           ton: 1,
           onHand: 1,
           kvTon: 1,
-          nhom: 1,
-          nhomPath: 1,
+          categoryId: 1,
+          categoryName: 1,
+          ancestor: 1,
           isActive: 1,
           type: 1,
           productType: 1,
@@ -1336,11 +1350,15 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
       }
 
       const pbByMa = await loadPriceBooksByMa(db, mas);
+      const metaById = await loadCategoryMetaById(db);
       const items = [];
       for (const ma of mas) {
         const raw = byMa.get(ma);
         if (!raw) continue;
-        const doc = applyPriceBookOverlay(raw, pbByMa.get(ma));
+        const doc = applyPriceBookOverlay(
+          overlayProductCategoryFields(raw, metaById),
+          pbByMa.get(ma)
+        );
         const p = toPublicProduct(doc);
         let ton = p.ton;
         if (ton <= 0 && isComboOrFormulaProduct(doc)) {
@@ -1383,7 +1401,7 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
         Boolean(q) ||
         homeScope ||
         allCatalog;
-      const cacheKey = `shop:facets:v5:${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|all=${allCatalog ? 1 : 0}|${scoped ? "1" : "0"}`;
+      const cacheKey = `shop:facets:v6:${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|all=${allCatalog ? 1 : 0}|${scoped ? "1" : "0"}`;
       const { body, cache } = await cachedJson(cacheKey, async () => {
         if (!scoped) {
           return { attributes: {}, dvt: ["Cái", "Cây", "Thùng", "Gói", "Bao"] };
@@ -1397,9 +1415,8 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
               { ma: rx },
               { ten: rx },
               { barcode: rx },
-              { nhom: rx },
-              { nhomPath: rx },
               { categoryName: rx },
+              { ancestor: rx },
             ],
           });
         }
@@ -1518,11 +1535,13 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
         if (k) byMa.set(k, d);
       }
       const rawDocs = [...byMa.values()];
+      const metaById = await loadCategoryMetaById(db);
+      const alignedDocs = overlayProductCategoryFieldsMany(rawDocs, metaById);
       const pbByMa = await loadPriceBooksByMa(
         db,
-        rawDocs.map((d) => String(d.ma || "").trim())
+        alignedDocs.map((d) => String(d.ma || "").trim())
       );
-      const docs = overlayDocsWithPriceBooks(rawDocs, pbByMa);
+      const docs = overlayDocsWithPriceBooks(alignedDocs, pbByMa);
       byMa.clear();
       for (const d of docs) {
         const k = String(d.ma || "").trim().toUpperCase();
@@ -1595,7 +1614,11 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
       }
       const maKey = String((doc as any).ma || ma).trim().toUpperCase();
       const pbByMa = await loadPriceBooksByMa(db, [maKey]);
-      const overlaid = applyPriceBookOverlay(doc as any, pbByMa.get(maKey));
+      const metaById = await loadCategoryMetaById(db);
+      const overlaid = applyPriceBookOverlay(
+        overlayProductCategoryFields(doc as any, metaById),
+        pbByMa.get(maKey)
+      );
       const item = toPublicProduct(overlaid);
       if (
         !(Number(item.gia) > 0) &&
@@ -1640,7 +1663,11 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
       }
       const maKey = String((doc as any).ma || "").trim().toUpperCase();
       const pbByMa = await loadPriceBooksByMa(db, [maKey]);
-      const overlaid = applyPriceBookOverlay(doc as any, pbByMa.get(maKey));
+      const metaById = await loadCategoryMetaById(db);
+      const overlaid = applyPriceBookOverlay(
+        overlayProductCategoryFields(doc as any, metaById),
+        pbByMa.get(maKey)
+      );
       const item = toPublicProduct(overlaid);
       if (
         !(Number(item.gia) > 0) &&

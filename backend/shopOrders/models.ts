@@ -47,6 +47,8 @@ export type ShopOrderDetail = {
   variantLabel?: string;
   imageUrl?: string;
   ctvCode?: string;
+  /** Hết tồn lúc tạo đơn — không assert/hold kho; đơn bắt CK */
+  preOrder?: boolean;
 };
 
 export function newAddressId(): string {

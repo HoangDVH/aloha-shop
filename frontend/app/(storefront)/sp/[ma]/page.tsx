@@ -35,7 +35,9 @@ export async function generateMetadata({
 
     const price = formatVnd(item.gia);
     const stock =
-      item.ton > 0 ? `Còn khoảng ${item.ton} ${item.dvt || ""}`.trim() : "Hết hàng";
+      item.ton > 0
+        ? `Còn khoảng ${item.ton} ${item.dvt || ""}`.trim()
+        : "Đặt trước — giao khi có hàng";
     const descPlain = plainText(item.description || "");
     const description =
       descPlain.slice(0, 140) ||

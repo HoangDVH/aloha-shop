@@ -31,6 +31,8 @@ export type CartAddResult = {
   qty: number;
   max: number | null;
   capped: boolean;
+  /** Thêm khi ton đã biết và ≤ 0 */
+  preOrder?: boolean;
 };
 
 /** Tồn tối đa có thể đặt; null = chưa biết (chưa sync). */
@@ -39,7 +41,13 @@ export function stockMax(ton: number | undefined | null): number | null {
   return Math.max(0, Math.floor(Number(ton)));
 }
 
-/** Giới hạn qty theo tồn; qty <= 0 → 0 (xóa dòng). */
+/** Đặt trước khi tồn đã biết và ≤ 0. */
+export function isPreOrderTon(ton: number | undefined | null): boolean {
+  const max = stockMax(ton);
+  return max != null && max <= 0;
+}
+
+/** Giới hạn qty theo tồn; qty ≤ 0 → 0 (xóa dòng). Đặt trước: không cap theo ton=0. */
 export function clampQtyToStock(
   qty: number,
   ton: number | undefined | null
@@ -48,7 +56,7 @@ export function clampQtyToStock(
   if (q <= 0) return 0;
   const max = stockMax(ton);
   if (max == null) return q;
-  if (max <= 0) return 0;
+  if (max <= 0) return q; // pre-order
   return Math.min(q, max);
 }
 
@@ -92,11 +100,13 @@ export const useCart = create<CartState>()(
         const want = Math.max(1, Math.floor(qty));
         const ctv = normalizeCtvCode(ctvCode || getGuestCtvCode());
         const max = stockMax(p.ton);
+        const preOrder = isPreOrderTon(p.ton);
         let result: CartAddResult = {
           ok: true,
           qty: want,
           max,
           capped: false,
+          preOrder,
         };
 
         set((s) => {
@@ -104,16 +114,8 @@ export const useCart = create<CartState>()(
           const existing = i >= 0 ? s.lines[i].qty : 0;
           const nextQty = clampQtyToStock(existing + want, p.ton);
 
-          if (max != null && max <= 0) {
-            result = { ok: false, qty: existing, max: 0, capped: true };
-            if (i >= 0) {
-              return { lines: s.lines.filter((_, idx) => idx !== i) };
-            }
-            return s;
-          }
-
           if (nextQty <= 0) {
-            result = { ok: false, qty: 0, max, capped: true };
+            result = { ok: false, qty: 0, max, capped: true, preOrder };
             return s;
           }
 
@@ -121,7 +123,8 @@ export const useCart = create<CartState>()(
             ok: nextQty > existing,
             qty: nextQty,
             max,
-            capped: max != null && existing + want > max,
+            capped: !preOrder && max != null && existing + want > max,
+            preOrder,
           };
 
           if (i >= 0) {

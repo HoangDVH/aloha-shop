@@ -1,24 +1,28 @@
 @import "tailwindcss";
 
 :root {
-  /* Khớp store — primary/header/font bị ghi đè bởi ThemeCssServer / applyThemeCssVars */
-  --aloha-green: #3d6b3a;
-  --aloha-green-mid: #2f5530;
-  --aloha-green-dark: #244428;
-  --aloha-green-light: #e8efe4;
-  --aloha-gold: #3d6b3a;
-  --aloha-header: #3d6b3a;
-  --aloha-cream: #f7f3ea;
-  --aloha-ink: #1a2e1a;
-  --aloha-muted: #6b7280;
-  --aloha-line: #e5dfd2;
-  --aloha-price: #c2410c;
+  /* Palette Aloha — xanh tươi + nền mint + giá cam (shop cây cảnh) */
+  --aloha-green: #16c45a;
+  --aloha-green-hover: #22c55e;
+  --aloha-green-mid: #12a34a;
+  --aloha-green-dark: #0e8a3e;
+  --aloha-green-light: #e9fbf0;
+  --aloha-green-bright: #4ade80;
+  --aloha-gold: #f59e0b;
+  --aloha-header: #12a34a;
+  --aloha-cream: #f7fcf8;
+  --aloha-card: #ffffff;
+  --aloha-ink: #134e2e;
+  --aloha-muted: #5b7c6a;
+  --aloha-line: #d8eee0;
+  --aloha-price: #f59e0b;
+  --aloha-sale: #e11d48;
+  --aloha-error: #dc6b6b;
   --aloha-radius: 0.875rem;
   --aloha-radius-lg: 1.25rem;
-  --aloha-shadow: 0 2px 12px rgba(26, 46, 26, 0.06);
-  --aloha-shadow-lg: 0 16px 40px rgba(61, 107, 58, 0.14);
+  --aloha-shadow: 0 2px 14px rgba(18, 163, 74, 0.07);
+  --aloha-shadow-lg: 0 16px 40px rgba(22, 196, 90, 0.16);
   --aloha-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  /* Header + nav — SiteHeader cập nhật runtime */
   --shop-chrome-h: 7.5rem;
 }
 
@@ -31,6 +35,29 @@ body {
   background: var(--aloha-cream);
   font-family: var(--aloha-font, "Segoe UI", ui-sans-serif, system-ui, sans-serif);
   overflow-x: clip;
+}
+
+/* Nút chính storefront — hover sáng hơn một nấc */
+.btn-aloha-primary {
+  background: var(--aloha-green);
+  color: #fff;
+  transition: background-color 0.15s ease, filter 0.15s ease;
+}
+.btn-aloha-primary:hover:not(:disabled) {
+  background: var(--aloha-green-hover);
+}
+.btn-aloha-primary:active:not(:disabled) {
+  background: var(--aloha-green-mid);
+}
+
+/* Nút phụ */
+.btn-aloha-secondary {
+  background: var(--aloha-green-light);
+  color: var(--aloha-green-mid);
+  transition: filter 0.15s ease;
+}
+.btn-aloha-secondary:hover:not(:disabled) {
+  filter: brightness(0.97);
 }
 
 /* Sticky bottom bars (PDP / giỏ / checkout) — luôn có đệm đáy + safe-area */
@@ -70,7 +97,7 @@ body {
   width: 100%;
   aspect-ratio: 1 / 1;
   overflow: hidden;
-  background: var(--aloha-cream, #f7f3ea);
+  background: var(--aloha-cream, #f7fcf8);
   flex-shrink: 0;
 }
 
@@ -100,7 +127,7 @@ body {
   height: auto;
   overflow: hidden;
   border-radius: 0.75rem;
-  background: #f7f3ea;
+  background: var(--aloha-cream, #f7fcf8);
 }
 
 .article-cover__img,
@@ -168,7 +195,7 @@ body {
   max-width: 100% !important;
   border-radius: 0.75rem;
   border: 1px solid #e5e7eb;
-  background: #f7f3ea;
+  background: var(--aloha-cream, #f7fcf8);
   cursor: zoom-in;
 }
 
@@ -232,7 +259,7 @@ body {
 }
 
 .article-body a.article-hashtag:hover {
-  border-color: var(--aloha-gold, #c9a227);
+  border-color: var(--aloha-gold, #f59e0b);
   background: #fff8db;
   color: #1e293b;
   opacity: 1;
@@ -364,7 +391,7 @@ body {
 
 /* Loading toàn trang — logo nhỏ + vòng quay (kiểu KiotViet) */
 .shop-page-loader {
-  background: rgba(247, 243, 234, 0.94);
+  background: rgba(255, 251, 240, 0.94);
   backdrop-filter: blur(6px);
   pointer-events: all;
 }
@@ -388,7 +415,7 @@ body {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  border: 2px solid #e2ebe0;
+  border: 2px solid #c8e6c9;
   border-top-color: var(--aloha-green);
   border-right-color: var(--aloha-green-mid);
   animation: shop-loader-spin 0.75s linear infinite;
@@ -432,7 +459,7 @@ body {
 .auth-field {
   width: 100%;
   border-radius: 0.85rem;
-  border: 1.5px solid #e2ddd2;
+  border: 1.5px solid #e2e8f0;
   background: #fff;
   padding: 0.85rem 1rem;
   font-size: 0.9375rem;
@@ -445,11 +472,11 @@ body {
 }
 
 .auth-field::placeholder {
-  color: #9aa39a;
+  color: #94a3b8;
 }
 
 .auth-field:hover {
-  border-color: #c9d6c4;
+  border-color: #a5d6a7;
 }
 
 .auth-field:focus {
@@ -499,7 +526,7 @@ body {
   justify-content: center;
   gap: 0.65rem;
   border-radius: 0.85rem;
-  border: 1.5px solid #e5e2da;
+  border: 1.5px solid #e2e8f0;
   background: #fff;
   padding: 0.85rem 1rem;
   font-size: 0.9375rem;
@@ -513,9 +540,9 @@ body {
 }
 
 .auth-google:hover {
-  background: #fafaf7;
-  border-color: #d5d0c4;
-  box-shadow: 0 8px 20px -14px rgba(26, 46, 26, 0.35);
+  background: var(--aloha-cream, #f7fcf8);
+  border-color: #cbd5e1;
+  box-shadow: 0 8px 20px -14px rgba(15, 23, 42, 0.35);
   transform: translateY(-1px);
 }
 
@@ -669,9 +696,9 @@ body {
   background:
     linear-gradient(
       118deg,
-      color-mix(in srgb, var(--aloha-green-dark) 92%, #061008) 0%,
+      color-mix(in srgb, var(--aloha-green-dark) 92%, #062010) 0%,
       var(--aloha-green-mid) 42%,
-      color-mix(in srgb, var(--aloha-header, var(--aloha-green)) 78%, #123018) 100%
+      color-mix(in srgb, var(--aloha-green) 78%, #1a5c2e) 100%
     );
 }
 
@@ -1434,7 +1461,7 @@ body {
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--aloha-green);
+  color: var(--aloha-ink);
   line-height: 1.2;
   white-space: nowrap;
 }

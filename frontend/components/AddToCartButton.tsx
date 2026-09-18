@@ -27,16 +27,18 @@ export function AddToCartButton({
         const r = add(product, qty);
         if (!r.ok) {
           toast.push(
-            r.max === 0
+            r.max === 0 && !r.preOrder
               ? `“${product.ten}” đã hết hàng`
               : `Chỉ còn ${r.max} ${product.dvt || "sản phẩm"} — giỏ đã đủ số này`
           );
           return;
         }
         toast.push(
-          r.capped
-            ? `Đã thêm tối đa ${r.qty} ${product.dvt || ""} (hết tồn kho)`
-            : `Đã thêm “${product.ten}” vào giỏ`,
+          r.preOrder
+            ? "Đã thêm đặt trước — giao khi shop có hàng"
+            : r.capped
+              ? `Đã thêm tối đa ${r.qty} ${product.dvt || ""} (hết tồn kho)`
+              : `Đã thêm “${product.ten}” vào giỏ`,
           {
             href: "/gio-hang",
             hrefLabel: "Xem giỏ hàng",

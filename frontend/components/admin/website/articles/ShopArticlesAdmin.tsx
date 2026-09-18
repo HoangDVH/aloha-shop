@@ -20,7 +20,8 @@ import {
 import { toast } from "@/components/admin/toast";
 import { websiteApi } from "../api";
 import { uploadAppearanceImage } from "../appearance/ImageUploadField";
-import { WbBtn, WbLoading, wbInput, wbSelect } from "../ui";
+import { WbBtn, wbInput, wbSelect } from "../ui";
+import { AdminTableSkeleton } from "@/components/admin/ui/AdminSkeleton";
 import { ArticleImageCropDialog } from "./ArticleImageCropDialog";
 import { ArticleRichEditor } from "./ArticleRichEditor";
 import {
@@ -144,7 +145,7 @@ function bodyHtmlForPreview(raw: string): string {
         (m, https: string, bare: string) => {
           const url = https || bare || m;
           const href = /^https?:\/\//i.test(url) ? url : `https://${url}`;
-          return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="font-semibold text-[#3D6B3A] underline">${url}</a>`;
+          return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="font-semibold text-[#0F9D58] underline">${url}</a>`;
         }
       );
       out = out.replace(/#([\p{L}\p{N}_-]{2,40})/gu, (_m, tag: string) => {
@@ -830,7 +831,7 @@ export function ShopArticlesAdmin() {
                           className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] hover:bg-slate-50"
                           onClick={() => addProduct(p.ma)}
                         >
-                          <span className="font-semibold text-[#3D6B3A]">{p.ma}</span>
+                          <span className="font-semibold text-[#0F9D58]">{p.ma}</span>
                           <span className="truncate text-gray-600">{p.ten}</span>
                         </button>
                       </li>
@@ -967,11 +968,15 @@ export function ShopArticlesAdmin() {
       </div>
 
       {loading && !rows.length ? (
-        <WbLoading label="Đang tải bài viết…" />
+        <AdminTableSkeleton
+          rows={8}
+          cols={5}
+          headers={["Bài viết", "Danh mục", "Ngày XB", "TT", "Thao tác"]}
+        />
       ) : (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
           <table className="w-full text-left text-[13px]">
-            <thead className="bg-[#3D6B3A] text-[11px] uppercase tracking-wide text-white">
+            <thead className="bg-[#0F9D58] text-[11px] uppercase tracking-wide text-white">
               <tr>
                 <th className="px-3 py-2.5 font-semibold">Bài viết</th>
                 <th className="hidden px-3 py-2.5 font-semibold sm:table-cell">Danh mục</th>
@@ -982,7 +987,7 @@ export function ShopArticlesAdmin() {
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.id} className="border-t border-gray-100 hover:bg-[#E8EFE4]/60">
+                <tr key={row.id} className="border-t border-gray-100 hover:bg-[#E8F5E9]/60">
                   <td className="px-3 py-2.5">
                     <button
                       type="button"
@@ -1091,7 +1096,7 @@ export function ShopArticlesAdmin() {
               >
                 <div className="flex shrink-0 items-center justify-between gap-3 border-b border-gray-100 bg-white px-5 py-3.5">
                   <div className="min-w-0">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#3D6B3A]">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#0F9D58]">
                       Xem trước (theo thứ tự form nhập)
                     </p>
                     <p className="truncate text-[13px] text-slate-500">
@@ -1147,7 +1152,7 @@ export function ShopArticlesAdmin() {
                       Danh mục
                     </p>
                     {preview.category ? (
-                      <p className="text-[13px] font-bold uppercase tracking-wide text-[#3D6B3A]">
+                      <p className="text-[13px] font-bold uppercase tracking-wide text-[#0F9D58]">
                         {preview.category}
                       </p>
                     ) : (
@@ -1226,7 +1231,7 @@ export function ShopArticlesAdmin() {
                       Nội dung bài viết
                     </p>
                     <div
-                      className="article-body max-w-none text-[15px] leading-7 text-slate-800 [&_a]:font-bold [&_a]:text-[#3D6B3A] [&_a]:underline [&_h1]:mb-2 [&_h1]:mt-4 [&_h1]:text-xl [&_h1]:font-bold [&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:text-lg [&_h2]:font-bold [&_h3]:mb-2 [&_h3]:mt-3 [&_h3]:text-base [&_h3]:font-bold [&_li]:my-1.5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-3 [&_strong]:tracking-[0.015em] [&_table]:my-3 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-slate-200 [&_td]:px-3 [&_td]:py-2 [&_th]:border [&_th]:border-slate-200 [&_th]:bg-slate-50 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_.article-video]:relative [&_.article-video]:my-3 [&_.article-video]:aspect-video [&_.article-video]:w-full [&_.article-video]:overflow-hidden [&_.article-video]:rounded-xl [&_.article-video]:bg-slate-900 [&_.article-video_iframe]:absolute [&_.article-video_iframe]:inset-0 [&_.article-video_iframe]:h-full [&_.article-video_iframe]:w-full [&_img]:my-3 [&_img]:h-auto [&_img]:w-full [&_img]:max-w-full [&_img]:rounded-lg [&_img]:border [&_img]:border-slate-200 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-6"
+                      className="article-body max-w-none text-[15px] leading-7 text-slate-800 [&_a]:font-bold [&_a]:text-[#0F9D58] [&_a]:underline [&_h1]:mb-2 [&_h1]:mt-4 [&_h1]:text-xl [&_h1]:font-bold [&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:text-lg [&_h2]:font-bold [&_h3]:mb-2 [&_h3]:mt-3 [&_h3]:text-base [&_h3]:font-bold [&_li]:my-1.5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-3 [&_strong]:tracking-[0.015em] [&_table]:my-3 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-slate-200 [&_td]:px-3 [&_td]:py-2 [&_th]:border [&_th]:border-slate-200 [&_th]:bg-slate-50 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_.article-video]:relative [&_.article-video]:my-3 [&_.article-video]:aspect-video [&_.article-video]:w-full [&_.article-video]:overflow-hidden [&_.article-video]:rounded-xl [&_.article-video]:bg-slate-900 [&_.article-video_iframe]:absolute [&_.article-video_iframe]:inset-0 [&_.article-video_iframe]:h-full [&_.article-video_iframe]:w-full [&_img]:my-3 [&_img]:h-auto [&_img]:w-full [&_img]:max-w-full [&_img]:rounded-lg [&_img]:border [&_img]:border-slate-200 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-6"
                       dangerouslySetInnerHTML={{
                         __html: bodyHtmlForPreview(preview.bodyHtml || ""),
                       }}

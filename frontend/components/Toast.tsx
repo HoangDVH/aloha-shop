@@ -66,7 +66,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             role="status"
           >
             <CheckCircle2 className="mt-0.5 shrink-0 text-[var(--aloha-green)]" size={20} />
-            <div className="min-w-0 flex-1 text-sm text-[#1a2e1a]">
+            <div className="min-w-0 flex-1 text-sm text-[var(--aloha-ink)]">
               <p className="font-semibold">{t.message}</p>
               {t.href ? (
                 <Link

@@ -8,6 +8,7 @@ import {
   SHOP_COMMISSIONS,
   SHOP_COMMISSION_BILLS,
   SHOP_CTV_PRODUCT_RATES,
+  SHOP_CTV_FRAUD_EVENTS,
   getCtvSettings,
   type CommissionStatus,
 } from "./commissionModels.js";
@@ -170,8 +171,8 @@ export async function holdCommissionsForOrder(
     const amount = roundVnd((net * rate) / 100);
     if (amount <= 0) continue;
 
-    const status: CommissionStatus = fraud.flags.length ? "flagged" : "held";
-    if (fraud.flags.length) flagged += 1;
+    const status: CommissionStatus = fraud.hardFlags.length ? "flagged" : "held";
+    if (fraud.hardFlags.length) flagged += 1;
 
     const qty = Math.max(1, Math.floor(Number(d.quantity) || 1));
     const unitPrice = Math.max(0, Number(d.price) || 0);
@@ -197,6 +198,9 @@ export async function holdCommissionsForOrder(
             amount,
             status,
             fraudFlags: fraud.flags,
+            fraudSoftFlags: fraud.softFlags,
+            fraudDetails: fraud.details,
+            fraudSeverity: fraud.severity,
             deliveredAt: deliveredAt.toISOString(),
             eligibleAt,
             updatedAt: now,
@@ -218,6 +222,8 @@ export async function holdCommissionsForOrder(
       $set: {
         commissionHeldAt: now,
         commissionFraudFlags: fraud.flags,
+        commissionFraudSoftFlags: fraud.softFlags,
+        commissionFraudSeverity: fraud.severity,
         updatedAt: now,
       },
     }
@@ -286,6 +292,171 @@ export async function voidUnpaidCommissionsForCtv(
     }
   );
   return r.modifiedCount || 0;
+}
+
+/**
+ * Admin bỏ cờ gian — đưa HH về held/eligible theo eligibleAt.
+ * filter: _id string hoặc { orderCode, ctvCode?, ma? }
+ */
+export async function clearCommissionFraudFlag(
+  shopDb: Db,
+  opts: {
+    id?: string;
+    orderCode?: string;
+    ctvCode?: string;
+    ma?: string;
+    by?: string;
+    note?: string;
+  }
+): Promise<{ ok: boolean; modified: number; error?: string }> {
+  const { ObjectId } = await import("mongodb");
+  const now = new Date().toISOString();
+  const filter: Record<string, unknown> = { status: "flagged" };
+  if (opts.id) {
+    try {
+      filter._id = new ObjectId(opts.id);
+    } catch {
+      return { ok: false, modified: 0, error: "invalid_id" };
+    }
+  } else if (opts.orderCode) {
+    filter.orderCode = String(opts.orderCode).trim();
+    if (opts.ctvCode) filter.ctvCode = normalizeCtvCode(opts.ctvCode);
+    if (opts.ma) filter.ma = String(opts.ma).trim().toUpperCase();
+  } else {
+    return { ok: false, modified: 0, error: "missing_filter" };
+  }
+
+  const rows = await shopDb.collection(SHOP_COMMISSIONS).find(filter).toArray();
+  let modified = 0;
+  for (const row of rows) {
+    const eligibleAt = String((row as any).eligibleAt || "");
+    const nextStatus =
+      eligibleAt && eligibleAt <= now ? "eligible" : "held";
+    const r = await shopDb.collection(SHOP_COMMISSIONS).updateOne(
+      { _id: (row as any)._id },
+      {
+        $set: {
+          status: nextStatus,
+          fraudFlags: [],
+          fraudClearedAt: now,
+          fraudClearedBy: opts.by || "admin",
+          fraudClearNote: String(opts.note || "").slice(0, 300),
+          updatedAt: now,
+        },
+      }
+    );
+    modified += r.modifiedCount || 0;
+  }
+  return { ok: true, modified };
+}
+
+/** Admin xác nhận gian — hủy HH flagged + ghi event */
+export async function confirmCommissionFraud(
+  shopDb: Db,
+  opts: {
+    id?: string;
+    orderCode?: string;
+    ctvCode?: string;
+    ma?: string;
+    by?: string;
+    reason?: string;
+  }
+): Promise<{ ok: boolean; modified: number; error?: string }> {
+  const { ObjectId } = await import("mongodb");
+  const now = new Date().toISOString();
+  const reason = String(opts.reason || "admin_confirm_fraud").slice(0, 200);
+  const filter: Record<string, unknown> = {
+    status: { $in: ["flagged", "held", "eligible"] },
+  };
+  if (opts.id) {
+    try {
+      filter._id = new ObjectId(opts.id);
+    } catch {
+      return { ok: false, modified: 0, error: "invalid_id" };
+    }
+  } else if (opts.orderCode) {
+    filter.orderCode = String(opts.orderCode).trim();
+    if (opts.ctvCode) filter.ctvCode = normalizeCtvCode(opts.ctvCode);
+    if (opts.ma) filter.ma = String(opts.ma).trim().toUpperCase();
+  } else {
+    return { ok: false, modified: 0, error: "missing_filter" };
+  }
+
+  const sample = await shopDb.collection(SHOP_COMMISSIONS).findOne(filter);
+  const r = await shopDb.collection(SHOP_COMMISSIONS).updateMany(filter, {
+    $set: {
+      status: "cancelled",
+      cancelledAt: now,
+      cancelReason: reason,
+      fraudConfirmedAt: now,
+      fraudConfirmedBy: opts.by || "admin",
+      updatedAt: now,
+    },
+  });
+
+  if (sample) {
+    await shopDb.collection(SHOP_CTV_FRAUD_EVENTS).insertOne({
+      type: "admin_confirm_fraud",
+      severity: "high",
+      ctvCode: String((sample as any).ctvCode || ""),
+      orderCode: String((sample as any).orderCode || ""),
+      details: [reason],
+      by: opts.by || "admin",
+      reviewStatus: "confirmed",
+      createdAt: now,
+    });
+  }
+
+  return { ok: true, modified: r.modifiedCount || 0 };
+}
+
+/**
+ * Gỡ hàng loạt cờ cũ chỉ do trùng SĐT (address_match_threshold / phone_repeat)
+ * — không đụng self_buy.
+ */
+export async function clearSoftPhoneRepeatFlags(
+  shopDb: Db,
+  by?: string
+): Promise<number> {
+  const now = new Date().toISOString();
+  const rows = await shopDb
+    .collection(SHOP_COMMISSIONS)
+    .find({ status: "flagged" })
+    .toArray();
+  let n = 0;
+  for (const row of rows) {
+    const flags = Array.isArray((row as any).fraudFlags)
+      ? (row as any).fraudFlags.map(String)
+      : [];
+    const onlySoft =
+      flags.length > 0 &&
+      flags.every(
+        (f: string) =>
+          f === "address_match_threshold" ||
+          f === "phone_repeat_soft" ||
+          f.startsWith("phone_repeat")
+      );
+    const hasSelf = flags.some((f: string) => f.startsWith("self_buy"));
+    if (!onlySoft || hasSelf) continue;
+    const eligibleAt = String((row as any).eligibleAt || "");
+    const nextStatus =
+      eligibleAt && eligibleAt <= now ? "eligible" : "held";
+    const r = await shopDb.collection(SHOP_COMMISSIONS).updateOne(
+      { _id: (row as any)._id },
+      {
+        $set: {
+          status: nextStatus,
+          fraudFlags: [],
+          fraudClearedAt: now,
+          fraudClearedBy: by || "admin",
+          fraudClearNote: "bulk_clear_soft_phone_repeat",
+          updatedAt: now,
+        },
+      }
+    );
+    n += r.modifiedCount || 0;
+  }
+  return n;
 }
 
 /** Chốt bill tháng kiểu AMS. */

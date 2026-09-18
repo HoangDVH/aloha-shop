@@ -127,7 +127,7 @@ export function buildProductJsonLd(item: ShopProduct, pageUrl: string) {
       price: String(price),
       availability: inStock
         ? "https://schema.org/InStock"
-        : "https://schema.org/OutOfStock",
+        : "https://schema.org/PreOrder",
       itemCondition: "https://schema.org/NewCondition",
     },
   };

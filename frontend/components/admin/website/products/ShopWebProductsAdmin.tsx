@@ -8,7 +8,8 @@ import { InstantTextInput } from "@/components/admin/ui/InstantTextInput";
 import { ThuMuaListPagination } from "@/components/admin/ui/ThuMuaListPagination";
 import { ShopCategorySelect } from "@/components/ShopCategorySelect";
 import { websiteApi } from "../api";
-import { WbBtn, WbLoading } from "../ui";
+import { WbBtn } from "../ui";
+import { AdminTableRowSkeleton } from "@/components/admin/ui/AdminSkeleton";
 
 type Row = {
   ma: string;
@@ -257,7 +258,7 @@ export function ShopWebProductsAdmin() {
           </div>
           <p className="text-[12px] font-medium text-gray-600">
             Tổng{" "}
-            <span className="tabular-nums text-[#3D6B3A]">
+            <span className="tabular-nums text-[#0F9D58]">
               {total.toLocaleString("vi-VN")}
             </span>{" "}
             hàng hóa
@@ -269,7 +270,7 @@ export function ShopWebProductsAdmin() {
 
         <div className="mt-4 grid items-center gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.1fr)_minmax(180px,0.85fr)_minmax(150px,0.65fr)_minmax(150px,0.65fr)_auto]">
           <div ref={wrapRef} className="relative z-20 min-w-0">
-            <div className="relative flex h-9 items-center rounded-md border border-[#D4CDC0] bg-white px-2.5 transition focus-within:border-[#3D6B3A] focus-within:ring-1 focus-within:ring-[#3D6B3A]/25">
+            <div className="relative flex h-9 items-center rounded-md border border-[#D4CDC0] bg-white px-2.5 transition focus-within:border-[#0F9D58] focus-within:ring-1 focus-within:ring-[#0F9D58]/25">
               <Search className="mr-2 h-4 w-4 shrink-0 text-gray-400" />
               <InstantTextInput
                 value={draft}
@@ -344,7 +345,7 @@ export function ShopWebProductsAdmin() {
                         </div>
                         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-[#667085]">
                           <span className="font-mono">{p.ma}</span>
-                          <span className="tabular-nums text-[#3D6B3A]">{fmtVnd(p.gia)}</span>
+                          <span className="tabular-nums text-[#0F9D58]">{fmtVnd(p.gia)}</span>
                           {p.nhom ? <span className="truncate">{p.nhom}</span> : null}
                         </div>
                       </div>
@@ -356,7 +357,7 @@ export function ShopWebProductsAdmin() {
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => applySearch(draft)}
-                    className="w-full border-0 border-t border-gray-100 bg-[#F8FAF7] px-3 py-2 text-left text-[12px] font-semibold text-[#3D6B3A] hover:bg-[#E8EFE4]"
+                    className="w-full border-0 border-t border-gray-100 bg-[#F8FAFC] px-3 py-2 text-left text-[12px] font-semibold text-[#0F9D58] hover:bg-[#E8F5E9]"
                   >
                     Lọc bảng theo «{draft.trim()}» · Enter
                   </button>
@@ -410,7 +411,7 @@ export function ShopWebProductsAdmin() {
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden border border-gray-200 bg-white">
         <div className="min-h-0 flex-1 overflow-auto">
           <table className="w-full min-w-[920px] text-left text-sm">
-            <thead className="sticky top-0 z-[1] border-b border-gray-100 bg-[#3D6B3A] text-[11px] font-semibold uppercase tracking-wide text-white">
+            <thead className="sticky top-0 z-[1] border-b border-gray-100 bg-[#0F9D58] text-[11px] font-semibold uppercase tracking-wide text-white">
               <tr>
                 <th className="px-4 py-3 font-semibold">Tên hàng</th>
                 <th className="px-4 py-3 font-semibold">Nhóm hàng</th>
@@ -424,12 +425,12 @@ export function ShopWebProductsAdmin() {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-20 text-center">
-                    <WbLoading label="Đang tải danh sách…" />
-                  </td>
-                </tr>
+              {loading && !rows.length ? (
+                <>
+                  {Array.from({ length: 8 }, (_, i) => (
+                    <AdminTableRowSkeleton key={i} cols={7} />
+                  ))}
+                </>
               ) : rows.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-20 text-center text-[13px] text-gray-400">
@@ -458,7 +459,7 @@ export function ShopWebProductsAdmin() {
                           </div>
                           <button
                             type="button"
-                            className="mt-0.5 text-[11px] font-bold text-[#3D6B3A] hover:underline"
+                            className="mt-0.5 text-[11px] font-bold text-[#0F9D58] hover:underline"
                             onClick={() =>
                               setSeoOpenMa((m) => (m === row.ma ? null : row.ma))
                             }
@@ -487,7 +488,7 @@ export function ShopWebProductsAdmin() {
                         min={0}
                         max={9999}
                         disabled={busyMa === row.ma}
-                        className="mx-auto h-8 w-16 rounded-md border border-gray-200 bg-white px-1.5 text-center text-[12px] tabular-nums outline-none focus:border-[#3D6B3A]"
+                        className="mx-auto h-8 w-16 rounded-md border border-gray-200 bg-white px-1.5 text-center text-[12px] tabular-nums outline-none focus:border-[#0F9D58]"
                         value={Number(row.webPin) > 0 ? Number(row.webPin) : ""}
                         placeholder="—"
                         onFocus={(e) => {
@@ -515,7 +516,7 @@ export function ShopWebProductsAdmin() {
                     <td className="px-3 py-3 text-center">
                       <select
                         disabled={busyMa === row.ma}
-                        className="h-8 max-w-[118px] rounded-md border border-gray-200 bg-white px-1.5 text-[12px] outline-none focus:border-[#3D6B3A]"
+                        className="h-8 max-w-[118px] rounded-md border border-gray-200 bg-white px-1.5 text-[12px] outline-none focus:border-[#0F9D58]"
                         value={row.webBadge || ""}
                         onChange={(e) => {
                           const webBadge = e.target.value;
@@ -562,13 +563,13 @@ export function ShopWebProductsAdmin() {
                         </p>
                         <div className="grid gap-2 md:grid-cols-2">
                           <input
-                            className="h-9 rounded-lg border border-gray-200 bg-white px-3 text-[13px] outline-none focus:border-[#3D6B3A]"
+                            className="h-9 rounded-lg border border-gray-200 bg-white px-3 text-[13px] outline-none focus:border-[#0F9D58]"
                             placeholder="Tiêu đề SEO (ghi đè)"
                             defaultValue={row.seoTitle || ""}
                             id={`seo-title-${row.ma}`}
                           />
                           <input
-                            className="h-9 rounded-lg border border-gray-200 bg-white px-3 text-[13px] outline-none focus:border-[#3D6B3A]"
+                            className="h-9 rounded-lg border border-gray-200 bg-white px-3 text-[13px] outline-none focus:border-[#0F9D58]"
                             placeholder="Mô tả SEO (ghi đè)"
                             defaultValue={row.seoDescription || ""}
                             id={`seo-desc-${row.ma}`}

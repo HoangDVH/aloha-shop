@@ -5,7 +5,7 @@ import { useLinkStatus } from "next/link";
 import { Loader2, Play, ShoppingBag } from "lucide-react";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { useCart } from "@/lib/cart";
+import { isPreOrderTon, useCart } from "@/lib/cart";
 import { useToast } from "@/components/Toast";
 import { formatVnd, type ShopProduct } from "@/lib/api";
 import { useShopAuth } from "@/components/ShopAuthProvider";
@@ -38,13 +38,13 @@ export function ProductCard({
   const pathname = usePathname();
   const { user } = useShopAuth();
   const displayTon = liveTon != null && Number.isFinite(liveTon) ? liveTon : product.ton;
-  const soldOut = displayTon <= 0;
-  const lowStock = !soldOut && displayTon > 0 && displayTon <= 8;
+  const preOrder = isPreOrderTon(displayTon);
+  const lowStock = !preOrder && displayTon > 0 && displayTon <= 8;
   const manualBadge = product.webBadge;
   const [navPending, setNavPending] = useState(false);
   const displayGia = liveGia != null && liveGia >= 0 ? liveGia : product.gia;
   const zeroPriceBlocked = !(displayGia > 0) && !canPurchaseZeroPrice(user?.email);
-  const purchaseBlocked = soldOut || zeroPriceBlocked;
+  const purchaseBlocked = zeroPriceBlocked;
 
   useEffect(() => {
     setNavPending(false);
@@ -53,7 +53,6 @@ export function ProductCard({
   const onAdd = (e?: React.MouseEvent) => {
     e?.preventDefault();
     e?.stopPropagation();
-    if (soldOut) return;
     if (zeroPriceBlocked) {
       toast.push("Sản phẩm này chưa mở bán");
       return;
@@ -61,16 +60,18 @@ export function ProductCard({
     const r = add({ ...product, gia: displayGia, ton: displayTon }, 1);
     if (!r.ok) {
       toast.push(
-        r.max === 0
+        r.max === 0 && !r.preOrder
           ? `“${product.ten}” đã hết hàng`
           : `Chỉ còn ${r.max} ${product.dvt || "sản phẩm"} — giỏ đã đủ số này`
       );
       return;
     }
     toast.push(
-      r.capped
-        ? `Đã thêm tối đa ${r.qty} ${product.dvt || ""} (hết tồn kho)`
-        : `Đã thêm “${product.ten}” vào giỏ`,
+      r.preOrder
+        ? "Đã thêm đặt trước — giao khi shop có hàng"
+        : r.capped
+          ? `Đã thêm tối đa ${r.qty} ${product.dvt || ""} (hết tồn kho)`
+          : `Đã thêm “${product.ten}” vào giỏ`,
       {
         href: "/gio-hang",
         hrefLabel: "Xem giỏ hàng",
@@ -85,16 +86,22 @@ export function ProductCard({
       type="button"
       onClick={onAdd}
       className="product-card__add"
-      aria-label={`Thêm ${product.ten} vào giỏ`}
+      aria-label={
+        preOrder
+          ? `Đặt trước ${product.ten}`
+          : `Thêm ${product.ten} vào giỏ`
+      }
     >
       <ShoppingBag size={16} strokeWidth={2.25} className="shrink-0" aria-hidden />
-      <span className="product-card__add-label">Thêm vào giỏ</span>
+      <span className="product-card__add-label">
+        {preOrder ? "Đặt trước" : "Thêm vào giỏ"}
+      </span>
     </button>
   );
 
   return (
     <article
-      className={`group relative flex flex-col overflow-hidden rounded-[var(--aloha-radius)] bg-white shadow-[var(--aloha-shadow)] ring-1 ring-black/[0.04] transition-all duration-300 ease-out md:hover:-translate-y-1 md:hover:shadow-[var(--aloha-shadow-lg)] md:hover:ring-[var(--aloha-green)]/15 animate-fade-up ${
+      className={`group relative flex flex-col overflow-hidden rounded-[var(--aloha-radius)] bg-[var(--aloha-card,#fffdf8)] shadow-[var(--aloha-shadow)] ring-1 ring-black/[0.04] transition-all duration-300 ease-out md:hover:-translate-y-1 md:hover:shadow-[var(--aloha-shadow-lg)] md:hover:ring-[var(--aloha-green)]/15 animate-fade-up ${
         navPending ? "opacity-85" : ""
       }`}
     >
@@ -112,7 +119,7 @@ export function ProductCard({
               src={product.anh}
               alt={product.ten}
               className={`h-full w-full object-cover transition duration-500 ease-out md:group-hover:scale-[1.06] ${
-                soldOut ? "opacity-55 saturate-50" : ""
+                preOrder ? "opacity-55 saturate-50" : ""
               }`}
               loading="lazy"
             />
@@ -136,22 +143,22 @@ export function ProductCard({
           ) : null}
 
           <div className="absolute left-2 top-2 z-10 flex flex-col gap-1">
-            {soldOut ? (
-              <span className="rounded-full bg-slate-800/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm backdrop-blur-sm">
-                Hết hàng
+            {preOrder ? (
+              <span className="rounded-full bg-amber-600/95 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm backdrop-blur-sm">
+                Đặt trước
               </span>
             ) : null}
-            {!soldOut && manualBadge === "ban_chay" ? (
+            {!preOrder && manualBadge === "ban_chay" ? (
               <span className="rounded-full bg-gradient-to-r from-[var(--aloha-gold)] to-[var(--aloha-gold)] px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white shadow-sm">
                 Bán chạy
               </span>
             ) : null}
-            {!soldOut && manualBadge === "moi" ? (
+            {!preOrder && manualBadge === "moi" ? (
               <span className="rounded-full bg-sky-600/95 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white shadow-sm">
                 Mới
               </span>
             ) : null}
-            {!soldOut && manualBadge === "noi_bat" ? (
+            {!preOrder && manualBadge === "noi_bat" ? (
               <span className="rounded-full bg-[var(--aloha-green)] px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white shadow-sm">
                 Nổi bật
               </span>
@@ -166,7 +173,7 @@ export function ProductCard({
           <ImagePendingOverlay force={navPending} />
         </Link>
 
-        {!soldOut ? (
+        {!purchaseBlocked ? (
           <div className="product-card__add-wrap absolute inset-x-0 bottom-0 z-20 p-2 sm:p-2.5">
             {addBtn}
           </div>
@@ -203,8 +210,8 @@ export function ProductCard({
               </span>
             ) : null}
           </div>
-          {soldOut ? (
-            <p className="mt-1 text-[11px] font-semibold text-slate-400">Hết hàng</p>
+          {preOrder ? (
+            <p className="mt-1 text-[11px] font-semibold text-amber-700">Đặt trước</p>
           ) : null}
         </div>
       </div>

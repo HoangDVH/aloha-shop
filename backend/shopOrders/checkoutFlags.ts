@@ -23,6 +23,26 @@ export function shopRequireShippingQuote(): boolean {
   return envOn("SHOP_REQUIRE_SHIPPING_QUOTE", false);
 }
 
+/**
+ * Đơn đặt trước được COD nếu tổng ≤ ngưỡng (VND).
+ * Mặc định 1_000_000. Đặt 0 = không giới hạn COD pre-order.
+ * Env: SHOP_PREORDER_COD_MAX_VND
+ */
+export function shopPreOrderCodMaxVnd(): number {
+  const raw = String(process.env.SHOP_PREORDER_COD_MAX_VND ?? "").trim();
+  if (raw === "") return 1_000_000;
+  const n = Math.floor(Number(raw));
+  if (!Number.isFinite(n) || n < 0) return 1_000_000;
+  return n;
+}
+
+/** COD cho phép với đơn có pre-order khi tổng ≤ max (max=0 → luôn cho). */
+export function shopAllowPreOrderCod(totalVnd: number): boolean {
+  const max = shopPreOrderCodMaxVnd();
+  if (max <= 0) return true;
+  return Math.max(0, Math.round(Number(totalVnd) || 0)) <= max;
+}
+
 const DEFAULT_TEST_BUYER_EMAILS = ["dauvuhoang01@gmail.com"];
 
 /** Email được phép mua sản phẩm giá 0đ (test như sàn TMĐT). */

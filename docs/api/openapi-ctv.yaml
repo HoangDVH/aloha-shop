@@ -1,0 +1,205 @@
+openapi: 3.0.3
+info:
+  title: ALOHA Shop CTV / Hoa hồng API
+  version: 1.0.0
+  description: |
+    Scope plan CTV Admin + portal + KV webhook liên quan HH.
+    Chi tiết field: docs/api/ctv-affiliate-attributes.md
+servers:
+  - url: /
+tags:
+  - name: AdminCTV
+  - name: CtvPortal
+  - name: KvWebhook
+paths:
+  /api/shop/admin/ctv/overview:
+    get:
+      tags: [AdminCTV]
+      summary: Tổng quan KPI CTV (aggregate thật)
+      parameters:
+        - in: query
+          name: period
+          schema: { type: string, example: "2026-09" }
+          description: Kỳ YYYY-MM; mặc định tháng hiện tại
+      responses:
+        "200":
+          description: KPI + topCtv
+        "401":
+          description: Chưa đăng nhập staff
+        "403":
+          description: Không phải manager
+  /api/shop/admin/ctv/stats:
+    get:
+      tags: [AdminCTV]
+      summary: Stats việc hôm nay (pending, held, eligible, bill)
+      responses:
+        "200":
+          description: ok
+  /api/shop/admin/ctv/commissions:
+    get:
+      tags: [AdminCTV]
+      summary: Danh sách dòng hoa hồng
+      parameters:
+        - in: query
+          name: status
+          schema:
+            $ref: "#/components/schemas/CommissionStatus"
+        - in: query
+          name: ctvCode
+          schema: { type: string }
+        - in: query
+          name: page
+          schema: { type: integer }
+        - in: query
+          name: limit
+          schema: { type: integer }
+      responses:
+        "200":
+          description: data[]
+  /api/shop/admin/ctv/bills:
+    get:
+      tags: [AdminCTV]
+      summary: Bill theo period hoặc list
+      parameters:
+        - in: query
+          name: period
+          schema: { type: string }
+      responses:
+        "200":
+          description: bill hoặc data[]
+  /api/shop/admin/ctv/bills/lock:
+    post:
+      tags: [AdminCTV]
+      summary: Chốt kỳ tháng
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [period]
+              properties:
+                period: { type: string, example: "2026-09" }
+      responses:
+        "200":
+          description: locked
+  /api/shop/admin/ctv/bills/{period}/mark-paid:
+    post:
+      tags: [AdminCTV]
+      summary: Đánh dấu đã chuyển khoản kỳ
+      parameters:
+        - in: path
+          name: period
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: paid
+  /api/shop/admin/ctv/bills/{period}/export.xlsx:
+    get:
+      tags: [AdminCTV]
+      summary: Xuất Excel ChiHH + ThieuSTK (bill locked/paid)
+      parameters:
+        - in: path
+          name: period
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: file xlsx
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+  /api/shop/admin/ctv/fraud:
+    get:
+      tags: [AdminCTV]
+      summary: Sự kiện chống gian
+      responses:
+        "200":
+          description: data[]
+  /api/shop/admin/ctv/{ctvCode}/ban:
+    post:
+      tags: [AdminCTV]
+      summary: Khóa CTV + void HH chưa chi
+      parameters:
+        - in: path
+          name: ctvCode
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+      responses:
+        "200":
+          description: ok
+  /api/shop/ctv/me/payout-bank:
+    get:
+      tags: [CtvPortal]
+      summary: Đọc STK nhận HH của CTV đang đăng nhập
+      responses:
+        "200":
+          description: payoutBank
+    put:
+      tags: [CtvPortal]
+      summary: Lưu STK nhận HH
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PayoutBank"
+      responses:
+        "200":
+          description: saved
+        "400":
+          description: invalid
+  /api/kv-webhook/invoices:
+    post:
+      tags: [KvWebhook]
+      summary: Webhook KiotViet invoice.update (pay + delivery)
+      description: |
+        Không tin body thuần — server GET lại HĐ KV rồi reconcile.
+        COD/CK: delivery status 3 → hoan_thanh → hold HH.
+      responses:
+        "200":
+          description: processed
+components:
+  schemas:
+    CommissionStatus:
+      type: string
+      enum: [held, eligible, billed, paid_out, cancelled, flagged]
+    CtvStatus:
+      type: string
+      enum: [cho_duyet, active, khoa]
+    PayoutBank:
+      type: object
+      required: [bankBin, bankName, accountNumber, accountName]
+      properties:
+        bankBin:
+          type: string
+          description: Mã BIN ngân hàng
+        bankName:
+          type: string
+          description: Tên ngân hàng
+        accountNumber:
+          type: string
+          description: Số tài khoản (chỉ chữ số)
+        accountName:
+          type: string
+          description: Tên chủ tài khoản
+        updatedAt:
+          type: string
+          format: date-time
+  securitySchemes:
+    staffCookie:
+      type: apiKey
+      in: cookie
+      name: aloha_access
+security:
+  - staffCookie: []

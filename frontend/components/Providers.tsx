@@ -8,6 +8,7 @@ import { ShopGlobalLoading } from "@/components/ShopGlobalLoading";
 import { CartSync } from "@/components/CartSync";
 import { ShopCatalogSync } from "@/components/ShopCatalogSync";
 import { CtvPendingGate } from "@/components/CtvPendingGate";
+import { SiteDataMigrationCleanup } from "@/components/SiteDataMigrationCleanup";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [client] = useState(
@@ -20,6 +21,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
   return (
     <QueryClientProvider client={client}>
+      <SiteDataMigrationCleanup />
       <ShopAuthProvider>
         <CartSync />
         <ShopCatalogSync />

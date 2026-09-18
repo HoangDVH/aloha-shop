@@ -2,53 +2,150 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
+  ChevronDown,
+  Coins,
   ExternalLink,
+  FileText,
   Globe,
   LayoutDashboard,
   LogOut,
   Search,
+  Shield,
+  UserRound,
   Users,
 } from "lucide-react";
 import { useAdminSession } from "@/components/admin/auth/useAdminSession";
 
-const NAV = [
-  { href: "/admin", label: "Tổng quan", Icon: LayoutDashboard, exact: true },
-  { href: "/admin/ctv", label: "CTV / Hoa hồng", Icon: Users },
-  { href: "/admin/website", label: "Website bán hàng", Icon: Globe },
-  { href: "/admin/seo", label: "Tối ưu SEO", Icon: Search },
+const CTV_SUB = [
+  { href: "/admin/ctv", label: "Tổng quan", exact: true, Icon: LayoutDashboard },
+  { href: "/admin/ctv/danh-sach", label: "Danh sách CTV", Icon: Users },
+  { href: "/admin/ctv/hoa-hong", label: "Hoa hồng", Icon: Coins },
+  { href: "/admin/ctv/don-hang", label: "Đơn hàng", Icon: FileText },
+  { href: "/admin/ctv/chong-gian", label: "Chống gian lận", Icon: Shield },
 ];
 
+const CUSTOMERS_HREF = "/admin/ctv/khach-hang";
+
+function normalizePath(path: string) {
+  if (!path) return "/";
+  const trimmed = path.replace(/\/+$/, "");
+  return trimmed || "/";
+}
+
+function linkClass(active: boolean, nested = false) {
+  const base = nested
+    ? "flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold transition"
+    : "flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition";
+  if (active) {
+    // Tab con: nền xanh đậm + chữ trắng — dễ nhận biết hơn nền trắng
+    return nested
+      ? `${base} !bg-[#2D5A27] !text-white shadow-sm ring-1 ring-[#2D5A27]/40`
+      : `${base} bg-[#2D5A27] text-white shadow-sm`;
+  }
+  return nested
+    ? `${base} text-[#2D5A27] hover:bg-[#E8EFE4]`
+    : `${base} text-slate-600 hover:bg-[#F9FBF9] hover:text-[#1a2e1a]`;
+}
+
 export function AdminSidebar() {
-  const pathname = usePathname() || "";
+  const pathname = normalizePath(usePathname() || "");
   const { user, logout } = useAdminSession();
+  const onCustomers =
+    pathname === CUSTOMERS_HREF || pathname.startsWith(`${CUSTOMERS_HREF}/`);
+  const onCtv =
+    !onCustomers &&
+    (pathname === "/admin/ctv" || pathname.startsWith("/admin/ctv/"));
+  const [ctvOpen, setCtvOpen] = useState(onCtv);
+
+  useEffect(() => {
+    if (onCtv) setCtvOpen(true);
+  }, [onCtv]);
 
   return (
-    <aside className="sticky top-0 flex h-screen w-[232px] shrink-0 flex-col border-r border-[#e2ddd2] bg-white/90 backdrop-blur-sm">
-      <div className="border-b border-[#ebe6dc] px-4 py-4">
+    <aside className="sticky top-0 flex h-screen w-[248px] shrink-0 flex-col border-r border-[#e8eaed] bg-white">
+      <div className="border-b border-[#eef0f3] px-4 py-4">
         <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--aloha-green)]">
           ALOHA Admin
         </p>
-        <p className="mt-0.5 text-sm font-bold text-[var(--aloha-ink)]">Vận hành shop</p>
+        <p className="mt-0.5 text-sm font-bold text-[var(--aloha-ink)]">
+          Aloha — Thế giới chậu cây
+        </p>
       </div>
-      <nav className="flex-1 space-y-0.5 p-2">
-        {NAV.map(({ href, label, Icon, exact }) => {
-          const active = exact ? pathname === href : pathname.startsWith(href);
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
-                active
-                  ? "bg-[var(--aloha-green)] text-white shadow-sm"
-                  : "text-slate-600 hover:bg-[var(--aloha-green-light)] hover:text-[var(--aloha-ink)]"
+      <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
+        <Link
+          href="/admin"
+          className={linkClass(pathname === "/admin")}
+        >
+          <LayoutDashboard className="h-4 w-4 shrink-0 opacity-90" />
+          Tổng quan
+        </Link>
+
+        <div className="pt-0.5">
+          <button
+            type="button"
+            onClick={() => setCtvOpen((v) => !v)}
+            className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
+              onCtv
+                ? "bg-[var(--aloha-green-light)] text-[var(--aloha-ink)]"
+                : "text-slate-600 hover:bg-[var(--aloha-green-light)] hover:text-[var(--aloha-ink)]"
+            }`}
+          >
+            <Users className="h-4 w-4 shrink-0 opacity-90" />
+            <span className="min-w-0 flex-1">Quản lý CTV</span>
+            <ChevronDown
+              className={`h-4 w-4 shrink-0 text-slate-400 transition ${
+                ctvOpen ? "rotate-0" : "-rotate-90"
               }`}
-            >
-              <Icon className="h-4 w-4 shrink-0 opacity-90" />
-              {label}
-            </Link>
-          );
-        })}
+            />
+          </button>
+          {ctvOpen ? (
+            <div className="ml-2 mt-0.5 space-y-0.5 border-l border-[#e8e2d6] pl-2">
+              {CTV_SUB.map(({ href, label, exact, Icon }) => {
+                const active = exact
+                  ? pathname === href
+                  : pathname === href || pathname.startsWith(`${href}/`);
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    aria-current={active ? "page" : undefined}
+                    className={linkClass(active, true)}
+                  >
+                    <Icon
+                      className={`h-3.5 w-3.5 shrink-0 ${
+                        active ? "text-white" : "text-[#2D5A27]"
+                      }`}
+                    />
+                    {label}
+                  </Link>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
+
+        <Link href={CUSTOMERS_HREF} className={linkClass(onCustomers)}>
+          <UserRound className="h-4 w-4 shrink-0 opacity-90" />
+          Quản lý khách hàng
+        </Link>
+
+        <Link
+          href="/admin/website"
+          className={linkClass(pathname.startsWith("/admin/website"))}
+        >
+          <Globe className="h-4 w-4 shrink-0 opacity-90" />
+          Website bán hàng
+        </Link>
+        <Link
+          href="/admin/seo"
+          className={linkClass(pathname.startsWith("/admin/seo"))}
+        >
+          <Search className="h-4 w-4 shrink-0 opacity-90" />
+          Tối ưu SEO
+        </Link>
+
         <a
           href="/"
           target="_blank"
@@ -59,7 +156,7 @@ export function AdminSidebar() {
           Mở storefront
         </a>
       </nav>
-      <div className="border-t border-[#ebe6dc] p-3">
+      <div className="border-t border-[#eef0f3] p-3">
         <p className="truncate text-xs font-semibold text-slate-700">
           {user?.fullName || user?.username}
         </p>
@@ -68,7 +165,7 @@ export function AdminSidebar() {
           type="button"
           onClick={() => logout.mutate()}
           disabled={logout.isPending}
-          className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-[#e2ddd2] bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-[var(--aloha-green)]/40 hover:bg-[var(--aloha-green-light)]"
+          className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-[#e8eaed] bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-[#2D5A27]/30 hover:bg-[#F7F8FA]"
         >
           <LogOut className="h-3.5 w-3.5" />
           Đăng xuất

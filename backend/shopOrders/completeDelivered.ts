@@ -59,6 +59,7 @@ function mapDetails(raw: unknown): ShopOrderDetail[] {
     imageUrl: it?.imageUrl ? String(it.imageUrl) : undefined,
     note: it?.note ? String(it.note) : undefined,
     variantLabel: it?.variantLabel ? String(it.variantLabel) : undefined,
+    preOrder: Boolean(it?.preOrder) || undefined,
   }));
 }
 

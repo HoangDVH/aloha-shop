@@ -24,7 +24,12 @@ export type CtvSettings = {
   attributionWindowDays: number;
   settleDay: number;
   selfBuyMaxHits: number;
+  /** Ngưỡng số đơn cùng SĐT+CTV / 90 ngày → cảnh báo mềm (không khóa HH) */
   addressMatchMaxHits: number;
+  /** SĐT nội bộ / test — bỏ qua rule trùng SĐT */
+  phoneWhitelist: string[];
+  /** Bật cảnh báo mềm trùng SĐT (không gắn flagged) */
+  phoneRepeatSoftWarn: boolean;
   termsVersion: string;
 };
 
@@ -34,13 +39,32 @@ export const DEFAULT_CTV_SETTINGS: CtvSettings = {
   attributionWindowDays: 7,
   settleDay: 18,
   selfBuyMaxHits: 2,
-  addressMatchMaxHits: 3,
+  addressMatchMaxHits: 10,
+  phoneWhitelist: ["123456789", "0123456789", "0987654321"],
+  phoneRepeatSoftWarn: true,
   termsVersion: "1",
 };
 
+function parsePhoneList(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    return [...new Set(raw.map((x) => String(x || "").replace(/\D/g, "")).filter((x) => x.length >= 8))];
+  }
+  if (typeof raw === "string") {
+    return [
+      ...new Set(
+        raw
+          .split(/[\s,;]+/)
+          .map((x) => x.replace(/\D/g, ""))
+          .filter((x) => x.length >= 8)
+      ),
+    ];
+  }
+  return [...DEFAULT_CTV_SETTINGS.phoneWhitelist];
+}
+
 export async function getCtvSettings(shopDb: Db): Promise<CtvSettings> {
   const doc = await shopDb.collection(SHOP_SETTINGS).findOne({ _id: CTV_SETTINGS_ID as any });
-  if (!doc) return { ...DEFAULT_CTV_SETTINGS };
+  if (!doc) return { ...DEFAULT_CTV_SETTINGS, phoneWhitelist: [...DEFAULT_CTV_SETTINGS.phoneWhitelist] };
   const n = (v: unknown, fb: number) => {
     const x = Number(v);
     return Number.isFinite(x) ? x : fb;
@@ -51,14 +75,21 @@ export async function getCtvSettings(shopDb: Db): Promise<CtvSettings> {
     attributionWindowDays: Math.max(1, Math.floor(n(doc.attributionWindowDays, 7))),
     settleDay: Math.min(28, Math.max(1, Math.floor(n(doc.settleDay, 18)))),
     selfBuyMaxHits: Math.max(1, Math.floor(n(doc.selfBuyMaxHits, 2))),
-    addressMatchMaxHits: Math.max(1, Math.floor(n(doc.addressMatchMaxHits, 3))),
+    addressMatchMaxHits: Math.max(1, Math.floor(n(doc.addressMatchMaxHits, 10))),
+    phoneWhitelist: parsePhoneList(
+      doc.phoneWhitelist != null ? doc.phoneWhitelist : DEFAULT_CTV_SETTINGS.phoneWhitelist
+    ),
+    phoneRepeatSoftWarn:
+      doc.phoneRepeatSoftWarn == null
+        ? true
+        : Boolean(doc.phoneRepeatSoftWarn),
     termsVersion: String(doc.termsVersion || "1"),
   };
 }
 
 export async function saveCtvSettings(
   shopDb: Db,
-  patch: Partial<CtvSettings>
+  patch: Partial<CtvSettings> & { phoneWhitelistText?: string }
 ): Promise<CtvSettings> {
   const cur = await getCtvSettings(shopDb);
   const next: CtvSettings = {
@@ -84,8 +115,20 @@ export async function saveCtvSettings(
         : cur.selfBuyMaxHits,
     addressMatchMaxHits:
       patch.addressMatchMaxHits != null
-        ? Math.max(1, Math.floor(Number(patch.addressMatchMaxHits) || 3))
+        ? Math.max(1, Math.floor(Number(patch.addressMatchMaxHits) || 10))
         : cur.addressMatchMaxHits,
+    phoneWhitelist:
+      patch.phoneWhitelist != null || (patch as any).phoneWhitelistText != null
+        ? parsePhoneList(
+            patch.phoneWhitelist != null
+              ? patch.phoneWhitelist
+              : (patch as any).phoneWhitelistText
+          )
+        : cur.phoneWhitelist,
+    phoneRepeatSoftWarn:
+      patch.phoneRepeatSoftWarn != null
+        ? Boolean(patch.phoneRepeatSoftWarn)
+        : cur.phoneRepeatSoftWarn,
     termsVersion: patch.termsVersion != null ? String(patch.termsVersion) : cur.termsVersion,
   };
   await shopDb.collection(SHOP_SETTINGS).updateOne(

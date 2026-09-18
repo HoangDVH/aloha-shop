@@ -15,7 +15,7 @@ import {
   normalizeAddresses,
   transferTtlMinutes,
 } from "./models.js";
-import { assertStockAvailable } from "./stockApply.js";
+import { annotatePreOrderDetails, assertStockAvailable } from "./stockApply.js";
 import {
   createShopStockHolds,
   ensureShopStockHoldIndexes,
@@ -42,6 +42,8 @@ import {
 } from "./orderRouteShared.js";
 import {
   shopAllowTransferPayment,
+  shopAllowPreOrderCod,
+  shopPreOrderCodMaxVnd,
   shopRequireShippingQuote,
   isShopTestBuyerEmail,
 } from "./checkoutFlags.js";
@@ -157,6 +159,20 @@ export function registerShopOrderCreateRoutes(
           });
         }
 
+        // Đánh dấu đặt trước theo tồn lúc submit (displayTon − hold)
+        {
+          const annotated = await annotatePreOrderDetails(
+            mainDbEarly,
+            orderDetails,
+            shopDb
+          );
+          if (!annotated.ok) {
+            return res.status(400).json({ error: annotated.error });
+          }
+          orderDetails = annotated.details;
+        }
+        const hasPreOrder = orderDetails.some((d) => Boolean(d.preOrder));
+
         const subtotal = orderDetails.reduce((n, d) => n + d.price * d.quantity, 0);
         let shippingFee = 0;
         let shippingCarrier: string | undefined;
@@ -239,10 +255,22 @@ export function registerShopOrderCreateRoutes(
           ...new Set(orderDetails.map((d) => d.ctvCode).filter(Boolean) as string[]),
         ];
 
+        // Pre-order COD: cho phép dưới ngưỡng; vượt ngưỡng → bắt CK (kiểu sàn)
+        if (hasPreOrder && method !== "Transfer") {
+          if (!shopAllowPreOrderCod(total)) {
+            const max = shopPreOrderCodMaxVnd();
+            return res.status(400).json({
+              error: `Đơn đặt trước trên ${max.toLocaleString("vi-VN")}đ — vui lòng thanh toán chuyển khoản`,
+              code: "preorder_cod_over_limit",
+              maxVnd: max,
+            });
+          }
+        }
+
         const isTransfer = method === "Transfer";
         const mainDb = mainDbEarly;
 
-        // COD + Transfer: assert tồn (displayTon − hold). Soft-hold sau insert.
+        // Chỉ assert dòng không preOrder. Soft-hold sau insert cũng skip preOrder.
         const stock = await assertStockAvailable(mainDb, orderDetails, shopDb);
         if (!stock.ok) {
           return res.status(400).json({ error: stock.error });
@@ -257,6 +285,20 @@ export function registerShopOrderCreateRoutes(
           (hasZeroPriceTestItem && isShopTestBuyerEmail(buyerEmail));
         const ctvNote =
           ctvCodes.length > 0 ? `CTV:${ctvCodes.join(",")}` : "";
+        const preOrderNoteTag = hasPreOrder ? "[DAT-TRUOC] " : "";
+        const customerNoteStored = (() => {
+          let n = customerNote;
+          if (hasPreOrder && !n.toUpperCase().includes("[DAT-TRUOC]")) {
+            n = `${preOrderNoteTag}${n}`.trim();
+          }
+          if (isTest && !String(n).includes("[TEST-WEB]")) {
+            n = `[TEST-WEB] ${n}`.trim();
+          }
+          return n.slice(0, 255);
+        })();
+        const kvPreOrderHint = hasPreOrder
+          ? "ĐẶT TRƯỚC — SP hết hàng, cần nhập hàng ngay"
+          : "";
 
         const idempotencyKey = String(
           body.idempotencyKey || req.headers["idempotency-key"] || ""
@@ -352,9 +394,8 @@ export function registerShopOrderCreateRoutes(
           discount: 0,
           method,
           usingCod: isTransfer ? false : usingCod,
-          customerNote: isTest && !String(customerNote).includes("[TEST-WEB]")
-            ? `[TEST-WEB] ${customerNote}`.trim().slice(0, 255)
-            : customerNote,
+          hasPreOrder,
+          customerNote: customerNoteStored,
           paymentStatus: isTransfer ? "unpaid" : "cod",
           orderStatus: isTransfer ? "cho_thanh_toan" : "cho_xu_ly",
           ...(paymentCode ? { paymentCode } : {}),
@@ -390,7 +431,7 @@ export function registerShopOrderCreateRoutes(
               }),
               orderDetails,
               description:
-                `Shop COD | ${ctvNote} | ${isTest ? "[TEST-WEB] " : ""}${customerNote || "Shop COD"}`.slice(
+                `Shop COD | ${ctvNote} | ${kvPreOrderHint ? kvPreOrderHint + " | " : ""}${isTest ? "[TEST-WEB] " : ""}${customerNote || "Shop COD"}`.slice(
                   0,
                   500
                 ),
@@ -413,15 +454,27 @@ export function registerShopOrderCreateRoutes(
             await shopDb.collection(SHOP_ORDERS).updateOne({ _id: mongoId }, { $set: patch });
             Object.assign(doc, patch);
           } catch (e: any) {
-            await shopDb.collection(SHOP_ORDERS).deleteOne({ _id: mongoId }).catch(() => {});
             const msg = String(
               e?.message || e || "Không tạo được đặt hàng COD trên KiotViet"
             );
-            return res.status(400).json({
-              error: msg,
-              code: "kv_cod_order_failed",
-              hint: "Kiểm tra kết nối KiotViet / tồn chi nhánh, rồi đặt lại. Đơn chưa được tạo trên shop.",
-            });
+            if (hasPreOrder) {
+              console.warn("[shop-order] kv COD soft-fail (preOrder)", code, msg);
+              const patch = {
+                kvPushError: msg.slice(0, 500),
+                updatedAt: new Date().toISOString(),
+              };
+              await shopDb
+                .collection(SHOP_ORDERS)
+                .updateOne({ _id: mongoId }, { $set: patch });
+              Object.assign(doc, patch);
+            } else {
+              await shopDb.collection(SHOP_ORDERS).deleteOne({ _id: mongoId }).catch(() => {});
+              return res.status(400).json({
+                error: msg,
+                code: "kv_cod_order_failed",
+                hint: "Kiểm tra kết nối KiotViet / tồn chi nhánh, rồi đặt lại. Đơn chưa được tạo trên shop.",
+              });
+            }
           }
         }
 
@@ -445,7 +498,7 @@ export function registerShopOrderCreateRoutes(
                 }),
                 orderDetails,
                 description:
-                  `${paymentCode} | Web ${code} | ${ctvNote} | ${customerNote || "Shop CK"}`.slice(
+                  `${paymentCode} | Web ${code} | ${ctvNote} | ${kvPreOrderHint ? kvPreOrderHint + " | " : ""}${customerNote || "Shop CK"}`.slice(
                     0,
                     500
                   ),
@@ -461,34 +514,50 @@ export function registerShopOrderCreateRoutes(
               await shopDb.collection(SHOP_ORDERS).updateOne({ _id: mongoId }, { $set: patch });
               Object.assign(doc, patch);
             } catch (e: any) {
-              await shopDb.collection(SHOP_ORDERS).deleteOne({ _id: mongoId }).catch(() => {});
               const msg = String(e?.message || e || "Không tạo được hóa đơn chờ CK");
-              return res.status(400).json({
-                error: msg,
-                code: "kv_awaiting_failed",
-                hint: "Kiểm tra tồn đúng chi nhánh bán trên KiotViet, hoặc tạm tắt SHOP_KIOTQR_AWAITING=0.",
-              });
+              // Đơn đặt trước: giữ Mongo + QR ngân hàng dù KV từ chối vì hết tồn
+              if (hasPreOrder) {
+                console.warn("[shop-order] kv awaiting soft-fail (preOrder)", code, msg);
+                const patch = {
+                  kvPushError: msg.slice(0, 500),
+                  updatedAt: new Date().toISOString(),
+                };
+                await shopDb
+                  .collection(SHOP_ORDERS)
+                  .updateOne({ _id: mongoId }, { $set: patch });
+                Object.assign(doc, patch);
+              } else {
+                await shopDb.collection(SHOP_ORDERS).deleteOne({ _id: mongoId }).catch(() => {});
+                return res.status(400).json({
+                  error: msg,
+                  code: "kv_awaiting_failed",
+                  hint: "Kiểm tra tồn đúng chi nhánh bán trên KiotViet, hoặc tạm tắt SHOP_KIOTQR_AWAITING=0.",
+                });
+              }
             }
           }
         }
 
         if (shopStockHoldEnabled()) {
-          try {
-            await ensureShopStockHoldIndexes(shopDb);
-            await createShopStockHolds({
-              shopDb,
-              orderId: code,
-              orderCode: code,
-              details: orderDetails,
-              expiresAt: expiresAt || null,
-            });
-            await shopDb.collection(SHOP_ORDERS).updateOne(
-              { _id: mongoId },
-              { $set: { stockHeld: true, updatedAt: new Date().toISOString() } }
-            );
-            doc.stockHeld = true;
-          } catch (e: any) {
-            console.warn("[shop-order] stock hold failed", code, e?.message || e);
+          const holdDetails = orderDetails.filter((d) => !d.preOrder);
+          if (holdDetails.length) {
+            try {
+              await ensureShopStockHoldIndexes(shopDb);
+              await createShopStockHolds({
+                shopDb,
+                orderId: code,
+                orderCode: code,
+                details: holdDetails,
+                expiresAt: expiresAt || null,
+              });
+              await shopDb.collection(SHOP_ORDERS).updateOne(
+                { _id: mongoId },
+                { $set: { stockHeld: true, updatedAt: new Date().toISOString() } }
+              );
+              doc.stockHeld = true;
+            } catch (e: any) {
+              console.warn("[shop-order] stock hold failed", code, e?.message || e);
+            }
           }
         }
 

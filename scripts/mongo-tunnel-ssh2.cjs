@@ -12,6 +12,12 @@ const net = require("net");
 const fs = require("fs");
 const path = require("path");
 
+try {
+  require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+} catch {
+  /* optional */
+}
+
 let Client;
 try {
   Client = require("ssh2").Client;

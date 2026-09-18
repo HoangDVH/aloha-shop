@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useShopRouter } from "@/lib/useShopRouter";
-import { useCart } from "@/lib/cart";
+import { isPreOrderTon, useCart } from "@/lib/cart";
 import { useShopAuth } from "@/components/ShopAuthProvider";
 import { ShopPageLoader } from "@/components/ShopPageLoader";
 import { useShopLoadingWhile } from "@/lib/useShopLoadingWhile";
@@ -12,6 +12,7 @@ import { listAddresses, type ShopAddress } from "@/lib/orders";
 import type { AddressDraft } from "@/components/GhnAddressFields";
 import { fetchShopBank, type ShopBankInfo } from "@/lib/bankTransfer";
 import {
+  shopPreOrderRequiresTransfer,
   shopShowCheckoutShipping,
   shopShowTransferPayment,
 } from "@/lib/checkoutFlags";
@@ -26,6 +27,7 @@ import { CheckoutPaymentSection } from "@/components/checkout/CheckoutPaymentSec
 import { CheckoutShippingSection } from "@/components/checkout/CheckoutShippingSection";
 import { CheckoutStickyBar } from "@/components/checkout/CheckoutStickyBar";
 import { CheckoutSummaryAside } from "@/components/checkout/CheckoutSummaryAside";
+import { PreOrderCodConfirmModal } from "@/components/checkout/PreOrderCodConfirmModal";
 import {
   EMPTY_DRAFT,
   type Delivery,
@@ -108,8 +110,15 @@ function CheckoutConfirm() {
   const [pay, setPay] = useState<PayMethod>("Cash");
   const [note, setNote] = useState("");
   const [agree, setAgree] = useState(false);
+  const [preOrderCodConfirmed, setPreOrderCodConfirmed] = useState(false);
+  const [preOrderCodModalOpen, setPreOrderCodModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  const hasPreOrder = useMemo(
+    () => selected.some((l) => isPreOrderTon(l.ton)),
+    [selected]
+  );
 
   useShopLoadingWhile(submitting);
 
@@ -161,6 +170,19 @@ function CheckoutConfirm() {
 
   const effectiveShippingFee = showShip ? shippingFee : 0;
   const grandTotal = total + effectiveShippingFee;
+  const preOrderForceTransfer =
+    hasPreOrder && shopPreOrderRequiresTransfer(grandTotal);
+
+  useEffect(() => {
+    if (preOrderForceTransfer && showTransfer) {
+      setPay("Transfer");
+    }
+  }, [preOrderForceTransfer, showTransfer]);
+
+  useEffect(() => {
+    setPreOrderCodConfirmed(false);
+    setPreOrderCodModalOpen(false);
+  }, [hasPreOrder, pay, grandTotal]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -230,6 +252,7 @@ function CheckoutConfirm() {
 
   const { placeOrder } = usePlaceOrder({
     agree,
+    preOrderCodConfirmed,
     selected,
     delivery,
     showNewForm,
@@ -252,6 +275,28 @@ function CheckoutConfirm() {
     orderPlacedRef,
   });
 
+  const needsPreOrderCodModal =
+    hasPreOrder &&
+    !preOrderForceTransfer &&
+    (showTransfer ? pay : "Cash") === "Cash";
+
+  const requestPlaceOrder = () => {
+    setError("");
+    if (needsPreOrderCodModal && !preOrderCodConfirmed) {
+      setPreOrderCodModalOpen(true);
+      return;
+    }
+    void placeOrder(
+      preOrderCodConfirmed ? { preOrderCodConfirmed: true } : undefined
+    );
+  };
+
+  const confirmPreOrderCodAndPlace = () => {
+    setPreOrderCodConfirmed(true);
+    setPreOrderCodModalOpen(false);
+    void placeOrder({ preOrderCodConfirmed: true });
+  };
+
   if (authLoading || (orderPlacedRef.current && submitting)) {
     return <ShopPageLoader fullscreen={false} />;
   }
@@ -259,13 +304,13 @@ function CheckoutConfirm() {
   if (!user) {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center">
-        <p className="text-lg font-bold text-[#1a2e1a]">Cần đăng nhập để đặt hàng</p>
+        <p className="text-lg font-bold text-[var(--aloha-ink)]">Cần đăng nhập để đặt hàng</p>
         <p className="mt-2 text-sm text-slate-600">
           Tài khoản giúp lưu địa chỉ và theo dõi đơn. Đăng nhập rồi quay lại trang này.
         </p>
         <Link
           href={`/dang-nhap?next=${encodeURIComponent("/xac-nhan-don-hang")}`}
-          className="mt-6 inline-flex rounded-xl bg-[var(--aloha-green)] px-5 py-3 text-sm font-bold text-white hover:bg-[var(--aloha-green-mid)]"
+          className="mt-6 inline-flex rounded-xl bg-[var(--aloha-green)] px-5 py-3 text-sm font-bold text-white hover:bg-[var(--aloha-green-hover)]"
         >
           Đăng nhập
         </Link>
@@ -285,16 +330,18 @@ function CheckoutConfirm() {
   const orderBlockedReason =
     selected.length === 0
       ? "Chưa chọn sản phẩm trong giỏ — quay lại giỏ hàng và tick sản phẩm."
-      : receiverBlock
-        ? receiverBlock
-        : showShip && delivery === "giao_tan_noi" && shippingLoading
-          ? "Đang tính phí vận chuyển…"
-          : showShip && delivery === "giao_tan_noi" && !shippingQuote?.quoteToken
-            ? shippingError ||
-              "Chưa có phí ship. Kiểm tra địa chỉ nhận hàng (tỉnh/phường) hoặc thử lại."
-            : !agree
-              ? "Tick đồng ý Điều kiện giao dịch chung trước khi đặt hàng."
-              : "";
+      : preOrderForceTransfer && !showTransfer
+        ? "Đơn đặt trước vượt hạn mức COD — cần CK nhưng shop chưa bật."
+        : receiverBlock
+          ? receiverBlock
+          : showShip && delivery === "giao_tan_noi" && shippingLoading
+            ? "Đang tính phí vận chuyển…"
+            : showShip && delivery === "giao_tan_noi" && !shippingQuote?.quoteToken
+              ? shippingError ||
+                "Chưa có phí ship. Kiểm tra địa chỉ nhận hàng (tỉnh/phường) hoặc thử lại."
+              : !agree
+                ? "Tick đồng ý Điều kiện giao dịch chung trước khi đặt hàng."
+                : "";
 
   const canSubmit = !submitting && !orderBlockedReason;
 
@@ -304,7 +351,7 @@ function CheckoutConfirm() {
     <>
       <div className="shop-pb-sticky mx-auto max-w-7xl animate-fade-up space-y-5 px-4 py-6 lg:pb-8">
         <div className="flex flex-wrap items-end justify-between gap-2">
-          <h1 className="text-2xl font-extrabold text-[#1a2e1a]">Xác nhận đơn hàng</h1>
+          <h1 className="text-2xl font-extrabold text-[var(--aloha-ink)]">Xác nhận đơn hàng</h1>
           <Link href="/gio-hang" className="text-sm font-semibold text-[var(--aloha-green)] hover:underline">
             ← Giỏ hàng
           </Link>
@@ -353,6 +400,8 @@ function CheckoutConfirm() {
               onPayChange={setPay}
               bankInfo={bankInfo}
               grandTotal={grandTotal}
+              hasPreOrder={hasPreOrder}
+              requireTransfer={preOrderForceTransfer}
             />
           </div>
 
@@ -368,7 +417,9 @@ function CheckoutConfirm() {
             submitting={submitting}
             agree={agree}
             onAgreeChange={setAgree}
-            onPlaceOrder={() => void placeOrder()}
+            onPlaceOrder={requestPlaceOrder}
+            hasPreOrder={hasPreOrder}
+            payMethod={showTransfer ? pay : "Cash"}
           />
         </div>
 
@@ -389,6 +440,17 @@ function CheckoutConfirm() {
         />
       </div>
 
+      <PreOrderCodConfirmModal
+        open={preOrderCodModalOpen}
+        total={grandTotal}
+        productNames={selected
+          .filter((l) => isPreOrderTon(l.ton))
+          .map((l) => l.ten)}
+        submitting={submitting}
+        onClose={() => setPreOrderCodModalOpen(false)}
+        onAgree={confirmPreOrderCodAndPlace}
+      />
+
       {/* Ngoài khối animate — portal body để fixed không bị kéo theo cuộn */}
       <CheckoutStickyBar
         total={total}
@@ -400,7 +462,8 @@ function CheckoutConfirm() {
         orderBlockedReason={orderBlockedReason}
         agree={agree}
         onAgreeChange={setAgree}
-        onPlaceOrder={() => void placeOrder()}
+        onPlaceOrder={requestPlaceOrder}
+        hasPreOrder={hasPreOrder}
       />
     </>
   );

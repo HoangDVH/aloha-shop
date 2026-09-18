@@ -14,6 +14,10 @@ import {
   parseCategoryIdList,
   parseNhomList,
 } from "../shopCatalog/categoryQueryFilter.js";
+import {
+  loadCategoryMetaById,
+  overlayProductCategoryFields,
+} from "../shopCatalog/categoryMeta.js";
 
 const COL = "aloha_products";
 
@@ -118,10 +122,9 @@ export function registerShopProductsAdminRoutes(
           ten: 1,
           anh: 1,
           images: 1,
-          nhom: 1,
-          nhomPath: 1,
           categoryId: 1,
           categoryName: 1,
+          ancestor: 1,
           giaWeb: 1,
           giaBan: 1,
           giaChung: 1,
@@ -163,27 +166,39 @@ export function registerShopProductsAdminRoutes(
           ]);
         }
 
-        const items = rows.map((d) => ({
-          ma: String(d.ma || ""),
-          ten: String(d.ten || ""),
-          anh: publicAnh(d as any),
-          nhom: String(d.nhom || d.categoryName || ""),
-          nhomPath: String(d.nhomPath || d.nhom || d.categoryName || ""),
-          categoryId: Number(d.categoryId) || 0,
-          categoryName: String(d.categoryName || ""),
-          gia: publicPrice(d as any),
-          ton: publicTon(d as any),
-          hienThiWeb: d.hienThiWeb !== false,
-          webPin: Number(d.webPin) > 0 ? Math.round(Number(d.webPin)) : 0,
+        const metaById = await loadCategoryMetaById(db);
+        const items = rows.map((d) => {
+          const aligned = overlayProductCategoryFields(d as any, metaById);
+          const ancestor = Array.isArray(aligned.ancestor)
+            ? aligned.ancestor.map((x: unknown) => String(x || "").trim()).filter(Boolean)
+            : [];
+          const categoryName = String(aligned.categoryName || "").trim();
+          const nhomPath = ancestor.length
+            ? ancestor.join(" >> ")
+            : categoryName;
+          const nhom = categoryName || (nhomPath.split(/\s*[▸>\/|]\s*/).filter(Boolean).pop() || "");
+          return {
+          ma: String(aligned.ma || ""),
+          ten: String(aligned.ten || ""),
+          anh: publicAnh(aligned as any),
+          nhom,
+          nhomPath: nhomPath || nhom,
+          categoryId: Number(aligned.categoryId) || 0,
+          categoryName,
+          gia: publicPrice(aligned as any),
+          ton: publicTon(aligned as any),
+          hienThiWeb: aligned.hienThiWeb !== false,
+          webPin: Number(aligned.webPin) > 0 ? Math.round(Number(aligned.webPin)) : 0,
           webBadge:
-            d.webBadge === "ban_chay" ||
-            d.webBadge === "moi" ||
-            d.webBadge === "noi_bat"
-              ? String(d.webBadge)
+            aligned.webBadge === "ban_chay" ||
+            aligned.webBadge === "moi" ||
+            aligned.webBadge === "noi_bat"
+              ? String(aligned.webBadge)
               : "",
-          seoTitle: String(d.seoTitle || ""),
-          seoDescription: String(d.seoDescription || ""),
-        }));
+          seoTitle: String(aligned.seoTitle || ""),
+          seoDescription: String(aligned.seoDescription || ""),
+        };
+        });
 
         res.json({
           items,

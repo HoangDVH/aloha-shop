@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { formatVnd, type ShopProduct } from "@/lib/api";
-import { useCart } from "@/lib/cart";
+import { isPreOrderTon, useCart } from "@/lib/cart";
 import { useToast } from "@/components/Toast";
 import { useShopAuth } from "@/components/ShopAuthProvider";
 import { useShopRouter } from "@/lib/useShopRouter";
@@ -109,16 +109,12 @@ export function ProductDetailView({
   const variantsLoading = selection.loading;
   const needPick =
     variantAxes.length > 0 && !selection.loading && !selectedModel;
-  const soldOut =
-    needPick || variantsLoading
-      ? false
-      : variantAxes.length > 0
-        ? !selection.canPurchase
-        : liveTon <= 0;
+  const isPreOrder =
+    !needPick && !variantsLoading && isPreOrderTon(liveTon);
   const zeroPriceBlocked =
     !(Number(liveGia) > 0) && !canPurchaseZeroPrice(user?.email);
   const purchaseDisabled =
-    soldOut || needPick || variantsLoading || zeroPriceBlocked;
+    needPick || variantsLoading || zeroPriceBlocked;
   const desc = useMemo(
     () => plainDescription(product.description || ""),
     [product.description]
@@ -266,25 +262,36 @@ export function ProductDetailView({
 
   const crumbs = [
     { href: "/", label: "Trang chủ" },
-    product.nhomPath
-      ? {
-          href: `/danh-muc/${product.categorySlug}?nhom=${encodeURIComponent(product.nhom)}`,
-          label: product.nhomPath,
-        }
-      : product.nhom
-        ? {
-            href: `/danh-muc/${product.categorySlug}?nhom=${encodeURIComponent(product.nhom)}`,
-            label: product.nhom,
-          }
-        : null,
+    (() => {
+      const label =
+        product.categoryName ||
+        product.nhom ||
+        (product.nhomPath
+          ? product.nhomPath.split(/\s*[▸>\/|]\s*/).filter(Boolean).pop()
+          : "") ||
+        "";
+      if (!label) return null;
+      const slug = product.categorySlug || "san-pham";
+      const qs = new URLSearchParams();
+      if (product.categoryId && product.categoryId > 0) {
+        qs.set("categoryId", String(product.categoryId));
+      } else if (product.nhom) {
+        qs.set("nhom", product.nhom);
+      }
+      const q = qs.toString();
+      return {
+        href: `/danh-muc/${slug}${q ? `?${q}` : ""}`,
+        label,
+      };
+    })(),
     { href: product.path, label: product.ten },
   ].filter(Boolean) as { href: string; label: string }[];
 
   useEffect(() => {
-    if (purchaseDisabled || liveTon <= 0) return;
+    if (purchaseDisabled || isPreOrder) return;
     const max = Math.max(1, Math.floor(liveTon) || 1);
     setQty((q) => Math.min(Math.max(1, q), max));
-  }, [liveTon, purchaseDisabled]);
+  }, [liveTon, purchaseDisabled, isPreOrder]);
 
   const addCart = (buyNow = false) => {
     if (purchaseDisabled) {
@@ -299,7 +306,7 @@ export function ProductDetailView({
 
     if (!r.ok) {
       toast.push(
-        r.max === 0
+        r.max === 0 && !r.preOrder
           ? `“${activeProduct.ten}” đã hết hàng`
           : `Chỉ còn ${r.max} ${activeProduct.dvt || "sản phẩm"} — giỏ đã đủ số này`
       );
@@ -330,9 +337,11 @@ export function ProductDetailView({
     }
 
     toast.push(
-      r.capped
-        ? `Đã thêm tối đa ${r.qty} ${activeProduct.dvt || ""} (hết tồn kho)`
-        : `Đã thêm “${activeProduct.ten}” vào giỏ`,
+      r.preOrder || isPreOrder
+        ? "Đã thêm đặt trước — giao khi shop có hàng"
+        : r.capped
+          ? `Đã thêm tối đa ${r.qty} ${activeProduct.dvt || ""} (hết tồn kho)`
+          : `Đã thêm “${activeProduct.ten}” vào giỏ`,
       {
         href: "/gio-hang",
         hrefLabel: "Xem giỏ hàng",
@@ -495,13 +504,20 @@ export function ProductDetailView({
                       </span>
                     </>
                   ) : null}
-                  {!needPick && !variantsLoading && soldOut ? (
+                  {!needPick && !variantsLoading && isPreOrder ? (
                     <>
                       {" · "}
-                      <span className="font-semibold text-red-600">Hết hàng</span>
+                      <span className="font-semibold text-amber-700">Đặt trước</span>
                     </>
                   ) : null}
                 </p>
+
+                {isPreOrder ? (
+                  <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900 ring-1 ring-amber-200/80">
+                    Hết hàng — bạn có thể đặt trước. Đơn sẽ giao khi shop có hàng
+                    (không giao ngay).
+                  </p>
+                ) : null}
 
                 {variantAxes.length > 0 ? (
                   <ProductVariantPicker
@@ -525,28 +541,44 @@ export function ProductDetailView({
                     <input
                       type="number"
                       min={1}
-                      max={purchaseDisabled ? 1 : Math.max(1, liveTon)}
+                      max={
+                        purchaseDisabled || isPreOrder
+                          ? undefined
+                          : Math.max(1, liveTon)
+                      }
                       value={qty}
                       onChange={(e) => {
                         const n = Math.max(1, Number(e.target.value) || 1);
-                        setQty(
-                          purchaseDisabled ? 1 : Math.min(n, Math.max(1, liveTon))
-                        );
+                        if (purchaseDisabled) {
+                          setQty(1);
+                          return;
+                        }
+                        if (isPreOrder) {
+                          setQty(n);
+                          return;
+                        }
+                        setQty(Math.min(n, Math.max(1, liveTon)));
                       }}
                       className="h-10 w-14 border-x border-[#ddd] bg-white text-center text-sm font-semibold tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     />
                     <button
                       type="button"
                       className="h-10 w-10 text-lg text-slate-600 hover:bg-[#f5f5f5] disabled:opacity-40"
-                      disabled={purchaseDisabled || qty >= liveTon}
+                      disabled={
+                        purchaseDisabled || (!isPreOrder && qty >= liveTon)
+                      }
                       onClick={() =>
-                        setQty((q) => Math.min(Math.max(1, liveTon), q + 1))
+                        setQty((q) =>
+                          isPreOrder
+                            ? q + 1
+                            : Math.min(Math.max(1, liveTon), q + 1)
+                        )
                       }
                     >
                       +
                     </button>
                   </div>
-                  {!purchaseDisabled && liveTon > 0 ? (
+                  {!purchaseDisabled && !isPreOrder && liveTon > 0 ? (
                     <p className="mt-1 text-xs text-slate-500">
                       Còn {liveTon} {activeProduct.dvt || ""}
                     </p>
@@ -561,15 +593,15 @@ export function ProductDetailView({
                   onClick={() => addCart(false)}
                   className="flex min-h-12 flex-1 items-center justify-center rounded-xl bg-[var(--aloha-green-light)] px-4 py-3 text-sm font-bold text-[var(--aloha-green-mid)] hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  Thêm giỏ hàng
+                  {isPreOrder ? "Đặt trước" : "Thêm giỏ hàng"}
                 </button>
                 <button
                   type="button"
                   disabled={purchaseDisabled}
                   onClick={() => addCart(true)}
-                  className="flex min-h-12 flex-1 items-center justify-center rounded-xl bg-[var(--aloha-green)] px-4 py-3 text-sm font-bold text-white hover:bg-[var(--aloha-green-mid)] disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex min-h-12 flex-1 items-center justify-center rounded-xl bg-[var(--aloha-green)] px-4 py-3 text-sm font-bold text-white hover:bg-[var(--aloha-green-hover)] disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  Mua ngay
+                  {isPreOrder ? "Đặt trước ngay" : "Mua ngay"}
                 </button>
               </div>
             </div>
@@ -587,7 +619,7 @@ export function ProductDetailView({
       <ProductStickyCta
         price={liveGia}
         needPick={needPick}
-        soldOut={soldOut}
+        preOrder={isPreOrder}
         purchaseDisabled={purchaseDisabled}
         onAddCart={() => addCart(false)}
         onBuyNow={() => addCart(true)}

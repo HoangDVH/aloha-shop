@@ -12,6 +12,7 @@ import {
   type ShopAddress,
 } from "@/lib/orders";
 import {
+  shopPreOrderRequiresTransfer,
   shopShowCheckoutShipping,
   shopShowTransferPayment,
 } from "@/lib/checkoutFlags";
@@ -22,6 +23,7 @@ import {
 } from "@/lib/checkoutSchemas";
 import type { ShippingQuote } from "@/lib/shipping";
 import { formatVariantLabel } from "@/lib/cartVariant";
+import { isPreOrderTon } from "@/lib/cart";
 import type { Delivery, PayMethod } from "./checkoutTypes";
 
 type CartLineLike = {
@@ -32,6 +34,7 @@ type CartLineLike = {
   anh?: string;
   ctv?: string;
   dvt?: string;
+  ton?: number;
   lineNote?: string;
   attributes?: Array<{ attributeName: string; attributeValue: string }>;
 };
@@ -43,6 +46,8 @@ type ShopUserLike = {
 
 type Args = {
   agree: boolean;
+  /** Đã xác nhận modal COD đặt trước (bắt buộc khi COD + pre-order) */
+  preOrderCodConfirmed?: boolean;
   selected: CartLineLike[];
   delivery: Delivery;
   showNewForm: boolean;
@@ -73,6 +78,7 @@ function profilePhoneEmpty(phone?: string | null) {
 /** Validate + tạo địa chỉ (nếu cần) + placeShopOrder — Zod + React Query mutation. */
 export function usePlaceOrder({
   agree,
+  preOrderCodConfirmed = false,
   selected,
   delivery,
   showNewForm,
@@ -108,7 +114,7 @@ export function usePlaceOrder({
     },
   });
 
-  const placeOrder = async () => {
+  const placeOrder = async (opts?: { preOrderCodConfirmed?: boolean }) => {
     if (placingLockRef.current) return;
     setError("");
 
@@ -125,8 +131,34 @@ export function usePlaceOrder({
       return;
     }
 
+    const hasPreOrder = selected.some((l) => isPreOrderTon(l.ton));
+    const cartTotal = selected.reduce((n, l) => n + l.gia * l.qty, 0);
+    const orderTotal = cartTotal + Math.max(0, Number(shippingFee) || 0);
+    const forceTransfer =
+      hasPreOrder && shopPreOrderRequiresTransfer(orderTotal);
+    const codConfirmed = Boolean(
+      opts?.preOrderCodConfirmed ?? preOrderCodConfirmed
+    );
+
+    if (forceTransfer && !showTransfer) {
+      setError(
+        "Đơn đặt trước vượt hạn mức COD — cần chuyển khoản nhưng shop chưa bật CK"
+      );
+      return;
+    }
+    if (forceTransfer && pay !== "Transfer") {
+      setError("Đơn đặt trước vượt hạn mức COD — vui lòng thanh toán chuyển khoản");
+      return;
+    }
+    if (hasPreOrder && !forceTransfer && pay === "Cash" && !codConfirmed) {
+      setError("Vui lòng xác nhận điều kiện đặt trước COD trên form");
+      return;
+    }
+
     const method: PayMethod =
-      showTransfer && pay === "Transfer" ? "Transfer" : "Cash";
+      forceTransfer || (showTransfer && pay === "Transfer")
+        ? "Transfer"
+        : "Cash";
 
     let customerName = "";
     let customerPhone = "";

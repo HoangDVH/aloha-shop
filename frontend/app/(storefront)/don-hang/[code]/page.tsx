@@ -232,7 +232,7 @@ export default function DonHangStatusPage() {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center">
         <AlertCircle className="mx-auto text-[#EE6055]" size={40} />
-        <h1 className="mt-4 text-xl font-extrabold text-[#1a2e1a]">Không tìm thấy đơn</h1>
+        <h1 className="mt-4 text-xl font-extrabold text-[var(--aloha-ink)]">Không tìm thấy đơn</h1>
         <p className="mt-2 text-sm text-slate-500">
           {error || "Đơn không tồn tại hoặc không thuộc tài khoản này."}
         </p>
@@ -288,7 +288,7 @@ export default function DonHangStatusPage() {
   if (showThanks && isPaid) {
     const invoiceCode = displayShopOrderCode(order);
     return (
-      <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#F7F3EA] px-4 pt-[env(safe-area-inset-top,0px)]">
+      <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[var(--aloha-cream)] px-4 pt-[env(safe-area-inset-top,0px)]">
         <div className="w-full max-w-md animate-fade-up rounded-3xl bg-white px-6 py-10 text-center shadow-xl ring-1 ring-[#E8E2D6]">
           <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[var(--aloha-green-light)]">
             <CheckCircle2 size={44} className="text-[var(--aloha-green)]" strokeWidth={1.75} />
@@ -296,7 +296,7 @@ export default function DonHangStatusPage() {
           <p className="mt-5 text-xs font-bold uppercase tracking-[0.2em] text-[var(--aloha-green)]">
             Thanh toán thành công
           </p>
-          <h2 className="mt-2 text-2xl font-extrabold text-[#1a2e1a]">Cảm ơn bạn!</h2>
+          <h2 className="mt-2 text-2xl font-extrabold text-[var(--aloha-ink)]">Cảm ơn bạn!</h2>
           <p className="mt-3 text-sm leading-relaxed text-slate-600">
             Cửa hàng đã xác nhận chuyển khoản. Hóa đơn đang được chuẩn bị.
           </p>
@@ -312,7 +312,7 @@ export default function DonHangStatusPage() {
           ) : null}
           <button
             type="button"
-            className="mt-8 w-full rounded-xl bg-[var(--aloha-green)] py-3.5 text-sm font-bold text-white hover:bg-[var(--aloha-green-mid)]"
+            className="mt-8 w-full rounded-xl bg-[var(--aloha-green)] py-3.5 text-sm font-bold text-white hover:bg-[var(--aloha-green-hover)]"
             onClick={() => setShowThanks(false)}
           >
             Xem chi tiết đơn
@@ -334,13 +334,13 @@ export default function DonHangStatusPage() {
       {isSuccessView ? (
         <div className="space-y-3 sm:space-y-4">
           <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[#E8E2D6]">
-            <div className="bg-gradient-to-r from-[#E8EFE4] via-white to-[#F7F3EA] px-4 py-6 sm:px-8 sm:py-8">
+            <div className="bg-gradient-to-r from-[var(--aloha-green-light)] via-white to-[var(--aloha-cream)] px-4 py-6 sm:px-8 sm:py-8">
               <div className="flex flex-col items-center text-center sm:flex-row sm:items-start sm:gap-5 sm:text-left">
                 <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[var(--aloha-green)] text-white shadow-md shadow-[var(--aloha-green)]/25 sm:h-[72px] sm:w-[72px]">
                   <CheckCircle2 size={36} strokeWidth={2} />
                 </div>
                 <div className="mt-4 min-w-0 flex-1 sm:mt-0">
-                  <h1 className="text-xl font-extrabold tracking-tight text-[#1a2e1a] sm:text-2xl">
+                  <h1 className="text-xl font-extrabold tracking-tight text-[var(--aloha-ink)] sm:text-2xl">
                     {hero.title}
                   </h1>
                   <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{hero.subtitle}</p>
@@ -361,7 +361,7 @@ export default function DonHangStatusPage() {
                             className={
                               order.kvInvoiceCode
                                 ? "rounded-lg bg-[var(--aloha-green)] px-2.5 py-1 font-mono text-sm font-bold text-white"
-                                : "rounded-lg bg-[#1a2e1a]/5 px-2.5 py-1 font-mono text-sm font-bold text-[#1a2e1a]"
+                                : "rounded-lg bg-[var(--aloha-ink)]/5 px-2.5 py-1 font-mono text-sm font-bold text-[var(--aloha-ink)]"
                             }
                           >
                             {shown}
@@ -379,7 +379,7 @@ export default function DonHangStatusPage() {
                 </div>
               </div>
             </div>
-            <div className="border-t border-[#E5DFD2] px-3 py-5 sm:px-8">
+            <div className="border-t border-[var(--aloha-line)] px-3 py-5 sm:px-8">
               <OrderStatusTimeline order={order} />
             </div>
           </section>
@@ -391,9 +391,9 @@ export default function DonHangStatusPage() {
                   <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--aloha-green-light)] text-[var(--aloha-green)]">
                     <MapPin size={16} />
                   </span>
-                  <h2 className="text-sm font-extrabold text-[#1a2e1a]">Địa chỉ nhận hàng</h2>
+                  <h2 className="text-sm font-extrabold text-[var(--aloha-ink)]">Địa chỉ nhận hàng</h2>
                 </div>
-                <p className="text-[15px] font-bold text-[#1a2e1a]">
+                <p className="text-[15px] font-bold text-[var(--aloha-ink)]">
                   {order.customerName}
                   <span className="mx-2 font-normal text-slate-300">|</span>
                   <span className="font-semibold text-slate-700">{order.customerPhone}</span>
@@ -402,8 +402,8 @@ export default function DonHangStatusPage() {
                   {addressLine || "—"}
                 </p>
                 {order.customerNote ? (
-                  <p className="mt-3 rounded-lg bg-[#F7F3EA] px-3 py-2 text-xs text-slate-600">
-                    <span className="font-bold text-[#1a2e1a]">Ghi chú: </span>
+                  <p className="mt-3 rounded-lg bg-[var(--aloha-cream)] px-3 py-2 text-xs text-slate-600">
+                    <span className="font-bold text-[var(--aloha-ink)]">Ghi chú: </span>
                     {order.customerNote}
                   </p>
                 ) : null}
@@ -414,7 +414,7 @@ export default function DonHangStatusPage() {
                   <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--aloha-green-light)] text-[var(--aloha-green)]">
                     <CreditCard size={16} />
                   </span>
-                  <h2 className="text-sm font-extrabold text-[#1a2e1a]">Thanh toán</h2>
+                  <h2 className="text-sm font-extrabold text-[var(--aloha-ink)]">Thanh toán</h2>
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                   <span className="text-slate-600">{payLabel}</span>
@@ -431,10 +431,10 @@ export default function DonHangStatusPage() {
                 {order.kvInvoiceCode ? (
                   <p className="mt-2 text-xs text-slate-500">
                     Hóa đơn:{" "}
-                    <span className="font-semibold text-[#1a2e1a]">{order.kvInvoiceCode}</span>
+                    <span className="font-semibold text-[var(--aloha-ink)]">{order.kvInvoiceCode}</span>
                   </p>
                 ) : null}
-                <div className="mt-3 flex items-end justify-between border-t border-dashed border-[#E5DFD2] pt-3">
+                <div className="mt-3 flex items-end justify-between border-t border-dashed border-[var(--aloha-line)] pt-3">
                   <span className="text-sm font-semibold text-slate-600">Tổng thanh toán</span>
                   <span className="text-xl font-extrabold text-[#EE6055]">
                     {formatVnd(order.totalPayment ?? order.total)}
@@ -446,7 +446,7 @@ export default function DonHangStatusPage() {
                 <div className="flex gap-3">
                   <Truck className="mt-0.5 shrink-0 text-[var(--aloha-green)]" size={20} />
                   <div>
-                    <p className="text-sm font-extrabold text-[#1a2e1a]">Bước tiếp theo</p>
+                    <p className="text-sm font-extrabold text-[var(--aloha-ink)]">Bước tiếp theo</p>
                     <p className="mt-1 text-sm leading-relaxed text-slate-600">
                       Shop đang chuẩn bị hàng. Anh/chị sẽ nhận cập nhật khi đơn chuyển sang giao.
                       Cần hỗ trợ sớm: gọi cửa hàng hoặc xem lại đơn trong tài khoản.
@@ -465,14 +465,14 @@ export default function DonHangStatusPage() {
 
             <aside className="space-y-3 lg:sticky lg:top-3">
               <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[#E8E2D6]">
-                <div className="flex items-center justify-between border-b border-[#E5DFD2] px-4 py-3">
-                  <h2 className="text-sm font-extrabold text-[#1a2e1a]">
+                <div className="flex items-center justify-between border-b border-[var(--aloha-line)] px-4 py-3">
+                  <h2 className="text-sm font-extrabold text-[var(--aloha-ink)]">
                     Sản phẩm{" "}
                     <span className="font-semibold text-slate-400">({itemCount})</span>
                   </h2>
                   <Package size={16} className="text-[var(--aloha-green)]" />
                 </div>
-                <ul className="max-h-[40vh] divide-y divide-[#E5DFD2] overflow-y-auto px-4">
+                <ul className="max-h-[40vh] divide-y divide-[var(--aloha-line)] overflow-y-auto px-4">
                   {(order.orderDetails || []).map((d, i) => (
                     <li key={`${d.productCode}-${i}`} className="flex gap-3 py-3">
                       {d.imageUrl ? (
@@ -483,12 +483,12 @@ export default function DonHangStatusPage() {
                           className="h-14 w-14 shrink-0 rounded-xl object-cover ring-1 ring-[#E8E2D6]"
                         />
                       ) : (
-                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#F7F3EA]">
+                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[var(--aloha-cream)]">
                           <Package size={20} className="text-[var(--aloha-green)]" />
                         </div>
                       )}
                       <div className="min-w-0 flex-1">
-                        <p className="line-clamp-2 text-sm font-semibold text-[#1a2e1a]">
+                        <p className="line-clamp-2 text-sm font-semibold text-[var(--aloha-ink)]">
                           {d.productName}
                         </p>
                         {d.note ? (
@@ -499,14 +499,14 @@ export default function DonHangStatusPage() {
                         <p className="mt-0.5 text-xs text-slate-500">
                           {d.productCode} · ×{d.quantity}
                         </p>
-                        <p className="mt-1 text-sm font-bold text-[#1a2e1a]">
+                        <p className="mt-1 text-sm font-bold text-[var(--aloha-ink)]">
                           {formatVnd(d.price * d.quantity)}
                         </p>
                       </div>
                     </li>
                   ))}
                 </ul>
-                <div className="space-y-1.5 border-t border-[#E5DFD2] bg-[#FFFCF8] px-4 py-3 text-sm">
+                <div className="space-y-1.5 border-t border-[var(--aloha-line)] bg-[var(--aloha-card)] px-4 py-3 text-sm">
                   {order.subtotal != null ? (
                     <div className="flex justify-between text-slate-600">
                       <span>Tiền hàng</span>
@@ -523,8 +523,8 @@ export default function DonHangStatusPage() {
                       </span>
                     </div>
                   ) : null}
-                  <div className="flex items-center justify-between border-t border-dashed border-[#E5DFD2] pt-2">
-                    <span className="font-extrabold text-[#1a2e1a]">Thành tiền</span>
+                  <div className="flex items-center justify-between border-t border-dashed border-[var(--aloha-line)] pt-2">
+                    <span className="font-extrabold text-[var(--aloha-ink)]">Thành tiền</span>
                     <span className="text-lg font-extrabold text-[#EE6055]">
                       {formatVnd(order.totalPayment ?? order.total)}
                     </span>
@@ -535,7 +535,7 @@ export default function DonHangStatusPage() {
               <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
                 <Link
                   href="/tim"
-                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[var(--aloha-green)] px-4 py-3.5 text-sm font-bold text-white shadow-sm hover:bg-[var(--aloha-green-mid)]"
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[var(--aloha-green)] px-4 py-3.5 text-sm font-bold text-white shadow-sm hover:bg-[var(--aloha-green-hover)]"
                 >
                   <ShoppingBag size={16} />
                   Tiếp tục mua sắm
@@ -566,7 +566,7 @@ export default function DonHangStatusPage() {
                 />
               )}
               <div className="min-w-0">
-                <p className="truncate text-sm font-extrabold text-[#1a2e1a]">{hero.title}</p>
+                <p className="truncate text-sm font-extrabold text-[var(--aloha-ink)]">{hero.title}</p>
                 <p className="truncate text-[11px] text-slate-500">
                   {displayShopOrderCode(order)}
                   {order.method === "Transfer" ? " · Chuyển khoản" : " · COD"}
@@ -591,7 +591,7 @@ export default function DonHangStatusPage() {
                   <div className="flex items-start gap-2">
                     <Clock className="mt-0.5 shrink-0 text-[#dfb451]" size={16} />
                     <p className="text-xs leading-snug text-slate-700">
-                      <span className="font-extrabold text-[#1a2e1a]">Đang đối chiếu CK</span>
+                      <span className="font-extrabold text-[var(--aloha-ink)]">Đang đối chiếu CK</span>
                       {" — "}
                       trang tự cập nhật khi xong, không cần F5.
                     </p>
@@ -601,11 +601,11 @@ export default function DonHangStatusPage() {
 
               {isExpiredCk ? (
                 <section className="space-y-2 rounded-xl bg-white p-3 shadow-sm ring-1 ring-[#E8E2D6]">
-                  <h2 className="text-sm font-extrabold text-[#1a2e1a]">Mã QR đã hết hạn</h2>
+                  <h2 className="text-sm font-extrabold text-[var(--aloha-ink)]">Mã QR đã hết hạn</h2>
                   <button
                     type="button"
                     disabled={busy}
-                    className="w-full rounded-lg bg-[var(--aloha-green)] py-2.5 text-sm font-bold text-white hover:bg-[var(--aloha-green-mid)] disabled:opacity-50"
+                    className="w-full rounded-lg bg-[var(--aloha-green)] py-2.5 text-sm font-bold text-white hover:bg-[var(--aloha-green-hover)] disabled:opacity-50"
                     onClick={() => void doRenewPayment()}
                   >
                     {busy ? "Đang tạo…" : "Tạo mã QR mới"}
@@ -642,7 +642,7 @@ export default function DonHangStatusPage() {
                 <section className="space-y-2 rounded-xl bg-white p-3 shadow-sm ring-1 ring-[#E8E2D6]">
                   {isWaitingStaff ? (
                     <details className="group">
-                      <summary className="cursor-pointer list-none text-sm font-extrabold text-[#1a2e1a] outline-none [&::-webkit-details-marker]:hidden">
+                      <summary className="cursor-pointer list-none text-sm font-extrabold text-[var(--aloha-ink)] outline-none [&::-webkit-details-marker]:hidden">
                         Thông tin CK (đã gửi){" "}
                         <span className="text-xs font-semibold text-[var(--aloha-green)] group-open:hidden">
                           · xem
@@ -662,6 +662,7 @@ export default function DonHangStatusPage() {
                           qrKind={order.qrKind}
                           kvInvoiceCode={order.kvInvoiceCode}
                           kovCode={order.kovCode}
+                          qrString={order.qrString}
                           bank={order.bank}
                           qrUrl={order.qrUrl}
                           expiresAt={order.expiresAt}
@@ -688,6 +689,7 @@ export default function DonHangStatusPage() {
                         qrKind={order.qrKind}
                         kvInvoiceCode={order.kvInvoiceCode}
                         kovCode={order.kovCode}
+                        qrString={order.qrString}
                         bank={order.bank}
                         qrUrl={order.qrUrl}
                         expiresAt={order.expiresAt}
@@ -697,7 +699,7 @@ export default function DonHangStatusPage() {
                           <button
                             type="button"
                             disabled={busy}
-                            className="flex-1 rounded-lg bg-[var(--aloha-green)] py-2.5 text-sm font-bold text-white hover:bg-[var(--aloha-green-mid)] disabled:opacity-50"
+                            className="flex-1 rounded-lg bg-[var(--aloha-green)] py-2.5 text-sm font-bold text-white hover:bg-[var(--aloha-green-hover)] disabled:opacity-50"
                             onClick={() => void doRenewPayment()}
                           >
                             {busy ? "Đang tạo…" : "Tạo mã QR mới"}
@@ -706,7 +708,7 @@ export default function DonHangStatusPage() {
                           <button
                             type="button"
                             disabled={busy}
-                            className="flex-1 rounded-lg bg-[var(--aloha-green)] py-2.5 text-sm font-bold text-white hover:bg-[var(--aloha-green-mid)] disabled:opacity-50"
+                            className="flex-1 rounded-lg bg-[var(--aloha-green)] py-2.5 text-sm font-bold text-white hover:bg-[var(--aloha-green-hover)] disabled:opacity-50"
                             onClick={async () => {
                               setBusy(true);
                               setReportMsg("");
@@ -800,10 +802,10 @@ export default function DonHangStatusPage() {
 
             <aside className="space-y-2 lg:sticky lg:top-3">
               <section className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-[#E8E2D6]">
-                <div className="border-b border-[#E5DFD2] px-3 py-2.5">
-                  <h2 className="text-sm font-extrabold text-[#1a2e1a]">Chi tiết đơn</h2>
+                <div className="border-b border-[var(--aloha-line)] px-3 py-2.5">
+                  <h2 className="text-sm font-extrabold text-[var(--aloha-ink)]">Chi tiết đơn</h2>
                 </div>
-                <ul className="max-h-[22vh] divide-y divide-[#E5DFD2] overflow-y-auto px-3 lg:max-h-[28vh]">
+                <ul className="max-h-[22vh] divide-y divide-[var(--aloha-line)] overflow-y-auto px-3 lg:max-h-[28vh]">
                   {(order.orderDetails || []).map((d, i) => (
                     <li key={`${d.productCode}-${i}`} className="flex gap-2 py-2">
                       {d.imageUrl ? (
@@ -814,12 +816,12 @@ export default function DonHangStatusPage() {
                           className="h-10 w-10 shrink-0 rounded-lg object-cover ring-1 ring-[#E8E2D6]"
                         />
                       ) : (
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#F7F3EA]">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--aloha-cream)]">
                           <Package size={16} className="text-[var(--aloha-green)]" />
                         </div>
                       )}
                       <div className="min-w-0 flex-1">
-                        <p className="line-clamp-1 text-[13px] font-semibold text-[#1a2e1a]">
+                        <p className="line-clamp-1 text-[13px] font-semibold text-[var(--aloha-ink)]">
                           {d.productName}
                         </p>
                         {d.note ? (
@@ -831,13 +833,13 @@ export default function DonHangStatusPage() {
                           {d.productCode} · ×{d.quantity}
                         </p>
                       </div>
-                      <p className="shrink-0 text-[13px] font-bold text-[#1a2e1a]">
+                      <p className="shrink-0 text-[13px] font-bold text-[var(--aloha-ink)]">
                         {formatVnd(d.price * d.quantity)}
                       </p>
                     </li>
                   ))}
                 </ul>
-                <div className="space-y-0.5 border-t border-[#E5DFD2] px-3 py-2.5 text-[13px]">
+                <div className="space-y-0.5 border-t border-[var(--aloha-line)] px-3 py-2.5 text-[13px]">
                   {order.subtotal != null ? (
                     <div className="flex justify-between text-slate-600">
                       <span>Tiền hàng</span>
@@ -862,10 +864,10 @@ export default function DonHangStatusPage() {
                   </div>
                 </div>
                 {addressLine ? (
-                  <div className="flex gap-2 border-t border-[#E5DFD2] px-3 py-2 text-[12px] text-slate-600">
+                  <div className="flex gap-2 border-t border-[var(--aloha-line)] px-3 py-2 text-[12px] text-slate-600">
                     <MapPin size={14} className="mt-0.5 shrink-0 text-[var(--aloha-green)]" />
                     <div className="min-w-0">
-                      <p className="font-semibold text-[#1a2e1a]">
+                      <p className="font-semibold text-[var(--aloha-ink)]">
                         {order.customerName} · {order.customerPhone}
                       </p>
                       <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug">{addressLine}</p>
@@ -877,7 +879,7 @@ export default function DonHangStatusPage() {
               <div className="flex gap-2">
                 <Link
                   href="/tim"
-                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[var(--aloha-green)] px-3 py-2.5 text-[13px] font-bold text-white hover:bg-[var(--aloha-green-mid)]"
+                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[var(--aloha-green)] px-3 py-2.5 text-[13px] font-bold text-white hover:bg-[var(--aloha-green-hover)]"
                 >
                   <ShoppingBag size={15} />
                   Tiếp tục mua

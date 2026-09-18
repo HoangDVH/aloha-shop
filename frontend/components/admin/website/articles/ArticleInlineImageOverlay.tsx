@@ -219,7 +219,7 @@ export function ArticleInlineImageOverlay({
         title={title}
         className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${
           align === a
-            ? "bg-[#3D6B3A]/15 text-[#3D6B3A]"
+            ? "bg-[#0F9D58]/15 text-[#0F9D58]"
             : "text-slate-600 hover:bg-slate-100"
         }`}
         onClick={() => applyAlign(a)}
@@ -264,7 +264,7 @@ export function ArticleInlineImageOverlay({
             type="button"
             className={`rounded-lg px-2 py-1.5 text-[12px] font-bold ${
               Math.abs(widthPct - p) < 3
-                ? "bg-[#3D6B3A]/10 text-[#3D6B3A]"
+                ? "bg-[#0F9D58]/10 text-[#0F9D58]"
                 : "text-slate-600 hover:bg-slate-100"
             }`}
             onClick={() => applyPreset(p)}
@@ -279,7 +279,7 @@ export function ArticleInlineImageOverlay({
             max={100}
             value={Math.round(widthPct)}
             onChange={(e) => applyPreset(Number(e.target.value))}
-            className="mx-1 w-24 accent-[#3D6B3A] sm:w-32"
+            className="mx-1 w-24 accent-[#0F9D58] sm:w-32"
             aria-label="Độ rộng ảnh"
           />
         ) : null}

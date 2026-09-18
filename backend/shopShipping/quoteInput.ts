@@ -7,6 +7,10 @@ import {
 } from "./resolveWeight.js";
 import type { CarrierQuoteInput } from "./ghtkClient.js";
 import type { QuoteLineItem } from "./quoteToken.js";
+import {
+  loadCategoryMetaById,
+  overlayProductCategoryFields,
+} from "../shopCatalog/categoryMeta.js";
 
 const COL = "aloha_products";
 
@@ -53,16 +57,23 @@ async function loadProductsByCode(db: Db, mas: string[]): Promise<Map<string, Pr
       ten: 1,
       trongLuong: 1,
       shipSizeClass: 1,
+      categoryId: 1,
       nhomPath: 1,
       nhom: 1,
+      categoryName: 1,
+      ancestor: 1,
       chieuDaiCm: 1,
       chieuRongCm: 1,
       chieuCaoCm: 1,
     })
     .toArray();
 
+  const metaById = await loadCategoryMetaById(db);
   for (const d of docs) {
-    indexProductKeys(d as Record<string, unknown>, byMa);
+    indexProductKeys(
+      overlayProductCategoryFields(d as Record<string, unknown>, metaById),
+      byMa
+    );
   }
 
   const missing = mas.filter((m) => !byMa.has(m));
@@ -79,8 +90,11 @@ async function loadProductsByCode(db: Db, mas: string[]): Promise<Map<string, Pr
         ten: 1,
         trongLuong: 1,
         shipSizeClass: 1,
+        categoryId: 1,
         nhomPath: 1,
         nhom: 1,
+        categoryName: 1,
+        ancestor: 1,
         chieuDaiCm: 1,
         chieuRongCm: 1,
         chieuCaoCm: 1,
@@ -88,7 +102,10 @@ async function loadProductsByCode(db: Db, mas: string[]): Promise<Map<string, Pr
       .limit(50)
       .toArray();
     for (const d of loose) {
-      indexProductKeys(d as Record<string, unknown>, byMa);
+      indexProductKeys(
+        overlayProductCategoryFields(d as Record<string, unknown>, metaById),
+        byMa
+      );
     }
   }
 

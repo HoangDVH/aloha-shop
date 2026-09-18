@@ -22,7 +22,7 @@ export function ShippingCarrierOption({ quote, selected, isCheapest, onSelect }:
       onClick={onSelect}
       className="flex w-full items-center justify-between rounded-xl border-2 px-4 py-3 text-left transition"
       style={{
-        borderColor: selected ? brand.accent : "#E5DFD2",
+        borderColor: selected ? brand.accent : "var(--aloha-line)",
         backgroundColor: selected ? brand.bg : "white",
       }}
     >
@@ -34,7 +34,7 @@ export function ShippingCarrierOption({ quote, selected, isCheapest, onSelect }:
           <Image src={brand.logo} alt={brand.label} width={40} height={40} className="h-10 w-10" />
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-bold text-[#1a2e1a]">
+          <p className="text-sm font-bold text-[var(--aloha-ink)]">
             {quote.name}
             {isCheapest && !free ? (
               <span className="ml-2 rounded bg-[#EE6055] px-1.5 py-0.5 text-[10px] font-bold text-white">

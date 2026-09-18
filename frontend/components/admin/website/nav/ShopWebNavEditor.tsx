@@ -125,7 +125,7 @@ function CatTreeRow({
             type="checkbox"
             checked={visible}
             onChange={() => path && onToggleVisible(path)}
-            className="h-[15px] w-[15px] shrink-0 cursor-pointer accent-[#0070e0]"
+            className="h-[15px] w-[15px] shrink-0 cursor-pointer accent-[#0F9D58]"
             title={visible ? "Đang hiện trên menu — bấm để ẩn" : "Đang ẩn — bấm để hiện"}
           />
           <span
@@ -288,7 +288,7 @@ export function ShopNavPanel({
           <h4 className="text-[13px] font-semibold text-gray-900">Mục tùy chỉnh</h4>
           <WbBtn
             variant="ghost"
-            className="!h-7 !px-2 !text-xs text-[#3D6B3A] hover:bg-[#3D6B3A]/10"
+            className="!h-7 !px-2 !text-xs text-[#0F9D58] hover:bg-[#0F9D58]/10"
             onClick={() =>
               setNav({
                 ...nav,

@@ -145,7 +145,7 @@ function CategoryTreeRow({
           checked={isChecked}
           readOnly
           tabIndex={-1}
-          className="pointer-events-none mr-2 h-[15px] w-[15px] shrink-0 accent-[#0070e0]"
+          className="pointer-events-none mr-2 h-[15px] w-[15px] shrink-0 accent-[var(--aloha-green)]"
         />
 
         <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
@@ -153,7 +153,7 @@ function CategoryTreeRow({
             className="min-w-0 flex-1 break-words leading-snug"
             style={{
               fontWeight: depth === 0 ? 600 : 400,
-              color: isChecked ? "#0070e0" : "#1f2937",
+              color: isChecked ? "var(--aloha-green)" : "#1f2937",
             }}
             title={node.fullPath}
           >
@@ -402,7 +402,7 @@ export function ShopCategorySelect({
                 "Tạo nhóm hàng mới trên KiotViet, rồi đồng bộ sản phẩm trên ALOHA."
               )
             }
-            className="border-0 bg-transparent p-0.5 text-[13px] font-semibold text-[#0090da] hover:underline"
+            className="border-0 bg-transparent p-0.5 text-[13px] font-semibold text-[var(--aloha-green)] hover:underline"
           >
             + Tạo mới
           </button>
@@ -420,7 +420,7 @@ export function ShopCategorySelect({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               autoFocus
-              className="h-[34px] w-full rounded-lg border border-[#d0d5dd] py-0 pl-8 pr-7 text-[13px] text-[#333] outline-none focus:border-[#0070e0]"
+              className="h-[34px] w-full rounded-lg border border-[#d0d5dd] py-0 pl-8 pr-7 text-[13px] text-[#333] outline-none focus:border-[var(--aloha-green)]"
             />
             {searchQuery ? (
               <button
@@ -469,14 +469,14 @@ export function ShopCategorySelect({
             onClick={() =>
               setTempSelected(displayedTree.map((n) => normPath(n.fullPath)))
             }
-            className="border-0 bg-transparent p-1 text-[13px] font-semibold text-[#0090da] hover:underline"
+            className="border-0 bg-transparent p-1 text-[13px] font-semibold text-[var(--aloha-green)] hover:underline"
           >
             Chọn tất cả
           </button>
           <button
             type="button"
             onClick={handleApply}
-            className="rounded-md border-0 bg-[#0070e0] px-4 py-1.5 text-[13px] font-semibold text-white hover:bg-[#0066cc]"
+            className="rounded-md border-0 bg-[var(--aloha-green)] px-4 py-1.5 text-[13px] font-semibold text-white hover:bg-[var(--aloha-green-hover)]"
           >
             Áp dụng
           </button>
@@ -495,7 +495,7 @@ export function ShopCategorySelect({
             <button
               type="button"
               onClick={handleClearAll}
-              className="text-[12px] font-semibold text-[#0090da] hover:underline"
+              className="text-[12px] font-semibold text-[var(--aloha-green)] hover:underline"
             >
               Bỏ lọc nhóm
             </button>
@@ -517,9 +517,9 @@ export function ShopCategorySelect({
         className="flex h-9 w-full items-center gap-1.5 rounded-md border px-2.5 text-left text-[13px]"
         style={{
           background: "#fff",
-          borderColor: open ? "#0070e0" : "#D4CDC0",
+          borderColor: open ? "var(--aloha-green)" : "var(--aloha-line)",
           boxShadow: open ? "0 0 0 2px rgba(0,112,224,0.2)" : undefined,
-          color: value.length ? "#0070e0" : "#555",
+          color: value.length ? "var(--aloha-green)" : "#555",
           fontWeight: value.length ? 700 : 400,
         }}
       >

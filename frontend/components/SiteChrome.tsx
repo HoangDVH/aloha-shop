@@ -14,12 +14,11 @@ import { useShopLoginHref } from "@/lib/useShopLoginHref";
 import { useShopLogoutAction } from "@/lib/useShopLogoutAction";
 import { applyNavConfig } from "@/lib/navConfig";
 import type { NavConfig, AppearanceTheme } from "@/lib/appearanceTypes";
-import { applyThemeCssVars, darkenHex } from "@/lib/themeCss";
+import { applyThemeCssVars } from "@/lib/themeCss";
 const LOGO_HEADER_SRC = "/brand/logo-header-on-theme.png?v=1";
 const LOGO_WIDTH = 976;
 const LOGO_HEIGHT = 194;
-const DEFAULT_HEADER = "#3D6B3A";
-const DEFAULT_HEADER_BORDER = "#2F5530";
+const DEFAULT_PRIMARY = "#16C45A";
 
 const DEFAULT_FOOTER = {
   address: "90/2 Nguyễn Phúc Chu, Phường Tân Bình, Thành phố Hồ Chí Minh",
@@ -168,10 +167,10 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
     setMobileNav(false);
   };
 
-  const headerBg = theme?.headerBg || theme?.primaryColor || DEFAULT_HEADER;
-  const headerBorder = theme?.primaryColor
-    ? darkenHex(theme.primaryColor, 0.12)
-    : DEFAULT_HEADER_BORDER;
+  const headerBg = "var(--aloha-header)";
+  const headerBorder = "rgba(255,255,255,0.14)";
+  const chromeInk = "#FFFFFF";
+  const chromeHover = "hover:bg-white/15";
 
   /** Cùng URL Zalo với nút «Báo giá sỉ · Zalo» trên banner. */
   const wholesaleZaloUrl = zaloHref(
@@ -196,28 +195,28 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
             <HeaderSearch onSubmitExtra={closeMenus} />
           </div>
 
-          <div className="ml-auto flex items-center gap-0.5 sm:gap-2">
+          <div className="ml-auto flex items-center gap-0.5 sm:gap-2" style={{ color: chromeInk }}>
             <a
               href={wholesaleZaloUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex min-h-11 items-center gap-1 rounded-xl px-2 text-sm font-bold text-white hover:bg-white/15 lg:hidden"
+              className={`inline-flex min-h-11 items-center gap-1 rounded-xl px-2 text-sm font-bold text-white ${chromeHover} lg:hidden`}
               aria-label="Nhận báo giá sỉ"
             >
-              <BadgePercent size={18} strokeWidth={2.25} aria-hidden />
+              <BadgePercent size={18} strokeWidth={2.25} aria-hidden className="text-[var(--aloha-cream)]" />
               <span className="hidden sm:inline">Báo giá sỉ</span>
             </a>
             <HeaderAccountMenu />
             <Link
               href="/gio-hang"
-              className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl px-2 text-white hover:bg-white/15 sm:min-w-0 sm:px-3"
+              className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl px-2 text-white ${chromeHover} sm:min-w-0 sm:px-3`}
               onClick={closeMenus}
               aria-label={`Giỏ hàng${count ? `, ${count} sản phẩm` : ""}`}
             >
               <span className="relative inline-flex">
-                <ShoppingBasket size={22} />
+                <ShoppingBasket size={22} className="text-white" />
                 {count > 0 ? (
-                  <span className="absolute -right-2.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-white px-1 text-[10px] font-black text-[var(--aloha-green-dark)] shadow-sm">
+                  <span className="absolute -right-2.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--aloha-gold)] px-1 text-[10px] font-black text-[var(--aloha-ink)] shadow-sm">
                     {count > 99 ? "99+" : count}
                   </span>
                 ) : null}
@@ -226,7 +225,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
             </Link>
             <button
               type="button"
-              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-white hover:bg-white/15 lg:hidden"
+              className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-white ${chromeHover} lg:hidden`}
               onClick={() => setMobileNav((v) => !v)}
               aria-label="Menu"
               aria-expanded={mobileNav}
@@ -237,12 +236,9 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
         </div>
       </div>
 
-      <nav
-        className="hidden overflow-visible border-b border-[var(--aloha-line)] bg-white lg:block"
-        style={{ color: headerBg }}
-      >
-        <div className="mx-auto flex max-w-7xl items-center gap-2 overflow-visible px-4 py-2">
-          <div className="hidden min-w-0 flex-1 items-center gap-1 lg:flex">
+      <nav className="hidden overflow-visible border-b border-[var(--aloha-line)] bg-[var(--aloha-cream)] text-[var(--aloha-ink)] lg:block">
+        <div className="mx-auto flex max-w-7xl items-stretch overflow-visible px-1 sm:px-2">
+          <div className="hidden min-w-0 flex-1 items-stretch lg:flex">
             {navApplied.before.map((c) => (
               <a
                 key={c.id}
@@ -250,15 +246,19 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                 target={c.openInNewTab ? "_blank" : undefined}
                 rel={c.openInNewTab ? "noopener noreferrer" : undefined}
                 onClick={closeMenus}
-                className="shrink-0 rounded-md px-2 py-1.5 text-sm font-semibold hover:bg-[var(--aloha-green)]/10"
+                className="group relative inline-flex shrink-0 items-center px-2.5 text-[13px] font-semibold text-[var(--aloha-ink)] hover:text-[var(--aloha-green)]"
               >
                 {c.label}
+                <span
+                  className="pointer-events-none absolute inset-x-2 bottom-0 h-[2.5px] rounded-full bg-[var(--aloha-green)] opacity-0 transition-opacity group-hover:opacity-100"
+                  aria-hidden
+                />
               </a>
             ))}
             <CategoryNavBar
               tree={navApplied.tree}
               onNavigate={closeMenus}
-              className="flex"
+              className="flex min-w-0 flex-1"
             />
             {navApplied.after.map((c) => (
               <a
@@ -267,9 +267,13 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                 target={c.openInNewTab ? "_blank" : undefined}
                 rel={c.openInNewTab ? "noopener noreferrer" : undefined}
                 onClick={closeMenus}
-                className="shrink-0 rounded-md px-2 py-1.5 text-sm font-semibold hover:bg-[var(--aloha-green)]/10"
+                className="group relative inline-flex shrink-0 items-center px-2.5 text-[13px] font-semibold text-[var(--aloha-ink)] hover:text-[var(--aloha-green)]"
               >
                 {c.label}
+                <span
+                  className="pointer-events-none absolute inset-x-2 bottom-0 h-[2.5px] rounded-full bg-[var(--aloha-green)] opacity-0 transition-opacity group-hover:opacity-100"
+                  aria-hidden
+                />
               </a>
             ))}
           </div>
@@ -277,7 +281,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
             href={wholesaleZaloUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[var(--aloha-green)] px-3.5 py-1.5 text-sm font-bold text-white shadow-sm transition hover:bg-[var(--aloha-green-mid)]"
+            className="my-2 ml-2 hidden shrink-0 items-center gap-1.5 self-center rounded-full bg-[var(--aloha-green)] px-3 py-1.5 text-sm font-bold text-white shadow-sm transition hover:bg-[var(--aloha-green-hover)] xl:inline-flex"
           >
             <BadgePercent size={16} strokeWidth={2.25} aria-hidden />
             Nhận báo giá sỉ

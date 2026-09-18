@@ -113,7 +113,7 @@ async function saveDynamicPaymentCode(params, customToken) {
     DocumentId: Number(params.documentId), // ID hóa đơn KiotViet
     DocumentType: 1,
     Amount: Math.round(Number(params.amount) || 0),
-    Description: String(params.description || `${params.kovCode} bill ${params.invoiceCode || ''}`).trim()
+    Description: String(params.description || `${String(params.kovCode || '').trim()} bill ${params.invoiceCode || ''}`).trim()
   };
 
   const doRequest = async (authToken) => {

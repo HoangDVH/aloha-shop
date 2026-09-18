@@ -36,6 +36,15 @@ export type PublicShopAccount = {
   adminNote?: string | null;
   commissionRate?: number | null;
   addresses?: ShopAddressPublic[];
+  /** STK nhận hoa hồng (mức 1) — admin có thể mask phía UI */
+  payoutBank?: {
+    bankBin: string;
+    bankName: string;
+    accountNumber: string;
+    accountName: string;
+    updatedAt?: string;
+  } | null;
+  ctvBalanceDebt?: number | null;
 };
 
 export function shopAccountIdQuery(id: string): Record<string, unknown> {
@@ -114,6 +123,23 @@ export function toPublicShopAccount(doc: Record<string, unknown>): PublicShopAcc
         ? Number(doc.commissionRate)
         : null,
     addresses,
+    payoutBank: (() => {
+      const pb = doc.payoutBank as Record<string, unknown> | null | undefined;
+      if (!pb || typeof pb !== "object") return null;
+      const accountNumber = String(pb.accountNumber || "").trim();
+      if (!accountNumber) return null;
+      return {
+        bankBin: String(pb.bankBin || "").trim(),
+        bankName: String(pb.bankName || "").trim(),
+        accountNumber,
+        accountName: String(pb.accountName || "").trim(),
+        updatedAt: pb.updatedAt ? String(pb.updatedAt) : undefined,
+      };
+    })(),
+    ctvBalanceDebt:
+      doc.ctvBalanceDebt != null && Number.isFinite(Number(doc.ctvBalanceDebt))
+        ? Number(doc.ctvBalanceDebt)
+        : null,
   };
 }
 

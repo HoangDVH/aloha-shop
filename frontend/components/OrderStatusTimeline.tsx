@@ -120,7 +120,7 @@ export function OrderStatusTimeline({ order }: { order: ShopOrder }) {
               {!last ? (
                 <span
                   className={`absolute left-[50%] top-[15px] h-0.5 w-full ${
-                    lineDone || step.done ? "bg-[var(--aloha-green)]" : "bg-[#E5DFD2]"
+                    lineDone || step.done ? "bg-[var(--aloha-green)]" : "bg-[var(--aloha-line)]"
                   }`}
                   aria-hidden
                 />
@@ -138,7 +138,7 @@ export function OrderStatusTimeline({ order }: { order: ShopOrder }) {
               </span>
               <span
                 className={`mt-2 max-w-[4.8rem] text-[10px] font-bold leading-tight sm:max-w-[5.5rem] sm:text-[11px] ${
-                  step.done || step.active ? "text-[#1a2e1a]" : "text-slate-400"
+                  step.done || step.active ? "text-[var(--aloha-ink)]" : "text-slate-400"
                 }`}
               >
                 {step.label}

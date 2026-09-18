@@ -108,7 +108,7 @@ export function ArticleImageCropDialog({
               step={0.01}
               value={zoom}
               onChange={(e) => setZoom(Number(e.target.value))}
-              className="w-full accent-[#3D6B3A]"
+              className="w-full accent-[#0F9D58]"
             />
           </label>
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -132,7 +132,7 @@ export function ArticleImageCropDialog({
               </button>
               <button
                 type="button"
-                className="inline-flex items-center gap-2 rounded-lg bg-[#3D6B3A] px-4 py-2 text-[13px] font-bold text-white hover:bg-[#345c32] disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-lg bg-[#0F9D58] px-4 py-2 text-[13px] font-bold text-white hover:bg-[#0C8048] disabled:opacity-60"
                 onClick={() => void apply()}
                 disabled={saving || !croppedAreaPixels}
               >

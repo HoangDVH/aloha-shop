@@ -589,7 +589,7 @@ export function CatalogLayout({
           />
           <div className="shop-sticky-bottom absolute bottom-0 left-0 right-0 flex max-h-[85vh] flex-col rounded-t-2xl bg-white shadow-2xl">
             <div className="min-h-0 flex-1 overflow-y-auto p-2">{filterPanel}</div>
-            <div className="shrink-0 border-t border-[#E5DFD2] bg-white px-3 py-2.5">
+            <div className="shrink-0 border-t border-[var(--aloha-line)] bg-white px-3 py-2.5">
               <button
                 type="button"
                 onClick={() => setFilterSheetOpen(false)}

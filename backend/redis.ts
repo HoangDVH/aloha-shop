@@ -224,8 +224,10 @@ export function memoryCacheClear(pattern = "shop:"): void {
 
 /** Xóa cache web bán (Cấp độ 1: Danh sách sản phẩm + chi tiết sản phẩm cụ thể nếu có). */
 export async function redisInvalidateShopCache(targetMa?: string): Promise<void> {
-  // 1. Luôn xóa bộ nhớ đệm RAM cho danh sách sản phẩm
+  // 1. Luôn xóa bộ nhớ đệm RAM cho danh sách sản phẩm + cây nhóm
   memoryCacheClear("shop:products:");
+  memoryCacheClear("shop:category-tree");
+  memoryCacheClear("shop:categories");
   if (targetMa) {
     const norm = String(targetMa).trim().toLowerCase();
     memoryCacheClear(`shop:product:${norm}`);
@@ -234,9 +236,15 @@ export async function redisInvalidateShopCache(targetMa?: string): Promise<void>
   // 2. Xóa trên Redis (nếu có kết nối)
   if (!(await connectMain()) || !client) return;
   try {
-    // Xóa toàn bộ key danh sách catalog sản phẩm
-    for await (const key of client.scanIterator({ MATCH: "shop:products:*", COUNT: 80 })) {
-      await client.del(key);
+    // Xóa toàn bộ key danh sách catalog sản phẩm + category tree
+    for (const match of [
+      "shop:products:*",
+      "shop:category-tree*",
+      "shop:categories*",
+    ]) {
+      for await (const key of client.scanIterator({ MATCH: match, COUNT: 80 })) {
+        await client.del(key);
+      }
     }
     // Nếu có mã sản phẩm cụ thể, xóa thêm key liên quan sản phẩm đó
     if (targetMa) {

@@ -513,9 +513,9 @@ export function ArticleRichEditor({ value, onChange, onBusyChange }: Props) {
           }}
         >
           {uploading ? (
-            <Loader2 className="h-4 w-4 animate-spin text-[#3D6B3A]" />
+            <Loader2 className="h-4 w-4 animate-spin text-[#0F9D58]" />
           ) : (
-            <ImagePlus className="h-4 w-4 text-[#3D6B3A]" />
+            <ImagePlus className="h-4 w-4 text-[#0F9D58]" />
           )}
           Chèn ảnh
         </ToolbarBtn>
@@ -527,7 +527,7 @@ export function ArticleRichEditor({ value, onChange, onBusyChange }: Props) {
             setVideoOpen((v) => !v);
           }}
         >
-          <Video className="h-4 w-4 text-[#3D6B3A]" />
+          <Video className="h-4 w-4 text-[#0F9D58]" />
           Chèn video
         </ToolbarBtn>
         <ToolbarBtn
@@ -537,9 +537,9 @@ export function ArticleRichEditor({ value, onChange, onBusyChange }: Props) {
           onClick={() => docxRef.current?.click()}
         >
           {docxBusy ? (
-            <Loader2 className="h-4 w-4 animate-spin text-[#3D6B3A]" />
+            <Loader2 className="h-4 w-4 animate-spin text-[#0F9D58]" />
           ) : (
-            <FileType className="h-4 w-4 text-[#3D6B3A]" />
+            <FileType className="h-4 w-4 text-[#0F9D58]" />
           )}
           Chèn Word
         </ToolbarBtn>
@@ -570,7 +570,7 @@ export function ArticleRichEditor({ value, onChange, onBusyChange }: Props) {
       {videoOpen ? (
         <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 bg-white px-3 py-2">
           <input
-            className="min-w-[220px] flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-[13px] outline-none focus:border-[#3D6B3A]"
+            className="min-w-[220px] flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-[13px] outline-none focus:border-[#0F9D58]"
             placeholder="YouTube hoặc Google Drive (file đã chia sẻ)…"
             value={videoUrl}
             onChange={(e) => setVideoUrl(e.target.value)}
@@ -583,7 +583,7 @@ export function ArticleRichEditor({ value, onChange, onBusyChange }: Props) {
           />
           <button
             type="button"
-            className="rounded-lg bg-[#3D6B3A] px-3 py-1.5 text-[12px] font-bold text-white"
+            className="rounded-lg bg-[#0F9D58] px-3 py-1.5 text-[12px] font-bold text-white"
             onClick={insertVideoAtCursor}
           >
             Chèn

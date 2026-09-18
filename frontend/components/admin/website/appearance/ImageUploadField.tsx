@@ -93,11 +93,11 @@ export function ImageUploadField({
           type="button"
           disabled={busy}
           onClick={() => inputRef.current?.click()}
-          className="flex w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-gray-300 bg-gray-50 px-3 py-6 text-center text-[12px] text-gray-500 hover:border-[#3D6B3A]/50 hover:bg-[#F4F8F2]"
+          className="flex w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-gray-300 bg-gray-50 px-3 py-6 text-center text-[12px] text-gray-500 hover:border-[#0F9D58]/50 hover:bg-[#E8F5E9]"
           style={{ borderStyle: "dashed" }}
         >
           {busy ? (
-            <Loader2 className="h-5 w-5 animate-spin text-[#3D6B3A]" />
+            <Loader2 className="h-5 w-5 animate-spin text-[#0F9D58]" />
           ) : (
             <ImagePlus className="h-5 w-5 text-gray-400" />
           )}

@@ -287,7 +287,9 @@ export function useProductVariants(product: ShopProduct): {
           );
           return {
             ...v,
-            available: inStock,
+            // Cho chọn cả biến thể hết hàng để đặt trước
+            available: withVal.length > 0,
+            outOfStock: !inStock && withVal.length > 0,
             image,
           };
         });
@@ -309,7 +311,7 @@ export function useProductVariants(product: ShopProduct): {
     selection: {
       model,
       loading,
-      canPurchase: Boolean(model && model.ton > 0 && !loading),
+      canPurchase: Boolean(model && !loading),
       axes,
     },
     selected,
@@ -344,10 +346,10 @@ export function ProductVariantPicker({
                   type="button"
                   disabled={disabled}
                   onClick={() => onPick(ax.name, v.value)}
-                  title={!v.available ? "Hết hàng" : v.value}
+                  title={v.outOfStock ? "Đặt trước" : v.value}
                   className={`inline-flex max-w-full items-stretch overflow-hidden rounded-lg border text-sm font-semibold transition ${
                     active
-                      ? "border-[var(--aloha-green)] text-[#1a2e1a]"
+                      ? "border-[var(--aloha-green)] text-[var(--aloha-ink)]"
                       : disabled
                         ? "cursor-not-allowed border-[#eee] text-slate-300 line-through"
                         : "border-[#ddd] text-slate-700 hover:border-[var(--aloha-green)]"

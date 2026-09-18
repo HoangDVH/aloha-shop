@@ -13,6 +13,7 @@ type Props = {
   qrKind?: "kiotviet" | "vietqr" | string | null;
   kvInvoiceCode?: string | null;
   kovCode?: string | null;
+  qrString?: string | null;
   bank?: ShopBankInfo | null;
   qrUrl?: string | null;
   expiresAt?: string | null;
@@ -20,6 +21,67 @@ type Props = {
   /** Gọn một màn hình (trang đơn chờ CK) */
   compact?: boolean;
 };
+
+/** Đọc TLV EMVCo — lấy đúng lời nhắn trong QR (như MoMo). */
+function emvGet(payload: string, id: string): string | null {
+  let i = 0;
+  const s = String(payload || "");
+  while (i + 4 <= s.length) {
+    const tag = s.slice(i, i + 2);
+    const len = Number.parseInt(s.slice(i + 2, i + 4), 10);
+    if (!Number.isFinite(len) || len < 0 || i + 4 + len > s.length) return null;
+    const val = s.slice(i + 4, i + 4 + len);
+    if (tag === id) return val;
+    i += 4 + len;
+  }
+  return null;
+}
+
+function extractVietQrAddInfo(qrString?: string | null): string | null {
+  const raw = String(qrString || "").trim();
+  if (!raw) return null;
+  const f62 = emvGet(raw, "62");
+  if (!f62) return null;
+  const purpose = emvGet(f62, "08") || emvGet(f62, "01");
+  const out = String(purpose || "").trim();
+  return out || null;
+}
+
+function resolveDisplayTransferContent(opts: {
+  transferContent?: string | null;
+  kovCode?: string | null;
+  kvInvoiceCode?: string | null;
+  paymentCode?: string | null;
+  qrString?: string | null;
+}): string {
+  const fromQr = extractVietQrAddInfo(opts.qrString);
+  if (fromQr) return fromQr;
+
+  const kov = String(opts.kovCode || "").trim();
+  const hd = String(opts.kvInvoiceCode || "").trim();
+  const stored = String(opts.transferContent || "").trim();
+  const built = (() => {
+    if (kov && hd) return /\bV$/i.test(kov) ? `${kov} bill ${hd}` : `${kov} V bill ${hd}`;
+    if (kov) return /\bV$/i.test(kov) ? `${kov} bill` : `${kov} V bill`;
+    return "";
+  })();
+
+  if (stored) {
+    const isBareInvoice = Boolean(hd && stored === hd);
+    const hasKov = /KOVQR/i.test(stored) || (kov && stored.includes(kov));
+    const hasBill = /\bbill\b/i.test(stored);
+    if (!isBareInvoice && hasKov && hasBill) {
+      if (built && stored !== built && !/\bV\s+bill\b/i.test(stored)) return built;
+      return stored;
+    }
+    if (built) return built;
+    if (!isBareInvoice && (hasKov || hasBill)) return stored;
+    return stored || built || hd;
+  }
+
+  if (built) return built;
+  return hd || String(opts.paymentCode || "").trim();
+}
 
 function CopyRow({
   label,
@@ -35,7 +97,7 @@ function CopyRow({
   const [ok, setOk] = useState(false);
   return (
     <div
-      className={`flex items-center justify-between gap-2 border-b border-[#E5DFD2] last:border-0 ${
+      className={`flex items-center justify-between gap-2 border-b border-[var(--aloha-line)] last:border-0 ${
         compact ? "py-1.5" : "py-2"
       }`}
     >
@@ -51,7 +113,7 @@ function CopyRow({
           className={`break-all font-bold ${
             highlight
               ? "text-[var(--aloha-green)]"
-              : "text-[#1a2e1a]"
+              : "text-[var(--aloha-ink)]"
           } ${compact ? "text-[13px]" : "text-sm"}`}
         >
           {value}
@@ -59,7 +121,7 @@ function CopyRow({
       </div>
       <button
         type="button"
-        className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-[#F7F3EA] px-2.5 py-1 text-xs font-bold text-[var(--aloha-green)] transition-colors hover:bg-[var(--aloha-green-light)] active:scale-95"
+        className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-[var(--aloha-cream)] px-2.5 py-1 text-xs font-bold text-[var(--aloha-green)] transition-colors hover:bg-[var(--aloha-green-light)] active:scale-95"
         onClick={async () => {
           try {
             await navigator.clipboard.writeText(value);
@@ -105,6 +167,7 @@ export function BankTransferQrPanel({
   qrKind,
   kvInvoiceCode,
   kovCode,
+  qrString,
   bank,
   qrUrl,
   expiresAt,
@@ -113,7 +176,13 @@ export function BankTransferQrPanel({
 }: Props) {
   const { left, label } = useCountdown(expiresAt);
   const [zoomModalOpen, setZoomModalOpen] = useState(false);
-  const content = String(transferContent || kvInvoiceCode || paymentCode || "").trim();
+  const content = resolveDisplayTransferContent({
+    transferContent,
+    kovCode,
+    kvInvoiceCode,
+    paymentCode,
+    qrString,
+  });
   const isKiot = qrKind === "kiotviet" || Boolean(kvInvoiceCode);
   const resolvedQr =
     qrUrl ||
@@ -132,13 +201,13 @@ export function BankTransferQrPanel({
       <div className="overflow-hidden rounded-xl bg-white ring-1 ring-[#E8E2D6] shadow-sm">
         {/* Header */}
         <div
-          className={`flex flex-wrap items-center justify-between gap-2 border-b border-[#E5DFD2] bg-[var(--aloha-green-light)] ${
+          className={`flex flex-wrap items-center justify-between gap-2 border-b border-[var(--aloha-line)] bg-[var(--aloha-green-light)] ${
             compact ? "px-3 py-2" : "px-4 py-3"
           }`}
         >
           <div className="flex items-center gap-1.5">
             <QrCode size={16} className="text-[var(--aloha-green)]" />
-            <p className={`font-extrabold text-[#1a2e1a] ${compact ? "text-[13px]" : "text-sm"}`}>
+            <p className={`font-extrabold text-[var(--aloha-ink)] ${compact ? "text-[13px]" : "text-sm"}`}>
               {isKiot ? "Quét QR thanh toán hóa đơn KiotViet" : "Chuyển khoản qua QR"}
             </p>
           </div>
@@ -163,7 +232,7 @@ export function BankTransferQrPanel({
           <div className="flex flex-col items-center">
             <div
               onClick={() => resolvedQr && setZoomModalOpen(true)}
-              className={`group relative mx-auto flex items-center justify-center rounded-2xl bg-white p-2 ring-1 ring-[#E5DFD2] transition-all hover:ring-2 hover:ring-[var(--aloha-green)] hover:shadow-md cursor-pointer ${
+              className={`group relative mx-auto flex items-center justify-center rounded-2xl bg-white p-2 ring-1 ring-[var(--aloha-line)] transition-all hover:ring-2 hover:ring-[var(--aloha-green)] hover:shadow-md cursor-pointer ${
                 compact ? "h-[140px] w-[140px]" : "h-[240px] w-[240px] sm:h-[250px] sm:w-[250px]"
               }`}
               title="Nhấn để phóng to mã QR"
@@ -177,7 +246,7 @@ export function BankTransferQrPanel({
                     className="h-full w-full object-contain transition-transform duration-200 group-hover:scale-[1.02]"
                   />
                   <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/30 opacity-0 backdrop-blur-[1px] transition-opacity group-hover:opacity-100">
-                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/95 px-3 py-1.5 text-xs font-bold text-[#1a2e1a] shadow">
+                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/95 px-3 py-1.5 text-xs font-bold text-[var(--aloha-ink)] shadow">
                       <ZoomIn size={14} /> Phóng to QR
                     </span>
                   </div>
@@ -235,7 +304,7 @@ export function BankTransferQrPanel({
                   : "Có thể bấm «Tôi đã chuyển khoản» nếu cần."}
               </p>
 
-              <div className="mt-2 flex items-center justify-between border-t border-[#E5DFD2] pt-2">
+              <div className="mt-2 flex items-center justify-between border-t border-[var(--aloha-line)] pt-2">
                 <span className="text-xs font-semibold text-slate-500">Tổng thanh toán:</span>
                 <span className="text-base font-extrabold text-[#EE6055]">
                   {formatVnd(amount)}
@@ -267,7 +336,7 @@ export function BankTransferQrPanel({
 
             <div className="flex items-center justify-center gap-2 mb-1">
               <QrCode size={20} className="text-[var(--aloha-green)]" />
-              <h3 className="text-lg font-extrabold text-[#1a2e1a]">
+              <h3 className="text-lg font-extrabold text-[var(--aloha-ink)]">
                 Mã QR Thanh Toán
               </h3>
             </div>
@@ -284,16 +353,16 @@ export function BankTransferQrPanel({
               />
             </div>
 
-            <div className="mt-4 rounded-xl bg-[#F7F3EA] p-3 text-left text-xs text-slate-700">
-              <div className="flex justify-between py-1 border-b border-[#E5DFD2]">
+            <div className="mt-4 rounded-xl bg-[var(--aloha-cream)] p-3 text-left text-xs text-slate-700">
+              <div className="flex justify-between py-1 border-b border-[var(--aloha-line)]">
                 <span className="text-slate-500 font-medium">Ngân hàng:</span>
                 <span className="font-bold">{bank?.bankName || "Vietcombank"}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-[#E5DFD2]">
+              <div className="flex justify-between py-1 border-b border-[var(--aloha-line)]">
                 <span className="text-slate-500 font-medium">STK:</span>
                 <span className="font-bold">{bank?.accountNumber}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-[#E5DFD2]">
+              <div className="flex justify-between py-1 border-b border-[var(--aloha-line)]">
                 <span className="text-slate-500 font-medium">Số tiền:</span>
                 <span className="font-bold text-[#EE6055]">{formatVnd(amount)}</span>
               </div>

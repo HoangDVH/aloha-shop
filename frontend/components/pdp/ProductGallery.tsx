@@ -33,8 +33,8 @@ type MediaItem =
  */
 export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
   const media = useMemo<MediaItem[]>(() => {
-    const vids = (videos || []).map(String).filter(Boolean);
-    const imgs = (images || []).map(String).filter(Boolean);
+    const vids = [...new Set((videos || []).map(String).filter(Boolean))];
+    const imgs = [...new Set((images || []).map(String).filter(Boolean))];
     const out: MediaItem[] = [];
     for (const v of vids) {
       out.push({ kind: "video", src: v, file: isFileVideo(v) });
@@ -49,6 +49,8 @@ export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
   const [idx, setIdx] = useState(0);
   const [mediaLightbox, setMediaLightbox] = useState(false);
   const touchX = useRef<number | null>(null);
+  const lightboxOpenRef = useRef(false);
+  lightboxOpenRef.current = mediaLightbox;
 
   const current = media[idx] ?? null;
 
@@ -83,10 +85,15 @@ export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
   };
 
   const onTouchStart = (e: React.TouchEvent) => {
+    if (lightboxOpenRef.current) return;
     touchX.current = e.changedTouches[0]?.clientX ?? null;
   };
 
   const onTouchEnd = (e: React.TouchEvent) => {
+    if (lightboxOpenRef.current) {
+      touchX.current = null;
+      return;
+    }
     const start = touchX.current;
     touchX.current = null;
     if (start == null || media.length < 2) return;

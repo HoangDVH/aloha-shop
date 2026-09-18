@@ -13,8 +13,11 @@ export type ProductShipMeta = {
   ten?: string;
   trongLuong?: number;
   shipSizeClass?: string;
+  categoryId?: number;
   nhomPath?: string;
   nhom?: string;
+  categoryName?: string;
+  ancestor?: string[];
   chieuDaiCm?: number;
   chieuRongCm?: number;
   chieuCaoCm?: number;
@@ -54,7 +57,16 @@ export function resolveSizeClass(doc: ProductShipMeta): ShipSizeClass {
   const fromMongo = normalizeSizeClass(doc.shipSizeClass);
   if (fromMongo) return fromMongo;
 
-  const nhomPath = String(doc.nhomPath || doc.nhom || "").trim();
+  const ancestor = Array.isArray(doc.ancestor)
+    ? doc.ancestor.map((x) => String(x || "").trim()).filter(Boolean)
+    : [];
+  const nhomPath = String(
+    (ancestor.length ? ancestor.join(" >> ") : "") ||
+      doc.categoryName ||
+      doc.nhomPath ||
+      doc.nhom ||
+      ""
+  ).trim();
   const ten = String(doc.ten || "").trim();
   const ma = String(doc.ma || "").trim();
   const fromCat = shipSizeFromCategory(nhomPath, ten);

@@ -104,7 +104,7 @@ function TreeRow({
           type="radio"
           checked={selected}
           readOnly
-          className="h-[14px] w-[14px] shrink-0 accent-[#0070e0]"
+          className="h-[14px] w-[14px] shrink-0 accent-[#0F9D58]"
           onClick={(e) => {
             e.stopPropagation();
             onPick(node);
@@ -113,7 +113,7 @@ function TreeRow({
         <span
           className={`min-w-0 flex-1 truncate text-[13px] ${
             depth === 0 ? "font-semibold" : "font-normal"
-          } ${selected ? "text-[#0070e0]" : "text-gray-800"}`}
+          } ${selected ? "text-[#0F9D58]" : "text-gray-800"}`}
         >
           {node.name}
         </span>

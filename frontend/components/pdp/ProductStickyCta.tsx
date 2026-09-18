@@ -5,7 +5,7 @@ import { formatVnd } from "@/lib/api";
 type Props = {
   price: number;
   needPick: boolean;
-  soldOut: boolean;
+  preOrder?: boolean;
   purchaseDisabled: boolean;
   onAddCart: () => void;
   onBuyNow: () => void;
@@ -15,7 +15,7 @@ type Props = {
 export function ProductStickyCta({
   price,
   needPick,
-  soldOut,
+  preOrder = false,
   purchaseDisabled,
   onAddCart,
   onBuyNow,
@@ -29,8 +29,8 @@ export function ProductStickyCta({
           </p>
           {needPick ? (
             <p className="truncate text-[11px] text-amber-700">Chọn thuộc tính</p>
-          ) : soldOut ? (
-            <p className="truncate text-[11px] text-red-600">Hết hàng</p>
+          ) : preOrder ? (
+            <p className="truncate text-[11px] text-amber-700">Đặt trước — giao khi có hàng</p>
           ) : null}
         </div>
         {/* gap rõ + không dính cạnh — tránh bị gộp thành 1 khối trên mobile */}
@@ -41,7 +41,7 @@ export function ProductStickyCta({
             onClick={onAddCart}
             className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--aloha-green-light)] px-3.5 text-xs font-bold text-[var(--aloha-green-mid)] disabled:opacity-40"
           >
-            Thêm giỏ
+            {preOrder ? "Đặt trước" : "Thêm giỏ"}
           </button>
           <button
             type="button"
@@ -49,7 +49,7 @@ export function ProductStickyCta({
             onClick={onBuyNow}
             className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--aloha-green)] px-4 text-xs font-bold text-white disabled:opacity-40"
           >
-            Mua ngay
+            {preOrder ? "Đặt ngay" : "Mua ngay"}
           </button>
         </div>
       </div>

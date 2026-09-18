@@ -88,7 +88,7 @@ export function WholesaleQuoteModal({
               href={contact.zaloUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#0068ff] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#0055d4] sm:w-auto sm:min-w-[10.5rem]"
+              className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--aloha-green)] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[var(--aloha-green-hover)] sm:w-auto sm:min-w-[10.5rem]"
             >
               <MessageCircle size={18} strokeWidth={2.25} aria-hidden />
               Nhắn tin

@@ -1,6 +1,7 @@
 /**
  * Lọc nhóm hàng giống storefront (/api/shop/products):
- * categoryId gốc + mọi con, hoặc path nhom (+ subtree).
+ * chỉ categoryId (+ mọi con trong cây categories).
+ * Path `nhom` được resolve → id qua cây; không regex nhom/nhomPath trên SP.
  */
 import type { Db } from "mongodb";
 import {
@@ -10,51 +11,6 @@ import {
   resolveCategoryIdsFromPathIndex,
   type CategoryNode,
 } from "../utils/categoryTree.ts";
-
-function regexEscapeLiteral(raw: string): string {
-  return String(raw || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function buildCategorySubtreeFilter(catList: string[]): Record<string, unknown> | null {
-  const clauses: Record<string, unknown>[] = [];
-  const pathSep = String.raw`\s*(?:>>|▸|>)\s*`;
-
-  for (const raw of catList) {
-    let cat = String(raw || "").trim();
-    if (!cat) continue;
-    cat = cat.replace(/\s*(?:▸|>)\s*/g, " >> ");
-    const segments = cat
-      .split(/\s*>>\s*/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (!segments.length) continue;
-
-    const fullEscaped = segments.map((s) => regexEscapeLiteral(s)).join(pathSep);
-    clauses.push({
-      nhomPath: { $regex: `^${fullEscaped}(${pathSep}|$)`, $options: "i" },
-    });
-
-    if (segments.length === 1) {
-      const seg = regexEscapeLiteral(segments[0]);
-      clauses.push(
-        { nhom: { $regex: `^${seg}$`, $options: "i" } },
-        { categoryName: { $regex: `^${seg}$`, $options: "i" } }
-      );
-    } else {
-      const leaf = segments[segments.length - 1];
-      const leafEsc = regexEscapeLiteral(leaf);
-      clauses.push(
-        { nhom: { $regex: `^${leafEsc}$`, $options: "i" } },
-        { nhomPath: { $regex: `^${leafEsc}$`, $options: "i" } },
-        { nhomPath: { $regex: `${pathSep}${leafEsc}$`, $options: "i" } },
-        { categoryName: { $regex: `^${leafEsc}$`, $options: "i" } }
-      );
-    }
-  }
-
-  if (!clauses.length) return null;
-  return { $or: clauses };
-}
 
 async function loadCategoryTree(db: Db): Promise<CategoryNode[]> {
   const cats = await db
@@ -121,7 +77,7 @@ export function parseCategoryIdList(query: Record<string, unknown>): number[] {
   return [...new Set(out)];
 }
 
-/** Mongo filter nhóm — cùng ý storefront. */
+/** Mongo filter nhóm — chỉ categoryId (+ subtree). */
 export async function buildShopCategoryMongoFilter(
   db: Db,
   opts: { nhomList?: string[]; categoryIdList?: number[] }
@@ -132,20 +88,16 @@ export async function buildShopCategoryMongoFilter(
 
   const tree = await loadCategoryTree(db);
   const pathIndex = buildCategoryPathIndex(tree);
-  const ids = new Set<number>();
+  const rootIds = new Set<number>();
 
   if (categoryIdList.length) {
-    collectDescendantIds(tree, categoryIdList).forEach((id) => ids.add(id));
+    categoryIdList.forEach((id) => rootIds.add(id));
   }
   for (const path of nhomList) {
-    resolveCategoryIdsFromPathIndex(pathIndex, path).forEach((id) => ids.add(id));
+    resolveCategoryIdsFromPathIndex(pathIndex, path).forEach((id) => rootIds.add(id));
   }
 
-  const parts: Record<string, unknown>[] = [];
-  const pathFilter = buildCategorySubtreeFilter(nhomList);
-  if (pathFilter) parts.push(pathFilter);
-  if (ids.size) parts.push({ categoryId: { $in: [...ids] } });
-  if (!parts.length) return null;
-  if (parts.length === 1) return parts[0];
-  return { $or: parts };
+  const ids = collectDescendantIds(tree, [...rootIds]);
+  if (!ids.length) return null;
+  return { categoryId: { $in: ids } };
 }

@@ -55,7 +55,13 @@ export type ShopVariantModel = {
 export type ShopVariantAxis = {
   name: string;
   kind: "attr" | "unit";
-  values: { value: string; image?: string; available: boolean }[];
+  values: {
+    value: string;
+    image?: string;
+    available: boolean;
+    /** Biến thể hết tồn — vẫn chọn được để đặt trước */
+    outOfStock?: boolean;
+  }[];
 };
 
 export type ShopFacets = {
@@ -170,9 +176,11 @@ export function categoryHref(node: {
   const sp = new URLSearchParams();
   const cid = Number(node.id) || Number(node.categoryId) || 0;
   if (cid > 0) sp.set("categoryId", String(cid));
-  const nhom = (node.path || node.name).trim();
-  // Luôn kèm nhom khi có — dự phòng nếu categoryId không resolve trên API.
-  if (nhom) sp.set("nhom", nhom);
+  // Chỉ kèm nhom khi chưa có categoryId (link cũ / thiếu id).
+  if (!(cid > 0)) {
+    const nhom = (node.path || node.name).trim();
+    if (nhom) sp.set("nhom", nhom);
+  }
   const qs = sp.toString();
   return `/danh-muc/${encodeURIComponent(node.slug)}${qs ? `?${qs}` : ""}`;
 }

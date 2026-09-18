@@ -1,5 +1,6 @@
 import type { Express, Response } from "express";
 import type { Db } from "mongodb";
+import bcrypt from "bcryptjs";
 import {
   requireAuth,
   requireActive,
@@ -12,6 +13,7 @@ import {
   ensureShopAuthIndexes,
   isValidCtvCode,
   normalizeCtvCode,
+  normalizeEmail,
   shopAccountIdQuery,
   toPublicShopAccount,
   type CtvStatus,
@@ -35,14 +37,28 @@ export function registerShopAccountsAdminRoutes(
       const db = await getShopDb();
       await ensureIdx(db);
       const col = db.collection(SHOP_ACCOUNTS);
-      const [total, customers, ctvActive, ctvPending, locked] = await Promise.all([
-        col.countDocuments({}),
-        col.countDocuments({ roles: "customer" }),
-        col.countDocuments({ roles: "ctv", ctvStatus: "active" }),
-        col.countDocuments({ roles: "ctv", ctvStatus: "cho_duyet" }),
-        col.countDocuments({ active: false }),
-      ]);
-      return res.json({ ok: true, total, customers, ctvActive, ctvPending, locked });
+      const [total, customers, ctvTotal, ctvActive, ctvPending, locked, ctvLocked, customerLocked] =
+        await Promise.all([
+          col.countDocuments({}),
+          col.countDocuments({ roles: "customer" }),
+          col.countDocuments({ roles: "ctv" }),
+          col.countDocuments({ roles: "ctv", ctvStatus: "active" }),
+          col.countDocuments({ roles: "ctv", ctvStatus: "cho_duyet" }),
+          col.countDocuments({ active: false }),
+          col.countDocuments({ roles: "ctv", active: false }),
+          col.countDocuments({ roles: "customer", active: false }),
+        ]);
+      return res.json({
+        ok: true,
+        total,
+        customers,
+        ctvTotal,
+        ctvActive,
+        ctvPending,
+        locked,
+        ctvLocked,
+        customerLocked,
+      });
     } catch (e: any) {
       return res.status(500).json({ error: e?.message || "Lỗi thống kê" });
     }
@@ -53,6 +69,10 @@ export function registerShopAccountsAdminRoutes(
       const db = await getShopDb();
       await ensureIdx(db);
       const tab = String(req.query.tab || "all");
+      const scope = String(req.query.scope || "").trim(); // "ctv" | "customer" | ""
+      const time = String(req.query.time || "all").trim(); // this_month | last_month | last_7d | last_30d | all
+      const fromQ = String(req.query.from || "").trim();
+      const toQ = String(req.query.to || "").trim();
       const q = String(req.query.q || "").trim();
       const page = Math.max(1, Number(req.query.page) || 1);
       const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 30));
@@ -60,10 +80,64 @@ export function registerShopAccountsAdminRoutes(
 
       if (tab === "customer") filter.roles = "customer";
       else if (tab === "ctv") filter.roles = "ctv";
-      else if (tab === "pending") {
+      else if (tab === "active") {
+        filter.roles = "ctv";
+        filter.ctvStatus = "active";
+        filter.active = true;
+      } else if (tab === "pending") {
         filter.roles = "ctv";
         filter.ctvStatus = "cho_duyet";
-      } else if (tab === "locked") filter.active = false;
+      } else if (tab === "locked") {
+        filter.active = false;
+        if (scope === "ctv") filter.roles = "ctv";
+        else if (scope === "customer") filter.roles = "customer";
+      } else if (tab === "all") {
+        if (scope === "ctv") filter.roles = "ctv";
+        else if (scope === "customer") filter.roles = "customer";
+      }
+
+      if (scope === "ctv" && tab !== "customer" && !filter.roles) filter.roles = "ctv";
+      if (scope === "customer" && tab !== "ctv" && tab !== "pending" && tab !== "active" && !filter.roles) {
+        filter.roles = "customer";
+      }
+
+      const ymdRe = /^\d{4}-\d{2}-\d{2}$/;
+      let from: Date | null = null;
+      let to: Date | null = null;
+      if (ymdRe.test(fromQ) && ymdRe.test(toQ)) {
+        const [fy, fm, fd] = fromQ.split("-").map(Number);
+        const [ty, tm, td] = toQ.split("-").map(Number);
+        from = new Date(fy, fm - 1, fd);
+        to = new Date(ty, tm - 1, td + 1); // exclusive end
+      } else if (time && time !== "all") {
+        const now = new Date();
+        if (time === "this_month") {
+          from = new Date(now.getFullYear(), now.getMonth(), 1);
+          to = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        } else if (time === "last_month") {
+          from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          to = new Date(now.getFullYear(), now.getMonth(), 1);
+        } else if (time === "last_7d") {
+          to = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+          from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+        } else if (time === "last_30d") {
+          to = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+          from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
+        }
+      }
+      if (from && to) {
+        const fromIso = from.toISOString();
+        const toIso = to.toISOString();
+        filter.$and = [
+          ...(Array.isArray(filter.$and) ? (filter.$and as unknown[]) : []),
+          {
+            $or: [
+              { createdAt: { $gte: from, $lt: to } },
+              { createdAt: { $gte: fromIso, $lt: toIso } },
+            ],
+          },
+        ];
+      }
 
       if (q) {
         const rx = { $regex: q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" };
@@ -87,6 +161,97 @@ export function registerShopAccountsAdminRoutes(
       });
     } catch (e: any) {
       return res.status(500).json({ error: e?.message || "Lỗi danh sách" });
+    }
+  });
+
+  /** Admin tạo CTV mới (đã active). username → ctvCode; email tùy chọn. */
+  app.post("/api/shop/admin/accounts", ...gate, async (req: AuthRequest, res: Response) => {
+    try {
+      const db = await getShopDb();
+      await ensureIdx(db);
+
+      const fullName = String(req.body?.fullName || "").trim();
+      const phone = String(req.body?.phone || "").trim();
+      const password = String(req.body?.password || "");
+      const username = normalizeCtvCode(req.body?.username || req.body?.ctvCode || "");
+      let email = normalizeEmail(req.body?.email || "");
+      const address = String(req.body?.address || "").trim();
+      const gender = String(req.body?.gender || "").trim();
+      const birthday = String(req.body?.birthday || "").trim();
+      const referralChannel = String(req.body?.referralChannel || "").trim();
+      const sendInvite = Boolean(req.body?.sendInvite);
+
+      if (!fullName) return res.status(400).json({ error: "Nhập họ và tên" });
+      if (!phone) return res.status(400).json({ error: "Nhập số điện thoại" });
+      if (!isValidCtvCode(username)) {
+        return res.status(400).json({ error: "Tên đăng nhập 3–20 ký tự (A-Z, 0-9, _, -)" });
+      }
+      if (password.length < 8) {
+        return res.status(400).json({ error: "Mật khẩu tạm thời tối thiểu 8 ký tự" });
+      }
+      if (email && !email.includes("@")) {
+        return res.status(400).json({ error: "Email không hợp lệ" });
+      }
+      if (!email) {
+        email = `${username.toLowerCase()}@ctv.local`;
+      }
+
+      const takenCode = await db.collection(SHOP_ACCOUNTS).findOne({ ctvCode: username });
+      if (takenCode) return res.status(409).json({ error: "Tên đăng nhập / mã CTV đã được dùng" });
+
+      const takenEmail = await db.collection(SHOP_ACCOUNTS).findOne({ email });
+      if (takenEmail) return res.status(409).json({ error: "Email đã được dùng" });
+
+      const passwordHash = await bcrypt.hash(password, 10);
+      const now = new Date();
+      const doc: Record<string, unknown> = {
+        email,
+        phone,
+        fullName,
+        passwordHash,
+        avatarUrl: null,
+        roles: ["ctv"],
+        ctvCode: username,
+        ctvStatus: "active",
+        commissionRate: null,
+        adminNote: null,
+        active: true,
+        failedLoginCount: 0,
+        lockUntil: null,
+        createdAt: now,
+        updatedAt: now,
+        lastLoginAt: null,
+        createdByAdmin: true,
+        mustChangePassword: true,
+        sendInviteAtCreate: sendInvite,
+      };
+      if (address) doc.addressText = address;
+      if (gender === "male" || gender === "female" || gender === "other") doc.gender = gender;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(birthday)) doc.birthday = birthday;
+      if (referralChannel) doc.referralChannel = referralChannel;
+
+      const ins = await db.collection(SHOP_ACCOUNTS).insertOne(doc);
+      const user = { ...doc, _id: ins.insertedId };
+      try {
+        syncBus.publish(["aloha_shop_accounts"], "ctv_admin_create", {
+          ids: [String(ins.insertedId)],
+        });
+      } catch {
+        /* ignore */
+      }
+      return res.status(201).json({
+        ok: true,
+        user: toPublicShopAccount(user),
+        loginHint: email.endsWith("@ctv.local")
+          ? `Đăng nhập bằng email hệ thống: ${email}`
+          : `Đăng nhập bằng email: ${email}`,
+        inviteQueued: sendInvite,
+      });
+    } catch (e: any) {
+      if (e?.code === 11000) {
+        return res.status(409).json({ error: "Email hoặc mã CTV đã tồn tại" });
+      }
+      return res.status(500).json({ error: e?.message || "Lỗi tạo CTV" });
     }
   });
 
@@ -163,12 +328,53 @@ export function registerShopAccountsAdminRoutes(
         if (!roles.includes("ctv")) {
           return res.status(400).json({ error: "Tài khoản chưa đăng ký CTV" });
         }
-        await db.collection(SHOP_ACCOUNTS).updateOne(q, {
-          $set: { ctvStatus: "active", updatedAt: new Date() },
-        });
+
+        const patch: Record<string, unknown> = {
+          ctvStatus: "active",
+          updatedAt: new Date(),
+        };
+
+        // Gán ctvCode nếu chưa có — bắt buộc để attribution/HH chạy
+        let code = normalizeCtvCode(String(user.ctvCode || ""));
+        if (!code) {
+          const preferred = normalizeCtvCode(
+            String(req.body?.ctvCode || user.username || "").trim()
+          );
+          const fromEmail = normalizeCtvCode(
+            String(user.email || "")
+              .split("@")[0] || ""
+          );
+          let candidate =
+            preferred && isValidCtvCode(preferred)
+              ? preferred
+              : fromEmail && isValidCtvCode(fromEmail)
+                ? fromEmail
+                : "";
+          if (!candidate) {
+            candidate = normalizeCtvCode(`CTV${String(user._id).slice(-6)}`);
+          }
+          // Tránh trùng mã
+          let n = 0;
+          let tryCode = candidate;
+          while (n < 20) {
+            const taken = await db.collection(SHOP_ACCOUNTS).findOne({
+              ctvCode: tryCode,
+              _id: { $ne: user._id },
+            });
+            if (!taken) break;
+            n += 1;
+            tryCode = normalizeCtvCode(`${candidate}${n}`);
+          }
+          if (!isValidCtvCode(tryCode)) {
+            return res.status(400).json({ error: "Không tạo được mã CTV hợp lệ" });
+          }
+          code = tryCode;
+          patch.ctvCode = code;
+        }
+
+        await db.collection(SHOP_ACCOUNTS).updateOne(q, { $set: patch });
         const updated = await db.collection(SHOP_ACCOUNTS).findOne(q);
         try {
-          const { syncBus } = await import("../syncBus.js");
           syncBus.publish(["aloha_shop_accounts"], "ctv_approve", {
             ids: [String(user._id)],
           });
@@ -177,6 +383,7 @@ export function registerShopAccountsAdminRoutes(
         }
         return res.json({ ok: true, user: toPublicShopAccount(updated!) });
       } catch (e: any) {
+        if (e?.code === 11000) return res.status(409).json({ error: "Trùng mã CTV" });
         return res.status(500).json({ error: e?.message || "Lỗi duyệt" });
       }
     }

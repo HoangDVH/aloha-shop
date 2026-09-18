@@ -1,6 +1,5 @@
 const fs = require('fs');
 const path = require('path');
-const puppeteer = require('puppeteer');
 const config = require('./config');
 
 const CACHE_FILE = path.resolve(__dirname, '.token_cache.json');
@@ -65,6 +64,16 @@ async function autoLoginAndGetToken() {
     throw new Error(
       '[getPrivateTokenKV] Chưa cấu hình KV_PRIVATE_USERNAME hoặc KV_PRIVATE_PASSWORD!\n' +
       'Vui lòng kiểm tra file .env để điền thông tin tài khoản đăng nhập KiotViet.'
+    );
+  }
+
+  let puppeteer;
+  try {
+    puppeteer = require('puppeteer');
+  } catch (e) {
+    throw new Error(
+      "[getPrivateTokenKV] Thiếu module 'puppeteer'. Chạy: cd getPrivateTokenKV && npm install\n" +
+        (e && e.message ? e.message : e)
     );
   }
 

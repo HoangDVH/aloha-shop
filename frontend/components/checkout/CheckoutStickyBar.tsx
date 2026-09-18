@@ -15,6 +15,7 @@ type Props = {
   agree: boolean;
   onAgreeChange: (v: boolean) => void;
   onPlaceOrder: () => void;
+  hasPreOrder?: boolean;
 };
 
 /**
@@ -33,6 +34,7 @@ export function CheckoutStickyBar({
   agree,
   onAgreeChange,
   onPlaceOrder,
+  hasPreOrder = false,
 }: Props) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -82,7 +84,7 @@ export function CheckoutStickyBar({
           type="button"
           disabled={!canSubmit}
           onClick={onPlaceOrder}
-          className="flex w-full flex-col items-center justify-center rounded-full bg-[var(--aloha-green)] px-4 py-3 text-white shadow-sm transition hover:bg-[var(--aloha-green-mid)] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
+          className="flex w-full flex-col items-center justify-center rounded-full bg-[var(--aloha-green)] px-4 py-3 text-white shadow-sm transition hover:bg-[var(--aloha-green-hover)] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
         >
           <span className="text-[15px] font-extrabold leading-none">
             {submitting ? "Đang đặt…" : "Đặt hàng"}
@@ -90,7 +92,9 @@ export function CheckoutStickyBar({
           <span className="mt-1 text-[11px] font-medium leading-none opacity-90">
             {submitting
               ? "Vui lòng chờ trong giây lát"
-              : "Thanh toán khi nhận hàng hoặc theo hướng dẫn"}
+              : hasPreOrder
+                ? "Đặt trước — COD hoặc chuyển khoản"
+                : "Thanh toán khi nhận hàng hoặc theo hướng dẫn"}
           </span>
         </button>
       </div>
