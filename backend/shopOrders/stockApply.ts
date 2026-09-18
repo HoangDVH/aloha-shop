@@ -172,8 +172,8 @@ export async function assertStockAvailable(
 }
 
 /**
- * Trừ từng mã với điều kiện ton >= qty (atomic findOneAndUpdate + $inc).
- * Chỉ gọi khi đã thanh toán / xác nhận — luồng cũ.
+ * Trừ từng mã với điều kiện ton/onHand/kvTon >= qty (atomic).
+ * Chỉ $inc / $set field tồn đã có trên SP — không tạo bản sao kvTon/onHand/tonKho/shopStockAt.
  */
 export async function applyShopOrderStockDeduct(
   mainDb: Db,
@@ -194,68 +194,99 @@ export async function applyShopOrderStockDeduct(
 
     try {
       const product = await col.findOne(productQuery(ma), {
-        projection: { _id: 1, ton: 1, onHand: 1, kvTon: 1, inventories: 1 },
+        projection: {
+          _id: 1,
+          ton: 1,
+          onHand: 1,
+          kvTon: 1,
+          tonKho: 1,
+          inventories: 1,
+        },
       });
       if (!product) {
         shortfall.push(ma);
         continue;
       }
 
-      const r = await col.findOneAndUpdate(
-        {
-          _id: (product as any)._id,
-          $or: [
-            { ton: { $gte: qty } },
-            { onHand: { $gte: qty } },
-            { kvTon: { $gte: qty } },
-          ],
-        },
-        {
-          $inc: {
-            ton: -qty,
-            onHand: -qty,
-            kvTon: -qty,
-            tonKho: -qty,
-          },
-          $set: {
-            tonSyncedAt: now,
-            shopStockAt: now,
-            updatedAt: now,
-          },
-        },
-        { returnDocument: "after" }
-      );
+      const p = product as Record<string, unknown>;
+      const hasTon = p.ton != null && p.ton !== "";
+      const hasOnHand = p.onHand != null && p.onHand !== "";
+      const hasKvTon = p.kvTon != null && p.kvTon !== "";
+      const hasTonKho = p.tonKho != null && p.tonKho !== "";
 
-      const doc = (r as any)?.value ?? r;
-      if (!doc || !(doc as any)._id) {
+      // Điều kiện atomic: chỉ field đã có
+      const stockOr: Record<string, unknown>[] = [];
+      if (hasTon) stockOr.push({ ton: { $gte: qty } });
+      if (hasOnHand) stockOr.push({ onHand: { $gte: qty } });
+      if (hasKvTon) stockOr.push({ kvTon: { $gte: qty } });
+      if (!stockOr.length && hasTonKho) stockOr.push({ tonKho: { $gte: qty } });
+      // SP chỉ có inventories: cho trừ nếu tổng onHand đủ (không tạo field mới ở bước này)
+      if (!stockOr.length && Array.isArray(p.inventories) && p.inventories.length) {
+        if (sumOnHand(p.inventories as Inv[]) < qty) {
+          shortfall.push(ma);
+          continue;
+        }
+      } else if (!stockOr.length) {
         shortfall.push(ma);
         continue;
       }
 
-      if (branchId > 0 && Array.isArray((doc as any).inventories)) {
+      const $inc: Record<string, number> = {};
+      if (hasTon) $inc.ton = -qty;
+      if (hasOnHand) $inc.onHand = -qty;
+      if (hasKvTon) $inc.kvTon = -qty;
+      if (hasTonKho) $inc.tonKho = -qty;
+
+      let doc: Record<string, unknown> | null = product as any;
+      if (Object.keys($inc).length) {
+        const filter: Record<string, unknown> = { _id: (product as any)._id };
+        if (stockOr.length) filter.$or = stockOr;
+        const r = await col.findOneAndUpdate(
+          filter,
+          { $inc, $set: { updatedAt: now } },
+          { returnDocument: "after" }
+        );
+        doc = ((r as any)?.value ?? r) as Record<string, unknown> | null;
+        if (!doc || !(doc as any)._id) {
+          shortfall.push(ma);
+          continue;
+        }
+      }
+
+      if (Array.isArray((doc as any).inventories) && (doc as any).inventories.length) {
         const inv: Inv[] = ((doc as any).inventories as Inv[]).map((x) => ({
           ...x,
         }));
-        const idx = inv.findIndex((x) => Number(x.branchId) === branchId);
-        if (idx >= 0) {
-          inv[idx] = {
-            ...inv[idx],
-            onHand: Math.max(0, (Number(inv[idx]!.onHand) || 0) - qty),
-          };
-          const ton = sumOnHand(inv);
-          await col.updateOne(
-            { _id: (doc as any)._id },
-            {
-              $set: {
-                inventories: inv,
-                ton,
-                tonKho: ton,
-                onHand: ton,
-                updatedAt: now,
-              },
-            }
-          );
+        let remain = qty;
+        if (branchId > 0) {
+          const idx = inv.findIndex((x) => Number(x.branchId) === branchId);
+          if (idx >= 0) {
+            const cur = Math.max(0, Number(inv[idx]!.onHand) || 0);
+            const take = Math.min(cur, remain);
+            inv[idx] = { ...inv[idx], onHand: Math.max(0, cur - take) };
+            remain -= take;
+          }
         }
+        if (remain > 0) {
+          for (let i = 0; i < inv.length && remain > 0; i++) {
+            const cur = Math.max(0, Number(inv[i]!.onHand) || 0);
+            if (cur <= 0) continue;
+            const take = Math.min(cur, remain);
+            inv[i] = { ...inv[i], onHand: cur - take };
+            remain -= take;
+          }
+        }
+        const ton = sumOnHand(inv);
+        const $set: Record<string, unknown> = {
+          inventories: inv,
+          updatedAt: now,
+        };
+        // Chỉ ghi đè field tồn đã có — không tạo field mới
+        if (hasTon) $set.ton = ton;
+        if (hasTonKho) $set.tonKho = ton;
+        if (hasOnHand) $set.onHand = ton;
+        if (hasKvTon) $set.kvTon = ton;
+        await col.updateOne({ _id: (doc as any)._id }, { $set });
       }
 
       updated.push(ma);
