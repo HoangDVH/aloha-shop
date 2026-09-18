@@ -44,12 +44,7 @@ function invoiceReceivedAmount(inv: any): number {
       s + Math.round(Number(p?.Amount ?? p?.amount ?? 0) || 0),
     0
   );
-  // Status 1 = hoàn thành (HĐ đã thanh toán) trên nhiều tenant KV
-  const status = Number(inv?.Status ?? inv?.status);
-  const total = Math.round(Number(inv?.Total ?? inv?.total ?? 0) || 0);
-  if (status === 1 && total > 0 && totalPayment <= 0 && sum <= 0 && paidAmount <= 0) {
-    return total;
-  }
+  // Chỉ tin số tiền đã thu — Status=1 (Hoàn thành) trên KV KHÔNG đồng nghĩa đã trả.
   return Math.max(totalPayment, paidAmount, sum);
 }
 
