@@ -1244,20 +1244,98 @@ function CommissionsHub({
               ) : !bill ? (
                 <Empty description="Chưa có bill kỳ này — bấm Chốt kỳ để tạo" />
               ) : (
-                <Space direction="vertical" size={4}>
-                  <Text>
-                    Trạng thái: <Tag color="green">{String(bill.status)}</Tag>
-                    {bill.lockedBy ? ` · chốt bởi ${bill.lockedBy}` : ""}
-                    {bill.paidBy ? ` · chi bởi ${bill.paidBy}` : ""}
-                  </Text>
-                  <Text strong className="!text-lg">
-                    {formatVnd(Number(bill.totals?.commission) || 0)}
-                  </Text>
-                  <Text type="secondary">
-                    {Number(bill.totals?.ctvCount) || 0} CTV ·{" "}
-                    {Number(bill.totals?.orderCount) || 0} đơn
-                  </Text>
-                </Space>
+                <div className="space-y-4">
+                  <Space direction="vertical" size={4}>
+                    <Text>
+                      Trạng thái:{" "}
+                      <Tag color="green">{String(bill.status)}</Tag>
+                      {bill.lockedBy ? ` · chốt bởi ${bill.lockedBy}` : ""}
+                      {bill.paidBy ? ` · chi bởi ${bill.paidBy}` : ""}
+                    </Text>
+                    <Text strong className="!text-lg">
+                      {formatVnd(Number(bill.totals?.commission) || 0)}
+                    </Text>
+                    <Text type="secondary">
+                      {Number(bill.totals?.ctvCount) || 0} CTV ·{" "}
+                      {Number(bill.totals?.orderCount) || 0} đơn
+                    </Text>
+                  </Space>
+
+                  {Array.isArray(bill.ctvLines) && bill.ctvLines.length ? (
+                    <Table
+                      size="small"
+                      pagination={false}
+                      rowKey={(r: any) => String(r.ctvCode || "")}
+                      dataSource={bill.ctvLines}
+                      columns={[
+                        {
+                          title: "CTV",
+                          dataIndex: "ctvCode",
+                          render: (code: string) => (
+                            <Link
+                              href={`/admin/ctv/danh-sach/${encodeURIComponent(code)}`}
+                              className="font-semibold text-[#2D5A27] hover:underline"
+                            >
+                              {code}
+                            </Link>
+                          ),
+                        },
+                        {
+                          title: "Đơn",
+                          dataIndex: "orderCount",
+                          width: 80,
+                          render: (n: number) => Number(n) || 0,
+                        },
+                        {
+                          title: "Hoa hồng",
+                          dataIndex: "net",
+                          align: "right" as const,
+                          render: (n: number) => (
+                            <span className="font-bold">
+                              {formatVnd(Number(n) || 0)}
+                            </span>
+                          ),
+                        },
+                        {
+                          title: "Chi CTV",
+                          key: "paid",
+                          width: 140,
+                          render: (_: unknown, l: any) =>
+                            l.paidAt ? (
+                              <Tag color="cyan">Đã chi</Tag>
+                            ) : bill.status === "locked" ? (
+                              <Button
+                                size="small"
+                                loading={paidM.isPending}
+                                onClick={() => {
+                                  paidM.mutate(
+                                    {
+                                      period,
+                                      ctvCode: String(l.ctvCode || ""),
+                                    },
+                                    {
+                                      onSuccess: () =>
+                                        toast.success(
+                                          `Đã chi ${l.ctvCode}`
+                                        ),
+                                      onError: (e) =>
+                                        toast.error((e as Error).message),
+                                    }
+                                  );
+                                }}
+                              >
+                                Chi CTV này
+                              </Button>
+                            ) : (
+                              <Text type="secondary">—</Text>
+                            ),
+                        },
+                      ]}
+                    />
+                  ) : (
+                    <Empty description="Bill chưa có dòng CTV" />
+                  )}
+                </div>
               )}
             </Card>
           ) : null}
