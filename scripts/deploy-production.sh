@@ -25,6 +25,8 @@ fi
 pm2 restart aloha-shop-api --update-env
 
 cd frontend
+# CTV/admin cần antd & deps mới — luôn sync trước build
+npm install --no-audit --no-fund
 npm run build
 cd ..
 
