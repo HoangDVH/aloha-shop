@@ -22,6 +22,9 @@ elif [ -s "$HOME/.nvm/nvm.sh" ]; then
   . "$HOME/.nvm/nvm.sh"
 fi
 
+# Root deps (API) trước khi restart API
+npm install --no-audit --no-fund
+
 pm2 restart aloha-shop-api --update-env
 
 cd frontend
