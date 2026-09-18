@@ -1736,6 +1736,13 @@ function FraudPanel() {
     if (filter === "open") {
       return rows.filter((r) => !r.reviewStatus || r.reviewStatus === "open");
     }
+    // Gộp rule mới (phone_repeat) + sự kiện cũ (address_match)
+    if (filter === "phone_dup") {
+      return rows.filter((r) => {
+        const t = String(r.type || "");
+        return t === "phone_repeat" || t === "address_match";
+      });
+    }
     return rows.filter((r) => String(r.type || "") === filter);
   }, [rows, filter]);
 
@@ -1794,7 +1801,7 @@ function FraudPanel() {
               });
             }}
           >
-            Gỡ cờ trùng SĐT cũ
+            Gỡ cờ trùng SĐT
           </Button>
         }
       >
@@ -1813,8 +1820,7 @@ function FraudPanel() {
             { key: "all", label: "Tất cả" },
             { key: "open", label: "Chưa xử lý" },
             { key: "self_buy", label: "Tự mua hàng" },
-            { key: "phone_repeat", label: "Trùng SĐT (cảnh báo)" },
-            { key: "address_match", label: "Trùng SĐT (cũ)" },
+            { key: "phone_dup", label: "Trùng SĐT" },
           ]}
         />
         {!filtered.length ? (
@@ -1854,11 +1860,9 @@ function FraudPanel() {
                   <Tag color={String(v).includes("self") ? "red" : "gold"}>
                     {v === "self_buy"
                       ? "Tự mua hàng"
-                      : v === "phone_repeat"
+                      : v === "phone_repeat" || v === "address_match"
                         ? "Trùng SĐT"
-                        : v === "address_match"
-                          ? "Trùng SĐT (cũ)"
-                          : v || "—"}
+                        : v || "—"}
                   </Tag>
                 ),
               },
