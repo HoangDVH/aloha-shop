@@ -957,10 +957,20 @@ export function registerShopCommissionAdminRoutes(
           })
           .toArray(),
         billsCol
-          .find({ "lines.ctvCode": ctvCode })
+          .find({
+            $or: [{ "ctvLines.ctvCode": ctvCode }, { "lines.ctvCode": ctvCode }],
+          })
           .sort({ period: -1 })
           .limit(24)
-          .project({ period: 1, status: 1, lockedAt: 1, paidAt: 1, lines: 1, totals: 1 })
+          .project({
+            period: 1,
+            status: 1,
+            lockedAt: 1,
+            paidAt: 1,
+            ctvLines: 1,
+            lines: 1,
+            totals: 1,
+          })
           .toArray(),
       ]);
 
@@ -1152,7 +1162,11 @@ export function registerShopCommissionAdminRoutes(
 
       const payouts = billDocs
         .map((b: any) => {
-          const lines = Array.isArray(b.lines) ? b.lines : [];
+          const lines = Array.isArray(b.ctvLines)
+            ? b.ctvLines
+            : Array.isArray(b.lines)
+              ? b.lines
+              : [];
           const mine = lines.find(
             (l: any) => normalizeCtvCode(String(l.ctvCode || "")) === ctvCode
           );
