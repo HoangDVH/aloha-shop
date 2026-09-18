@@ -12,6 +12,7 @@ import {
   renderTopBlocks,
   splitHomeBlocks,
 } from "@/components/blocks/HomeBlockRenderer";
+import { HomeSpQueryRedirect } from "@/components/HomeSpQueryRedirect";
 
 export const revalidate = 30;
 
@@ -200,6 +201,9 @@ export default function HomePage({
 }) {
   return (
     <div>
+      <Suspense fallback={null}>
+        <HomeSpQueryRedirect />
+      </Suspense>
       <Suspense fallback={<ShopPageLoader fullscreen={false} />}>
         <HomeCatalog searchParams={searchParams} />
       </Suspense>

@@ -158,11 +158,12 @@ export function HeaderSearch({ onSubmitExtra }: { onSubmitExtra?: () => void }) 
   };
 
   const goProduct = (path: string) => {
-    startTransition(() => {
-      router.push(path);
-    });
+    const href = String(path || "").trim() || "/tim";
     setOpen(false);
     onSubmitExtra?.();
+    startTransition(() => {
+      router.push(href);
+    });
   };
 
   const onSubmit = (e: FormEvent) => {
@@ -269,7 +270,11 @@ export function HeaderSearch({ onSubmitExtra }: { onSubmitExtra?: () => void }) 
                   setActive(-1);
                 } else if (e.key === "Enter" && active >= 0 && items[active]) {
                   e.preventDefault();
-                  goProduct(items[active].path);
+                  const p = items[active];
+                  const href =
+                    String(p.path || "").trim() ||
+                    (p.ma ? `/sp/${encodeURIComponent(p.ma)}` : "/tim");
+                  goProduct(href);
                 }
               }}
               placeholder="Tìm theo tên, mã SP…"

@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { formatVnd, type ShopProduct } from "@/lib/api";
 import { prefetchShopPath } from "@/lib/prefetchShop";
+import { notifyShopNavStart } from "@/lib/shopLoading";
 
 function RowPending() {
   const { pending } = useLinkStatus();
@@ -15,6 +16,15 @@ function RowPending() {
       <Loader2 className="h-6 w-6 animate-spin text-[var(--aloha-green)]" aria-hidden />
     </span>
   );
+}
+
+function productHref(product: ShopProduct): string {
+  const path = String(product.path || "").trim();
+  if (path.startsWith("/") && !path.startsWith("//") && path.length > 1) {
+    return path;
+  }
+  const ma = String(product.ma || "").trim();
+  return ma ? `/sp/${encodeURIComponent(ma)}` : "/tim";
 }
 
 export function SearchResultLink({
@@ -30,19 +40,25 @@ export function SearchResultLink({
   onPick: () => void;
   onHover: () => void;
 }) {
+  const href = productHref(product);
+
   return (
     <Link
-      href={product.path}
+      href={href}
       prefetch
       onClick={(e) => {
+        // Tránh unmount portal (đóng dropdown) hủy soft-nav của <Link> → phải bấm 2 lần.
+        e.preventDefault();
         e.stopPropagation();
         onPick();
+        notifyShopNavStart();
+        router.push(href);
       }}
       onMouseEnter={() => {
         onHover();
-        prefetchShopPath(router, product.path);
+        prefetchShopPath(router, href);
       }}
-      onFocus={() => prefetchShopPath(router, product.path)}
+      onFocus={() => prefetchShopPath(router, href)}
       className={`relative flex items-center gap-3 px-3 py-2.5 transition ${
         active ? "bg-[var(--aloha-green-light)]" : "hover:bg-[var(--aloha-cream)]"
       }`}
