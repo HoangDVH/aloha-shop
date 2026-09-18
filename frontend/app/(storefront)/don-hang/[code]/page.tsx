@@ -215,9 +215,17 @@ export default function DonHangStatusPage() {
     const unsub = subscribeShopOrdersStream(() => {
       void reload(true);
     });
+    const pollMs = (() => {
+      const n = Number(
+        process.env.NEXT_PUBLIC_ORDER_POLL_MS ||
+          process.env.SHOP_ORDER_POLL_MS ||
+          5000
+      );
+      return Number.isFinite(n) && n >= 3000 ? Math.floor(n) : 5000;
+    })();
     const poll = setInterval(() => {
       void reload(true);
-    }, 6000);
+    }, pollMs);
     return () => {
       unsub();
       clearInterval(poll);

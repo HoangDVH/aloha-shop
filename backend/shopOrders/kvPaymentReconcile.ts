@@ -18,13 +18,21 @@ function reconcileEnabled(): boolean {
 }
 
 function reconcileIntervalMs(): number {
-  const n = Number(process.env.SHOP_KV_PAY_RECONCILE_MS || 20_000);
-  return Number.isFinite(n) && n >= 5_000 ? Math.floor(n) : 20_000;
+  const n = Number(process.env.SHOP_KV_PAY_RECONCILE_MS || 5_000);
+  return Number.isFinite(n) && n >= 3_000 ? Math.floor(n) : 5_000;
+}
+
+/** Exported cho GET /orders/me/:id throttle đối soát theo cùng env. */
+export function kvPayReconcileThrottleMs(): number {
+  return reconcileIntervalMs();
 }
 
 function invoiceReceivedAmount(inv: any): number {
   const totalPayment = Math.round(
     Number(inv?.TotalPayment ?? inv?.totalPayment ?? 0) || 0
+  );
+  const paidAmount = Math.round(
+    Number(inv?.PaidAmount ?? inv?.paidAmount ?? 0) || 0
   );
   const payments = Array.isArray(inv?.Payments)
     ? inv.Payments
@@ -36,7 +44,13 @@ function invoiceReceivedAmount(inv: any): number {
       s + Math.round(Number(p?.Amount ?? p?.amount ?? 0) || 0),
     0
   );
-  return Math.max(totalPayment, sum);
+  // Status 1 = hoàn thành (HĐ đã thanh toán) trên nhiều tenant KV
+  const status = Number(inv?.Status ?? inv?.status);
+  const total = Math.round(Number(inv?.Total ?? inv?.total ?? 0) || 0);
+  if (status === 1 && total > 0 && totalPayment <= 0 && sum <= 0 && paidAmount <= 0) {
+    return total;
+  }
+  return Math.max(totalPayment, paidAmount, sum);
 }
 
 let running = false;

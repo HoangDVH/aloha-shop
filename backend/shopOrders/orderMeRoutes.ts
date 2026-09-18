@@ -14,7 +14,7 @@ import {
   enrichOrderDetailsImages,
   setShopCors,
 } from "./orderRouteShared.js";
-import { reconcileShopOrderAgainstKv } from "./kvPaymentReconcile.js";
+import { reconcileShopOrderAgainstKv, kvPayReconcileThrottleMs } from "./kvPaymentReconcile.js";
 import { shopOrderLookupFilter } from "./findShopOrder.js";
 
 function noStoreOrderJson(
@@ -105,12 +105,16 @@ export function registerShopOrderMeRoutes(
         });
         if (!doc) return res.status(404).json({ error: "Không tìm thấy đơn" });
 
-        // Đơn CK chưa paid: đối soát HĐ KV có điều tiết (throttle) tối đa 20s/lần tránh spam token API
+        // Đơn CK chưa paid: đối soát HĐ KV theo chu kỳ env (mặc định 5s)
         const ps = String((doc as any).paymentStatus || "");
         const method = String((doc as any).method || "");
-        const lastRec = (doc as any).lastKvReconcileAt ? new Date((doc as any).lastKvReconcileAt).getTime() : 0;
+        const lastRec = (doc as any).lastKvReconcileAt
+          ? new Date((doc as any).lastKvReconcileAt).getTime()
+          : 0;
         const isReported = Boolean((doc as any).customerReportedPaidAt);
-        const shouldReconcile = isReported || Date.now() - lastRec > 20000;
+        const throttleMs = kvPayReconcileThrottleMs();
+        const shouldReconcile =
+          isReported || Date.now() - lastRec > throttleMs;
 
         if (
           shouldReconcile &&
@@ -207,9 +211,14 @@ export function registerShopOrderMeRoutes(
             .collection(SHOP_ORDERS)
             .find({
               shopAccountId: userId,
-              $or: [{ code: { $in: ids } }, { id: { $in: ids } }],
+              $or: [
+                { code: { $in: ids } },
+                { id: { $in: ids } },
+                { kvInvoiceCode: { $in: ids } },
+                { kvOrderCode: { $in: ids } },
+              ],
             })
-            .project({ code: 1, id: 1 })
+            .project({ code: 1, id: 1, kvInvoiceCode: 1 })
             .limit(50)
             .toArray();
           const myIds = mine
