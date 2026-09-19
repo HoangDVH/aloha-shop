@@ -162,36 +162,74 @@ export function ShopAppearanceEditor() {
 
   const previewSrc = `${SHOP_PREVIEW_URL}/?_preview=${previewKey}`;
 
-  /** Đảm bảo có khối «Sản phẩm mới» ngay dưới «Sản phẩm bán chạy». */
-  const ensureMoiProductBlock = (layout: AppearanceLayout): AppearanceLayout => {
-    const hasMoi = layout.blocks.some(
+  /** Đảm bảo có khối «Sản phẩm nổi bật» + «Sản phẩm mới» trong danh sách trang chủ. */
+  const ensureCoreHomeProductBlocks = (
+    layout: AppearanceLayout
+  ): AppearanceLayout => {
+    let blocks = [...layout.blocks];
+
+    const isHot = (b: AppearanceBlock) =>
+      b.type === "product_section" &&
+      (String(b.props?.source || "") === "ban_chay" ||
+        String(b.props?.source || "") === "ban_chay_sap_het");
+
+    const hasNoiBat = blocks.some(
+      (b) =>
+        b.type === "product_section" &&
+        String(b.props?.source || "") === "noi_bat"
+    );
+    if (!hasNoiBat) {
+      const noiBatBlock: AppearanceBlock = {
+        id: newId("noi_bat"),
+        type: "product_section",
+        enabled: true,
+        props: {
+          title: "Sản phẩm nổi bật",
+          source: "noi_bat",
+          limit: 6,
+          sort: "ten",
+        },
+      };
+      const hotIdx = blocks.findIndex(isHot);
+      if (hotIdx >= 0) blocks.splice(hotIdx, 0, noiBatBlock);
+      else {
+        const featureIdx = blocks.findIndex((b) => b.type === "feature_strip");
+        blocks.splice(featureIdx >= 0 ? featureIdx + 1 : 0, 0, noiBatBlock);
+      }
+    }
+
+    const hasMoi = blocks.some(
       (b) =>
         b.type === "product_section" && String(b.props?.source || "") === "moi"
     );
-    if (hasMoi) return layout;
-    const moiBlock: AppearanceBlock = {
-      id: newId("moi"),
-      type: "product_section",
-      enabled: true,
-      props: {
-        title: "Sản phẩm mới",
-        source: "moi",
-        limit: 50,
-        sort: "moi",
-      },
-    };
-    const hotIdx = layout.blocks.findIndex(
-      (b) =>
-        b.type === "product_section" &&
-        (String(b.props?.source || "") === "ban_chay" ||
-          String(b.props?.source || "") === "ban_chay_sap_het")
-    );
-    const blocks = [...layout.blocks];
-    if (hotIdx >= 0) blocks.splice(hotIdx + 1, 0, moiBlock);
-    else {
-      const featureIdx = blocks.findIndex((b) => b.type === "feature_strip");
-      blocks.splice(featureIdx >= 0 ? featureIdx + 1 : 0, 0, moiBlock);
+    if (!hasMoi) {
+      const moiBlock: AppearanceBlock = {
+        id: newId("moi"),
+        type: "product_section",
+        enabled: true,
+        props: {
+          title: "Sản phẩm mới",
+          source: "moi",
+          limit: 50,
+          sort: "moi",
+        },
+      };
+      const hotIdx = blocks.findIndex(isHot);
+      if (hotIdx >= 0) blocks.splice(hotIdx + 1, 0, moiBlock);
+      else {
+        const noiBatIdx = blocks.findIndex(
+          (b) =>
+            b.type === "product_section" &&
+            String(b.props?.source || "") === "noi_bat"
+        );
+        if (noiBatIdx >= 0) blocks.splice(noiBatIdx + 1, 0, moiBlock);
+        else {
+          const featureIdx = blocks.findIndex((b) => b.type === "feature_strip");
+          blocks.splice(featureIdx >= 0 ? featureIdx + 1 : 0, 0, moiBlock);
+        }
+      }
     }
+
     return { ...layout, blocks };
   };
 
@@ -209,17 +247,17 @@ export function ShopAppearanceEditor() {
           items: [] as CatNode[],
         })),
       ]);
-      const draftWithMoi = ensureMoiProductBlock(r.draft);
-      setDraft(draftWithMoi);
+      const draftEnsured = ensureCoreHomeProductBlocks(r.draft);
+      setDraft(draftEnsured);
       setCats(tree.items || []);
-      setDirtyFlag(!!r.dirty || draftWithMoi.blocks.length !== r.draft.blocks.length);
+      setDirtyFlag(!!r.dirty || draftEnsured.blocks.length !== r.draft.blocks.length);
       setHistory(Array.isArray(r.history) ? r.history : []);
       setScheduledAt(r.scheduledPublishAt || null);
       const split = splitLocalFromIso(r.scheduledPublishAt);
       setScheduleDate(split.date);
       setScheduleTime(split.time);
       setSelectedId((id) =>
-        id && draftWithMoi.blocks.some((b) => b.id === id) ? id : null
+        id && draftEnsured.blocks.some((b) => b.id === id) ? id : null
       );
     } catch (e: any) {
       toast.error(e?.message || "Không tải được giao diện");
@@ -1123,7 +1161,12 @@ export function ShopAppearanceEditor() {
                                                 : "";
                                   updateProps(b.id, {
                                     source,
-                                    ...(source === "moi" ? { sort: "moi", limit: 50 } : {}),
+                                    ...(source === "moi"
+                                      ? { sort: "moi", limit: 50 }
+                                      : {}),
+                                    ...(source === "noi_bat"
+                                      ? { sort: "ten", limit: 6 }
+                                      : {}),
                                     ...(labelTitle &&
                                     (!b.props.title ||
                                       [
@@ -1142,7 +1185,7 @@ export function ShopAppearanceEditor() {
                               >
                                 <option value="ban_chay">Theo doanh thu: Bán chạy</option>
                                 <option value="moi">Theo thời gian: Sản phẩm mới (top 50)</option>
-                                <option value="noi_bat">Theo nhãn: Nổi bật</option>
+                                <option value="noi_bat">Theo nhãn: Nổi bật (trang chủ)</option>
                                 <option value="ban_chay_sap_het">
                                   Theo nhãn: Bán chạy và sắp hết
                                 </option>

@@ -22,17 +22,28 @@ const FALLBACK_BLOCKS: AppearanceBlock[] = [
     enabled: true,
     props: { variant: "why_aloha" },
   },
-      {
-        id: "seed_hot",
-        type: "product_section",
-        enabled: true,
-        props: {
-          title: "Sản phẩm bán chạy",
-          source: "ban_chay",
-          limit: 15,
-          sort: "ban_chay",
-        },
-      },
+  {
+    id: "seed_noi_bat",
+    type: "product_section",
+    enabled: true,
+    props: {
+      title: "Sản phẩm nổi bật",
+      source: "noi_bat",
+      limit: 6,
+      sort: "ten",
+    },
+  },
+  {
+    id: "seed_hot",
+    type: "product_section",
+    enabled: true,
+    props: {
+      title: "Sản phẩm bán chạy",
+      source: "ban_chay",
+      limit: 15,
+      sort: "ban_chay",
+    },
+  },
       {
         id: "seed_moi",
         type: "product_section",

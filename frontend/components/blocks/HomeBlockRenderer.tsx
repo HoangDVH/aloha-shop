@@ -36,21 +36,6 @@ async function loadLowStockProducts() {
   }
 }
 
-/** Top SP gắn nhãn tay «Nổi bật» (webBadge = noi_bat) — trang chủ. */
-async function loadNoiBatProducts() {
-  try {
-    const res = await fetchProducts({
-      page: 1,
-      limit: 6,
-      badge: "noi_bat",
-      sort: "ten",
-    });
-    return res.items || [];
-  } catch {
-    return [];
-  }
-}
-
 async function ProductSectionBlock({ props }: { props: Record<string, unknown> }) {
   const title = String(props.title || "Sản phẩm");
   const source = String(props.source || "ban_chay");
@@ -133,11 +118,13 @@ async function ProductSectionBlock({ props }: { props: Record<string, unknown> }
       })
     : source === "moi"
       ? "/tim?sort=moi"
-      : source === "ban_chay" || banChayByRevenue
-        ? "/tim?sort=ban_chay"
-        : byBadge
-          ? `/tim?badge=${encodeURIComponent(source === "ban_chay" ? "ban_chay_sap_het" : source)}`
-          : "/tim?sort=ban_chay";
+      : source === "noi_bat"
+        ? "/tim?badge=noi_bat"
+        : source === "ban_chay" || banChayByRevenue
+          ? "/tim?sort=ban_chay"
+          : byBadge
+            ? `/tim?badge=${encodeURIComponent(source === "ban_chay" ? "ban_chay_sap_het" : source)}`
+            : "/tim?sort=ban_chay";
 
   return <HomeProductSection title={title} href={href} products={products} />;
 }
@@ -217,30 +204,28 @@ export async function renderTopBlocks(blocks: AppearanceBlock[]) {
       </div>
     );
   }
-  const noiBat = await loadNoiBatProducts();
-  if (noiBat.length) {
-    nodes.push(
-      <div key="featured-noi-bat">
-        <HomeFeaturedCategories products={noiBat} />
-      </div>
-    );
-  }
   return <>{nodes}</>;
 }
 
-/** Homepage: SP bán chạy + SP mới + promo + bài viết (tôn trọng bật/tắt khối appearance). */
+/** Homepage: nổi bật + bán chạy + mới + promo + bài viết (tôn trọng bật/tắt khối appearance). */
 export async function renderHomeMainSections(blocks: AppearanceBlock[] = []) {
   const productBlocks = (blocks || []).filter((b) => b && b.type === "product_section");
 
   const findBlock = (...sources: string[]) =>
     productBlocks.find((b) => sources.includes(String(b.props?.source || "").trim()));
 
+  const noiBatBlock = findBlock("noi_bat");
   const banChayBlock = findBlock("ban_chay", "ban_chay_sap_het");
   const moiBlock = findBlock("moi");
   // Thiếu khối trong appearance → mặc định bật; có khối thì theo enabled
+  const showNoiBat = noiBatBlock ? noiBatBlock.enabled !== false : true;
   const showBanChay = banChayBlock ? banChayBlock.enabled !== false : true;
   const showMoi = moiBlock ? moiBlock.enabled !== false : true;
 
+  const noiBatLimit = Math.max(
+    1,
+    Math.min(15, Math.round(Number(noiBatBlock?.props?.limit) || 6))
+  );
   const banChayLimit = Math.max(
     10,
     Math.min(50, Math.round((Number(banChayBlock?.props?.limit) || 10) / 5) * 5)
@@ -249,6 +234,21 @@ export async function renderHomeMainSections(blocks: AppearanceBlock[] = []) {
     10,
     Math.min(50, Math.round((Number(moiBlock?.props?.limit) || 50) / 5) * 5)
   );
+
+  let noiBat: Awaited<ReturnType<typeof fetchProducts>>["items"] = [];
+  if (showNoiBat) {
+    try {
+      const res = await fetchProducts({
+        page: 1,
+        limit: noiBatLimit,
+        badge: "noi_bat",
+        sort: "ten",
+      });
+      noiBat = res.items || [];
+    } catch {
+      /* empty */
+    }
+  }
 
   let banChay: Awaited<ReturnType<typeof fetchProducts>>["items"] = [];
   if (showBanChay) {
@@ -293,6 +293,9 @@ export async function renderHomeMainSections(blocks: AppearanceBlock[] = []) {
 
   return (
     <>
+      {showNoiBat && noiBat.length ? (
+        <HomeFeaturedCategories products={noiBat} />
+      ) : null}
       {showBanChay ? (
         <HomeFeaturedProducts
           title="SẢN PHẨM BÁN CHẠY"
