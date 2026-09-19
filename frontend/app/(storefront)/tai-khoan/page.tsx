@@ -189,7 +189,7 @@ function AccountPageInner() {
       </nav>
 
       {/* Mobile tabs ngang */}
-      <div className="sticky top-[calc(env(safe-area-inset-top,0px)+3.5rem)] z-30 -mx-4 border-b border-[var(--aloha-line)] bg-[var(--aloha-cream)]/95 px-4 backdrop-blur lg:hidden">
+      <div className="sticky top-[var(--shop-chrome-h,7.5rem)] z-30 -mx-4 border-b border-[var(--aloha-line)] bg-[var(--aloha-cream)]/95 px-4 backdrop-blur lg:hidden">
         <div className="flex items-center gap-2">
           <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto py-2">
             {tabItems.map((t) => (

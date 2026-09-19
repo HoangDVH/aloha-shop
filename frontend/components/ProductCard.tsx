@@ -80,6 +80,9 @@ export function ProductCard({
   };
 
   const markPending = () => setNavPending(true);
+  const hasVideo =
+    (Array.isArray(product.videos) && product.videos.length > 0) ||
+    Boolean(String(product.videoUrl || "").trim());
 
   const addBtn = purchaseBlocked ? null : (
     <button
@@ -130,13 +133,18 @@ export function ProductCard({
 
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent opacity-0 transition-opacity duration-300 md:group-hover:opacity-100" />
 
-          {Boolean(product.videos?.length) ? (
+          {hasVideo ? (
             <span
-              className="absolute bottom-2 left-2 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white shadow-sm backdrop-blur-[1px]"
+              className="product-card__video-badge pointer-events-none absolute bottom-2 right-2 z-[15] inline-flex h-[1.65rem] w-[1.65rem] items-center justify-center rounded-full bg-black/55 text-white shadow-[0_1px_3px_rgba(0,0,0,0.35)] sm:h-7 sm:w-7"
               title="Có video"
-              aria-hidden
+              aria-label="Sản phẩm có video"
             >
-              <Play size={14} className="fill-white" strokeWidth={0} />
+              <Play
+                size={12}
+                className="ml-[1px] fill-white sm:h-[13px] sm:w-[13px]"
+                strokeWidth={0}
+                aria-hidden
+              />
             </span>
           ) : null}
 
@@ -157,6 +165,11 @@ export function ProductCard({
               manualBadge === "ban_chay") ? (
               <span className="rounded-full bg-amber-500/95 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
                 Sắp hết
+              </span>
+            ) : null}
+            {!preOrder && manualBadge === "moi" ? (
+              <span className="rounded-full bg-sky-600/95 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
+                Mới
               </span>
             ) : null}
           </div>
@@ -280,10 +293,10 @@ export function ProductGrid({
   }
 
   const gridClass = homeRow6
-    ? "grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 xl:gap-3"
+    ? "grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5 lg:gap-3"
     : shopee
-      ? "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 xl:grid-cols-4"
-      : "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4";
+      ? "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5 lg:gap-3"
+      : "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5 lg:gap-3";
 
   return (
     <div className={gridClass}>

@@ -30,7 +30,7 @@ const BLOCK_LABEL: Record<string, string> = {
   article_section: "Bài viết mới",
   rich_text: "Thông báo",
   spacer: "Khoảng trống",
-  category_highlight: "Danh mục nổi bật",
+  category_highlight: "Sản phẩm nổi bật",
 };
 
 function blockIcon(type: string) {

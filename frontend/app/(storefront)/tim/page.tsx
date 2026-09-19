@@ -33,7 +33,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const sp = await searchParams;
   // /tim sạch vẫn index; mọi query lọc/tìm/page → noindex.
-  if (shouldNoIndexCatalog(sp, { defaultSort: "ten", treatNhomAsFilter: true })) {
+  if (shouldNoIndexCatalog(sp, { defaultSort: "ban_chay", treatNhomAsFilter: true })) {
     return { robots: NOINDEX_FOLLOW };
   }
   return {
@@ -59,7 +59,7 @@ async function CatalogBody({
   const maxPrice = Number(sp.maxPrice) || 0;
   const inStock = String(sp.inStock || "") === "1";
   const maxTon = Math.max(0, Math.min(999, Number(sp.maxTon) || 0));
-  const sort = String(sp.sort || "ten");
+  const sort = String(sp.sort || "ban_chay");
   const badgeRaw = String(sp.badge || "").trim();
   const badge =
     badgeRaw === "ban_chay_sap_het" ||
@@ -90,7 +90,7 @@ async function CatalogBody({
       dvt: dvtList.length ? dvtList : undefined,
       loai: loai || undefined,
       page,
-      limit: 24,
+      limit: 25,
       minPrice: minPrice || undefined,
       maxPrice: maxPrice || undefined,
       inStock: inStock || undefined,
@@ -115,7 +115,7 @@ async function CatalogBody({
     ) {
       prod = await fetchProducts({
         page,
-        limit: 24,
+        limit: 25,
         sort: "ban_chay",
       });
       effectiveSort = "ban_chay";

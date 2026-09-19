@@ -1,5 +1,6 @@
 /** Nhãn merchandising web — đồng bộ với backend/shopCatalog/webBadge.ts */
 export const WEB_BADGE_VALUES = [
+  "noi_bat",
   "ban_chay_sap_het",
   "giam_gia",
   "dat_truoc",
@@ -9,6 +10,7 @@ export const WEB_BADGE_VALUES = [
 export type WebBadge = (typeof WEB_BADGE_VALUES)[number];
 
 export const WEB_BADGE_LABELS: Record<WebBadge, string> = {
+  noi_bat: "Nổi bật",
   ban_chay_sap_het: "Bán chạy và sắp hết",
   giam_gia: "Giảm giá",
   dat_truoc: "Đặt trước",
@@ -17,9 +19,8 @@ export const WEB_BADGE_LABELS: Record<WebBadge, string> = {
 
 export function normalizeWebBadge(raw: unknown): WebBadge | "" {
   const b = String(raw || "").trim();
-  if (b === "ban_chay_sap_het" || b === "ban_chay") return "ban_chay_sap_het";
-  if (b === "giam_gia") return "giam_gia";
-  if (b === "dat_truoc") return "dat_truoc";
-  if (b === "moi") return "moi";
+  if (!b) return "";
+  if (b === "ban_chay") return "ban_chay_sap_het";
+  if ((WEB_BADGE_VALUES as readonly string[]).includes(b)) return b as WebBadge;
   return "";
 }

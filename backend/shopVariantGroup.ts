@@ -402,6 +402,7 @@ const SIBLING_PROJ = {
   anh: 1,
   images: 1,
   videos: 1,
+  videoUrl: 1,
   ton: 1,
   onHand: 1,
   kvTon: 1,

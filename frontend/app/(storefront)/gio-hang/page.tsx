@@ -243,7 +243,7 @@ export default function CartPage() {
                           </span>
                           <button
                             type="button"
-                            className="text-slate-400 hover:text-red-600"
+                            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-600"
                             onClick={() => remove(l.ma)}
                             aria-label="Xóa"
                           >
@@ -281,7 +281,7 @@ export default function CartPage() {
                     </div>
                     <button
                       type="button"
-                      className="hidden justify-self-end text-slate-400 hover:text-red-600 md:inline-flex"
+                      className="hidden min-h-11 min-w-11 items-center justify-center justify-self-end rounded-full text-slate-400 hover:bg-red-50 hover:text-red-600 md:inline-flex"
                       onClick={() => remove(l.ma)}
                       aria-label="Xóa"
                     >
@@ -391,12 +391,12 @@ function QtyCtrl({
       <button
         type="button"
         onClick={onMinus}
-        className="inline-flex h-10 w-10 items-center justify-center text-[var(--aloha-green)] hover:bg-[var(--aloha-green-light)]"
+        className="inline-flex h-11 w-11 items-center justify-center text-[var(--aloha-green)] hover:bg-[var(--aloha-green-light)]"
         aria-label="Giảm số lượng"
       >
         −
       </button>
-      <span className="flex h-10 min-w-10 items-center justify-center border-x border-[var(--aloha-line)] text-sm font-bold">
+      <span className="flex h-11 min-w-11 items-center justify-center border-x border-[var(--aloha-line)] text-sm font-bold">
         {qty}
       </span>
       <button
@@ -405,7 +405,7 @@ function QtyCtrl({
         title={plusDisabled ? "Đã đạt số lượng tồn kho" : "Tăng số lượng"}
         onClick={onPlus}
         aria-label="Tăng số lượng"
-        className={`inline-flex h-10 w-10 items-center justify-center text-[var(--aloha-green)] ${
+        className={`inline-flex h-11 w-11 items-center justify-center text-[var(--aloha-green)] ${
           plusDisabled
             ? "cursor-not-allowed text-slate-300"
             : "hover:bg-[var(--aloha-green-light)]"

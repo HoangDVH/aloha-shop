@@ -87,7 +87,7 @@ export function ShopAttributeFilter({
   if (needCategory) {
     return (
       <div className="border-t border-[#f0ebe3] pt-4">
-        <h3 className="mb-2 text-sm font-bold text-[#222]">Thuộc tính</h3>
+        <h3 className="mb-2 text-sm font-extrabold uppercase tracking-wide text-[var(--aloha-ink)]">Thuộc tính</h3>
         <p className="text-xs leading-relaxed text-slate-500">
           Chọn danh mục / nhóm hàng để hiện thuộc tính tương ứng (Size, màu…).
         </p>
@@ -98,7 +98,7 @@ export function ShopAttributeFilter({
   if (loading && !names.length) {
     return (
       <div className="border-t border-[#f0ebe3] pt-4">
-        <h3 className="mb-2 text-sm font-bold text-[#222]">Thuộc tính</h3>
+        <h3 className="mb-2 text-sm font-extrabold uppercase tracking-wide text-[var(--aloha-ink)]">Thuộc tính</h3>
         <p className="text-xs text-slate-400">Đang tải…</p>
       </div>
     );
@@ -116,7 +116,7 @@ export function ShopAttributeFilter({
 
   return (
     <div ref={rootRef} className="border-t border-[#f0ebe3] pt-4">
-      <h3 className="mb-2 text-sm font-bold text-[#222]">Thuộc tính</h3>
+      <h3 className="mb-2 text-sm font-extrabold uppercase tracking-wide text-[var(--aloha-ink)]">Thuộc tính</h3>
       <div className="space-y-2">
         {visibleNames.map((name) => {
           const isOpen = openName === name;

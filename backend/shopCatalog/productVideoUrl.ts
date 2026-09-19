@@ -138,7 +138,11 @@ export function normalizeProductVideos(
   return out;
 }
 
-/** Lấy mảng videos từ doc Mongo (Single Source of Truth). */
+/** Lấy mảng videos từ doc Mongo; fallback `videoUrl` legacy nếu `videos` rỗng. */
 export function publicProductVideos(doc: Record<string, unknown>): string[] {
-  return normalizeProductVideos(doc.videos);
+  const fromArr = normalizeProductVideos(doc.videos);
+  if (fromArr.length) return fromArr;
+  const legacy = String(doc.videoUrl || "").trim();
+  if (!legacy) return [];
+  return normalizeProductVideos([legacy]);
 }

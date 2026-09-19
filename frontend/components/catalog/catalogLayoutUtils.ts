@@ -23,14 +23,24 @@ export const PRICE_PRESETS = [
   { label: "Trên 500.000đ", min: 500000, max: 0 },
 ];
 
+/** Toolbar sort — đúng 4 mục (Giá toggle asc/desc). */
+export const SORT_TOOLBAR = [
+  { value: "ban_chay", label: "Bán chạy" },
+  { value: "moi", label: "Mới" },
+  { value: "giam_gia", label: "Giảm giá" },
+  { value: "price", label: "Giá" },
+] as const;
+
+/** Select / legacy — map đủ giá trị URL. */
 export const SORT_OPTIONS = [
   { value: "ban_chay", label: "Bán chạy" },
-  { value: "moi", label: "Mới nhất" },
-  { value: "ten", label: "Tên A–Z" },
+  { value: "moi", label: "Mới" },
+  { value: "giam_gia", label: "Giảm giá" },
   { value: "price_asc", label: "Giá thấp → cao" },
   { value: "price_desc", label: "Giá cao → thấp" },
-  { value: "ton_desc", label: "Tồn nhiều" },
 ];
+
+export const DEFAULT_CATALOG_SORT = "ban_chay";
 
 /** Loại hàng — khớp tab Hàng hóa / KiotViet */
 export const LOAI_HANG_OPTIONS = [
@@ -56,4 +66,17 @@ export function catalogBase(homeMode: boolean, pathname: string): string {
   if (homeMode) return "/";
   if (pathname.startsWith("/danh-muc")) return pathname;
   return "/tim";
+}
+
+export function isCategoryCatalogPath(pathname: string): boolean {
+  return pathname.startsWith("/danh-muc");
+}
+
+export function normalizeCatalogSort(raw: string | null | undefined): string {
+  const s = String(raw || "").trim();
+  if (!s) return DEFAULT_CATALOG_SORT;
+  if (s === "newest") return "moi";
+  if (s === "bestsellers" || s === "ban-chay") return "ban_chay";
+  if (s === "ten" || s === "ton_desc") return DEFAULT_CATALOG_SORT;
+  return s;
 }

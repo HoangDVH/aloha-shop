@@ -1,108 +1,57 @@
+"use client";
+
 import Link from "next/link";
+import { ProductCard } from "@/components/ProductCard";
 import { SectionTitle } from "@/components/SectionTitle";
-import { categoryHref } from "@/lib/api";
+import type { ShopProduct } from "@/lib/api";
 
-/** 6 danh mục nổi bật — link /danh-muc khớp navbar (không dùng ?q= tìm kiếm). */
-export const HOME_FEATURED_CATEGORIES = [
-  {
-    label: "Cây cảnh",
-    href: categoryHref({
-      id: 228801,
-      name: "CÂY CẢNH ĐỦ LOẠI",
-      slug: "cay-canh-du-loai",
-    }),
-    image: "/categories/cat-cay-canh.png?v=1",
-  },
-  {
-    label: "Chậu cây",
-    href: categoryHref({
-      id: 229259,
-      name: "CHẬU TRỒNG CÂY",
-      slug: "chau-trong-cay",
-    }),
-    image: "/categories/cat-chau-cay.png?v=1",
-  },
-  {
-    label: "Bình hoa",
-    href: categoryHref({
-      id: 749681,
-      name: "BÌNH CẮM HOA",
-      slug: "binh-cam-hoa",
-    }),
-    image: "/categories/cat-binh-hoa.png?v=1",
-  },
-  {
-    label: "Giá thể",
-    href: categoryHref({
-      id: 745019,
-      name: "ĐẤT ĐÁ GIÁ THỂ DINH DƯỠNG TRỒNG CÂY",
-      slug: "dat-da-gia-the-dinh-duong-trong-cay",
-    }),
-    image: "/categories/cat-gia-the.png?v=1",
-  },
-  {
-    label: "Hạt giống",
-    href: categoryHref({
-      id: 300707,
-      name: "HẠT GIỐNG",
-      slug: "hat-giong",
-    }),
-    image: "/categories/cat-hat-giong.png?v=1",
-  },
-  {
-    label: "Phụ kiện",
-    href: categoryHref({
-      id: 729790,
-      name: "PHỤ KIỆN TRANG TRÍ",
-      slug: "phu-kien-trang-tri",
-    }),
-    image: "/categories/cat-phu-kien.png?v=1",
-  },
-] as const;
+const VIEW_ALL_HREF = "/tim?badge=noi_bat";
+const HOME_NOI_BAT_LIMIT = 6;
 
-export function HomeFeaturedCategories() {
+/** Khối «Sản phẩm nổi bật» — SP gắn nhãn tay `noi_bat` ở Hàng hóa web. */
+export function HomeFeaturedCategories({
+  products,
+}: {
+  products: ShopProduct[];
+}) {
+  const items = products.slice(0, HOME_NOI_BAT_LIMIT);
+  if (!items.length) return null;
+
   return (
     <section className="bg-white py-8 sm:py-10">
       <div className="mx-auto max-w-7xl px-4">
-        <div className="relative mb-8 sm:mb-10">
-          <SectionTitle>DANH MỤC NỔI BẬT</SectionTitle>
-          <div className="mt-2 flex justify-end sm:absolute sm:right-0 sm:top-1/2 sm:mt-0 sm:-translate-y-1/2">
-            <Link
-              href="/tim"
-              className="text-sm font-semibold text-[var(--aloha-green)] transition hover:text-[var(--aloha-green-dark)]"
-            >
-              Xem tất cả →
-            </Link>
-          </div>
+        <div className="mb-6 flex items-center justify-between gap-3 sm:hidden">
+          <h2 className="min-w-0 text-base font-extrabold uppercase tracking-wide text-[var(--aloha-ink)]">
+            Sản phẩm nổi bật
+          </h2>
+          <Link
+            href={VIEW_ALL_HREF}
+            className="shrink-0 text-sm font-semibold text-[var(--aloha-green)]"
+          >
+            Xem tất cả →
+          </Link>
         </div>
 
-        <ul className="mt-2 flex flex-wrap justify-center gap-x-2 gap-y-6 sm:mt-4 sm:gap-x-0 sm:justify-between">
-          {HOME_FEATURED_CATEGORIES.map((c, i) => (
+        <div className="relative mb-8 hidden sm:mb-10 sm:block">
+          <SectionTitle>SẢN PHẨM NỔI BẬT</SectionTitle>
+          <Link
+            href={VIEW_ALL_HREF}
+            className="absolute right-0 top-1/2 -translate-y-1/2 text-sm font-semibold text-[var(--aloha-green)] transition hover:text-[var(--aloha-green-dark)]"
+          >
+            Xem tất cả →
+          </Link>
+        </div>
+
+        {/* Cùng tỉ lệ card catalog (2→5 cột); 1 SP không bị kéo full ngang. Gạch dọc desktop. */}
+        <ul className="mt-2 grid grid-cols-2 gap-3 sm:mt-4 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5 lg:gap-0">
+          {items.map((p, i) => (
             <li
-              key={c.label}
-              className={`flex min-w-[5.5rem] flex-1 basis-[30%] justify-center sm:basis-0 sm:px-2 md:px-3 ${
-                i < HOME_FEATURED_CATEGORIES.length - 1
-                  ? "sm:border-r sm:border-[var(--aloha-line)]"
-                  : ""
+              key={p.ma}
+              className={`min-w-0 lg:px-2.5 ${
+                i < items.length - 1 ? "lg:border-r lg:border-[var(--aloha-line)]" : ""
               }`}
             >
-              <Link
-                href={c.href}
-                className="group flex w-full max-w-[8.5rem] flex-col items-center gap-2.5 text-center"
-              >
-                <span className="relative block aspect-square w-full max-w-[7.25rem] overflow-hidden rounded-full bg-[var(--aloha-surface)] ring-1 ring-[var(--aloha-line)] transition group-hover:ring-[var(--aloha-green)]/35 group-hover:shadow-[var(--aloha-shadow)]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={c.image}
-                    alt={c.label}
-                    className="h-full w-full object-cover object-center transition duration-300 group-hover:scale-[1.05]"
-                    loading="lazy"
-                  />
-                </span>
-                <span className="text-sm font-semibold text-[var(--aloha-ink)] group-hover:text-[var(--aloha-green-dark)]">
-                  {c.label}
-                </span>
-              </Link>
+              <ProductCard product={p} shopee />
             </li>
           ))}
         </ul>

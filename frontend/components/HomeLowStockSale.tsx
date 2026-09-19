@@ -92,9 +92,10 @@ export function HomeLowStockSale({ products }: Props) {
                 Sản phẩm hot - Giá tốt mỗi ngày
               </p>
             </div>
+            {/* Desktop: Xem tất cả cạnh tiêu đề */}
             <Link
               href="/tim?sort=ban_chay&inStock=1&maxTon=8"
-              className="home-low-stock__view-all inline-flex h-8 shrink-0 items-center justify-center self-end rounded-full border border-[var(--aloha-green)]/40 px-2.5 text-[11px] font-semibold text-[var(--aloha-green-dark)] transition hover:bg-[var(--aloha-green-light)] sm:h-9 sm:self-auto sm:px-4 sm:text-sm"
+              className="home-low-stock__view-all hidden h-9 shrink-0 items-center justify-center rounded-full border border-[var(--aloha-green)]/40 px-4 text-sm font-semibold text-[var(--aloha-green-dark)] transition hover:bg-[var(--aloha-green-light)] sm:inline-flex"
             >
               Xem tất cả →
             </Link>
@@ -116,7 +117,7 @@ export function HomeLowStockSale({ products }: Props) {
               aria-label="Sản phẩm trước"
               disabled={!canPrev}
               onClick={() => emblaApi?.scrollPrev()}
-              className="home-low-stock__nav left-0 -translate-x-1/2 sm:left-1 sm:translate-x-0"
+              className="home-low-stock__nav left-1 hidden sm:inline-flex"
             >
               <ChevronLeft className="h-5 w-5" aria-hidden />
             </button>
@@ -125,18 +126,27 @@ export function HomeLowStockSale({ products }: Props) {
               aria-label="Sản phẩm sau"
               disabled={!canNext}
               onClick={() => emblaApi?.scrollNext()}
-              className="home-low-stock__nav right-0 translate-x-1/2 sm:right-1 sm:translate-x-0"
+              className="home-low-stock__nav right-1 hidden sm:inline-flex"
             >
               <ChevronRight className="h-5 w-5" aria-hidden />
             </button>
           </div>
 
-          <p className="relative z-10 mt-5 flex items-center justify-center gap-1.5 text-center text-sm italic text-[var(--aloha-green-dark)]">
-            <Sprout className="h-4 w-4 text-[var(--aloha-green)]" aria-hidden />
-            <span>Cây xanh nhỏ — Hạnh phúc lớn</span>
-            <Heart className="h-3.5 w-3.5 text-[var(--aloha-muted)]" aria-hidden />
-            <Heart className="h-3.5 w-3.5 text-[var(--aloha-muted)]" aria-hidden />
-          </p>
+          <div className="relative z-10 mt-5 flex flex-col items-center gap-2.5">
+            <p className="flex items-center justify-center gap-1.5 text-center text-sm italic text-[var(--aloha-green-dark)]">
+              <Sprout className="h-4 w-4 text-[var(--aloha-green)]" aria-hidden />
+              <span>Cây xanh nhỏ — Hạnh phúc lớn</span>
+              <Heart className="h-3.5 w-3.5 text-[var(--aloha-muted)]" aria-hidden />
+              <Heart className="h-3.5 w-3.5 text-[var(--aloha-muted)]" aria-hidden />
+            </p>
+            {/* Mobile: Xem tất cả dưới slogan */}
+            <Link
+              href="/tim?sort=ban_chay&inStock=1&maxTon=8"
+              className="home-low-stock__view-all inline-flex h-11 min-w-[7.5rem] items-center justify-center rounded-full border border-[var(--aloha-green)]/40 px-4 text-sm font-semibold text-[var(--aloha-green-dark)] transition hover:bg-[var(--aloha-green-light)] sm:hidden"
+            >
+              Xem tất cả →
+            </Link>
+          </div>
         </div>
       </div>
     </section>

@@ -23,7 +23,7 @@ export function RelatedProductsSkeleton() {
   return (
     <div className="mx-auto max-w-7xl animate-pulse space-y-3 px-4 pb-8">
       <div className="h-6 w-56 rounded bg-[#EDE6D8]" />
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="aspect-square rounded-sm bg-[#EDE6D8]" />
         ))}

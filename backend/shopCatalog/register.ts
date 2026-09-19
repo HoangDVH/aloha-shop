@@ -538,6 +538,17 @@ function sortPublicItems(
       (a, b) => a.ten.localeCompare(b.ten, "vi"),
       scope || "ban_chay_sap_het"
     );
+  } else if (sort === "giam_gia") {
+    return arrangeByAbsolutePin(
+      next,
+      (a, b) => {
+        const ga = normalizeWebBadge(a.webBadge) === "giam_gia" ? 1 : 0;
+        const gb = normalizeWebBadge(b.webBadge) === "giam_gia" ? 1 : 0;
+        if (gb !== ga) return gb - ga;
+        return a.ten.localeCompare(b.ten, "vi");
+      },
+      scope || "giam_gia"
+    );
   } else if (sort === "moi" || sort === "newest") {
     // «Mới» theo ngày — không ghim theo nhãn
     const ts = (p: { ma?: string }) =>
@@ -925,6 +936,7 @@ async function findByProductSlug(db: Db, slug: string) {
       anh: 1,
       images: 1,
       videos: 1,
+      videoUrl: 1,
       ton: 1,
       onHand: 1,
       kvTon: 1,
@@ -1035,13 +1047,15 @@ export function registerShopApi(
       const loai = String(req.query.loai || "").trim();
       const badgeRaw = String(req.query.badge || req.query.webBadge || "").trim();
       const badge = normalizeWebBadge(badgeRaw);
-      const sortRaw = String(req.query.sort || "ten").trim();
+      const sortRaw = String(req.query.sort || "ban_chay").trim();
       const sort =
         sortRaw === "bestsellers" || sortRaw === "ban-chay"
           ? "ban_chay"
           : sortRaw === "newest"
             ? "moi"
-            : sortRaw;
+            : sortRaw === "ten" || sortRaw === "ton_desc"
+              ? "ban_chay"
+              : sortRaw;
       const skip = (page - 1) * limit;
       const buyerEmail = requestShopBuyerEmail(req);
       const showZeroPrice = isShopTestBuyerEmail(buyerEmail);
@@ -1126,6 +1140,7 @@ export function registerShopApi(
           anh: 1,
           images: 1,
           videos: 1,
+          videoUrl: 1,
           ton: 1,
           onHand: 1,
           kvTon: 1,
@@ -1416,6 +1431,7 @@ export function registerShopApi(
           anh: 1,
           images: 1,
           videos: 1,
+          videoUrl: 1,
           giaWeb: 1,
           giaBan: 1,
           giaChung: 1,
@@ -1490,14 +1506,17 @@ export function registerShopApi(
       const homeScope = String(req.query.home || "") === "1";
       /** Trang «Tất cả sản phẩm» (/tim) — facets toàn catalog. */
       const allCatalog = String(req.query.all || "") === "1";
+      const badgeRaw = String(req.query.badge || req.query.webBadge || "").trim();
+      const badge = normalizeWebBadge(badgeRaw);
       // Không có mục/từ khóa → không dump cả shop; trang chủ dùng home=1; /tim dùng all=1
       const scoped =
         categoryIdList.length > 0 ||
         nhomList.length > 0 ||
         Boolean(q) ||
         homeScope ||
-        allCatalog;
-      const cacheKey = `shop:facets:v6:${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|all=${allCatalog ? 1 : 0}|${scoped ? "1" : "0"}`;
+        allCatalog ||
+        Boolean(badge);
+      const cacheKey = `shop:facets:v7:${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|all=${allCatalog ? 1 : 0}|badge=${badge}|${scoped ? "1" : "0"}`;
       const { body, cache } = await cachedJson(cacheKey, async () => {
         if (!scoped) {
           return { attributes: {}, dvt: ["Cái", "Cây", "Thùng", "Gói", "Bao"] };
@@ -1515,6 +1534,11 @@ export function registerShopApi(
               { ancestor: rx },
             ],
           });
+        }
+        if (badge === "ban_chay_sap_het") {
+          and.push({ webBadge: { $in: ["ban_chay_sap_het", "ban_chay"] } });
+        } else if (badge) {
+          and.push({ webBadge: badge });
         }
         if (categoryIdList.length) {
           const catIds = await resolveCategoryIdsForRootIds(db, categoryIdList);

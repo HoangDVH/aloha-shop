@@ -259,7 +259,15 @@ export function registerShopProductsAdminRoutes(
         };
         let nextBadge = normalizeWebBadge(cur.webBadge);
         if (req.body?.webBadge !== undefined) {
-          nextBadge = normalizeWebBadge(req.body.webBadge);
+          const rawBadge = String(req.body.webBadge ?? "").trim();
+          if (rawBadge && !normalizeWebBadge(rawBadge)) {
+            res.status(400).json({
+              error: "invalid_web_badge",
+              message: `Nhãn không hợp lệ: ${rawBadge}`,
+            });
+            return;
+          }
+          nextBadge = normalizeWebBadge(rawBadge);
           $set.webBadge = nextBadge;
         }
 
@@ -424,12 +432,9 @@ export function registerShopProductsAdminRoutes(
           if (!ma) continue;
           const legacyRaw = String(d.webBadge || "").trim();
           const current = normalizeWebBadge(legacyRaw);
-          // Đã gắn 1 trong 4 nhãn → khóa (không đè). Legacy/rỗng → được áp.
+          // Đã gắn nhãn chuẩn → khóa (không đè). Legacy «ban_chay» / rỗng → được áp.
           const isOpen =
-            !legacyRaw ||
-            legacyRaw === "ban_chay" ||
-            legacyRaw === "noi_bat" ||
-            !current;
+            !legacyRaw || legacyRaw === "ban_chay" || !current;
           if (!isOpen) {
             skippedManual++;
             continue;
@@ -445,7 +450,7 @@ export function registerShopProductsAdminRoutes(
           }
           // Không gắn cứng «moi» — mục mới theo createdAt
 
-          if (next === current && legacyRaw !== "ban_chay" && legacyRaw !== "noi_bat") {
+          if (next === current && legacyRaw !== "ban_chay") {
             continue;
           }
           if (!next && !legacyRaw) continue;

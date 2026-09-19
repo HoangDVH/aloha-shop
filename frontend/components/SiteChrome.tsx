@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ShoppingBasket, Menu, X, LogOut, Receipt, BadgePercent } from "lucide-react";
+import { ShoppingBasket, Menu, X, LogOut, Receipt, BadgePercent, Home } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { fetchCategoryTreeCached, shopApiBase, type ShopCategoryNavNode } from "@/lib/api";
 import { HeaderSearch } from "@/components/HeaderSearch";
@@ -15,6 +15,7 @@ import { useShopLogoutAction } from "@/lib/useShopLogoutAction";
 import { applyNavConfig } from "@/lib/navConfig";
 import type { NavConfig, AppearanceTheme } from "@/lib/appearanceTypes";
 import { applyThemeCssVars } from "@/lib/themeCss";
+import { onShopAppearanceChanged } from "@/lib/catalogSync";
 import { SHOP_OPEN_MOBILE_CATS } from "@/components/ShopMobileTabBar";
 const LOGO_HEADER_SRC = "/brand/logo-header-on-theme.png?v=1";
 const LOGO_WIDTH = 976;
@@ -60,7 +61,7 @@ function AlohaLogo({
     <Link
       href="/"
       onClick={onNavigate}
-      className="flex max-w-[min(52vw,280px)] shrink-0 items-center self-center"
+      className="flex max-w-[min(40vw,9.75rem)] shrink-0 items-center self-center sm:max-w-[min(52vw,280px)]"
       title={title}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -148,11 +149,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
         .catch(() => {});
     };
     loadNav();
-    let unsub = () => {};
-    void import("@/lib/catalogSync").then(({ onShopAppearanceChanged }) => {
-      if (cancelled) return;
-      unsub = onShopAppearanceChanged(() => loadNav());
-    });
+    const unsub = onShopAppearanceChanged(() => loadNav());
     return () => {
       cancelled = true;
       unsub();
@@ -191,23 +188,24 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
       style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
     >
       <div className="border-b border-[var(--aloha-line)] bg-[var(--aloha-cream-dark)]">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-2.5 lg:gap-5">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-2 gap-y-2 px-3 py-2 sm:gap-x-3 sm:px-4 sm:py-2.5 lg:flex-nowrap lg:gap-5">
           <AlohaLogo
             onNavigate={closeMenus}
             logoUrl={theme?.logoUrl}
             siteName={theme?.siteName}
           />
 
-          <div className="order-3 flex w-full flex-1 items-stretch sm:order-none sm:min-w-[220px]">
+          {/* Mobile/tablet: hàng riêng full ngang (kiểu Shopee/Tiki). Desktop: giữa logo và icon. */}
+          <div className="order-last w-full basis-full lg:order-none lg:min-w-0 lg:flex-1 lg:basis-auto">
             <HeaderSearch onSubmitExtra={closeMenus} />
           </div>
 
-          <div className="ml-auto flex items-center gap-0.5 sm:gap-2" style={{ color: chromeInk }}>
+          <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-2" style={{ color: chromeInk }}>
             <a
               href={wholesaleZaloUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className={`inline-flex min-h-11 items-center gap-1 rounded-xl px-2 text-sm font-bold ${linkTextClass} ${chromeHover} lg:hidden`}
+              className={`hidden min-h-11 items-center gap-1 rounded-xl px-2 text-sm font-bold sm:inline-flex ${linkTextClass} ${chromeHover} lg:hidden`}
               aria-label="Nhận báo giá sỉ"
             >
               <BadgePercent size={18} strokeWidth={2.25} aria-hidden className={iconClass} />
@@ -246,6 +244,18 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
       <nav className="hidden overflow-visible border-b border-[var(--aloha-line)] bg-white text-[var(--aloha-green)] lg:block">
         <div className="mx-auto flex max-w-7xl items-stretch overflow-visible px-1 sm:px-2">
           <div className="hidden min-w-0 flex-1 items-stretch lg:flex">
+            <Link
+              href="/"
+              onClick={closeMenus}
+              className="group relative inline-flex shrink-0 items-center gap-1.5 px-3 text-[15px] font-extrabold text-[var(--aloha-green)] hover:text-[var(--aloha-green-dark)] xl:text-base"
+            >
+              <Home size={18} strokeWidth={2.25} className="shrink-0" aria-hidden />
+              Trang chủ
+              <span
+                className="pointer-events-none absolute inset-x-2 bottom-0 h-[2.5px] rounded-full bg-[var(--aloha-green)] opacity-0 transition-opacity group-hover:opacity-100"
+                aria-hidden
+              />
+            </Link>
             {navApplied.before.map((c) => (
               <a
                 key={c.id}
@@ -253,7 +263,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                 target={c.openInNewTab ? "_blank" : undefined}
                 rel={c.openInNewTab ? "noopener noreferrer" : undefined}
                 onClick={closeMenus}
-                className="group relative inline-flex shrink-0 items-center px-2.5 text-[13px] font-bold text-[var(--aloha-green)] hover:text-[var(--aloha-green-dark)]"
+                className="group relative inline-flex shrink-0 items-center px-2.5 text-[15px] font-extrabold text-[var(--aloha-green)] hover:text-[var(--aloha-green-dark)] xl:text-base"
               >
                 {c.label}
                 <span
@@ -274,7 +284,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                 target={c.openInNewTab ? "_blank" : undefined}
                 rel={c.openInNewTab ? "noopener noreferrer" : undefined}
                 onClick={closeMenus}
-                className="group relative inline-flex shrink-0 items-center px-2.5 text-[13px] font-bold text-[var(--aloha-green)] hover:text-[var(--aloha-green-dark)]"
+                className="group relative inline-flex shrink-0 items-center px-2.5 text-[15px] font-extrabold text-[var(--aloha-green)] hover:text-[var(--aloha-green-dark)] xl:text-base"
               >
                 {c.label}
                 <span
@@ -372,7 +382,58 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                 <BadgePercent size={18} strokeWidth={2.25} aria-hidden />
                 Nhận báo giá sỉ
               </a>
+              {navApplied.before.length ? (
+                <div className="mb-2 space-y-0.5 border-b border-[var(--aloha-line)] pb-2">
+                  <Link
+                    href="/"
+                    onClick={closeMenus}
+                    className="flex min-h-11 items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-[var(--aloha-green)] hover:bg-[var(--aloha-cream)]"
+                  >
+                    <Home size={18} strokeWidth={2.25} aria-hidden />
+                    Trang chủ
+                  </Link>
+                  {navApplied.before.map((c) => (
+                    <a
+                      key={c.id}
+                      href={c.href}
+                      target={c.openInNewTab ? "_blank" : undefined}
+                      rel={c.openInNewTab ? "noopener noreferrer" : undefined}
+                      onClick={closeMenus}
+                      className="flex min-h-11 items-center rounded-xl px-3 py-2 text-sm font-bold text-[var(--aloha-green)] hover:bg-[var(--aloha-cream)]"
+                    >
+                      {c.label}
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <div className="mb-2 border-b border-[var(--aloha-line)] pb-2">
+                  <Link
+                    href="/"
+                    onClick={closeMenus}
+                    className="flex min-h-11 items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-[var(--aloha-green)] hover:bg-[var(--aloha-cream)]"
+                  >
+                    <Home size={18} strokeWidth={2.25} aria-hidden />
+                    Trang chủ
+                  </Link>
+                </div>
+              )}
               <CategoryMobileNav tree={navApplied.tree} onNavigate={closeMenus} />
+              {navApplied.after.length ? (
+                <div className="mt-2 space-y-0.5 border-t border-[var(--aloha-line)] pt-2">
+                  {navApplied.after.map((c) => (
+                    <a
+                      key={c.id}
+                      href={c.href}
+                      target={c.openInNewTab ? "_blank" : undefined}
+                      rel={c.openInNewTab ? "noopener noreferrer" : undefined}
+                      onClick={closeMenus}
+                      className="flex min-h-11 items-center rounded-xl px-3 py-2 text-sm font-bold text-[var(--aloha-green)] hover:bg-[var(--aloha-cream)]"
+                    >
+                      {c.label}
+                    </a>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -400,11 +461,7 @@ export function SiteFooter() {
         .catch(() => {});
     };
     load();
-    let unsub = () => {};
-    void import("@/lib/catalogSync").then(({ onShopAppearanceChanged }) => {
-      if (cancelled) return;
-      unsub = onShopAppearanceChanged(() => load());
-    });
+    const unsub = onShopAppearanceChanged(() => load());
     return () => {
       cancelled = true;
       unsub();
@@ -437,7 +494,7 @@ export function SiteFooter() {
               href={zaloHref(footer.zalo || footer.phone)}
               target="_blank"
               rel="noreferrer"
-              className="font-semibold text-[var(--aloha-green)] underline-offset-2 hover:text-[var(--aloha-green-dark)] hover:underline"
+              className="inline-flex min-h-10 items-center font-semibold text-[var(--aloha-green)] underline-offset-2 hover:text-[var(--aloha-green-dark)] hover:underline"
             >
               {footer.phone || footer.zalo}
             </a>
@@ -446,7 +503,7 @@ export function SiteFooter() {
             <p className="mt-1 text-[var(--aloha-muted)]">
               <a
                 href={`mailto:${footer.email}`}
-                className="font-semibold text-[var(--aloha-green)] underline-offset-2 hover:text-[var(--aloha-green-dark)] hover:underline"
+                className="inline-flex min-h-10 items-center font-semibold text-[var(--aloha-green)] underline-offset-2 hover:text-[var(--aloha-green-dark)] hover:underline"
               >
                 {footer.email}
               </a>
@@ -455,14 +512,23 @@ export function SiteFooter() {
         </div>
         <div className="text-sm text-[var(--aloha-muted)]">
           <div className="font-bold text-[var(--aloha-ink)]">Mua sắm</div>
-          <div className="mt-2 flex flex-col gap-2">
-            <Link href="/tim" className="hover:text-[var(--aloha-green)]">
+          <div className="mt-2 flex flex-col">
+            <Link
+              href="/tim"
+              className="inline-flex min-h-10 items-center py-1 hover:text-[var(--aloha-green)]"
+            >
               Tất cả sản phẩm
             </Link>
-            <Link href="/?sort=ban_chay" className="hover:text-[var(--aloha-green)]">
+            <Link
+              href="/?sort=ban_chay"
+              className="inline-flex min-h-10 items-center py-1 hover:text-[var(--aloha-green)]"
+            >
               Bán chạy
             </Link>
-            <Link href="/bai-viet" className="hover:text-[var(--aloha-green)]">
+            <Link
+              href="/bai-viet"
+              className="inline-flex min-h-10 items-center py-1 hover:text-[var(--aloha-green)]"
+            >
               Bài viết
             </Link>
           </div>

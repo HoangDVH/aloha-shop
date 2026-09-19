@@ -150,7 +150,7 @@ async function HomeCatalog({
       dvt: dvtList.length ? dvtList : undefined,
       loai: loai || undefined,
       page,
-      limit: 36,
+      limit: 35,
       minPrice: minPrice || undefined,
       maxPrice: maxPrice || undefined,
       inStock: inStock || undefined,

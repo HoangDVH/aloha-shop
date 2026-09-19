@@ -48,7 +48,12 @@ export function HeaderAccountMenu() {
   }, [open]);
 
   if (loading) {
-    return <span className="hidden px-2 text-xs text-[var(--aloha-muted)] sm:inline">…</span>;
+    return (
+      <span
+        className="hidden h-9 w-24 sm:inline-block"
+        aria-hidden
+      />
+    );
   }
 
   if (!user) {

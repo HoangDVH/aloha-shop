@@ -136,7 +136,7 @@ export function CheckoutLineItems({
                         aria-label="Giảm số lượng"
                         disabled={l.qty <= 1}
                         onClick={() => setQty(l.ma, l.qty - 1)}
-                        className="flex h-7 w-7 items-center justify-center rounded-full text-slate-600 disabled:opacity-30"
+                        className="flex h-11 w-11 items-center justify-center rounded-full text-slate-600 disabled:opacity-30"
                       >
                         <Minus size={14} />
                       </button>
@@ -148,7 +148,7 @@ export function CheckoutLineItems({
                         aria-label="Tăng số lượng"
                         disabled={atMax}
                         onClick={() => setQty(l.ma, l.qty + 1)}
-                        className="flex h-7 w-7 items-center justify-center rounded-full text-slate-600 disabled:opacity-30"
+                        className="flex h-11 w-11 items-center justify-center rounded-full text-slate-600 disabled:opacity-30"
                       >
                         <Plus size={14} />
                       </button>
@@ -215,7 +215,7 @@ export function CheckoutLineItems({
                       aria-label="Giảm số lượng"
                       disabled={l.qty <= 1}
                       onClick={() => setQty(l.ma, l.qty - 1)}
-                      className="flex h-7 w-7 items-center justify-center rounded-full text-slate-600 disabled:opacity-30"
+                      className="flex h-11 w-11 items-center justify-center rounded-full text-slate-600 disabled:opacity-30"
                     >
                       <Minus size={14} />
                     </button>
@@ -227,7 +227,7 @@ export function CheckoutLineItems({
                       aria-label="Tăng số lượng"
                       disabled={atMax}
                       onClick={() => setQty(l.ma, l.qty + 1)}
-                      className="flex h-7 w-7 items-center justify-center rounded-full text-slate-600 disabled:opacity-30"
+                      className="flex h-11 w-11 items-center justify-center rounded-full text-slate-600 disabled:opacity-30"
                     >
                       <Plus size={14} />
                     </button>

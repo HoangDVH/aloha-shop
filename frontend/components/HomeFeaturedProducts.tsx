@@ -9,17 +9,17 @@ type Props = {
   title: string;
   products: ShopProduct[];
   href: string;
-  /** Số SP tối đa hiện trên lưới (mặc định 12) */
+  /** Số SP tối đa hiện trên lưới (mặc định 10 = 2 hàng × 5 cột) */
   limit?: number;
   ctaLabel?: string;
 };
 
-/** Mục SP trang chủ — tiêu đề giữa + lá + lưới 6 cột. */
+/** Mục SP trang chủ — tiêu đề giữa + lá + lưới 5 cột desktop. */
 export function HomeFeaturedProducts({
   title,
   products,
   href,
-  limit = 12,
+  limit = 10,
   ctaLabel = "Xem thêm sản phẩm →",
 }: Props) {
   if (!products.length) return null;

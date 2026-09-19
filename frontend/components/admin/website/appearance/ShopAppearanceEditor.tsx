@@ -459,7 +459,7 @@ export function ShopAppearanceEditor() {
         nhomPath: "",
         nhomName: "",
         nhomSlug: "",
-        limit: 15,
+        limit: 10,
         sort: "ban_chay",
       },
     };
@@ -1103,26 +1103,24 @@ export function ShopAppearanceEditor() {
                                 value={
                                   String(b.props.source || "ban_chay") === "nhom"
                                     ? "category"
-                                    : String(b.props.source || "ban_chay") === "noi_bat"
-                                      ? "giam_gia"
-                                      : String(b.props.source || "ban_chay") === "ban_chay"
-                                        ? "ban_chay"
-                                        : String(b.props.source || "ban_chay")
+                                    : String(b.props.source || "ban_chay")
                                 }
                                 onChange={(e) => {
                                   const source = e.target.value;
                                   const labelTitle =
                                     source === "moi"
                                       ? "Sản phẩm mới"
-                                      : source === "giam_gia"
-                                        ? "Sản phẩm giảm giá"
-                                        : source === "dat_truoc"
-                                          ? "Sản phẩm đặt trước"
-                                          : source === "ban_chay_sap_het"
-                                            ? "Sản phẩm bán chạy và sắp hết"
-                                            : source === "ban_chay"
-                                              ? "Sản phẩm bán chạy"
-                                              : "";
+                                      : source === "noi_bat"
+                                        ? "Sản phẩm nổi bật"
+                                        : source === "giam_gia"
+                                          ? "Sản phẩm giảm giá"
+                                          : source === "dat_truoc"
+                                            ? "Sản phẩm đặt trước"
+                                            : source === "ban_chay_sap_het"
+                                              ? "Sản phẩm bán chạy và sắp hết"
+                                              : source === "ban_chay"
+                                                ? "Sản phẩm bán chạy"
+                                                : "";
                                   updateProps(b.id, {
                                     source,
                                     ...(source === "moi" ? { sort: "moi", limit: 50 } : {}),
@@ -1144,6 +1142,7 @@ export function ShopAppearanceEditor() {
                               >
                                 <option value="ban_chay">Theo doanh thu: Bán chạy</option>
                                 <option value="moi">Theo thời gian: Sản phẩm mới (top 50)</option>
+                                <option value="noi_bat">Theo nhãn: Nổi bật</option>
                                 <option value="ban_chay_sap_het">
                                   Theo nhãn: Bán chạy và sắp hết
                                 </option>

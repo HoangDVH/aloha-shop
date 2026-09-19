@@ -3,18 +3,33 @@
 import { useSearchParams, usePathname } from "next/navigation";
 import { useShopRouter } from "@/lib/useShopRouter";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { SlidersHorizontal, X, ChevronLeft, ChevronRight } from "lucide-react";
-import { fetchCategoryTreeCached, fetchShopFacets, formatVnd, type ShopCategoryNavNode, type ShopFacets } from "@/lib/api";
+import {
+  SlidersHorizontal,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+} from "lucide-react";
+import {
+  fetchCategoryTreeCached,
+  fetchProducts,
+  fetchShopFacets,
+  formatVnd,
+  type ShopCategoryNavNode,
+  type ShopFacets,
+} from "@/lib/api";
 import { clearAttrDvtParams } from "@/lib/parseShopFilters";
 import { CatalogFilterPanel } from "@/components/catalog/CatalogFilterPanel";
 import {
   PIN_CATALOG_KEY,
-  SORT_OPTIONS,
+  SORT_TOOLBAR,
   markPinCatalog,
   scrollToCatalog,
   leafLabel,
   catalogBase,
   normPath,
+  isCategoryCatalogPath,
+  normalizeCatalogSort,
 } from "@/components/catalog/catalogLayoutUtils";
 
 type Props = {
@@ -24,11 +39,29 @@ type Props = {
   title?: string;
   children: React.ReactNode;
   homeMode?: boolean;
-  /** Trang chủ dạng mục: giữ sidebar lọc, ẩn tiêu đề/đếm kết quả catalog */
   filtersOnly?: boolean;
-  /** Ẩn hết bộ lọc (vd. trang chủ shop) */
   hideFilters?: boolean;
 };
+
+type DraftState = {
+  nhoms: string[];
+  attrs: string[];
+  dvts: string[];
+  minPrice: string;
+  maxPrice: string;
+  inStock: boolean;
+};
+
+function draftFromUrl(sp: URLSearchParams, selectedNhoms: string[]): DraftState {
+  return {
+    nhoms: [...selectedNhoms],
+    attrs: sp.getAll("attr").filter(Boolean),
+    dvts: sp.getAll("dvt").filter(Boolean),
+    minPrice: sp.get("minPrice") || "",
+    maxPrice: sp.get("maxPrice") || "",
+    inStock: sp.get("inStock") === "1",
+  };
+}
 
 export function CatalogLayout({
   total,
@@ -44,12 +77,18 @@ export function CatalogLayout({
   const pathname = usePathname();
   const sp = useSearchParams();
   const [open, setOpen] = useState(false);
+  const [priceMenuOpen, setPriceMenuOpen] = useState(false);
   const [facets, setFacets] = useState<ShopFacets>({ attributes: {}, dvt: [] });
   const [facetsLoading, setFacetsLoading] = useState(false);
+  const [draft, setDraft] = useState<DraftState | null>(null);
+  const [draftTotal, setDraftTotal] = useState<number | null>(null);
+  const [draftTotalLoading, setDraftTotalLoading] = useState(false);
   const facetReqRef = useRef(0);
+  const draftCountRef = useRef(0);
   const FILTER_SHEET_KEY = "aloha_filter_sheet_open";
+  const categoryLocked = isCategoryCatalogPath(pathname);
 
-  const setFilterSheetOpen = (v: boolean) => {
+  const setFilterOpen = (v: boolean) => {
     setOpen(v);
     try {
       if (v) sessionStorage.setItem(FILTER_SHEET_KEY, "1");
@@ -57,9 +96,12 @@ export function CatalogLayout({
     } catch {
       /* ignore */
     }
+    if (!v) {
+      setDraft(null);
+      setDraftTotal(null);
+    }
   };
 
-  // Remount sau lọc (Suspense) — giữ sheet mobile đang mở
   useEffect(() => {
     try {
       if (sessionStorage.getItem(FILTER_SHEET_KEY) === "1") setOpen(true);
@@ -68,7 +110,6 @@ export function CatalogLayout({
     }
   }, []);
 
-  // Sau khi lọc: Suspense remount — giữ/đưa viewport về khối catalog (không nhảy hero)
   useEffect(() => {
     let pinned = false;
     try {
@@ -87,6 +128,8 @@ export function CatalogLayout({
   }, [sp]);
 
   const q = sp.get("q") || "";
+  const badge = sp.get("badge") || "";
+  const maxTon = sp.get("maxTon") || "";
   const selectedNhoms = useMemo(() => {
     const all = sp.getAll("nhom").map((s) => normPath(s)).filter(Boolean);
     if (all.length) return all;
@@ -105,8 +148,7 @@ export function CatalogLayout({
   const minPrice = sp.get("minPrice") || "";
   const maxPrice = sp.get("maxPrice") || "";
   const inStock = sp.get("inStock") === "1";
-  const sort = sp.get("sort") || (homeMode ? "ban_chay" : "ten");
-  /** Chỉ trang /tim — load đủ ĐVT + thuộc tính toàn shop khi chưa chọn nhóm/từ khóa. */
+  const sort = normalizeCatalogSort(sp.get("sort") || (homeMode ? "ban_chay" : null));
   const allProductsPage = !homeMode && pathname === "/tim";
   const [categoryIdNhoms, setCategoryIdNhoms] = useState<string[]>([]);
 
@@ -141,7 +183,6 @@ export function CatalogLayout({
 
   const filterNhoms = selectedNhoms.length ? selectedNhoms : categoryIdNhoms;
 
-  // Facets theo mục navbar / từ khóa / phạm vi trang chủ (bán chạy + cây thành phẩm)
   useEffect(() => {
     if (hideFilters) {
       setFacets({ attributes: {}, dvt: [] });
@@ -156,19 +197,21 @@ export function CatalogLayout({
           q: q || undefined,
           nhom: selectedNhoms.length ? selectedNhoms : undefined,
           categoryId: selectedCategoryIds.length ? selectedCategoryIds : undefined,
-          // Không thu hẹp «home» khi đang lọc loại hàng / ĐVT / thuộc tính
+          badge: badge || undefined,
           home:
             homeMode &&
             !selectedNhoms.length &&
             !selectedCategoryIds.length &&
             !q &&
+            !badge &&
             !selectedAttrs.length &&
             !selectedDvts.length,
           all:
             allProductsPage &&
             !selectedNhoms.length &&
             !selectedCategoryIds.length &&
-            !q,
+            !q &&
+            !badge,
         });
         if (reqId !== facetReqRef.current) return;
         setFacets(res || { attributes: {}, dvt: [] });
@@ -182,6 +225,7 @@ export function CatalogLayout({
   }, [
     hideFilters,
     q,
+    badge,
     selectedNhoms.join("|"),
     selectedCategoryIds.join(","),
     homeMode,
@@ -190,20 +234,21 @@ export function CatalogLayout({
     selectedDvts.join("|"),
   ]);
 
-  const navigateQs = (next: URLSearchParams, opts?: { closeSheet?: boolean }) => {
+  const navigateQs = (next: URLSearchParams, opts?: { closeModal?: boolean }) => {
     const base = catalogBase(homeMode, pathname);
     const qs = next.toString();
     markPinCatalog();
     router.push(qs ? `${base}?${qs}` : base, { scroll: false });
-    if (opts?.closeSheet) setFilterSheetOpen(false);
+    if (opts?.closeModal) setFilterOpen(false);
   };
 
   const pushNhoms = (paths: string[]) => {
+    if (categoryLocked) return;
     const next = new URLSearchParams(sp.toString());
     next.delete("nhom");
-    next.delete("categoryId"); // tránh categoryId navbar đè nhóm mới chọn
+    next.delete("categoryId");
     next.delete("page");
-    clearAttrDvtParams(next); // đổi mục → xóa filter attr/dvt cũ
+    clearAttrDvtParams(next);
     for (const p of paths.map(normPath).filter(Boolean)) {
       next.append("nhom", p);
     }
@@ -249,10 +294,211 @@ export function CatalogLayout({
     navigateQs(next);
   };
 
+  /** Clear lọc phụ — giữ sticky: q, badge, maxTon, categoryId+nhom trên /danh-muc, sort. */
+  const clearSecondaryFilters = (base?: URLSearchParams) => {
+    const next = new URLSearchParams((base || sp).toString());
+    if (!categoryLocked) {
+      next.delete("nhom");
+      // không xóa categoryId trên /tim nếu có (hiếm)
+    }
+    next.delete("minPrice");
+    next.delete("maxPrice");
+    next.delete("inStock");
+    next.delete("loai");
+    next.delete("page");
+    clearAttrDvtParams(next);
+    if (q) next.set("q", q);
+    if (badge) next.set("badge", badge);
+    if (maxTon) next.set("maxTon", maxTon);
+    if (categoryLocked) {
+      for (const id of selectedCategoryIds) {
+        if (![...next.getAll("categoryId")].includes(String(id))) {
+          next.append("categoryId", String(id));
+        }
+      }
+      if (selectedNhoms.length) {
+        next.delete("nhom");
+        for (const p of selectedNhoms) next.append("nhom", p);
+      }
+    }
+    const keepSort = normalizeCatalogSort(next.get("sort") || sort);
+    next.set("sort", keepSort);
+    return next;
+  };
+
+  const openFilterModal = () => {
+    setDraft(draftFromUrl(sp, categoryLocked ? filterNhoms : selectedNhoms));
+    setDraftTotal(total);
+    setFilterOpen(true);
+  };
+
+  const closeFilterModal = () => setFilterOpen(false);
+
+  // ESC + body scroll lock
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeFilterModal();
+    };
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  // Sync draft khi remount với sheet còn mở
+  useEffect(() => {
+    if (open && !draft) {
+      setDraft(draftFromUrl(sp, categoryLocked ? filterNhoms : selectedNhoms));
+      setDraftTotal(total);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // Preview total theo draft
+  useEffect(() => {
+    if (!open || !draft) return;
+    const reqId = ++draftCountRef.current;
+    setDraftTotalLoading(true);
+    const t = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const res = await fetchProducts({
+            q: q || undefined,
+            nhom:
+              categoryLocked
+                ? selectedNhoms.length
+                  ? selectedNhoms
+                  : filterNhoms.length
+                    ? filterNhoms
+                    : undefined
+                : draft.nhoms.length
+                  ? draft.nhoms
+                  : undefined,
+            categoryId: selectedCategoryIds.length ? selectedCategoryIds : undefined,
+            attr: draft.attrs.length ? draft.attrs : undefined,
+            dvt: draft.dvts.length ? draft.dvts : undefined,
+            minPrice: draft.minPrice ? Number(draft.minPrice) : undefined,
+            maxPrice: draft.maxPrice ? Number(draft.maxPrice) : undefined,
+            inStock: draft.inStock || undefined,
+            badge: (badge || undefined) as
+              | "ban_chay_sap_het"
+              | "giam_gia"
+              | "dat_truoc"
+              | "moi"
+              | "noi_bat"
+              | "ban_chay"
+              | undefined,
+            maxTon: maxTon ? Number(maxTon) : undefined,
+            sort,
+            page: 1,
+            limit: 1,
+          });
+          if (reqId !== draftCountRef.current) return;
+          setDraftTotal(res.total);
+        } catch {
+          if (reqId !== draftCountRef.current) return;
+          setDraftTotal(null);
+        } finally {
+          if (reqId === draftCountRef.current) setDraftTotalLoading(false);
+        }
+      })();
+    }, 280);
+    return () => window.clearTimeout(t);
+  }, [
+    open,
+    draft?.nhoms.join("|"),
+    draft?.attrs.join("|"),
+    draft?.dvts.join("|"),
+    draft?.minPrice,
+    draft?.maxPrice,
+    draft?.inStock,
+    q,
+    badge,
+    maxTon,
+    sort,
+    categoryLocked,
+    selectedNhoms.join("|"),
+    selectedCategoryIds.join(","),
+    filterNhoms.join("|"),
+  ]);
+
+  const commitDraft = () => {
+    if (!draft) {
+      closeFilterModal();
+      return;
+    }
+    const next = new URLSearchParams(sp.toString());
+    next.delete("page");
+    clearAttrDvtParams(next);
+    next.delete("minPrice");
+    next.delete("maxPrice");
+    next.delete("inStock");
+    if (!categoryLocked) {
+      next.delete("nhom");
+      next.delete("categoryId");
+      for (const p of draft.nhoms.map(normPath).filter(Boolean)) {
+        next.append("nhom", p);
+      }
+    }
+    for (const a of draft.attrs) next.append("attr", a);
+    for (const d of draft.dvts) next.append("dvt", d);
+    if (draft.minPrice) next.set("minPrice", draft.minPrice);
+    if (draft.maxPrice) next.set("maxPrice", draft.maxPrice);
+    if (draft.inStock) next.set("inStock", "1");
+    if (q) next.set("q", q);
+    if (badge) next.set("badge", badge);
+    if (maxTon) next.set("maxTon", maxTon);
+    navigateQs(next, { closeModal: true });
+  };
+
+  const clearDraftSecondary = () => {
+    setDraft((d) => {
+      if (!d) return d;
+      return {
+        nhoms: categoryLocked ? d.nhoms : [],
+        attrs: [],
+        dvts: [],
+        minPrice: "",
+        maxPrice: "",
+        inStock: false,
+      };
+    });
+  };
+
   const goPage = (p: number) => {
     if (p < 1 || p > pages) return;
     pushParams({ page: p <= 1 ? null : String(p) });
   };
+
+  const onSortClick = (key: string) => {
+    if (key === "price") {
+      setPriceMenuOpen((v) => !v);
+      return;
+    }
+    setPriceMenuOpen(false);
+    pushParams({ sort: key, page: null });
+  };
+
+  useEffect(() => {
+    if (!priceMenuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t?.closest?.("[data-price-sort-menu]")) return;
+      setPriceMenuOpen(false);
+    };
+    // click (không mousedown) — tránh đóng ngay khi vừa mở
+    const t = window.setTimeout(() => {
+      document.addEventListener("click", onDoc);
+    }, 0);
+    return () => {
+      window.clearTimeout(t);
+      document.removeEventListener("click", onDoc);
+    };
+  }, [priceMenuOpen]);
 
   const nhomTitle =
     filterNhoms.length === 0
@@ -263,36 +509,48 @@ export function CatalogLayout({
 
   const attrMap = useMemo(() => facets.attributes || {}, [facets]);
 
+  const secondaryFilterCount = useMemo(() => {
+    let n = 0;
+    if (!categoryLocked && selectedNhoms.length) n += selectedNhoms.length;
+    n += selectedAttrs.length;
+    n += selectedDvts.length;
+    if (minPrice || maxPrice) n += 1;
+    if (inStock) n += 1;
+    return n;
+  }, [
+    categoryLocked,
+    selectedNhoms.length,
+    selectedAttrs.length,
+    selectedDvts.length,
+    minPrice,
+    maxPrice,
+    inStock,
+  ]);
+
   const activeFilters = useMemo(() => {
     const tags: { key: string; label: string; clear: () => void }[] = [];
-    if (q) tags.push({ key: "q", label: `Tìm: ${q}`, clear: () => pushParams({ q: null }) });
-    if (filterNhoms.length === 1) {
+    // q / badge sticky — hiện chip nhưng không clear (hoặc clear q trên /tim sạch? plan: sticky)
+    if (!categoryLocked && selectedNhoms.length === 1) {
       tags.push({
         key: "nhom",
-        label: leafLabel(filterNhoms[0]),
+        label: leafLabel(selectedNhoms[0]),
         clear: () => pushNhoms([]),
       });
-    } else if (filterNhoms.length > 1) {
-      filterNhoms.forEach((p, i) => {
+    } else if (!categoryLocked && selectedNhoms.length > 1) {
+      selectedNhoms.forEach((p, i) => {
         tags.push({
           key: `nhom-${i}`,
           label: leafLabel(p),
-          clear: () => {
-            if (selectedNhoms.length) {
-              pushNhoms(selectedNhoms.filter((_, j) => j !== i));
-            } else {
-              pushNhoms([]);
-            }
-          },
+          clear: () => pushNhoms(selectedNhoms.filter((_, j) => j !== i)),
         });
       });
     }
     for (const a of selectedAttrs) {
-      const [n, ...rest] = a.split(":");
+      const [name, ...rest] = a.split(":");
       const v = rest.join(":") || a;
       tags.push({
         key: `attr-${a}`,
-        label: n && rest.length ? `${n}: ${v}` : a,
+        label: name && rest.length ? `${name}: ${v}` : a,
         clear: () => removeAttr(a),
       });
     }
@@ -317,7 +575,15 @@ export function CatalogLayout({
     }
     return tags;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, filterNhoms.join("|"), selectedNhoms.join("|"), selectedAttrs, selectedDvts, minPrice, maxPrice, inStock]);
+  }, [
+    categoryLocked,
+    selectedNhoms.join("|"),
+    selectedAttrs,
+    selectedDvts,
+    minPrice,
+    maxPrice,
+    inStock,
+  ]);
 
   const pageNums = useMemo(() => {
     const maxBtn = 5;
@@ -329,258 +595,371 @@ export function CatalogLayout({
     return arr;
   }, [page, pages]);
 
-  const filterPanel = (
-    <CatalogFilterPanel
-      selectedNhoms={filterNhoms}
-      onNhomsChange={pushNhoms}
-      dvtItems={facets.dvt}
-      selectedDvts={selectedDvts}
-      onToggleDvt={(k) => toggleMulti("dvt", k)}
-      attributes={attrMap}
-      selectedAttrs={selectedAttrs}
-      onToggleAttr={(token) => toggleMulti("attr", token)}
-      facetsLoading={facetsLoading}
-      q={q}
-      homeMode={homeMode}
-      allProductsPage={allProductsPage}
-      hasCategoryScope={selectedCategoryIds.length > 0}
-      minPrice={minPrice}
-      maxPrice={maxPrice}
-      onPricePreset={(min, max) => pushParams({ minPrice: min, maxPrice: max })}
-      onMinPriceBlur={(v) => pushParams({ minPrice: v })}
-      onMaxPriceBlur={(v) => pushParams({ maxPrice: v })}
-      inStock={inStock}
-      onInStockChange={(checked) => pushParams({ inStock: checked ? "1" : null })}
-      onClearFilters={() => {
-        const next = new URLSearchParams(sp.toString());
-        next.delete("nhom");
-        next.delete("minPrice");
-        next.delete("maxPrice");
-        next.delete("inStock");
-        next.delete("loai");
-        next.delete("page");
-        clearAttrDvtParams(next);
-        if (q) next.set("q", q);
-        else next.delete("q");
-        if (homeMode) next.set("sort", "ban_chay");
-        else if (sort === "ban_chay") next.set("sort", "ban_chay");
-        else next.delete("sort");
-        navigateQs(next);
-      }}
-      onCloseMobile={() => setFilterSheetOpen(false)}
-    />
-  );
+  const heading =
+    title ||
+    (q
+      ? `Kết quả: “${q}”`
+      : nhomTitle ||
+        (sort === "ban_chay"
+          ? "Sản phẩm bán chạy"
+          : sort === "moi"
+            ? "Sản phẩm mới"
+            : sort === "giam_gia"
+              ? "Sản phẩm giảm giá"
+              : "Tất cả sản phẩm"));
 
-  return (
-    <div id="shop-catalog" className="scroll-mt-24 space-y-4">
-      {hideFilters ? (
+  const activeDraft = draft;
+
+  const filterPanel =
+    activeDraft && open ? (
+      <CatalogFilterPanel
+        embedded
+        hideClearButton
+        selectedNhoms={categoryLocked ? filterNhoms : activeDraft.nhoms}
+        onNhomsChange={(paths) => {
+          if (categoryLocked) return;
+          setDraft((d) => (d ? { ...d, nhoms: paths.map(normPath).filter(Boolean), attrs: [], dvts: [] } : d));
+        }}
+        dvtItems={facets.dvt}
+        selectedDvts={activeDraft.dvts}
+        onToggleDvt={(k) =>
+          setDraft((d) => {
+            if (!d) return d;
+            const has = d.dvts.includes(k);
+            return { ...d, dvts: has ? d.dvts.filter((x) => x !== k) : [...d.dvts, k] };
+          })
+        }
+        attributes={attrMap}
+        selectedAttrs={activeDraft.attrs}
+        onToggleAttr={(token) =>
+          setDraft((d) => {
+            if (!d) return d;
+            const has = d.attrs.includes(token);
+            return { ...d, attrs: has ? d.attrs.filter((x) => x !== token) : [...d.attrs, token] };
+          })
+        }
+        facetsLoading={facetsLoading}
+        q={q}
+        homeMode={homeMode}
+        allProductsPage={allProductsPage}
+        hasCategoryScope={selectedCategoryIds.length > 0 || categoryLocked}
+        lockCategory={categoryLocked}
+        categoryLockLabel={nhomTitle ? `Danh mục: ${nhomTitle}` : "Đang lọc trong danh mục này"}
+        minPrice={activeDraft.minPrice}
+        maxPrice={activeDraft.maxPrice}
+        onPricePreset={(min, max) =>
+          setDraft((d) => (d ? { ...d, minPrice: min, maxPrice: max || "" } : d))
+        }
+        onMinPriceBlur={(v) => setDraft((d) => (d ? { ...d, minPrice: v || "" } : d))}
+        onMaxPriceBlur={(v) => setDraft((d) => (d ? { ...d, maxPrice: v || "" } : d))}
+        inStock={activeDraft.inStock}
+        onInStockChange={(checked) => setDraft((d) => (d ? { ...d, inStock: checked } : d))}
+        onClearFilters={clearDraftSecondary}
+        onClose={closeFilterModal}
+      />
+    ) : null;
+
+  if (hideFilters) {
+    return (
+      <div id="shop-catalog" className="scroll-mt-24 space-y-4">
         <div>
-          <h1 className="text-xl font-extrabold text-[var(--aloha-ink)] sm:text-2xl">
-            {title ||
-              (q
-                ? `Kết quả: “${q}”`
-                : nhomTitle ||
-                  (sort === "ban_chay"
-                    ? "Sản phẩm bán chạy"
-                    : "Tất cả sản phẩm"))}
-          </h1>
+          <h1 className="text-xl font-extrabold text-[var(--aloha-ink)] sm:text-2xl">{heading}</h1>
           <p className="mt-1 text-sm text-slate-500">
             {total} sản phẩm
             {pages > 1 ? ` · Trang ${page}/${pages}` : ""}
           </p>
         </div>
-      ) : filtersOnly ? (
-        <div className="flex justify-end lg:hidden">
+        {children}
+      </div>
+    );
+  }
+
+  return (
+    <div id="shop-catalog" className="scroll-mt-24 space-y-4">
+      {!filtersOnly ? (
+        <div>
+          <h1 className="text-xl font-extrabold text-[var(--aloha-green)] sm:text-2xl">{heading}</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            {total} sản phẩm
+            {pages > 1 ? ` · Trang ${page}/${pages}` : ""}
+          </p>
+        </div>
+      ) : null}
+
+      {/* Toolbar: mobile = 2 hàng cuộn ngang (Lọc|chip · Sort); desktop = 1 hàng */}
+      {!filtersOnly ? (
+        <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+          <div className="-mx-1 flex min-w-0 flex-1 items-center gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <button
+              type="button"
+              onClick={openFilterModal}
+              className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-3.5 text-sm font-bold shadow-sm transition ${
+                secondaryFilterCount > 0
+                  ? "bg-[var(--aloha-green)] text-white"
+                  : "border border-[var(--aloha-line)] bg-white text-[var(--aloha-ink)] hover:border-[var(--aloha-green)] hover:text-[var(--aloha-green)]"
+              }`}
+            >
+              <SlidersHorizontal size={16} />
+              Lọc
+              {secondaryFilterCount > 0 ? (
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 px-1.5 text-[11px] font-black">
+                  {secondaryFilterCount}
+                </span>
+              ) : null}
+            </button>
+
+            {activeFilters.map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                onClick={t.clear}
+                className="inline-flex h-11 max-w-[200px] shrink-0 items-center gap-1.5 truncate rounded-full border border-[var(--aloha-line)] bg-white px-3 text-xs font-semibold text-slate-700"
+              >
+                <span className="truncate">{t.label}</span>
+                <X size={14} className="shrink-0 text-slate-400" />
+              </button>
+            ))}
+            {secondaryFilterCount >= 1 ? (
+              <button
+                type="button"
+                className="inline-flex h-11 shrink-0 items-center text-xs font-semibold text-slate-500 underline-offset-2 hover:text-[var(--aloha-green)] hover:underline"
+                onClick={() => navigateQs(clearSecondaryFilters())}
+              >
+                Xóa lọc
+              </button>
+            ) : null}
+          </div>
+
+          <div className="-mx-1 flex shrink-0 items-center gap-x-3 overflow-x-auto px-1 [scrollbar-width:none] sm:gap-x-4 [&::-webkit-scrollbar]:hidden lg:overflow-visible">
+            <span className="hidden shrink-0 text-sm font-semibold text-slate-500 sm:inline">Sắp xếp theo:</span>
+            {SORT_TOOLBAR.map((o) => {
+              const isPrice = o.value === "price";
+              const active = isPrice
+                ? sort === "price_asc" || sort === "price_desc"
+                : sort === o.value;
+              if (isPrice) {
+                return (
+                  <div key={o.value} className="relative shrink-0" data-price-sort-menu>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSortClick("price");
+                      }}
+                      className={`inline-flex h-11 items-center gap-1 text-sm transition ${
+                        active || priceMenuOpen
+                          ? "font-extrabold text-[var(--aloha-green)]"
+                          : "font-semibold text-slate-600 hover:text-[var(--aloha-green)]"
+                      }`}
+                    >
+                      Giá
+                      <ChevronUp
+                        size={14}
+                        className={`transition ${priceMenuOpen ? "" : "rotate-180 opacity-70"}`}
+                      />
+                    </button>
+                    {priceMenuOpen ? (
+                      <div className="absolute right-0 top-full z-[60] mt-1 min-w-[168px] overflow-hidden rounded-2xl bg-white py-1.5 shadow-lg ring-1 ring-black/8">
+                        <button
+                          type="button"
+                          className={`block w-full px-4 py-2.5 text-left text-sm transition hover:bg-[var(--aloha-cream)] ${
+                            sort === "price_asc"
+                              ? "font-bold text-[var(--aloha-green)]"
+                              : "font-medium text-slate-600"
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPriceMenuOpen(false);
+                            pushParams({ sort: "price_asc", page: null });
+                          }}
+                        >
+                          Giá thấp - cao
+                        </button>
+                        <button
+                          type="button"
+                          className={`block w-full px-4 py-2.5 text-left text-sm transition hover:bg-[var(--aloha-cream)] ${
+                            sort === "price_desc"
+                              ? "font-bold text-[var(--aloha-green)]"
+                              : "font-medium text-slate-600"
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPriceMenuOpen(false);
+                            pushParams({ sort: "price_desc", page: null });
+                          }}
+                        >
+                          Giá cao - thấp
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              }
+              return (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => onSortClick(o.value)}
+                  className={`inline-flex h-11 shrink-0 items-center text-sm transition ${
+                    active
+                      ? "font-extrabold text-[var(--aloha-green)] underline decoration-2 underline-offset-8"
+                      : "font-semibold text-slate-600 hover:text-[var(--aloha-green)]"
+                  }`}
+                >
+                  {o.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center">
           <button
             type="button"
-            onClick={() => setOpen(true)}
-            className="inline-flex items-center gap-2 rounded-xl border border-[#D5E3D0] bg-white px-3 py-2 text-sm font-bold text-slate-700 shadow-sm"
+            onClick={openFilterModal}
+            className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-3.5 text-sm font-bold shadow-sm transition ${
+              secondaryFilterCount > 0
+                ? "bg-[var(--aloha-green)] text-white"
+                : "border border-[var(--aloha-line)] bg-white text-[var(--aloha-ink)] hover:border-[var(--aloha-green)] hover:text-[var(--aloha-green)]"
+            }`}
           >
             <SlidersHorizontal size={16} />
             Lọc
           </button>
         </div>
-      ) : (
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-extrabold text-[var(--aloha-green)] sm:text-2xl">
-              {title ||
-                (q
-                  ? `Kết quả: “${q}”`
-                  : nhomTitle ||
-                    (sort === "ban_chay"
-                      ? "Sản phẩm bán chạy"
-                      : "Tất cả sản phẩm"))}
-            </h1>
-            <p className="mt-1 text-sm text-slate-500">
-              {total} sản phẩm
-              {pages > 1 ? ` · Trang ${page}/${pages}` : ""}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setFilterSheetOpen(true)}
-              className="inline-flex items-center gap-2 rounded-xl border border-[#D5E3D0] bg-white px-3 py-2 text-sm font-bold text-slate-700 shadow-sm lg:hidden"
-            >
-              <SlidersHorizontal size={16} />
-              Lọc
-            </button>
-            <label className="inline-flex items-center gap-2 text-sm text-slate-600">
-              Sắp xếp
-              <select
-                value={sort}
-                onChange={(e) => pushParams({ sort: e.target.value, page: null })}
-                className="rounded-xl border border-[#D5E3D0] bg-white px-3 py-2 text-sm font-semibold text-[var(--aloha-green)] outline-none focus:border-[var(--aloha-green)]"
-              >
-                {SORT_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        </div>
       )}
 
-      {!hideFilters && !filtersOnly && activeFilters.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {activeFilters.map((t) => (
+      <div className="space-y-4">
+        {!filtersOnly && total === 0 && secondaryFilterCount > 0 ? (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-6 text-center">
+            <p className="text-sm font-semibold text-amber-900">Không có sản phẩm khớp bộ lọc</p>
             <button
-              key={t.key}
               type="button"
-              onClick={t.clear}
-              className="inline-flex items-center gap-1 rounded-full bg-[var(--aloha-green-light)] px-3 py-1 text-xs font-bold text-[var(--aloha-green)] ring-1 ring-[#D5E3D0]"
+              className="mt-3 text-sm font-bold text-[var(--aloha-green)] underline"
+              onClick={() => navigateQs(clearSecondaryFilters())}
             >
-              {t.label}
-              <X size={12} />
+              Xóa lọc phụ
             </button>
-          ))}
-        </div>
-      )}
-
-      <div
-        className={
-          hideFilters
-            ? "space-y-4"
-            : "grid gap-6 lg:grid-cols-[240px_1fr] lg:items-start"
-        }
-      >
-        {!hideFilters ? (
-          <div className="hidden lg:block lg:sticky lg:top-24 lg:z-10 lg:max-h-[calc(100vh-6.5rem)] lg:self-start lg:overflow-y-auto lg:overflow-x-visible lg:overscroll-contain">
-            {filterPanel}
           </div>
         ) : null}
-        <div className="space-y-4">
-          {!hideFilters && !filtersOnly && total === 0 && activeFilters.length > 0 ? (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-6 text-center">
-              <p className="text-sm font-semibold text-amber-900">
-                Không có sản phẩm khớp bộ lọc
-              </p>
-              <button
-                type="button"
-                className="mt-3 text-sm font-bold text-[var(--aloha-green)] underline"
-                onClick={() => {
-                  const next = new URLSearchParams(sp.toString());
-                  clearAttrDvtParams(next);
-                  next.delete("minPrice");
-                  next.delete("maxPrice");
-                  next.delete("inStock");
-                  next.delete("loai");
-                  next.delete("page");
-                  navigateQs(next);
-                }}
-              >
-                Xóa lọc thuộc tính / ĐVT / loại / giá
-              </button>
-            </div>
-          ) : null}
-          {children}
+        {children}
 
-          {!filtersOnly && pages > 1 && (
-            <nav
-              className="flex flex-wrap items-center justify-center gap-1.5 pt-2"
-              aria-label="Phân trang"
+        {!filtersOnly && pages > 1 && (
+          <nav
+            className="flex flex-wrap items-center justify-center gap-1.5 pt-2"
+            aria-label="Phân trang"
+          >
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => goPage(page - 1)}
+              className="inline-flex h-9 items-center gap-1 rounded-lg border border-[var(--aloha-line)] bg-white px-3 text-sm font-bold text-[var(--aloha-green)] disabled:opacity-40"
             >
-              <button
-                type="button"
-                disabled={page <= 1}
-                onClick={() => goPage(page - 1)}
-                className="inline-flex h-9 items-center gap-1 rounded-lg border border-[#D5E3D0] bg-white px-3 text-sm font-bold text-[var(--aloha-green)] disabled:opacity-40"
-              >
-                <ChevronLeft size={16} /> Trước
-              </button>
-              {pageNums[0] > 1 && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => goPage(1)}
-                    className="h-9 min-w-9 rounded-lg border border-[#D5E3D0] bg-white text-sm font-bold text-[var(--aloha-green)]"
-                  >
-                    1
-                  </button>
-                  {pageNums[0] > 2 && <span className="px-1 text-slate-400">…</span>}
-                </>
-              )}
-              {pageNums.map((n) => (
+              <ChevronLeft size={16} /> Trước
+            </button>
+            {pageNums[0] > 1 && (
+              <>
                 <button
-                  key={n}
                   type="button"
-                  onClick={() => goPage(n)}
-                  className={`h-9 min-w-9 rounded-lg text-sm font-bold ${
-                    n === page
-                      ? "bg-[var(--aloha-green)] text-white"
-                      : "border border-[#D5E3D0] bg-white text-[var(--aloha-green)]"
-                  }`}
+                  onClick={() => goPage(1)}
+                  className="h-9 min-w-9 rounded-lg border border-[var(--aloha-line)] bg-white text-sm font-bold text-[var(--aloha-green)]"
                 >
-                  {n}
+                  1
                 </button>
-              ))}
-              {pageNums[pageNums.length - 1] < pages && (
-                <>
-                  {pageNums[pageNums.length - 1] < pages - 1 && (
-                    <span className="px-1 text-slate-400">…</span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => goPage(pages)}
-                    className="h-9 min-w-9 rounded-lg border border-[#D5E3D0] bg-white text-sm font-bold text-[var(--aloha-green)]"
-                  >
-                    {pages}
-                  </button>
-                </>
-              )}
+                {pageNums[0] > 2 && <span className="px-1 text-slate-400">…</span>}
+              </>
+            )}
+            {pageNums.map((n) => (
               <button
+                key={n}
                 type="button"
-                disabled={page >= pages}
-                onClick={() => goPage(page + 1)}
-                className="inline-flex h-9 items-center gap-1 rounded-lg border border-[#D5E3D0] bg-white px-3 text-sm font-bold text-[var(--aloha-green)] disabled:opacity-40"
+                onClick={() => goPage(n)}
+                className={`h-9 min-w-9 rounded-lg text-sm font-bold ${
+                  n === page
+                    ? "bg-[var(--aloha-green)] text-white"
+                    : "border border-[var(--aloha-line)] bg-white text-[var(--aloha-green)]"
+                }`}
               >
-                Sau <ChevronRight size={16} />
+                {n}
               </button>
-            </nav>
-          )}
-        </div>
+            ))}
+            {pageNums[pageNums.length - 1] < pages && (
+              <>
+                {pageNums[pageNums.length - 1] < pages - 1 && (
+                  <span className="px-1 text-slate-400">…</span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => goPage(pages)}
+                  className="h-9 min-w-9 rounded-lg border border-[var(--aloha-line)] bg-white text-sm font-bold text-[var(--aloha-green)]"
+                >
+                  {pages}
+                </button>
+              </>
+            )}
+            <button
+              type="button"
+              disabled={page >= pages}
+              onClick={() => goPage(page + 1)}
+              className="inline-flex h-9 items-center gap-1 rounded-lg border border-[var(--aloha-line)] bg-white px-3 text-sm font-bold text-[var(--aloha-green)] disabled:opacity-40"
+            >
+              Sau <ChevronRight size={16} />
+            </button>
+          </nav>
+        )}
       </div>
 
-      {!hideFilters && open ? (
-        <div className="fixed inset-0 z-50 lg:hidden">
+      {/* Modal lọc — desktop + mobile */}
+      {open ? (
+        <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center sm:p-4">
           <button
             type="button"
-            className="absolute inset-0 bg-black/40"
-            aria-label="Đóng"
-            onClick={() => setFilterSheetOpen(false)}
+            className="absolute inset-0 bg-black/45 backdrop-blur-[2px] transition-opacity"
+            aria-label="Đóng bộ lọc"
+            onClick={closeFilterModal}
           />
-          <div className="shop-sticky-bottom absolute bottom-0 left-0 right-0 flex max-h-[85vh] flex-col rounded-t-2xl bg-white shadow-2xl">
-            <div className="min-h-0 flex-1 overflow-y-auto p-2">{filterPanel}</div>
-            <div className="shrink-0 border-t border-[var(--aloha-line)] bg-white px-3 py-2.5">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="catalog-filter-title"
+            className="shop-sticky-bottom relative z-10 flex max-h-[92vh] w-full max-w-3xl flex-col rounded-t-2xl bg-white shadow-2xl sm:max-h-[85vh] sm:rounded-2xl"
+          >
+            <div className="flex shrink-0 items-center justify-between border-b border-[var(--aloha-line)] px-4 py-3">
+              <h2
+                id="catalog-filter-title"
+                className="inline-flex items-center gap-2 text-base font-extrabold text-[var(--aloha-ink)]"
+              >
+                <SlidersHorizontal size={18} className="text-[var(--aloha-green)]" />
+                Bộ lọc
+              </h2>
               <button
                 type="button"
-                onClick={() => setFilterSheetOpen(false)}
-                className="w-full rounded-xl bg-[var(--aloha-green)] py-3 text-sm font-bold text-white"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 hover:bg-[var(--aloha-cream)]"
+                onClick={closeFilterModal}
+                aria-label="Đóng"
               >
-                Xem {total} kết quả
+                <X size={20} />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">{filterPanel}</div>
+            <div className="flex shrink-0 gap-2 border-t border-[var(--aloha-line)] bg-white px-4 py-3">
+              <button
+                type="button"
+                onClick={clearDraftSecondary}
+                className="min-h-11 flex-1 rounded-full border border-[var(--aloha-line)] text-sm font-bold text-slate-600 transition hover:border-[var(--aloha-green)] hover:text-[var(--aloha-green)]"
+              >
+                Bỏ chọn
+              </button>
+              <button
+                type="button"
+                onClick={commitDraft}
+                className="min-h-11 flex-[1.4] rounded-full bg-[var(--aloha-green)] text-sm font-bold text-white shadow-sm transition hover:bg-[var(--aloha-green-hover)]"
+              >
+                {draftTotalLoading
+                  ? "Đang đếm…"
+                  : draftTotal != null
+                    ? `Xem ${draftTotal} kết quả`
+                    : "Xem kết quả"}
               </button>
             </div>
           </div>

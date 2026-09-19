@@ -1,5 +1,6 @@
-/** Nhãn merchandising web — 4 nhãn chuẩn (kiểu sàn TMĐT). */
+/** Nhãn merchandising web — đồng bộ storefront / admin. */
 export const WEB_BADGE_VALUES = [
+  "noi_bat",
   "ban_chay_sap_het",
   "giam_gia",
   "dat_truoc",
@@ -9,20 +10,19 @@ export const WEB_BADGE_VALUES = [
 export type WebBadge = (typeof WEB_BADGE_VALUES)[number];
 
 export const WEB_BADGE_LABELS: Record<WebBadge, string> = {
+  noi_bat: "Nổi bật",
   ban_chay_sap_het: "Bán chạy và sắp hết",
   giam_gia: "Giảm giá",
   dat_truoc: "Đặt trước",
   moi: "Mới",
 };
 
-/** Chuẩn hóa nhãn lưu DB (kể cả nhãn cũ). */
+/** Chuẩn hóa nhãn lưu DB (kể cả alias cũ). */
 export function normalizeWebBadge(raw: unknown): WebBadge | "" {
   const b = String(raw || "").trim();
-  if (b === "ban_chay_sap_het" || b === "ban_chay") return "ban_chay_sap_het";
-  if (b === "giam_gia") return "giam_gia";
-  if (b === "dat_truoc") return "dat_truoc";
-  if (b === "moi") return "moi";
-  // noi_bat cũ → bỏ (không còn trong 4 nhãn)
+  if (!b) return "";
+  if (b === "ban_chay") return "ban_chay_sap_het";
+  if ((WEB_BADGE_VALUES as readonly string[]).includes(b)) return b as WebBadge;
   return "";
 }
 

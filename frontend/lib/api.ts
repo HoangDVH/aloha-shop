@@ -271,9 +271,11 @@ export async function fetchShopFacets(opts: {
   home?: boolean;
   /** Trang /tim (Tất cả SP): facets ĐVT + thuộc tính toàn catalog */
   all?: boolean;
+  badge?: string;
 }): Promise<ShopFacets> {
   const sp = new URLSearchParams();
   if (opts.q) sp.set("q", opts.q);
+  if (opts.badge) sp.set("badge", opts.badge);
   const categoryIds = Array.isArray(opts.categoryId)
     ? opts.categoryId.map((n) => Number(n) || 0).filter((n) => n > 0)
     : opts.categoryId
@@ -290,7 +292,7 @@ export async function fetchShopFacets(opts: {
           : [];
   for (const n of nhoms) sp.append("nhom", n);
   if (opts.home && !nhoms.length && !categoryIds.length && !opts.q) sp.set("home", "1");
-  if (opts.all && !nhoms.length && !categoryIds.length && !opts.q && !opts.home)
+  if (opts.all && !nhoms.length && !categoryIds.length && !opts.q && !opts.home && !opts.badge)
     sp.set("all", "1");
   const qs = sp.toString();
   try {

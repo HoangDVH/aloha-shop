@@ -199,6 +199,13 @@ export function ShopWebProductsAdmin() {
     patch: { webPin?: number; webBadge?: string }
   ) => {
     setBusyMa(row.ma);
+    // Optimistic — UI đổi ngay khi chọn nhãn
+    if (patch.webBadge !== undefined || patch.webPin !== undefined) {
+      patchRow(row.ma, {
+        ...(patch.webBadge !== undefined ? { webBadge: patch.webBadge } : {}),
+        ...(patch.webPin !== undefined ? { webPin: patch.webPin } : {}),
+      });
+    }
     try {
       const r = await websiteApi<{
         ok?: boolean;
@@ -209,9 +216,22 @@ export function ShopWebProductsAdmin() {
         method: "PATCH",
         body: JSON.stringify(patch),
       });
+      const savedBadge =
+        r.webBadge !== undefined ? r.webBadge : patch.webBadge;
+      if (
+        patch.webBadge !== undefined &&
+        String(patch.webBadge || "").trim() &&
+        !String(savedBadge || "").trim()
+      ) {
+        toast.error(
+          "Máy chủ không nhận nhãn này — thử restart API (npm run dev) rồi gắn lại"
+        );
+        void load();
+        return;
+      }
       patchRow(row.ma, {
         webPin: r.webPin !== undefined ? r.webPin : patch.webPin,
-        webBadge: r.webBadge !== undefined ? r.webBadge : patch.webBadge,
+        webBadge: savedBadge,
       });
       if (r.clearedMas?.length) {
         for (const m of r.clearedMas) {
@@ -266,8 +286,8 @@ export function ShopWebProductsAdmin() {
             <p className="mt-0.5 text-[12px] text-gray-500">
               Hiện/ẩn · Ghim theo nhãn đang chọn (số = vị trí trong nhãn đó; cùng số cùng
               nhãn sẽ thay SP cũ) · Đã gắn nhãn = khóa đến khi chọn «Chưa gắn» rồi «Áp nhãn
-              mặc định». Mục «Sản phẩm mới» xếp theo ngày tạo, không gắn cứng nhãn Mới. 4
-              nhãn: Bán chạy và sắp hết · Giảm giá · Đặt trước · Mới.
+              mặc định». Mục «Sản phẩm mới» xếp theo ngày tạo, không gắn cứng nhãn Mới. 5
+              nhãn: Nổi bật · Bán chạy và sắp hết · Giảm giá · Đặt trước · Mới.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">

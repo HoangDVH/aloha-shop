@@ -121,7 +121,7 @@ async function CategoryBody({
   const minPrice = Number(sp.minPrice) || 0;
   const maxPrice = Number(sp.maxPrice) || 0;
   const inStock = String(sp.inStock || "") === "1";
-  const sort = String(sp.sort || "ten");
+  const sort = String(sp.sort || "ban_chay");
 
   let items: Awaited<ReturnType<typeof fetchProducts>>["items"] = [];
   let total = 0;
@@ -134,7 +134,7 @@ async function CategoryBody({
     dvt: dvtList.length ? dvtList : undefined,
     loai: loai || undefined,
     page,
-    limit: 36,
+    limit: 35,
     minPrice: minPrice || undefined,
     maxPrice: maxPrice || undefined,
     inStock: inStock || undefined,

@@ -11,17 +11,25 @@ async function run() {
     await client.connect();
     const col = client.db("aloha_shop_db").collection("aloha_products");
 
-    // 1. Nếu có videoUrl mà chưa có videos: chuyển thành mảng videos
-    const r1 = await col.updateMany(
-      { videoUrl: { $exists: true, $ne: "" }, videos: { $exists: false } },
-      [{ $set: { videos: ["$videoUrl"] } }]
-    );
+    // 1. videoUrl có, videos thiếu hoặc rỗng → gộp vào videos
+    const cursor = col.find({
+      videoUrl: { $exists: true, $nin: [null, ""] },
+      $or: [
+        { videos: { $exists: false } },
+        { videos: null },
+        { videos: { $size: 0 } },
+      ],
+    });
+    let migrated = 0;
+    for await (const d of cursor) {
+      const url = String(d.videoUrl || "").trim();
+      if (!url) continue;
+      await col.updateOne({ _id: d._id }, { $set: { videos: [url] } });
+      migrated++;
+    }
 
-    // 2. Xóa vĩnh viễn trường videoUrl khỏi collection
-    const r2 = await col.updateMany({}, { $unset: { videoUrl: "" } });
-
-    console.log(`✅ Chuyển đổi videoUrl -> videos: ${r1.modifiedCount} SP`);
-    console.log(`✅ Xóa sổ trường videoUrl trên: ${r2.modifiedCount} SP`);
+    // 2. (tuỳ chọn) giữ videoUrl để fallback API — không unset
+    console.log(`✅ Gộp videoUrl -> videos: ${migrated} SP`);
   } catch (err) {
     console.error("Lỗi:", err);
   } finally {

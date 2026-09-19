@@ -391,8 +391,8 @@ export function ProductDetailView({
 
             {/* Cột thông tin — nút mua luôn hiện cuối cột */}
             <div className="flex min-h-0 min-w-0 flex-col border-t border-[#eee] p-3 sm:p-4 lg:h-full lg:border-l lg:border-t-0 lg:p-6">
-              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto lg:pr-1">
-                <h1 className="text-xl font-extrabold uppercase leading-tight tracking-tight text-[var(--aloha-ink)] sm:text-2xl">
+              <div className="min-h-0 flex-1 space-y-3 overflow-visible lg:overflow-y-auto lg:pr-1">
+                <h1 className="text-xl font-extrabold leading-tight tracking-tight text-[var(--aloha-ink)] sm:text-2xl sm:uppercase">
                   {activeProduct.ten}
                 </h1>
 
@@ -540,7 +540,7 @@ export function ProductDetailView({
                   <div className="inline-flex items-center overflow-hidden rounded-lg border border-[#ddd]">
                     <button
                       type="button"
-                      className="h-10 w-10 text-lg text-slate-600 hover:bg-[#f5f5f5] disabled:opacity-40"
+                      className="h-11 w-11 text-lg text-slate-600 hover:bg-[#f5f5f5] disabled:opacity-40"
                       disabled={purchaseDisabled || qty <= 1}
                       onClick={() => setQty((q) => Math.max(1, q - 1))}
                     >
@@ -567,11 +567,11 @@ export function ProductDetailView({
                         }
                         setQty(Math.min(n, Math.max(1, liveTon)));
                       }}
-                      className="h-10 w-14 border-x border-[#ddd] bg-white text-center text-sm font-semibold tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      className="h-11 w-14 border-x border-[#ddd] bg-white text-center text-sm font-semibold tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     />
                     <button
                       type="button"
-                      className="h-10 w-10 text-lg text-slate-600 hover:bg-[#f5f5f5] disabled:opacity-40"
+                      className="h-11 w-11 text-lg text-slate-600 hover:bg-[#f5f5f5] disabled:opacity-40"
                       disabled={
                         purchaseDisabled || (!isPreOrder && qty >= liveTon)
                       }

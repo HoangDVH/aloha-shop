@@ -1,10 +1,10 @@
 "use client";
 
-import { Filter } from "lucide-react";
+import { Filter, X } from "lucide-react";
 import { ShopCategorySelect } from "@/components/ShopCategorySelect";
 import { FilterChipSection } from "@/components/FilterChipSection";
 import { ShopAttributeFilter } from "@/components/ShopAttributeFilter";
-import { PRICE_PRESETS } from "@/components/catalog/catalogLayoutUtils";
+import { PriceRangeFilter } from "@/components/catalog/PriceRangeFilter";
 
 export type CatalogFilterPanelProps = {
   selectedNhoms: string[];
@@ -18,10 +18,10 @@ export type CatalogFilterPanelProps = {
   facetsLoading: boolean;
   q: string;
   homeMode: boolean;
-  /** Trang /tim — hiện ĐVT + thuộc tính toàn catalog, không bắt chọn nhóm */
   allProductsPage?: boolean;
-  /** URL có categoryId (navbar) — coi như đã có phạm vi danh mục */
   hasCategoryScope?: boolean;
+  lockCategory?: boolean;
+  categoryLockLabel?: string;
   minPrice: string;
   maxPrice: string;
   onPricePreset: (minPrice: string, maxPrice: string | null) => void;
@@ -30,7 +30,9 @@ export type CatalogFilterPanelProps = {
   inStock: boolean;
   onInStockChange: (checked: boolean) => void;
   onClearFilters: () => void;
-  onCloseMobile: () => void;
+  onClose?: () => void;
+  hideClearButton?: boolean;
+  embedded?: boolean;
 };
 
 export function CatalogFilterPanel({
@@ -47,37 +49,63 @@ export function CatalogFilterPanel({
   homeMode,
   allProductsPage = false,
   hasCategoryScope = false,
+  lockCategory = false,
+  categoryLockLabel = "",
   minPrice,
   maxPrice,
   onPricePreset,
-  onMinPriceBlur,
-  onMaxPriceBlur,
+  onMinPriceBlur: _onMinPriceBlur,
+  onMaxPriceBlur: _onMaxPriceBlur,
   inStock,
   onInStockChange,
   onClearFilters,
-  onCloseMobile,
+  onClose,
+  hideClearButton = false,
+  embedded = false,
 }: CatalogFilterPanelProps) {
-  return (
-    <aside className="relative z-20 space-y-6 overflow-visible rounded-xl border border-[var(--aloha-line)] bg-white p-4 shadow-sm">
-      <div className="flex items-center justify-between">
-        <h2 className="inline-flex items-center gap-2 text-sm font-black uppercase tracking-wide text-[var(--aloha-green)]">
-          <Filter size={16} className="text-[var(--aloha-gold)]" />
-          Bộ lọc
-        </h2>
-        <button
-          type="button"
-          className="text-xs font-bold text-slate-500 hover:text-[var(--aloha-green)] lg:hidden"
-          onClick={onCloseMobile}
-        >
-          Đóng
-        </button>
-      </div>
+  const body = (
+    <>
+      {!embedded ? (
+        <div className="flex items-center justify-between">
+          <h2 className="inline-flex items-center gap-2 text-base font-extrabold text-[var(--aloha-green)]">
+            <Filter size={18} className="text-[var(--aloha-gold)]" />
+            Bộ lọc
+          </h2>
+          {onClose ? (
+            <button
+              type="button"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-[var(--aloha-cream)] hover:text-[var(--aloha-green)]"
+              onClick={onClose}
+              aria-label="Đóng"
+            >
+              <X size={18} />
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
-      <ShopCategorySelect value={selectedNhoms} onChange={onNhomsChange} placeholder="Chọn nhóm hàng" />
+      {lockCategory ? (
+        <div className="rounded-xl bg-[var(--aloha-green-light)] px-3 py-2.5 text-sm font-bold text-[var(--aloha-green)]">
+          {categoryLockLabel || "Đang lọc trong danh mục này"}
+        </div>
+      ) : (
+        <div>
+          <h3 className="mb-2 text-sm font-extrabold uppercase tracking-wide text-[var(--aloha-ink)]">
+            Nhóm hàng
+          </h3>
+          <ShopCategorySelect
+            value={selectedNhoms}
+            onChange={onNhomsChange}
+            placeholder="Chọn nhóm hàng"
+            showLabel={false}
+          />
+        </div>
+      )}
 
       <FilterChipSection
         title="Đơn vị"
         defaultOpen
+        largeChips
         items={dvtItems.map((d) => ({ key: d, label: d }))}
         isActive={(k) => selectedDvts.includes(k)}
         onToggle={onToggleDvt}
@@ -108,70 +136,41 @@ export function CatalogFilterPanel({
         }
       />
 
-      <div className="border-t border-[#f0ebe3] pt-4">
-        <h3 className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Khoảng giá</h3>
-        <div className="space-y-1.5">
-          {PRICE_PRESETS.map((p) => {
-            const active =
-              String(p.min) === minPrice &&
-              (p.max === 0 ? !maxPrice : String(p.max) === maxPrice);
-            return (
-              <button
-                key={p.label}
-                type="button"
-                onClick={() =>
-                  onPricePreset(String(p.min), p.max > 0 ? String(p.max) : null)
-                }
-                className={`block w-full rounded-lg px-2.5 py-2 text-left text-sm ${
-                  active
-                    ? "bg-[var(--aloha-green-light)] font-bold text-[var(--aloha-green)]"
-                    : "text-slate-700 hover:bg-[var(--aloha-cream)]"
-                }`}
-              >
-                {p.label}
-              </button>
-            );
-          })}
-        </div>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <input
-            type="number"
-            inputMode="numeric"
-            placeholder="Từ"
-            defaultValue={minPrice}
-            key={`min-${minPrice}`}
-            className="rounded-lg border border-[#D5E3D0] px-2 py-1.5 text-sm outline-none focus:border-[var(--aloha-green)]"
-            onBlur={(e) => onMinPriceBlur(e.target.value.trim() || null)}
-          />
-          <input
-            type="number"
-            inputMode="numeric"
-            placeholder="Đến"
-            defaultValue={maxPrice}
-            key={`max-${maxPrice}`}
-            className="rounded-lg border border-[#D5E3D0] px-2 py-1.5 text-sm outline-none focus:border-[var(--aloha-green)]"
-            onBlur={(e) => onMaxPriceBlur(e.target.value.trim() || null)}
-          />
-        </div>
-      </div>
+      <PriceRangeFilter
+        minPrice={minPrice}
+        maxPrice={maxPrice}
+        onChange={(min, max) => onPricePreset(min, max)}
+      />
 
-      <label className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-slate-700 hover:bg-[var(--aloha-cream)]">
+      <label className="flex min-h-11 cursor-pointer items-center gap-2.5 rounded-xl px-1 py-2.5 text-sm font-semibold text-slate-700 hover:bg-[var(--aloha-cream)]">
         <input
           type="checkbox"
           checked={inStock}
           onChange={(e) => onInStockChange(e.target.checked)}
-          className="accent-[var(--aloha-green)]"
+          className="h-4 w-4 accent-[var(--aloha-green)]"
         />
         Chỉ hiện còn hàng
       </label>
 
-      <button
-        type="button"
-        onClick={onClearFilters}
-        className="w-full rounded-xl border border-[#D5E3D0] py-2 text-sm font-bold text-slate-600 hover:border-[var(--aloha-green)] hover:text-[var(--aloha-green)]"
-      >
-        Xóa bộ lọc
-      </button>
+      {!hideClearButton ? (
+        <button
+          type="button"
+          onClick={onClearFilters}
+          className="w-full rounded-xl border border-[var(--aloha-line)] py-2.5 text-sm font-bold text-slate-600 transition hover:border-[var(--aloha-green)] hover:text-[var(--aloha-green)]"
+        >
+          Bỏ chọn
+        </button>
+      ) : null}
+    </>
+  );
+
+  if (embedded) {
+    return <div className="space-y-5">{body}</div>;
+  }
+
+  return (
+    <aside className="relative z-20 space-y-6 overflow-visible rounded-2xl border border-[var(--aloha-line)] bg-white p-4 shadow-sm">
+      {body}
     </aside>
   );
 }

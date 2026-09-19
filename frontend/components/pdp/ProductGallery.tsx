@@ -156,10 +156,10 @@ export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
           <button
             type="button"
             onClick={() => openMediaLightbox()}
-            className="absolute bottom-2 right-2 z-[3] rounded-full bg-white/95 p-1.5 text-slate-500 shadow-sm ring-1 ring-black/5"
+            className="absolute bottom-2 right-2 z-[3] inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-white/95 text-slate-500 shadow-sm ring-1 ring-black/5"
             aria-label="Phóng to ảnh"
           >
-            <Maximize2 size={14} />
+            <Maximize2 size={16} />
           </button>
         ) : null}
       </div>
