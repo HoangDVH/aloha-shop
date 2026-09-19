@@ -32,7 +32,13 @@ export type ShopProduct = {
   /** Pin tay trên web — số nhỏ hơn = lên trước */
   webPin?: number;
   /** Badge tay; thiếu = dùng hot tự động */
-  webBadge?: "ban_chay_sap_het" | "giam_gia" | "dat_truoc" | "moi" | "ban_chay";
+  webBadge?:
+    | "noi_bat"
+    | "ban_chay_sap_het"
+    | "giam_gia"
+    | "dat_truoc"
+    | "moi"
+    | "ban_chay";
   /** Override SEO — ưu tiên hơn template appearance */
   seoTitle?: string;
   seoDescription?: string;

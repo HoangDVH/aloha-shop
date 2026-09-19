@@ -132,7 +132,7 @@ async function ProductSectionBlock({ props }: { props: Record<string, unknown> }
         categoryId: categoryId > 0 ? categoryId : undefined,
       })
     : source === "moi"
-      ? "/tim?sort=moi&badge=moi"
+      ? "/tim?sort=moi"
       : source === "ban_chay" || banChayByRevenue
         ? "/tim?sort=ban_chay"
         : byBadge
@@ -305,7 +305,7 @@ export async function renderHomeMainSections(blocks: AppearanceBlock[] = []) {
         <HomeFeaturedProducts
           title="SẢN PHẨM MỚI"
           products={moi}
-          href="/tim?sort=moi&badge=moi"
+          href="/tim?sort=moi"
           limit={moiLimit}
           ctaLabel="Xem thêm sản phẩm mới →"
         />

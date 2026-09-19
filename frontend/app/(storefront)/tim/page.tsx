@@ -62,12 +62,14 @@ async function CatalogBody({
   const sort = String(sp.sort || "ban_chay");
   const badgeRaw = String(sp.badge || "").trim();
   const badge =
+    badgeRaw === "noi_bat" ||
     badgeRaw === "ban_chay_sap_het" ||
     badgeRaw === "giam_gia" ||
     badgeRaw === "dat_truoc" ||
     badgeRaw === "moi" ||
     badgeRaw === "ban_chay"
       ? (badgeRaw as
+          | "noi_bat"
           | "ban_chay_sap_het"
           | "giam_gia"
           | "dat_truoc"
@@ -130,23 +132,25 @@ async function CatalogBody({
 
   const pageTitle = q
     ? undefined
-    : maxTon > 0 && (effectiveSort === "ban_chay" || sort === "ban_chay")
-      ? "Sản phẩm đang bán chạy - sắp hết"
-      : effectiveBadge === "moi" || sort === "moi" || sort === "newest"
-        ? "Sản phẩm mới"
-        : effectiveBadge === "giam_gia"
-          ? "Sản phẩm giảm giá"
-          : effectiveBadge === "dat_truoc"
-            ? "Sản phẩm đặt trước"
-            : effectiveBadge === "ban_chay_sap_het" ||
-                effectiveBadge === "ban_chay" ||
-                effectiveSort === "ban_chay"
-              ? "Sản phẩm bán chạy và sắp hết"
-              : sort === "price_asc"
-                ? "Giá thấp → cao"
-                : sort === "price_desc"
-                  ? "Giá cao → thấp"
-                  : undefined;
+    : effectiveBadge === "noi_bat"
+      ? "Sản phẩm nổi bật"
+      : maxTon > 0 && (effectiveSort === "ban_chay" || sort === "ban_chay")
+        ? "Sản phẩm đang bán chạy - sắp hết"
+        : effectiveBadge === "moi" || sort === "moi" || sort === "newest"
+          ? "Sản phẩm mới"
+          : effectiveBadge === "giam_gia"
+            ? "Sản phẩm giảm giá"
+            : effectiveBadge === "dat_truoc"
+              ? "Sản phẩm đặt trước"
+              : effectiveBadge === "ban_chay_sap_het" ||
+                  effectiveBadge === "ban_chay" ||
+                  (!effectiveBadge && effectiveSort === "ban_chay")
+                ? "Sản phẩm bán chạy và sắp hết"
+                : sort === "price_asc"
+                  ? "Giá thấp → cao"
+                  : sort === "price_desc"
+                    ? "Giá cao → thấp"
+                    : undefined;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">
