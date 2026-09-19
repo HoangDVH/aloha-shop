@@ -199,15 +199,20 @@ function FlyoutRow({
       onClick={onNavigate}
       onMouseEnter={onHover}
       title={label}
-      className={`flex items-start justify-between gap-2 px-4 py-2 text-sm leading-snug ${
+      className={`group flex items-start justify-between gap-2 px-4 py-2 text-sm leading-snug ${
         active
-          ? "bg-[var(--aloha-green-light)] font-semibold text-[var(--aloha-green)]"
-          : "text-slate-700 hover:bg-[var(--aloha-green-light)] hover:text-[var(--aloha-green)]"
+          ? "bg-[var(--aloha-green)] font-semibold text-white"
+          : "text-slate-700 hover:bg-[var(--aloha-green)] hover:text-white"
       }`}
     >
       <span className="min-w-0 flex-1 line-clamp-2 break-words">{label}</span>
       <span className="flex shrink-0 items-center gap-1 pt-0.5">
-        {hasKids ? <ChevronRight size={14} className="text-slate-400" /> : null}
+        {hasKids ? (
+          <ChevronRight
+            size={14}
+            className={active ? "text-white/80" : "text-slate-400 group-hover:text-white/80"}
+          />
+        ) : null}
       </span>
     </Link>
   );
@@ -251,7 +256,7 @@ function MultiColumnFlyout({
                 href={categoryHref(root)}
                 onClick={onNavigate}
                 title={root.name}
-                className="shrink-0 border-b border-[var(--aloha-line)] px-4 py-2 text-sm font-bold leading-snug text-[var(--aloha-green)] hover:bg-[var(--aloha-green-light)]"
+                className="shrink-0 border-b border-[var(--aloha-line)] px-4 py-2 text-sm font-bold leading-snug text-[var(--aloha-green)] hover:bg-[var(--aloha-green)] hover:text-white"
               >
                 <span className="line-clamp-2 break-words">Tất cả {root.name}</span>
               </Link>
@@ -303,8 +308,8 @@ function NavItemButton({
       <Link
         href={categoryHref(node)}
         onClick={onNavigate}
-        className={`group relative inline-flex h-full w-full min-w-0 items-center justify-center gap-1 px-1.5 text-[12px] font-semibold leading-tight text-[var(--aloha-ink)] transition-colors hover:text-[var(--aloha-green)] sm:gap-1.5 sm:px-2 sm:text-[13px] xl:text-[14px] ${
-          open ? "text-[var(--aloha-green)]" : ""
+        className={`group relative inline-flex h-full w-full min-w-0 items-center justify-center gap-1 px-1.5 text-[12px] font-bold leading-tight text-[var(--aloha-green)] transition-colors hover:text-[var(--aloha-green-dark)] sm:gap-1.5 sm:px-2 sm:text-[13px] xl:text-[14px] ${
+          open ? "text-[var(--aloha-green-dark)]" : ""
         }`}
         title={node.name}
       >

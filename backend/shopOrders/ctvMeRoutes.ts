@@ -20,6 +20,83 @@ import {
   getCtvSettings,
 } from "./commissionModels.js";
 import { clearHeldCommissions, resolveRate } from "./commission.js";
+import { syncBus, type SyncChangePayload } from "../syncBus.js";
+
+const CTV_COMMISSION_UX: Record<
+  string,
+  { label: string; hint: string }
+> = {
+  held: {
+    label: "Đang giữ",
+    hint: "Đơn mới giao, chờ hết thời gian đổi/trả",
+  },
+  eligible: {
+    label: "Sắp nhận",
+    hint: "Đã đủ điều kiện, chờ shop chi",
+  },
+  billed: {
+    label: "Đang chi",
+    hint: "Shop đã chốt vào đợt thanh toán lần này",
+  },
+  paid_out: {
+    label: "Đã nhận",
+    hint: "Đã chuyển tiền",
+  },
+  cancelled: {
+    label: "Không được nhận",
+    hint: "Đơn hủy / không tính hoa hồng",
+  },
+  flagged: {
+    label: "Đang kiểm tra",
+    hint: "Shop đang rà soát, tạm chưa chi",
+  },
+  none: {
+    label: "Chưa phát sinh",
+    hint: "Đơn chưa giao xong nên chưa có hoa hồng",
+  },
+};
+
+function summarizeCtvCommissionStatus(
+  comms: any[],
+  opts?: { holdDays?: number }
+): {
+  key: string;
+  label: string;
+  hint: string;
+} {
+  const statuses = comms.map((c) => String(c?.status || "").trim().toLowerCase());
+  const set = new Set(statuses.filter(Boolean));
+  let key = "none";
+  if (set.has("flagged")) key = "flagged";
+  else if (set.has("billed")) key = "billed";
+  else if (set.has("eligible")) key = "eligible";
+  else if (set.has("held")) key = "held";
+  else if (set.has("paid_out")) key = "paid_out";
+  else if (set.has("cancelled")) key = "cancelled";
+
+  const ux = CTV_COMMISSION_UX[key] || CTV_COMMISSION_UX.none;
+  let hint = ux.hint;
+  if (key === "held" && opts?.holdDays) {
+    hint = `Còn chờ hết ${opts.holdDays} ngày đổi/trả`;
+  } else if (key === "billed") {
+    const period = String(
+      comms.find((c) => String(c?.status) === "billed")?.billingPeriod || ""
+    ).trim();
+    const m = /^(\d{4})-(\d{2})$/.exec(period);
+    if (m) hint = `Thuộc đợt chi tháng ${Number(m[2])}/${m[1]}`;
+  } else if (key === "paid_out") {
+    const paidAt = comms.find((c) => c?.paidAt)?.paidAt;
+    if (paidAt) {
+      const d = new Date(paidAt);
+      if (Number.isFinite(d.getTime())) {
+        const dd = String(d.getDate()).padStart(2, "0");
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        hint = `Đã chuyển ngày ${dd}/${mm}/${d.getFullYear()}`;
+      }
+    }
+  }
+  return { key, label: ux.label, hint };
+}
 
 export function registerShopCtvMeRoutes(
   app: Express,
@@ -59,9 +136,10 @@ export function registerShopCtvMeRoutes(
       const ctx = await requireActiveCtv(req, res);
       if (!ctx) return;
       await ensureCommissionIndexes(ctx.shopDb);
-      await clearHeldCommissions(ctx.shopDb);
+      await clearHeldCommissions(ctx.shopDb, { ctvCode: ctx.ctvCode });
       const col = ctx.shopDb.collection(SHOP_COMMISSIONS);
-      const [held, eligible, billed, paid, pendingOrders] = await Promise.all([
+      const [held, eligible, billed, paid, flagged, cancelled, pendingOrders] =
+        await Promise.all([
         col
           .aggregate([
             { $match: { ctvCode: ctx.ctvCode, status: "held" } },
@@ -83,6 +161,18 @@ export function registerShopCtvMeRoutes(
         col
           .aggregate([
             { $match: { ctvCode: ctx.ctvCode, status: "paid_out" } },
+            { $group: { _id: null, t: { $sum: "$amount" }, n: { $sum: 1 } } },
+          ])
+          .toArray(),
+        col
+          .aggregate([
+            { $match: { ctvCode: ctx.ctvCode, status: "flagged" } },
+            { $group: { _id: null, t: { $sum: "$amount" }, n: { $sum: 1 } } },
+          ])
+          .toArray(),
+        col
+          .aggregate([
+            { $match: { ctvCode: ctx.ctvCode, status: "cancelled" } },
             { $group: { _id: null, t: { $sum: "$amount" }, n: { $sum: 1 } } },
           ])
           .toArray(),
@@ -146,17 +236,21 @@ export function registerShopCtvMeRoutes(
         };
       });
 
+      const bucket = (rows: any[]) => ({
+        amount: Number(rows[0]?.t) || 0,
+        count: Number(rows[0]?.n) || 0,
+      });
+
       return res.json({
         ok: true,
         ctvCode: ctx.ctvCode,
         returnHoldDays: settings.returnHoldDays,
-        held: { amount: Number(held[0]?.t) || 0, count: Number(held[0]?.n) || 0 },
-        eligible: {
-          amount: Number(eligible[0]?.t) || 0,
-          count: Number(eligible[0]?.n) || 0,
-        },
-        billed: { amount: Number(billed[0]?.t) || 0, count: Number(billed[0]?.n) || 0 },
-        paidOut: { amount: Number(paid[0]?.t) || 0, count: Number(paid[0]?.n) || 0 },
+        held: bucket(held),
+        eligible: bucket(eligible),
+        billed: bucket(billed),
+        paidOut: bucket(paid),
+        flagged: bucket(flagged),
+        cancelled: bucket(cancelled),
         pendingOrders: {
           count: pending.length,
           amount: pending.reduce((s, p) => s + (Number(p.total) || 0), 0),
@@ -571,7 +665,7 @@ export function registerShopCtvMeRoutes(
     try {
       const ctx = await requireActiveCtv(req, res);
       if (!ctx) return;
-      await clearHeldCommissions(ctx.shopDb);
+      await clearHeldCommissions(ctx.shopDb, { ctvCode: ctx.ctvCode });
       const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 40));
       const rows = await ctx.shopDb
         .collection(SHOP_COMMISSIONS)
@@ -746,6 +840,7 @@ export function registerShopCtvMeRoutes(
     try {
       const ctx = await requireActiveCtv(req, res);
       if (!ctx) return;
+      const settings = await getCtvSettings(ctx.shopDb);
       const now = new Date();
       let from = new Date(String(req.query.from || ""));
       let to = new Date(String(req.query.to || ""));
@@ -828,7 +923,6 @@ export function registerShopCtvMeRoutes(
               .find({
                 ctvCode: ctx.ctvCode,
                 orderCode: { $in: codes },
-                status: { $nin: ["cancelled"] },
               })
               .project({
                 orderCode: 1,
@@ -838,6 +932,9 @@ export function registerShopCtvMeRoutes(
                 qty: 1,
                 status: 1,
                 createdAt: 1,
+                billingPeriod: 1,
+                paidAt: 1,
+                eligibleAt: 1,
               })
               .toArray()
           : Promise.resolve([]),
@@ -991,10 +1088,12 @@ export function registerShopCtvMeRoutes(
             : "Khách mới";
 
         const orderComms = commByOrder.get(code) || [];
-        const totalCommission = orderComms.reduce(
-          (s, c) => s + (Number((c as any).amount) || 0),
-          0
-        );
+        const totalCommission = orderComms
+          .filter((c) => String((c as any).status || "") !== "cancelled")
+          .reduce((s, c) => s + (Number((c as any).amount) || 0), 0);
+        const hhUx = summarizeCtvCommissionStatus(orderComms, {
+          holdDays: settings.returnHoldDays,
+        });
         const details = Array.isArray((o as any).orderDetails)
           ? (o as any).orderDetails
           : [];
@@ -1068,16 +1167,9 @@ export function registerShopCtvMeRoutes(
           buyerStatus,
           products: productItems,
           productSummary: productNames.join(", ") || "—",
-          commissionStatus:
-            orderComms.length === 0
-              ? "Chưa phát sinh"
-              : orderComms.some((c) => (c as any).status === "paid_out")
-                ? "Đã chi"
-                : orderComms.some((c) =>
-                      ["eligible", "billed"].includes(String((c as any).status))
-                    )
-                  ? "Đủ điều kiện"
-                  : "Tạm giữ",
+          commissionStatus: hhUx.label,
+          commissionStatusKey: hhUx.key,
+          commissionStatusHint: hhUx.hint,
         });
       }
 
@@ -1091,6 +1183,61 @@ export function registerShopCtvMeRoutes(
     } catch (e: any) {
       return res.status(500).json({ error: e?.message || "conversions_failed" });
     }
+  });
+
+  /** SSE portal CTV — commissions / account thay đổi → client invalidate. */
+  app.get("/api/shop/ctv/me/stream", auth, async (req: ShopAuthRequest, res) => {
+    const ctx = await requireActiveCtv(req, res);
+    if (!ctx) return;
+
+    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    if (typeof (res as any).flushHeaders === "function") {
+      (res as any).flushHeaders();
+    }
+
+    const writeEvent = (event: string, data: unknown) => {
+      try {
+        res.write(`event: ${event}\n`);
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+      } catch {
+        /* */
+      }
+    };
+    writeEvent("hello", { at: Date.now(), ctvCode: ctx.ctvCode });
+
+    const onChange = (payload: SyncChangePayload) => {
+      const cols = payload?.collections || [];
+      const hit =
+        cols.includes("aloha_shop_commissions") ||
+        cols.includes("aloha_shop_commission_bills") ||
+        cols.includes("aloha_shop_accounts");
+      if (!hit) return;
+      writeEvent("me", {
+        collections: cols,
+        ids: payload.ids || [],
+        source: payload.source || "",
+        at: payload.at || Date.now(),
+      });
+    };
+    syncBus.on("change", onChange);
+
+    const ping = setInterval(() => {
+      try {
+        res.write(`: ping ${Date.now()}\n\n`);
+      } catch {
+        /* */
+      }
+    }, 25_000);
+
+    const cleanup = () => {
+      clearInterval(ping);
+      syncBus.off("change", onChange);
+    };
+    req.on("close", cleanup);
+    req.on("aborted", cleanup);
   });
 
   /** % hoa hồng áp dụng cho SP (CTV đang login). */

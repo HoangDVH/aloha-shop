@@ -50,3 +50,33 @@ export const COMMISSION_STATUS_LABEL: Record<string, string> = {
   cancelled: "Đã hủy",
   flagged: "Nghi ngờ gian lận",
 };
+
+/** Mã cờ gian lận (DB) → tiếng Việt dễ hiểu trên admin */
+export const FRAUD_FLAG_LABEL: Record<string, string> = {
+  self_buy_phone: "Tự mua — trùng SĐT",
+  self_buy_address: "Tự mua — trùng địa chỉ",
+  self_buy_account: "Tự mua — trùng tài khoản",
+  self_buy: "Tự mua hàng",
+  phone_repeat_soft: "Cảnh báo — nhiều đơn cùng SĐT",
+  phone_repeat: "Trùng SĐT nhiều đơn",
+  address_match_threshold: "Cảnh báo — nhiều đơn cùng SĐT",
+  address_match: "Trùng SĐT / địa chỉ",
+  admin_confirm_fraud: "Admin xác nhận gian lận",
+};
+
+export function formatFraudFlag(code: string): string {
+  const k = String(code || "").trim();
+  if (!k) return "";
+  if (FRAUD_FLAG_LABEL[k]) return FRAUD_FLAG_LABEL[k];
+  if (k.startsWith("self_buy")) return "Tự mua hàng";
+  if (k.startsWith("phone_repeat")) return "Trùng SĐT nhiều đơn";
+  if (k.startsWith("address_match")) return "Cảnh báo — nhiều đơn cùng SĐT";
+  return k.replace(/_/g, " ");
+}
+
+export function formatFraudFlags(flags: unknown): string {
+  if (!Array.isArray(flags) || !flags.length) return "";
+  return [...new Set(flags.map((f) => formatFraudFlag(String(f))).filter(Boolean))].join(
+    " · "
+  );
+}

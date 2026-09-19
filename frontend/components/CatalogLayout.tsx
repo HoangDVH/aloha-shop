@@ -10,7 +10,6 @@ import { CatalogFilterPanel } from "@/components/catalog/CatalogFilterPanel";
 import {
   PIN_CATALOG_KEY,
   SORT_OPTIONS,
-  LOAI_HANG_OPTIONS,
   markPinCatalog,
   scrollToCatalog,
   leafLabel,
@@ -103,13 +102,10 @@ export function CatalogLayout({
       .filter((n) => Number.isFinite(n) && n > 0);
     return [...new Set(raw)];
   }, [sp]);
-  const selectedLoai = sp.get("loai") || "";
   const minPrice = sp.get("minPrice") || "";
   const maxPrice = sp.get("maxPrice") || "";
   const inStock = sp.get("inStock") === "1";
   const sort = sp.get("sort") || (homeMode ? "ban_chay" : "ten");
-  const loaiLabel =
-    LOAI_HANG_OPTIONS.find((o) => o.value === selectedLoai)?.label || selectedLoai;
   /** Chỉ trang /tim — load đủ ĐVT + thuộc tính toàn shop khi chưa chọn nhóm/từ khóa. */
   const allProductsPage = !homeMode && pathname === "/tim";
   const [categoryIdNhoms, setCategoryIdNhoms] = useState<string[]>([]);
@@ -166,7 +162,6 @@ export function CatalogLayout({
             !selectedNhoms.length &&
             !selectedCategoryIds.length &&
             !q &&
-            !selectedLoai &&
             !selectedAttrs.length &&
             !selectedDvts.length,
           all:
@@ -191,7 +186,6 @@ export function CatalogLayout({
     selectedCategoryIds.join(","),
     homeMode,
     allProductsPage,
-    selectedLoai,
     selectedAttrs.join("|"),
     selectedDvts.join("|"),
   ]);
@@ -309,13 +303,6 @@ export function CatalogLayout({
         clear: () => removeDvt(d),
       });
     }
-    if (selectedLoai) {
-      tags.push({
-        key: "loai",
-        label: loaiLabel || selectedLoai,
-        clear: () => pushParams({ loai: null }),
-      });
-    }
     if (minPrice || maxPrice) {
       const minL = minPrice ? formatVnd(Number(minPrice) || 0) : "0đ";
       const maxL = maxPrice ? formatVnd(Number(maxPrice) || 0) : "∞";
@@ -330,7 +317,7 @@ export function CatalogLayout({
     }
     return tags;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, filterNhoms.join("|"), selectedNhoms.join("|"), selectedAttrs, selectedDvts, selectedLoai, loaiLabel, minPrice, maxPrice, inStock]);
+  }, [q, filterNhoms.join("|"), selectedNhoms.join("|"), selectedAttrs, selectedDvts, minPrice, maxPrice, inStock]);
 
   const pageNums = useMemo(() => {
     const maxBtn = 5;
@@ -346,8 +333,6 @@ export function CatalogLayout({
     <CatalogFilterPanel
       selectedNhoms={filterNhoms}
       onNhomsChange={pushNhoms}
-      selectedLoai={selectedLoai}
-      onLoaiChange={(loai) => pushParams({ loai, page: null })}
       dvtItems={facets.dvt}
       selectedDvts={selectedDvts}
       onToggleDvt={(k) => toggleMulti("dvt", k)}

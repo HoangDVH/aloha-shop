@@ -17,13 +17,14 @@ import {
   Users,
 } from "lucide-react";
 import { useAdminSession } from "@/components/admin/auth/useAdminSession";
+import { useAdminBadgeCounts } from "@/components/admin/shell/AdminOpsSync";
 
 const CTV_SUB = [
-  { href: "/admin/ctv", label: "Tổng quan", exact: true, Icon: LayoutDashboard },
-  { href: "/admin/ctv/danh-sach", label: "Danh sách CTV", Icon: Users },
-  { href: "/admin/ctv/hoa-hong", label: "Hoa hồng", Icon: Coins },
-  { href: "/admin/ctv/don-hang", label: "Đơn hàng", Icon: FileText },
-  { href: "/admin/ctv/chong-gian", label: "Chống gian lận", Icon: Shield },
+  { href: "/admin/ctv", label: "Tổng quan", exact: true, Icon: LayoutDashboard, badgeKey: null as null | "ctv" | "orders" | "fraud" },
+  { href: "/admin/ctv/danh-sach", label: "Danh sách CTV", Icon: Users, badgeKey: "ctv" as const },
+  { href: "/admin/ctv/hoa-hong", label: "Hoa hồng", Icon: Coins, badgeKey: null },
+  { href: "/admin/ctv/don-hang", label: "Đơn hàng", Icon: FileText, badgeKey: "orders" as const },
+  { href: "/admin/ctv/chong-gian", label: "Chống gian lận", Icon: Shield, badgeKey: "fraud" as const },
 ];
 
 const CUSTOMERS_HREF = "/admin/ctv/khach-hang";
@@ -52,6 +53,7 @@ function linkClass(active: boolean, nested = false) {
 export function AdminSidebar() {
   const pathname = normalizePath(usePathname() || "");
   const { user, logout } = useAdminSession();
+  const badges = useAdminBadgeCounts(true);
   const onCustomers =
     pathname === CUSTOMERS_HREF || pathname.startsWith(`${CUSTOMERS_HREF}/`);
   const onCtv =
@@ -62,6 +64,13 @@ export function AdminSidebar() {
   useEffect(() => {
     if (onCtv) setCtvOpen(true);
   }, [onCtv]);
+
+  const badgeFor = (key: null | "ctv" | "orders" | "fraud") => {
+    if (key === "ctv") return badges.ctvPending;
+    if (key === "orders") return badges.ordersNeedAction;
+    if (key === "fraud") return badges.fraudOpen;
+    return 0;
+  };
 
   return (
     <aside className="sticky top-0 flex h-screen w-[248px] shrink-0 flex-col border-r border-[#e8eaed] bg-white">
@@ -102,10 +111,11 @@ export function AdminSidebar() {
           </button>
           {ctvOpen ? (
             <div className="ml-2 mt-0.5 space-y-0.5 border-l border-[#e8e2d6] pl-2">
-              {CTV_SUB.map(({ href, label, exact, Icon }) => {
+              {CTV_SUB.map(({ href, label, exact, Icon, badgeKey }) => {
                 const active = exact
                   ? pathname === href
                   : pathname === href || pathname.startsWith(`${href}/`);
+                const n = badgeFor(badgeKey);
                 return (
                   <Link
                     key={href}
@@ -118,7 +128,18 @@ export function AdminSidebar() {
                         active ? "text-white" : "text-[#2D5A27]"
                       }`}
                     />
-                    {label}
+                    <span className="min-w-0 flex-1 truncate">{label}</span>
+                    {n > 0 ? (
+                      <span
+                        className={`ml-1 shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${
+                          active
+                            ? "bg-white/25 text-white"
+                            : "bg-[#C62828] text-white"
+                        }`}
+                      >
+                        {n > 99 ? "99+" : n}
+                      </span>
+                    ) : null}
                   </Link>
                 );
               })}

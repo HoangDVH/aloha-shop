@@ -7,12 +7,14 @@ import { ConversionCard } from "../charts/ConversionCard";
 import { useCtvMeOverview, useCtvMeStats } from "../ctvPortalQueries";
 import { useCtvPortalUiStore } from "../ctvPortalUiStore";
 import {
+  CTV_COMMISSION_UX,
   dayKeyFromIso,
   formatCompact,
   formatMoneyCompact,
   formatVnd,
   monthRange,
 } from "../shared/format";
+import { visibleRefetchInterval } from "@/lib/visibleRefetchInterval";
 import type { CtvOverview } from "../types";
 
 function deriveDaily(overview: CtvOverview | undefined) {
@@ -41,9 +43,9 @@ function deriveDaily(overview: CtvOverview | undefined) {
 
 export function OverviewPanel() {
   const { dateRange, setDateRange } = useCtvPortalUiStore();
-  const statsQ = useCtvMeStats({ refetchInterval: 15_000 });
+  const statsQ = useCtvMeStats({ refetchInterval: visibleRefetchInterval(30_000) });
   const overviewQ = useCtvMeOverview(dateRange.from, dateRange.to, {
-    refetchInterval: 15_000,
+    refetchInterval: visibleRefetchInterval(30_000),
   });
 
   const stats = statsQ.data;
@@ -51,14 +53,44 @@ export function OverviewPanel() {
   const daily = useMemo(() => deriveDaily(overview), [overview]);
 
   const holdDays = stats?.returnHoldDays ?? 7;
-  const waitPayoutAmount =
-    (stats?.eligible.amount || 0) + (stats?.billed.amount || 0);
-  const waitPayoutCount =
-    (stats?.eligible.count || 0) + (stats?.billed.count || 0);
 
   const statusCards = useMemo(() => {
     if (!stats) return [];
-    return [
+    const core = [
+      {
+        key: "held",
+        label: CTV_COMMISSION_UX.held.label,
+        value: formatVnd(stats.held.amount),
+        explain: CTV_COMMISSION_UX.held.explain,
+        hint: `${stats.held.count} dòng · chờ hết ${holdDays} ngày đổi/trả`,
+        always: true,
+      },
+      {
+        key: "eligible",
+        label: CTV_COMMISSION_UX.eligible.label,
+        value: formatVnd(stats.eligible.amount),
+        explain: CTV_COMMISSION_UX.eligible.explain,
+        hint: `${stats.eligible.count} dòng · chờ shop chi`,
+        always: true,
+      },
+      {
+        key: "billed",
+        label: CTV_COMMISSION_UX.billed.label,
+        value: formatVnd(stats.billed.amount),
+        explain: CTV_COMMISSION_UX.billed.explain,
+        hint: `${stats.billed.count} dòng · thuộc đợt thanh toán`,
+        always: true,
+      },
+      {
+        key: "paid",
+        label: CTV_COMMISSION_UX.paid_out.label,
+        value: formatVnd(stats.paidOut.amount),
+        explain: CTV_COMMISSION_UX.paid_out.explain,
+        hint: `${stats.paidOut.count} dòng · shop đã chuyển`,
+        always: true,
+      },
+    ];
+    const extras = [
       {
         key: "pending",
         label: "Chờ hoàn tất đơn",
@@ -66,33 +98,29 @@ export function OverviewPanel() {
         explain: "Chưa phát sinh hoa hồng",
         hint: `${stats.pendingOrders?.count || 0} đơn · chưa giao / chưa thanh toán xong`,
         count: stats.pendingOrders?.count || 0,
+        always: false,
       },
       {
-        key: "held",
-        label: "Tạm giữ sau giao",
-        value: formatVnd(stats.held.amount),
-        explain: "Đã giao — chưa chi",
-        hint: `${stats.held.count} dòng · chờ hết ${holdDays} ngày đổi trả`,
-        count: stats.held.count,
+        key: "flagged",
+        label: CTV_COMMISSION_UX.flagged.label,
+        value: formatVnd(stats.flagged?.amount || 0),
+        explain: CTV_COMMISSION_UX.flagged.explain,
+        hint: `${stats.flagged?.count || 0} dòng · tạm chưa chi`,
+        count: stats.flagged?.count || 0,
+        always: false,
       },
       {
-        key: "payout",
-        label: "Chờ nhận tiền",
-        value: formatVnd(waitPayoutAmount),
-        explain: "Sắp được chuyển",
-        hint: `${waitPayoutCount} dòng · đủ ĐK / kỳ tháng`,
-        count: waitPayoutCount,
-      },
-      {
-        key: "paid",
-        label: "Đã nhận",
-        value: formatVnd(stats.paidOut.amount),
-        explain: "Hoàn tất",
-        hint: `${stats.paidOut.count} dòng · shop đã chuyển`,
-        count: stats.paidOut.count,
+        key: "cancelled",
+        label: CTV_COMMISSION_UX.cancelled.label,
+        value: formatVnd(stats.cancelled?.amount || 0),
+        explain: CTV_COMMISSION_UX.cancelled.explain,
+        hint: `${stats.cancelled?.count || 0} dòng`,
+        count: stats.cancelled?.count || 0,
+        always: false,
       },
     ].filter((c) => c.count > 0);
-  }, [stats, holdDays, waitPayoutAmount, waitPayoutCount]);
+    return [...core, ...extras];
+  }, [stats, holdDays]);
 
   const m = overview?.metrics;
   const kpi = m
@@ -178,7 +206,7 @@ export function OverviewPanel() {
       {statusCards.length ? (
         <div>
           <h2 className="mb-3 text-sm font-extrabold text-[#163A2A]">
-            Trạng thái đang có
+            Tiền hoa hồng đang ở đâu
           </h2>
           <Row gutter={[12, 12]}>
             {statusCards.map((c) => (

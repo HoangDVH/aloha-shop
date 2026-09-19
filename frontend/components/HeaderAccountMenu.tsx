@@ -55,9 +55,9 @@ export function HeaderAccountMenu() {
     return (
       <Link
         href={loginHref}
-        className="hidden items-center gap-1.5 rounded-md px-2 py-1.5 text-white hover:bg-white/10 sm:inline-flex"
+        className="hidden items-center gap-1.5 rounded-md px-2 py-1.5 text-[var(--aloha-green)] hover:bg-[var(--aloha-green-light)] sm:inline-flex"
       >
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 text-white">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--aloha-green-light)] text-[var(--aloha-green)]">
           <UserCog size={18} />
         </span>
         <span className="text-xs font-semibold">Đăng nhập</span>
@@ -79,14 +79,14 @@ export function HeaderAccountMenu() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex max-w-[220px] items-center gap-2 rounded-md px-1.5 py-1 text-white hover:bg-white/10"
+        className="inline-flex max-w-[220px] items-center gap-2 rounded-md px-1.5 py-1 text-[var(--aloha-green)] hover:bg-[var(--aloha-green-light)]"
         aria-expanded={open}
         aria-haspopup="menu"
       >
         <AccountAvatar user={user} size={32} />
         <span className="min-w-0 truncate text-left">
           <span className="block truncate text-xs font-semibold">{shortName}</span>
-          <span className="block truncate text-[10px] font-medium text-white/75">{roleLabel}</span>
+          <span className="block truncate text-[10px] font-medium text-[var(--aloha-muted)]">{roleLabel}</span>
         </span>
         <ChevronDown
           size={14}

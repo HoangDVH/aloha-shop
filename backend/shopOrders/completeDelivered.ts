@@ -250,7 +250,7 @@ export async function completeShopOrderDelivered(
 
   const hold = await holdCommissionsForOrder(shopDb, mainDb, doc as any);
   syncBus.publish(["shop_orders", "aloha_shop_commissions"], "delivered", {
-    code,
+    ids: [code],
   });
   void notifyOrderStatus(shopDb, doc as any, "giao_thanh_cong").catch((e) =>
     console.warn("[shop-notify] giao_thanh_cong", e?.message || e)

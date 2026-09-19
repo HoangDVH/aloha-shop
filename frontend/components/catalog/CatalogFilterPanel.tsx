@@ -4,13 +4,11 @@ import { Filter } from "lucide-react";
 import { ShopCategorySelect } from "@/components/ShopCategorySelect";
 import { FilterChipSection } from "@/components/FilterChipSection";
 import { ShopAttributeFilter } from "@/components/ShopAttributeFilter";
-import { PRICE_PRESETS, LOAI_HANG_OPTIONS } from "@/components/catalog/catalogLayoutUtils";
+import { PRICE_PRESETS } from "@/components/catalog/catalogLayoutUtils";
 
 export type CatalogFilterPanelProps = {
   selectedNhoms: string[];
   onNhomsChange: (paths: string[]) => void;
-  selectedLoai: string;
-  onLoaiChange: (loai: string | null) => void;
   dvtItems: string[];
   selectedDvts: string[];
   onToggleDvt: (value: string) => void;
@@ -38,8 +36,6 @@ export type CatalogFilterPanelProps = {
 export function CatalogFilterPanel({
   selectedNhoms,
   onNhomsChange,
-  selectedLoai,
-  onLoaiChange,
   dvtItems,
   selectedDvts,
   onToggleDvt,
@@ -78,24 +74,6 @@ export function CatalogFilterPanel({
       </div>
 
       <ShopCategorySelect value={selectedNhoms} onChange={onNhomsChange} placeholder="Chọn nhóm hàng" />
-
-      <div className="border-t border-[#f0ebe3] pt-4">
-        <h3 className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">
-          Loại hàng
-        </h3>
-        <select
-          value={selectedLoai}
-          onChange={(e) => onLoaiChange(e.target.value.trim() || null)}
-          className="w-full rounded-lg border border-[#D5E3D0] bg-white px-2.5 py-2 text-sm text-slate-700 outline-none focus:border-[var(--aloha-green)]"
-        >
-          <option value="">Chọn loại hàng</option>
-          {LOAI_HANG_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </div>
 
       <FilterChipSection
         title="Đơn vị"

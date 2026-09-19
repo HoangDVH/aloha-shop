@@ -12,25 +12,31 @@ export type HeroSlideDraft = {
   label?: string;
 };
 
-/** Khớp shop/components/HeroBanner.tsx — banner mặc định 1024×1024. */
+/** Khớp HeroBanner — 4 ảnh ALOHA: khách sỉ, đất/dụng cụ, hạt giống, cây cảnh. */
 export const DEFAULT_HERO_SLIDES: HeroSlideDraft[] = [
   {
-    src: "/banners/banner-cay-canh.png",
-    alt: "Cây cảnh & chậu ALOHA",
-    href: "/tim?q=cay+canh",
-    label: "CHẬU CẢNH",
+    src: "/banners/banner-hero-01.png?v=13",
+    alt: "Ưu đãi dịch vụ khách sỉ ALOHA",
+    href: "/tim?q=bao+gia+si",
+    label: "KHÁCH SỈ",
   },
   {
-    src: "/banners/banner-dat-phan.png",
-    alt: "Đất trồng & phân bón",
-    href: "/tim?q=dat",
-    label: "ĐẤT & PHÂN",
+    src: "/banners/banner-hero-02.png?v=13",
+    alt: "Đất trồng phân bón dụng cụ chăm sóc cây",
+    href: "/tim?q=dat+trong",
+    label: "ĐẤT TRỒNG",
   },
   {
-    src: "/banners/banner-hat-giong.png",
-    alt: "Hạt giống chất lượng",
+    src: "/banners/banner-hero-03.png?v=13",
+    alt: "Hạt giống ALOHA",
     href: "/tim?q=hat+giong",
     label: "HẠT GIỐNG",
+  },
+  {
+    src: "/banners/banner-hero-04.png?v=13",
+    alt: "Cây cảnh và chậu cây ALOHA",
+    href: "/tim?q=cay+canh",
+    label: "CÂY CẢNH",
   },
 ];
 

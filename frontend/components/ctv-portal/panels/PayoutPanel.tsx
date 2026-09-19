@@ -27,11 +27,13 @@ import {
 import { useCtvPortalUiStore } from "../ctvPortalUiStore";
 import { payoutBankSchema, type PayoutBankInput } from "../schemas";
 import {
+  CTV_COMMISSION_UX,
   formatDt,
   formatPeriodLabel,
   formatVnd,
   monthRange,
 } from "../shared/format";
+import { visibleRefetchInterval } from "@/lib/visibleRefetchInterval";
 import type { BillRow } from "../types";
 
 function PayoutBankFormCard() {
@@ -80,8 +82,8 @@ function PayoutBankFormCard() {
       extra={bankQ.isLoading ? <Spin size="small" /> : null}
     >
       <p className="mb-4 mt-0 text-xs text-slate-500">
-        Bắt buộc để shop chuyển khoản khi chốt kỳ. Chỉ bạn và admin vận hành được
-        xem.
+        Bắt buộc để shop chuyển khoản khi tới đợt chi. Chỉ bạn và admin vận hành
+        được xem.
       </p>
       <form onSubmit={onSubmit}>
         <Row gutter={[12, 12]}>
@@ -142,8 +144,8 @@ function PayoutBankFormCard() {
 
 export function PayoutPanel() {
   const { payRange, setPayRange } = useCtvPortalUiStore();
-  const statsQ = useCtvMeStats({ refetchInterval: 15_000 });
-  const billsQ = useCtvMeBills({ refetchInterval: 15_000 });
+  const statsQ = useCtvMeStats({ refetchInterval: visibleRefetchInterval(30_000) });
+  const billsQ = useCtvMeBills({ refetchInterval: visibleRefetchInterval(30_000) });
   const [billDetail, setBillDetail] = useState<BillRow | null>(null);
 
   const stats = statsQ.data;
@@ -175,9 +177,6 @@ export function PayoutPanel() {
         .reduce((s, b) => s + (b.net || 0), 0),
     [filteredBills]
   );
-
-  const waitPayoutAmount =
-    (stats?.eligible.amount || 0) + (stats?.billed.amount || 0);
 
   const err = statsQ.error || billsQ.error;
 
@@ -223,25 +222,57 @@ export function PayoutPanel() {
               Chi tiết thu nhập
             </p>
             <Row gutter={[12, 12]}>
-              <Col xs={24} sm={8}>
+              <Col xs={12} sm={6}>
                 <Card size="small" className="bg-[#FFFDF8]">
-                  <div className="text-[11px] text-slate-500">Đã nhận</div>
+                  <div className="text-[11px] text-slate-500">
+                    {CTV_COMMISSION_UX.held.label}
+                  </div>
                   <div className="font-extrabold">
-                    {formatVnd(stats?.paidOut.amount || 0)}
+                    {formatVnd(stats?.held.amount || 0)}
+                  </div>
+                  <div className="mt-0.5 text-[10px] text-slate-400">
+                    {CTV_COMMISSION_UX.held.explain}
                   </div>
                 </Card>
               </Col>
-              <Col xs={24} sm={8}>
+              <Col xs={12} sm={6}>
                 <Card size="small" className="bg-[#FFFDF8]">
-                  <div className="text-[11px] text-slate-500">Chờ chuyển (đủ ĐK)</div>
-                  <div className="font-extrabold">{formatVnd(waitPayoutAmount)}</div>
+                  <div className="text-[11px] text-slate-500">
+                    {CTV_COMMISSION_UX.eligible.label}
+                  </div>
+                  <div className="font-extrabold">
+                    {formatVnd(stats?.eligible.amount || 0)}
+                  </div>
+                  <div className="mt-0.5 text-[10px] text-slate-400">
+                    {CTV_COMMISSION_UX.eligible.explain}
+                  </div>
                 </Card>
               </Col>
-              <Col xs={24} sm={8}>
+              <Col xs={12} sm={6}>
                 <Card size="small" className="bg-[#FFFDF8]">
-                  <div className="text-[11px] text-slate-500">Tạm giữ / kỳ đã chốt</div>
+                  <div className="text-[11px] text-slate-500">
+                    {CTV_COMMISSION_UX.billed.label}
+                  </div>
                   <div className="font-extrabold">
-                    {formatVnd((stats?.held.amount || 0) + totalLocked)}
+                    {formatVnd(
+                      Math.max(stats?.billed.amount || 0, totalLocked)
+                    )}
+                  </div>
+                  <div className="mt-0.5 text-[10px] text-slate-400">
+                    {CTV_COMMISSION_UX.billed.explain}
+                  </div>
+                </Card>
+              </Col>
+              <Col xs={12} sm={6}>
+                <Card size="small" className="bg-[#FFFDF8]">
+                  <div className="text-[11px] text-slate-500">
+                    {CTV_COMMISSION_UX.paid_out.label}
+                  </div>
+                  <div className="font-extrabold">
+                    {formatVnd(stats?.paidOut.amount || 0)}
+                  </div>
+                  <div className="mt-0.5 text-[10px] text-slate-400">
+                    {CTV_COMMISSION_UX.paid_out.explain}
                   </div>
                 </Card>
               </Col>
@@ -285,14 +316,14 @@ export function PayoutPanel() {
                 render: (p: string) => p,
               },
               {
-                title: "Hoa hồng đủ ĐK (₫)",
+                title: "Hoa hồng (₫)",
                 dataIndex: "gross",
                 align: "right",
                 render: (_: number, r: BillRow) =>
                   formatVnd(r.gross ?? r.net),
               },
               {
-                title: "Thực nhận (đ)",
+                title: "Thực nhận (₫)",
                 dataIndex: "net",
                 align: "right",
                 render: (v: number) => formatVnd(v),
@@ -302,11 +333,17 @@ export function PayoutPanel() {
                 dataIndex: "billStatus",
                 render: (s: string, r: BillRow) => {
                   const paid = s === "paid" || r.paidAt;
-                  return (
-                    <Tag color={paid ? "green" : s === "locked" ? "blue" : "default"}>
-                      {paid ? "Đã trả" : s === "locked" ? "Đã chốt" : s}
-                    </Tag>
-                  );
+                  const label = paid
+                    ? CTV_COMMISSION_UX.paid_out.label
+                    : s === "locked"
+                      ? CTV_COMMISSION_UX.billed.label
+                      : s || "—";
+                  const color = paid
+                    ? "cyan"
+                    : s === "locked"
+                      ? "blue"
+                      : "default";
+                  return <Tag color={color}>{label}</Tag>;
                 },
               },
               {
@@ -339,7 +376,8 @@ export function PayoutPanel() {
               Số đơn: <strong>{billDetail.orderCount}</strong>
             </p>
             <p>
-              Gross: <strong>{formatVnd(billDetail.gross ?? billDetail.net)}</strong>
+              Hoa hồng:{" "}
+              <strong>{formatVnd(billDetail.gross ?? billDetail.net)}</strong>
             </p>
             <p>
               Thực nhận: <strong>{formatVnd(billDetail.net)}</strong>
@@ -348,14 +386,14 @@ export function PayoutPanel() {
               Trạng thái:{" "}
               <strong>
                 {billDetail.billStatus === "paid" || billDetail.paidAt
-                  ? "Đã trả"
+                  ? CTV_COMMISSION_UX.paid_out.label
                   : billDetail.billStatus === "locked"
-                    ? "Đã chốt"
+                    ? CTV_COMMISSION_UX.billed.label
                     : billDetail.billStatus}
               </strong>
             </p>
             {billDetail.paidAt ? (
-              <p>Ngày trả: {formatDt(billDetail.paidAt)}</p>
+              <p>Ngày nhận: {formatDt(billDetail.paidAt)}</p>
             ) : null}
           </div>
         ) : null}

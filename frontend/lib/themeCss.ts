@@ -1,4 +1,8 @@
-/** Theme → CSS variables cho toàn storefront. */
+/** Theme → CSS variables storefront — bảng màu đề xuất:
+ *  Off-white #FAF9F5 · White #FFFFFF
+ *  Green #5F7D4E · Dark green #3F5F35 · Terracotta #C67B5C (CTA/badge)
+ *  Text #292B27 · Muted #73766F · Line #EBE8DC · Hover #EEF2EB
+ */
 
 export type ThemeColors = {
   primaryColor?: string;
@@ -6,9 +10,44 @@ export type ThemeColors = {
   fontFamily?: string;
 };
 
-const DEFAULT_PRIMARY = "#16C45A";
-/** Màu cũ đã publish — nâng lên palette sáng hơn khi render */
-const LEGACY_PRIMARY = new Set(["#0F9D58", "#0C8048", "#0A6B3C"]);
+export const ALOHA_PALETTE = {
+  cream: "#FAF9F5",
+  creamDark: "#FEF0D3",
+  creamLight: "#FFFFFF",
+  hoverBg: "#EEF2EB",
+  white: "#FFFFFF",
+  surface: "#F5F5F5",
+  green: "#5F7D4E",
+  darkGreen: "#3F5F35",
+  terracotta: "#C67B5C",
+  terracottaHover: "#B0684A",
+  ink: "#292B27",
+  muted: "#73766F",
+  line: "#EBE8DC",
+} as const;
+
+const DEFAULT_PRIMARY = ALOHA_PALETTE.green;
+const DEFAULT_HEADER = ALOHA_PALETTE.cream;
+
+const LEGACY_PRIMARY = new Set(
+  [
+    "#0F9D58",
+    "#0C8048",
+    "#0A6B3C",
+    "#16C45A",
+    "#12A34A",
+    "#22C55E",
+    "#0D9488",
+    "#3DDC84",
+    "#134E2E",
+  ].map((c) => c.toUpperCase())
+);
+
+const LEGACY_HEADER = new Set(
+  ["#F7F4EC", "#FBFAF6", "#FFF8DC", "#FAF3E0", "#FFFDD0", "#FFFEE8"].map((c) =>
+    c.toUpperCase()
+  )
+);
 
 const FONT_CSS: Record<string, string> = {
   system:
@@ -68,14 +107,12 @@ function rgbToHex(r: number, g: number, b: number) {
     .toUpperCase()}`;
 }
 
-/** Làm tối màu (0–1). */
 export function darkenHex(hex: string, amount = 0.18): string {
   const { r, g, b } = hexToRgb(hex);
   const f = 1 - amount;
   return rgbToHex(r * f, g * f, b * f);
 }
 
-/** Trộn với trắng → nền nhạt. */
 export function lightenHex(hex: string, amount = 0.88): string {
   const { r, g, b } = hexToRgb(hex);
   return rgbToHex(
@@ -83,6 +120,11 @@ export function lightenHex(hex: string, amount = 0.88): string {
     g + (255 - g) * amount,
     b + (255 - b) * amount
   );
+}
+
+export function isLightColor(hex: string | undefined | null): boolean {
+  const { r, g, b } = hexToRgb(hex || DEFAULT_HEADER);
+  return 0.299 * r + 0.587 * g + 0.114 * b > 186;
 }
 
 export type AlohaCssVars = {
@@ -93,8 +135,13 @@ export type AlohaCssVars = {
   "--aloha-green-light": string;
   "--aloha-green-bright": string;
   "--aloha-gold": string;
+  "--aloha-terracotta": string;
+  "--aloha-terracotta-hover": string;
   "--aloha-header": string;
   "--aloha-cream": string;
+  "--aloha-cream-dark": string;
+  "--aloha-cream-light": string;
+  "--aloha-surface": string;
   "--aloha-card": string;
   "--aloha-ink": string;
   "--aloha-muted": string;
@@ -108,15 +155,19 @@ export function buildThemeCssVars(theme?: ThemeColors | null): AlohaCssVars {
   let primary = normalizeHex(theme?.primaryColor || DEFAULT_PRIMARY);
   if (LEGACY_PRIMARY.has(primary)) primary = DEFAULT_PRIMARY;
 
-  let headerRaw = theme?.headerBg ? normalizeHex(theme.headerBg) : "";
-  if (!headerRaw || LEGACY_PRIMARY.has(headerRaw)) {
-    headerRaw = darkenHex(primary, 0.12);
+  let headerRaw = theme?.headerBg ? normalizeHex(theme.headerBg) : DEFAULT_HEADER;
+  if (LEGACY_PRIMARY.has(headerRaw) || LEGACY_HEADER.has(headerRaw)) {
+    headerRaw = DEFAULT_HEADER;
   }
 
-  const mid = darkenHex(primary, 0.12);
-  const dark = darkenHex(primary, 0.24);
-  const hover = lightenHex(primary, 0.18);
-  const light = lightenHex(primary, 0.9);
+  const useBrand =
+    primary === ALOHA_PALETTE.green ||
+    LEGACY_PRIMARY.has(normalizeHex(theme?.primaryColor));
+
+  const dark = useBrand ? ALOHA_PALETTE.darkGreen : darkenHex(primary, 0.2);
+  const mid = dark;
+  const hover = useBrand ? ALOHA_PALETTE.darkGreen : darkenHex(primary, 0.1);
+  const light = useBrand ? ALOHA_PALETTE.hoverBg : lightenHex(primary, 0.92);
   const bright = lightenHex(primary, 0.35);
 
   return {
@@ -124,17 +175,22 @@ export function buildThemeCssVars(theme?: ThemeColors | null): AlohaCssVars {
     "--aloha-green-hover": hover,
     "--aloha-green-mid": mid,
     "--aloha-green-dark": dark,
-    "--aloha-green-light": light,
+    "--aloha-green-light": useBrand ? ALOHA_PALETTE.creamLight : light,
     "--aloha-green-bright": bright,
-    "--aloha-gold": "#F59E0B",
+    "--aloha-gold": ALOHA_PALETTE.terracotta,
+    "--aloha-terracotta": ALOHA_PALETTE.terracotta,
+    "--aloha-terracotta-hover": ALOHA_PALETTE.terracottaHover,
     "--aloha-header": headerRaw,
-    "--aloha-cream": "#F7FCF8",
-    "--aloha-card": "#FFFFFF",
-    "--aloha-ink": "#134E2E",
-    "--aloha-muted": "#5B7C6A",
-    "--aloha-line": "#D8EEE0",
-    "--aloha-price": "#F59E0B",
-    "--aloha-sale": "#E11D48",
+    "--aloha-cream": ALOHA_PALETTE.cream,
+    "--aloha-cream-dark": ALOHA_PALETTE.creamDark,
+    "--aloha-cream-light": ALOHA_PALETTE.creamLight,
+    "--aloha-surface": ALOHA_PALETTE.surface,
+    "--aloha-card": ALOHA_PALETTE.white,
+    "--aloha-ink": ALOHA_PALETTE.ink,
+    "--aloha-muted": ALOHA_PALETTE.muted,
+    "--aloha-line": ALOHA_PALETTE.line,
+    "--aloha-price": primary,
+    "--aloha-sale": "#D45454",
     "--aloha-font": fontCssStack(theme?.fontFamily),
   };
 }
@@ -146,7 +202,6 @@ export function themeCssVarsStyle(theme?: ThemeColors | null): string {
     .join(";");
 }
 
-/** Áp lên <html> — client sync sau publish. */
 export function applyThemeCssVars(theme?: ThemeColors | null) {
   if (typeof document === "undefined") return;
   const v = buildThemeCssVars(theme);

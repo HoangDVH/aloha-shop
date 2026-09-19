@@ -1,27 +1,32 @@
 @import "tailwindcss";
 
 :root {
-  /* Palette Aloha — xanh tươi + nền mint + giá cam (shop cây cảnh) */
-  --aloha-green: #16c45a;
-  --aloha-green-hover: #22c55e;
-  --aloha-green-mid: #12a34a;
-  --aloha-green-dark: #0e8a3e;
-  --aloha-green-light: #e9fbf0;
-  --aloha-green-bright: #4ade80;
-  --aloha-gold: #f59e0b;
-  --aloha-header: #12a34a;
-  --aloha-cream: #f7fcf8;
+  /* Header/footer kem ấm #FEF0D3; navbar trắng; nút/nav xanh #5F7D4E */
+  --aloha-green: #5f7d4e;
+  --aloha-green-hover: #3f5f35;
+  --aloha-green-mid: #3f5f35;
+  --aloha-green-dark: #3f5f35;
+  --aloha-green-light: #eef2eb;
+  --aloha-green-bright: #7a9a68;
+  --aloha-gold: #c67b5c;
+  --aloha-terracotta: #c67b5c;
+  --aloha-terracotta-hover: #b0684a;
+  --aloha-header: #fef0d3;
+  --aloha-cream: #faf9f5;
+  --aloha-cream-dark: #fef0d3;
+  --aloha-cream-light: #ffffff;
+  --aloha-surface: #f5f5f5;
   --aloha-card: #ffffff;
-  --aloha-ink: #134e2e;
-  --aloha-muted: #5b7c6a;
-  --aloha-line: #d8eee0;
-  --aloha-price: #f59e0b;
-  --aloha-sale: #e11d48;
+  --aloha-ink: #292b27;
+  --aloha-muted: #73766f;
+  --aloha-line: #ebe8dc;
+  --aloha-price: #5f7d4e;
+  --aloha-sale: #d45454;
   --aloha-error: #dc6b6b;
   --aloha-radius: 0.875rem;
   --aloha-radius-lg: 1.25rem;
-  --aloha-shadow: 0 2px 14px rgba(18, 163, 74, 0.07);
-  --aloha-shadow-lg: 0 16px 40px rgba(22, 196, 90, 0.16);
+  --aloha-shadow: 0 2px 14px rgba(63, 95, 53, 0.07);
+  --aloha-shadow-lg: 0 16px 40px rgba(95, 125, 78, 0.12);
   --aloha-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --shop-chrome-h: 7.5rem;
 }
@@ -30,9 +35,14 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Search dropdown mở: thanh danh mục không nhận click (tránh cướp hàng SP đầu). */
+html[data-shop-search-open] header nav {
+  pointer-events: none !important;
+}
+
 body {
   color: var(--aloha-ink);
-  background: var(--aloha-cream);
+  background: var(--aloha-surface);
   font-family: var(--aloha-font, "Segoe UI", ui-sans-serif, system-ui, sans-serif);
   overflow-x: clip;
 }
@@ -60,18 +70,71 @@ body {
   filter: brightness(0.97);
 }
 
-/* Sticky bottom bars (PDP / giỏ / checkout) — luôn có đệm đáy + safe-area */
+/* Sticky bottom bars (PDP / giỏ / checkout) — đệm đáy + safe-area; nhấc lên trên tab bar mobile */
 .shop-sticky-bottom {
-  padding-bottom: calc(0.625rem + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--shop-mobile-tab-h, 0px) + env(safe-area-inset-bottom, 0px)) !important;
+  padding-bottom: 0.625rem;
 }
 
 .shop-pb-sticky {
-  padding-bottom: calc(11rem + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(
+    11rem + var(--shop-mobile-tab-h, 0px) + env(safe-area-inset-bottom, 0px)
+  );
+}
+
+/* Tab bar mobile sticky */
+:root {
+  --shop-mobile-tab-h: 0px;
+  --font-hero-script: "Great Vibes", "Segoe Script", "Apple Chancery", cursive;
+}
+
+@media (max-width: 1023px) {
+  :root {
+    --shop-mobile-tab-h: 3.35rem;
+  }
+
+  .shop-storefront-with-tabbar {
+    padding-bottom: calc(var(--shop-mobile-tab-h) + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+.shop-mobile-tabbar {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-shadow: 0 -4px 18px rgba(41, 43, 39, 0.06);
+}
+
+.shop-mobile-tab {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  min-width: 0;
+  padding: 0.35rem 0.25rem;
+  color: #5c5f58;
+  font-size: 0.65rem;
+  font-weight: 500;
+  line-height: 1.1;
+  text-decoration: none;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.shop-mobile-tab.is-active {
+  color: var(--aloha-green-dark, #3f5f35);
+  font-weight: 700;
 }
 
 @media (min-width: 1024px) {
   .shop-pb-sticky {
     padding-bottom: 0;
+  }
+
+  .shop-mobile-tabbar {
+    display: none;
   }
 }
 
@@ -97,7 +160,7 @@ body {
   width: 100%;
   aspect-ratio: 1 / 1;
   overflow: hidden;
-  background: var(--aloha-cream, #f7fcf8);
+  background: var(--aloha-cream, #fffdd0);
   flex-shrink: 0;
 }
 
@@ -127,7 +190,7 @@ body {
   height: auto;
   overflow: hidden;
   border-radius: 0.75rem;
-  background: var(--aloha-cream, #f7fcf8);
+  background: var(--aloha-cream, #fffdd0);
 }
 
 .article-cover__img,
@@ -195,7 +258,7 @@ body {
   max-width: 100% !important;
   border-radius: 0.75rem;
   border: 1px solid #e5e7eb;
-  background: var(--aloha-cream, #f7fcf8);
+  background: var(--aloha-cream, #fffdd0);
   cursor: zoom-in;
 }
 
@@ -540,7 +603,7 @@ body {
 }
 
 .auth-google:hover {
-  background: var(--aloha-cream, #f7fcf8);
+  background: var(--aloha-cream, #fffdd0);
   border-color: #cbd5e1;
   box-shadow: 0 8px 20px -14px rgba(15, 23, 42, 0.35);
   transform: translateY(-1px);
@@ -680,12 +743,229 @@ body {
   }
 }
 
-/* Hero — lifestyle shop, kích mua (vẫn theo --aloha-* appearance) */
+/* Hero full-bleed — full ngang, cao 80svh−chrome; ảnh đúng tỉ lệ khung + cover */
+.hero-banner--full {
+  color: var(--aloha-ink);
+  padding: 0;
+  background: var(--aloha-cream, #fffdd0);
+  width: 100%;
+  max-width: 100vw;
+  overflow: hidden;
+}
+
+.hero-banner--full .hero-banner__full-inner {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+
+.hero-banner--full .hero-banner__stage {
+  position: relative;
+  padding: 0;
+  width: 100%;
+  height: calc(80svh - var(--shop-chrome-h, 7.5rem));
+  min-height: 14rem;
+  background: var(--aloha-cream, #fffdd0);
+}
+
+.hero-banner--full .hero-banner__stage::before {
+  display: none;
+}
+
+.hero-banner--full .embla--hero {
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+}
+
+.hero-banner--full .embla--hero .embla__container {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+}
+
+.hero-banner--full .embla--hero .embla__slide {
+  flex: 0 0 100%;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+
+.hero-banner--full .embla--hero .embla__slide.is-active {
+  opacity: 1;
+  transform: none;
+}
+
+.hero-banner--full .hero-banner__frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  max-height: none;
+  border-radius: 0;
+  border: none;
+  background: var(--aloha-cream, #fffdd0);
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.hero-banner--full .hero-banner__frame:hover .hero-banner__img {
+  transform: none;
+}
+
+.hero-banner--full .hero-banner__img {
+  width: 100%;
+  height: 100%;
+  /* Ảnh đã thiết kế đúng tỉ lệ khung → cover không cắt SP */
+  object-fit: cover;
+  object-position: right center;
+  background: var(--aloha-cream, #fffdd0);
+  transition: none;
+  transform: none !important;
+}
+
+.hero-banner--full .embla--hero .embla__slide.is-active .hero-banner__img {
+  transform: none !important;
+}
+
+.hero-banner--full .hero-banner__copy-overlay {
+  position: absolute;
+  z-index: 2;
+  inset: 0 auto 0 0;
+  width: min(48%, 34rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(1.25rem, 4vw, 3rem) clamp(1rem, 3.5vw, 3.25rem);
+  pointer-events: none;
+}
+
+.hero-banner--full .hero-banner__copy-overlay a {
+  pointer-events: auto;
+}
+
+.hero-banner--full .hero-banner__eyebrow-script {
+  margin: 0 0 0.45rem;
+  font-family: var(--font-hero-script);
+  font-size: clamp(1.55rem, 3.4vw, 2.35rem);
+  font-style: normal;
+  font-weight: 400;
+  color: var(--aloha-green-dark, #3f5f35);
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  white-space: normal;
+}
+
+.hero-banner--full .hero-banner__headline-overlay {
+  margin: 0;
+  font-family: "Be Vietnam Pro", var(--aloha-font), "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(1.45rem, 3.2vw, 2.65rem);
+  font-weight: 800;
+  line-height: 1.22;
+  letter-spacing: -0.02em;
+  color: var(--aloha-ink);
+  word-break: keep-all;
+  overflow-wrap: normal;
+  text-wrap: pretty;
+  hyphens: none;
+}
+
+.hero-banner--full .hero-banner__desc-overlay {
+  margin: 0.85rem 0 0;
+  max-width: 28rem;
+  font-size: clamp(0.88rem, 1.35vw, 1.05rem);
+  line-height: 1.55;
+  color: var(--aloha-muted);
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+.hero-banner--full .hero-banner__copy-overlay .hero-banner__cta {
+  margin-top: 1.25rem;
+  align-self: flex-start;
+}
+
+.hero-banner--full .hero-banner__controls {
+  position: absolute;
+  z-index: 3;
+  left: clamp(1rem, 3.5vw, 3.25rem);
+  bottom: 1rem;
+  margin: 0;
+  gap: 0.65rem;
+  justify-content: flex-start;
+}
+
+@media (max-width: 767px) {
+  .hero-banner--full .hero-banner__stage {
+    min-height: 14rem;
+    height: calc(70svh - var(--shop-chrome-h, 7.5rem));
+  }
+
+  .hero-banner--full .hero-banner__copy-overlay {
+    width: min(92%, 24rem);
+    padding: 1.1rem 1rem 4.5rem;
+    justify-content: flex-end;
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      color-mix(in srgb, var(--aloha-cream) 88%, transparent) 45%,
+      color-mix(in srgb, var(--aloha-cream) 96%, transparent) 100%
+    );
+  }
+
+  /* Mobile: chỉ giữ tiêu đề lớn — ẩn script + mô tả */
+  .hero-banner--full .hero-banner__eyebrow-script,
+  .hero-banner--full .hero-banner__desc-overlay {
+    display: none;
+  }
+
+  .hero-banner--full .hero-banner__headline-overlay {
+    font-size: clamp(1.25rem, 5.5vw, 1.55rem);
+    line-height: 1.2;
+  }
+
+  .hero-banner--full .hero-banner__copy-overlay .hero-banner__cta {
+    margin-top: 0.85rem;
+    min-height: 2.35rem;
+    padding: 0.45rem 0.95rem;
+    font-size: 0.8rem;
+    gap: 0.3rem;
+    box-shadow:
+      0 1px 0 color-mix(in srgb, #fff 18%, transparent) inset,
+      0 6px 14px color-mix(in srgb, var(--aloha-terracotta, #c67b5c) 22%, transparent);
+  }
+
+  .hero-banner--full .hero-banner__copy-overlay .hero-banner__cta svg {
+    width: 0.95rem;
+    height: 0.95rem;
+  }
+
+  .hero-banner--full .hero-banner__img {
+    object-fit: cover;
+    object-position: right center;
+  }
+
+  .hero-banner--full .hero-banner__controls {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    bottom: 0.75rem;
+  }
+}
+
+/* Hero — nền kem + chữ tối + CTA xanh (palette mock) */
 .hero-banner {
   position: relative;
   width: 100%;
   overflow: hidden;
-  color: #fff;
+  color: var(--aloha-ink);
   isolation: isolate;
 }
 
@@ -695,21 +975,20 @@ body {
   z-index: 0;
   background:
     linear-gradient(
-      118deg,
-      color-mix(in srgb, var(--aloha-green-dark) 92%, #062010) 0%,
-      var(--aloha-green-mid) 42%,
-      color-mix(in srgb, var(--aloha-green) 78%, #1a5c2e) 100%
+      160deg,
+      #ffffff 0%,
+      var(--aloha-cream, #fffdd0) 55%,
+      var(--aloha-cream-light, #fffee8) 100%
     );
 }
 
 .hero-banner__mesh {
   position: absolute;
   inset: 0;
-  opacity: 0.35;
+  opacity: 0.75;
   background:
-    radial-gradient(ellipse 70% 55% at 18% 20%, color-mix(in srgb, #fff 18%, transparent), transparent 60%),
-    radial-gradient(ellipse 55% 50% at 82% 78%, color-mix(in srgb, var(--aloha-gold, #c9a227) 28%, transparent), transparent 62%),
-    radial-gradient(circle at 50% 120%, color-mix(in srgb, #000 35%, transparent), transparent 55%);
+    radial-gradient(ellipse 60% 48% at 10% 15%, color-mix(in srgb, var(--aloha-green) 8%, transparent), transparent 58%),
+    radial-gradient(ellipse 48% 42% at 90% 75%, color-mix(in srgb, var(--aloha-cream-light) 80%, transparent), transparent 62%);
   pointer-events: none;
 }
 
@@ -725,7 +1004,7 @@ body {
   right: -8%;
   width: min(52vw, 28rem);
   height: min(52vw, 28rem);
-  background: radial-gradient(circle, color-mix(in srgb, #fff 22%, transparent), transparent 70%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--aloha-green) 14%, transparent), transparent 70%);
   animation: hero-orb-a 14s ease-in-out infinite alternate;
 }
 
@@ -734,7 +1013,7 @@ body {
   left: -12%;
   width: min(60vw, 32rem);
   height: min(60vw, 32rem);
-  background: radial-gradient(circle, color-mix(in srgb, var(--aloha-green) 45%, transparent), transparent 68%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--aloha-green-dark) 12%, transparent), transparent 68%);
   animation: hero-orb-b 16s ease-in-out infinite alternate;
 }
 
@@ -743,10 +1022,10 @@ body {
   width: 7rem;
   height: 7rem;
   border-radius: 70% 30% 68% 32% / 42% 62% 38% 58%;
-  background: color-mix(in srgb, #fff 8%, transparent);
-  border: 1px solid color-mix(in srgb, #fff 12%, transparent);
+  background: color-mix(in srgb, var(--aloha-green) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--aloha-green) 16%, transparent);
   pointer-events: none;
-  opacity: 0.55;
+  opacity: 0.45;
 }
 
 .hero-banner__leaf--1 {
@@ -872,9 +1151,9 @@ body {
   gap: 0.4rem;
   padding: 0.38rem 0.8rem 0.38rem 0.55rem;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, #fff 30%, transparent);
-  background: color-mix(in srgb, #fff 14%, transparent);
-  color: #fff;
+  border: 1px solid color-mix(in srgb, var(--aloha-green) 28%, transparent);
+  background: color-mix(in srgb, var(--aloha-green) 10%, var(--aloha-cream-light, #ffffff));
+  color: var(--aloha-green-dark);
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.1em;
@@ -894,15 +1173,10 @@ body {
   font-weight: 800;
   letter-spacing: 0.28em;
   text-transform: uppercase;
-  background: linear-gradient(
-    100deg,
-    #fff 0%,
-    color-mix(in srgb, var(--aloha-cream) 55%, #fff) 40%,
-    color-mix(in srgb, var(--aloha-gold, #c9a227) 70%, #fff) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--aloha-green-dark);
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
 }
 
 .hero-banner__headline {
@@ -911,17 +1185,18 @@ body {
   line-height: 1.08;
   letter-spacing: -0.03em;
   text-wrap: balance;
-  text-shadow: 0 12px 32px color-mix(in srgb, #000 30%, transparent);
+  color: var(--aloha-ink);
+  text-shadow: none;
 }
 
 .hero-banner__headline em {
   font-style: normal;
-  color: color-mix(in srgb, var(--aloha-cream) 88%, #fff);
+  color: var(--aloha-green-dark);
   background: linear-gradient(
     180deg,
     transparent 62%,
-    color-mix(in srgb, var(--aloha-gold, #c9a227) 45%, transparent) 62%,
-    color-mix(in srgb, var(--aloha-gold, #c9a227) 45%, transparent) 88%,
+    color-mix(in srgb, var(--aloha-green) 28%, transparent) 62%,
+    color-mix(in srgb, var(--aloha-green) 28%, transparent) 88%,
     transparent 88%
   );
 }
@@ -931,7 +1206,7 @@ body {
   max-width: 30rem;
   font-size: clamp(0.92rem, 1.45vw, 1.08rem);
   line-height: 1.62;
-  color: color-mix(in srgb, #fff 86%, transparent);
+  color: var(--aloha-muted);
   animation: hero-rise 0.75s 0.08s ease both;
 }
 
@@ -966,16 +1241,19 @@ body {
 }
 
 .hero-banner__cta--primary {
-  background: linear-gradient(180deg, #fff 0%, var(--aloha-cream) 100%);
-  color: var(--aloha-green-mid);
+  background: var(--aloha-terracotta, #c67b5c);
+  color: #fff;
   box-shadow:
-    0 14px 34px color-mix(in srgb, #000 28%, transparent),
-    0 0 0 1px color-mix(in srgb, #fff 50%, transparent);
+    0 1px 0 color-mix(in srgb, #fff 22%, transparent) inset,
+    0 12px 28px color-mix(in srgb, var(--aloha-terracotta, #c67b5c) 32%, transparent);
 }
 
 .hero-banner__cta--primary:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 18px 40px color-mix(in srgb, #000 34%, transparent);
+  transform: translateY(-2px);
+  background: var(--aloha-terracotta-hover, #b0684a);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, #fff 18%, transparent) inset,
+    0 16px 34px color-mix(in srgb, var(--aloha-terracotta-hover, #b0684a) 36%, transparent);
 }
 
 .hero-banner__cta--primary:hover svg {
@@ -987,16 +1265,16 @@ body {
 }
 
 .hero-banner__cta--ghost {
-  border: 1.5px solid color-mix(in srgb, #fff 65%, transparent);
-  background: color-mix(in srgb, #fff 10%, transparent);
-  color: #fff;
-  backdrop-filter: blur(8px);
+  border: 1.5px solid color-mix(in srgb, var(--aloha-green) 45%, transparent);
+  background: #fff;
+  color: var(--aloha-green-dark);
+  backdrop-filter: none;
 }
 
 .hero-banner__cta--ghost:hover {
   transform: translateY(-3px);
-  border-color: #fff;
-  background: color-mix(in srgb, #fff 20%, transparent);
+  border-color: var(--aloha-green);
+  background: var(--aloha-cream-light, #ffffff);
 }
 
 .hero-banner__trust {
@@ -1015,11 +1293,11 @@ body {
   gap: 0.4rem;
   font-size: 0.8rem;
   font-weight: 600;
-  color: color-mix(in srgb, #fff 88%, transparent);
+  color: var(--aloha-muted);
 }
 
 .hero-banner__trust li svg {
-  color: color-mix(in srgb, #bbf7d0 80%, #fff);
+  color: var(--aloha-green);
 }
 
 .hero-banner__media {
@@ -1044,15 +1322,15 @@ body {
   max-width: 12rem;
   padding: 0.5rem 1.15rem;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--aloha-green-dark) 88%, #000);
-  border: 1px solid color-mix(in srgb, var(--aloha-gold, #c9a227) 55%, #fff);
-  color: #f6e7a0;
+  background: var(--aloha-green-dark);
+  border: 1px solid color-mix(in srgb, var(--aloha-green) 40%, #fff);
+  color: #fff;
   font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   text-align: center;
-  box-shadow: 0 10px 24px color-mix(in srgb, #000 28%, transparent);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--aloha-green-dark) 28%, transparent);
   animation: hero-chip-in 0.4s ease both;
 }
 
@@ -1069,7 +1347,7 @@ body {
   bottom: 0.15rem;
   height: 1.6rem;
   border-radius: 50%;
-  background: color-mix(in srgb, #000 38%, transparent);
+  background: color-mix(in srgb, var(--aloha-ink) 18%, transparent);
   filter: blur(14px);
   pointer-events: none;
 }
@@ -1109,14 +1387,13 @@ body {
   overflow: hidden;
   aspect-ratio: 1 / 1;
   border-radius: calc(var(--aloha-radius-lg) + 0.15rem);
-  border: 2px solid color-mix(in srgb, var(--aloha-gold, #c9a227) 50%, #fff);
+  border: 2px solid color-mix(in srgb, var(--aloha-green) 28%, #fff);
   background:
-    linear-gradient(160deg, color-mix(in srgb, #fff 8%, transparent), transparent 40%),
-    color-mix(in srgb, #0f1f12 75%, var(--aloha-green-dark));
+    linear-gradient(160deg, color-mix(in srgb, #fff 55%, transparent), transparent 40%),
+      var(--aloha-cream-light, #ffffff);
   box-shadow:
-    0 22px 48px color-mix(in srgb, #000 40%, transparent),
-    0 0 0 1px color-mix(in srgb, #fff 14%, transparent),
-    inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent);
+    0 18px 40px color-mix(in srgb, var(--aloha-green-dark) 14%, transparent),
+    0 0 0 1px var(--aloha-line);
 }
 
 .hero-banner__frame:hover .hero-banner__img {
@@ -1140,7 +1417,7 @@ body {
   background: linear-gradient(
     90deg,
     transparent,
-    color-mix(in srgb, #fff 28%, transparent),
+    color-mix(in srgb, #fff 40%, transparent),
     transparent
   );
   opacity: 0;
@@ -1184,20 +1461,20 @@ body {
   height: 0.38rem;
   width: 0.38rem;
   border-radius: 999px;
-  background: color-mix(in srgb, #fff 38%, transparent);
+  background: color-mix(in srgb, var(--aloha-green) 28%, transparent);
   transition: width 0.25s ease, background 0.25s ease;
 }
 
 .hero-banner__dot.is-active {
   width: 1.85rem;
-  background: color-mix(in srgb, #fff 22%, transparent);
+  background: color-mix(in srgb, var(--aloha-green) 18%, transparent);
 }
 
 .hero-banner__dot-progress {
   position: absolute;
   inset: 0;
   transform-origin: left center;
-  background: color-mix(in srgb, var(--aloha-gold, #c9a227) 55%, #fff);
+  background: var(--aloha-green);
   border-radius: inherit;
   animation-name: hero-dot-fill;
   animation-timing-function: linear;
@@ -1211,16 +1488,16 @@ body {
   width: 2.45rem;
   height: 2.45rem;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, #fff 35%, transparent);
-  background: color-mix(in srgb, #fff 12%, transparent);
-  color: #fff;
-  backdrop-filter: blur(10px);
+  border: 1px solid var(--aloha-line);
+  background: #fff;
+  color: var(--aloha-green-dark);
+  backdrop-filter: none;
   transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
 }
 
 .hero-banner__nav:hover {
-  background: color-mix(in srgb, #fff 24%, transparent);
-  border-color: #fff;
+  background: var(--aloha-cream-light, #ffffff);
+  border-color: var(--aloha-green);
   transform: scale(1.06);
 }
 

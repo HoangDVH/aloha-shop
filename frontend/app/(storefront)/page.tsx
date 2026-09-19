@@ -8,6 +8,7 @@ import { ProductGrid } from "@/components/ProductCard";
 import { CatalogLayout } from "@/components/CatalogLayout";
 import { fetchAppearance } from "@/lib/appearance";
 import {
+  renderHomeMainSections,
   renderProductBlocks,
   renderTopBlocks,
   splitHomeBlocks,
@@ -63,11 +64,11 @@ export async function generateMetadata({
 
 async function HomeSections() {
   const appearance = await fetchAppearance();
-  const { top, products } = splitHomeBlocks(appearance.blocks);
+  const { top } = splitHomeBlocks(appearance.blocks);
   let err = "";
-  let productNode: ReactNode = null;
+  let main: ReactNode = null;
   try {
-    productNode = await renderProductBlocks(products);
+    main = await renderHomeMainSections();
   } catch (e: any) {
     err = e?.message || "Không tải được catalog.";
   }
@@ -75,14 +76,14 @@ async function HomeSections() {
   return (
     <>
       {await renderTopBlocks(top)}
-      <div className="mx-auto max-w-7xl space-y-12 px-4 py-5 sm:space-y-16 sm:py-8">
-        {err ? (
+      {err ? (
+        <div className="mx-auto max-w-7xl px-4 py-4">
           <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-200">
             {err}
           </p>
-        ) : null}
-        {productNode}
-      </div>
+        </div>
+      ) : null}
+      {main}
     </>
   );
 }

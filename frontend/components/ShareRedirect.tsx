@@ -5,10 +5,9 @@ import { useEffect } from "react";
 /** Chuyển người dùng sang trang SP; bot Facebook vẫn đọc OG trên /sp/[ma]. */
 export function ShareRedirect({ href }: { href: string }) {
   useEffect(() => {
-    const t = window.setTimeout(() => {
-      window.location.replace(href);
-    }, 80);
-    return () => window.clearTimeout(t);
+    if (!href) return;
+    // Ngay lập tức — không delay (Strict Mode dễ clearTimeout trước khi chạy).
+    window.location.replace(href);
   }, [href]);
   return null;
 }

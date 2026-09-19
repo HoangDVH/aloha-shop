@@ -2,6 +2,7 @@
 
 /**
  * SSE phiên CTV/auth — khi admin duyệt tài khoản, shop nhận ngay (không F5).
+ * Poll chỉ khi SSE down + tab visible (không boot poll sau hello).
  */
 export const SHOP_ACCOUNT_CHANGED = "aloha-shop-account-changed";
 
@@ -33,6 +34,15 @@ function emitAccount(detail: ShopAccountChangeDetail) {
   window.dispatchEvent(new CustomEvent(SHOP_ACCOUNT_CHANGED, { detail }));
 }
 
+function isPageVisible() {
+  return typeof document === "undefined" || document.visibilityState === "visible";
+}
+
+function nextBackoffMs(attempt: number) {
+  const base = Math.min(30_000, 2000 * Math.pow(2, Math.max(0, attempt)));
+  return base + Math.floor(Math.random() * 500);
+}
+
 /** Mở SSE /api/shop/auth/stream (cần cookie đăng nhập). */
 export function startShopAuthStream(): () => void {
   if (typeof window === "undefined") return () => {};
@@ -41,6 +51,8 @@ export function startShopAuthStream(): () => void {
   let stopped = false;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   let pollTimer: ReturnType<typeof setInterval> | null = null;
+  let sseOk = false;
+  let reconnectAttempt = 0;
 
   const clearPoll = () => {
     if (pollTimer) {
@@ -51,13 +63,26 @@ export function startShopAuthStream(): () => void {
 
   const startPoll = () => {
     if (pollTimer || stopped) return;
+    if (!isPageVisible()) return;
     pollTimer = setInterval(() => {
+      if (!isPageVisible() || sseOk) return;
       emitAccount({ at: Date.now(), source: "auth-poll" });
-    }, 12_000);
+    }, 30_000);
+  };
+
+  const scheduleReconnect = () => {
+    if (stopped || reconnectTimer) return;
+    const delay = nextBackoffMs(reconnectAttempt);
+    reconnectAttempt += 1;
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      connect();
+    }, delay);
   };
 
   const connect = () => {
-    if (stopped || typeof EventSource === "undefined") {
+    if (stopped) return;
+    if (typeof EventSource === "undefined") {
       startPoll();
       return;
     }
@@ -69,9 +94,13 @@ export function startShopAuthStream(): () => void {
       return;
     }
     es.addEventListener("hello", () => {
+      sseOk = true;
+      reconnectAttempt = 0;
       clearPoll();
     });
     es.addEventListener("account", (ev) => {
+      sseOk = true;
+      reconnectAttempt = 0;
       clearPoll();
       try {
         const data = JSON.parse(String((ev as MessageEvent).data || "{}")) as {
@@ -91,6 +120,7 @@ export function startShopAuthStream(): () => void {
       }
     });
     es.onerror = () => {
+      sseOk = false;
       try {
         es?.close();
       } catch {
@@ -102,22 +132,31 @@ export function startShopAuthStream(): () => void {
     };
   };
 
-  const scheduleReconnect = () => {
-    if (stopped || reconnectTimer) return;
-    reconnectTimer = setTimeout(() => {
-      reconnectTimer = null;
-      connect();
-    }, 2500);
+  const onVis = () => {
+    if (stopped) return;
+    if (!isPageVisible()) {
+      clearPoll();
+      return;
+    }
+    if (!sseOk) {
+      startPoll();
+      if (!es && !reconnectTimer) scheduleReconnect();
+    }
   };
 
   connect();
-  const boot = setTimeout(() => startPoll(), 5000);
+  // Chỉ fallback nếu sau 5s chưa hello — không luôn bật poll khi SSE đã ổn
+  const boot = setTimeout(() => {
+    if (!sseOk) startPoll();
+  }, 5000);
+  document.addEventListener("visibilitychange", onVis);
 
   return () => {
     stopped = true;
     clearTimeout(boot);
     if (reconnectTimer) clearTimeout(reconnectTimer);
     clearPoll();
+    document.removeEventListener("visibilitychange", onVis);
     try {
       es?.close();
     } catch {

@@ -59,11 +59,13 @@ const SHOP_PREVIEW_URL =
   "http://localhost:3002";
 
 const COLOR_PRESETS = [
+  "#5F7D4E",
+  "#3F5F35",
+  "#C67B5C",
+  "#B0684A",
   "#16C45A",
   "#12A34A",
-  "#22C55E",
   "#0D9488",
-  "#3DDC84",
   "#4F46E5",
   "#7C3AED",
   "#DB2777",
@@ -71,9 +73,12 @@ const COLOR_PRESETS = [
   "#F59E0B",
   "#CA8A04",
   "#334155",
-  "#134E2E",
+  "#292B27",
+  "#FAF9F5",
   "#FFFFFF",
 ];
+
+const HEADER_FOR_PRIMARY = "#FAF9F5";
 
 type SidePanel = "brand" | "home" | "menu" | "footer";
 
@@ -695,7 +700,7 @@ export function ShopAppearanceEditor() {
                                     theme: {
                                       ...draft.theme,
                                       primaryColor: c,
-                                      headerBg: "#12A34A",
+                                      headerBg: HEADER_FOR_PRIMARY,
                                     },
                                   })
                                 }
@@ -723,7 +728,7 @@ export function ShopAppearanceEditor() {
                                   theme: {
                                     ...draft.theme,
                                     primaryColor: e.target.value,
-                                    headerBg: "#12A34A",
+                                    headerBg: HEADER_FOR_PRIMARY,
                                   },
                                 })
                               }

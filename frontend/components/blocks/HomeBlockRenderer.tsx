@@ -1,8 +1,11 @@
 import type { ReactNode } from "react";
 import { HeroBanner, type HeroSlide } from "@/components/HeroBanner";
-import { WhyAloha } from "@/components/WhyAloha";
-import { HomeProductSection } from "@/components/HomeProductSection";
+import { HomeTrustBar } from "@/components/HomeTrustBar";
+import { HomeFeaturedCategories } from "@/components/HomeFeaturedCategories";
+import { HomeFeaturedProducts } from "@/components/HomeFeaturedProducts";
+import { HomePromoStrip } from "@/components/HomePromoStrip";
 import { HomeArticleSection } from "@/components/HomeArticleSection";
+import { HomeProductSection } from "@/components/HomeProductSection";
 import { categoryHref, fetchArticles, fetchProducts } from "@/lib/api";
 import type { AppearanceBlock } from "@/lib/appearanceTypes";
 
@@ -13,12 +16,8 @@ async function ProductSectionBlock({ props }: { props: Record<string, unknown> }
   const sort = String(props.sort || "ban_chay");
   const categoryId = Number(props.categoryId) || 0;
   const nhomPath = String(props.nhomPath || "").trim();
-  const nhomSlug = String(
-    props.categorySlug || props.nhomSlug || ""
-  ).trim();
-  const nhomName = String(
-    props.categoryName || props.nhomName || title
-  ).trim();
+  const nhomSlug = String(props.categorySlug || props.nhomSlug || "").trim();
+  const nhomName = String(props.categoryName || props.nhomName || title).trim();
   const byCategory =
     (source === "nhom" || source === "category") &&
     (categoryId > 0 || Boolean(nhomPath));
@@ -26,7 +25,6 @@ async function ProductSectionBlock({ props }: { props: Record<string, unknown> }
     source === "ban_chay" || source === "moi" || source === "noi_bat";
 
   let products: Awaited<ReturnType<typeof fetchProducts>>["items"] = [];
-  /** Bán chạy: danh sách thực tế dùng sort doanh thu (không có nhãn tay). */
   let banChayByRevenue = false;
   try {
     if (byBadge) {
@@ -36,7 +34,6 @@ async function ProductSectionBlock({ props }: { props: Record<string, unknown> }
         badge: source as "ban_chay" | "moi" | "noi_bat",
         sort: "ten",
       });
-      // Mục Bán chạy: chưa gắn nhãn → fallback xếp theo doanh thu như cũ
       if (!res.items?.length && source === "ban_chay") {
         res = await fetchProducts({ page: 1, limit, sort: "ban_chay" });
         banChayByRevenue = true;
@@ -48,8 +45,7 @@ async function ProductSectionBlock({ props }: { props: Record<string, unknown> }
         limit,
         sort,
         categoryId: byCategory && categoryId > 0 ? categoryId : undefined,
-        nhom:
-          byCategory && !(categoryId > 0) && nhomPath ? nhomPath : undefined,
+        nhom: byCategory && !(categoryId > 0) && nhomPath ? nhomPath : undefined,
       });
       products = res.items || [];
     }
@@ -77,7 +73,6 @@ async function ProductSectionBlock({ props }: { props: Record<string, unknown> }
 
 async function ArticleSectionBlock({ props }: { props: Record<string, unknown> }) {
   const title = String(props.title || "Bài viết mới");
-  // Trang chủ: 1 hàng 4 bài — lấy tối thiểu 4
   const limit = Math.max(4, Math.min(8, Number(props.limit) || 4));
   let articles: Awaited<ReturnType<typeof fetchArticles>>["items"] = [];
   try {
@@ -95,60 +90,6 @@ function HeroBlock({ props }: { props: Record<string, unknown> }) {
     ? (props.slides as HeroSlide[]).filter((s) => s?.src)
     : undefined;
   return <HeroBanner slides={slides?.length ? slides : undefined} />;
-}
-
-export async function HomeBlockRenderer({ blocks }: { blocks: AppearanceBlock[] }) {
-  const enabled = (blocks || []).filter((b) => b && b.enabled !== false);
-  const sections: ReactNode[] = [];
-
-  for (const b of enabled) {
-    try {
-      if (b.type === "hero" || b.type === "banner_carousel") {
-        sections.push(
-          <div key={b.id}>
-            <HeroBlock props={b.props || {}} />
-          </div>
-        );
-      } else if (b.type === "feature_strip") {
-        sections.push(
-          <div key={b.id}>
-            <WhyAloha />
-          </div>
-        );
-      } else if (b.type === "product_section") {
-        sections.push(
-          <div key={b.id}>
-            <ProductSectionBlock props={b.props || {}} />
-          </div>
-        );
-      } else if (b.type === "article_section") {
-        sections.push(
-          <div key={b.id}>
-            <ArticleSectionBlock props={b.props || {}} />
-          </div>
-        );
-      } else if (b.type === "rich_text") {
-        const html = String(b.props?.html || b.props?.text || "").trim();
-        if (html) {
-          sections.push(
-            <div
-              key={b.id}
-              className="mx-auto max-w-7xl px-4 py-4 text-sm text-[var(--aloha-green)]"
-            >
-              {html}
-            </div>
-          );
-        }
-      } else if (b.type === "spacer") {
-        sections.push(<div key={b.id} className="h-6" />);
-      }
-    } catch {
-      /* skip broken block */
-    }
-  }
-
-  const productBlocks = sections.filter(Boolean);
-  return <>{productBlocks}</>;
 }
 
 /** Tách hero/feature vs product rows for page layout. */
@@ -172,6 +113,7 @@ export function splitHomeBlocks(blocks: AppearanceBlock[]) {
 
 export async function renderTopBlocks(blocks: AppearanceBlock[]) {
   const nodes: ReactNode[] = [];
+  let showedTrust = false;
   for (const b of blocks) {
     if (b.type === "hero" || b.type === "banner_carousel") {
       nodes.push(
@@ -182,12 +124,70 @@ export async function renderTopBlocks(blocks: AppearanceBlock[]) {
     } else if (b.type === "feature_strip") {
       nodes.push(
         <div key={b.id}>
-          <WhyAloha />
+          <HomeTrustBar />
         </div>
       );
+      showedTrust = true;
     }
   }
+  // Fallback nếu appearance không có feature_strip
+  if (!showedTrust) {
+    nodes.push(
+      <div key="trust-fallback">
+        <HomeTrustBar />
+      </div>
+    );
+  }
+  nodes.push(
+    <div key="featured-categories">
+      <HomeFeaturedCategories />
+    </div>
+  );
   return <>{nodes}</>;
+}
+
+/** Homepage: SP bán chạy + promo + bài viết. */
+export async function renderHomeMainSections() {
+  const limit = 12;
+  let banChay: Awaited<ReturnType<typeof fetchProducts>>["items"] = [];
+
+  try {
+    const a = await fetchProducts({ page: 1, limit, sort: "ban_chay" });
+    banChay = a.items || [];
+    if (!banChay.length) {
+      const fallback = await fetchProducts({
+        page: 1,
+        limit,
+        badge: "ban_chay",
+        sort: "ten",
+      });
+      banChay = fallback.items || [];
+    }
+  } catch {
+    /* empty */
+  }
+
+  let articles: Awaited<ReturnType<typeof fetchArticles>>["items"] = [];
+  try {
+    const res = await fetchArticles({ page: 1, limit: 4 });
+    articles = res.items || [];
+  } catch {
+    articles = [];
+  }
+
+  return (
+    <>
+      <HomeFeaturedProducts banChay={banChay} />
+      <HomePromoStrip />
+      {articles.length ? (
+        <div className="bg-[var(--aloha-surface)] py-8 sm:py-10">
+          <div className="mx-auto max-w-7xl px-4">
+            <HomeArticleSection title="THÔNG TIN HỮU ÍCH" articles={articles} />
+          </div>
+        </div>
+      ) : null}
+    </>
+  );
 }
 
 export async function renderProductBlocks(blocks: AppearanceBlock[]) {
@@ -208,4 +208,15 @@ export async function renderProductBlocks(blocks: AppearanceBlock[]) {
     }
   }
   return <div className="space-y-14 sm:space-y-16">{nodes}</div>;
+}
+
+export async function HomeBlockRenderer({ blocks }: { blocks: AppearanceBlock[] }) {
+  const enabled = (blocks || []).filter((b) => b && b.enabled !== false);
+  const { top } = splitHomeBlocks(enabled);
+  return (
+    <>
+      {await renderTopBlocks(top)}
+      {await renderHomeMainSections()}
+    </>
+  );
 }

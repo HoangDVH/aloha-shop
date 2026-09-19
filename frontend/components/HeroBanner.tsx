@@ -11,42 +11,95 @@ export type HeroSlide = {
   alt: string;
   href?: string;
   label?: string;
+  /** Dòng script xanh (tuỳ chọn) */
+  eyebrow?: string;
+  /** Tiêu đề chính */
+  title?: string;
+  /** Mô tả ngắn */
+  desc?: string;
+  /** Nhãn nút CTA */
+  cta?: string;
 };
 
-/** Ảnh fallback khi admin chưa cấu hình slides */
+/** Banner hero — chữ liền mạch, ảnh một tông kem. */
 export const BRAND_BANNERS: HeroSlide[] = [
   {
-    src: "/banners/banner-cay-canh.png",
-    alt: "Cây cảnh & chậu ALOHA",
+    src: "/banners/banner-hero-01.png?v=13",
+    alt: "Cây cảnh và chậu cây ALOHA",
     href: "/tim?q=cay+canh",
-    label: "Cây cảnh & chậu",
+    label: "Cây cảnh",
+    eyebrow: "Mang thiên nhiên",
+    title: "Vào không gian sống của bạn",
+    desc: "Chậu cây cảnh đa dạng, đẹp mắt, chất lượng cao cho ngôi nhà thêm xanh và hạnh phúc.",
+    cta: "Khám phá ngay",
   },
   {
-    src: "/banners/banner-dat-phan.png",
-    alt: "Đất trồng & phân bón",
-    href: "/tim?q=dat",
-    label: "Đất & phân",
+    src: "/banners/banner-hero-02.png?v=13",
+    alt: "Đất trồng phân bón dụng cụ chăm sóc cây",
+    href: "/tim?q=dat+trong",
+    label: "Đất trồng",
+    eyebrow: "Đất và chăm sóc",
+    title: "Đất trồng cao cấp, cây khỏe từ gốc",
+    desc: "Đất sạch, phân hữu cơ, dụng cụ chăm sóc — đủ bộ để cây nhà bạn phát triển tốt.",
+    cta: "Xem đất trồng",
   },
   {
-    src: "/banners/banner-hat-giong.png",
-    alt: "Hạt giống chất lượng",
+    src: "/banners/banner-hero-03.png?v=13",
+    alt: "Hạt giống ALOHA",
     href: "/tim?q=hat+giong",
     label: "Hạt giống",
+    eyebrow: "Hạt giống",
+    title: "Khởi nguồn cho sự sống",
+    desc: "Hạt giống đa dạng, tỷ lệ nảy mầm cao — dễ gieo, dễ chăm, xanh ngay từ những ngày đầu.",
+    cta: "Xem hạt giống",
+  },
+  {
+    src: "/banners/banner-hero-04.png?v=13",
+    alt: "Ưu đãi dịch vụ khách sỉ ALOHA",
+    href: "/tim?q=bao+gia+si",
+    label: "Khách sỉ",
+    eyebrow: "Khách sỉ",
+    title: "Ưu đãi và dịch vụ dành cho khách sỉ",
+    desc: "Đồng hành lâu dài — chiết khấu hấp dẫn, nguồn hàng ổn định, giao hàng toàn quốc.",
+    cta: "Liên hệ ngay",
   },
 ];
 
-const ZALO_SI = "https://zalo.me/0794901233";
-const AUTOPLAY_MS = 5200;
+const AUTOPLAY_MS = 5600;
 
-/** Hero 2 cột: copy kích mua + showcase sản phẩm. */
+function isLegacyBannerSrc(src: string) {
+  return /banner-cay-canh|banner-dat-phan|banner-hat-giong|banner-01-|banner-02-|banner-03-|banner-04-/i.test(
+    src
+  );
+}
+
+function pickText(override: string | undefined, fallback: string) {
+  const t = String(override || "").trim();
+  return t || fallback;
+}
+
+/** Hero full-bleed: cao = 1 viewport trừ header+nav, ngang 100%. */
 export function HeroBanner({ slides }: { slides?: HeroSlide[] }) {
-  const items = slides && slides.length ? slides : BRAND_BANNERS;
+  // Luôn dùng 4 ảnh + chữ brand; appearance chỉ được đổi href nếu hợp lệ.
+  // Tránh Mongo slide cũ (thiếu SP / src lệch) làm banner trống.
+  const items = BRAND_BANNERS.map((brand, i) => {
+    const s = slides?.[i];
+    if (!s || isLegacyBannerSrc(String(s.src || ""))) return brand;
+    const href = String(s.href || "").trim();
+    return {
+      ...brand,
+      href: href || brand.href,
+      label: pickText(s.label, brand.label || ""),
+      alt: pickText(s.alt, brand.alt),
+    };
+  });
+
   const [emblaRef, emblaApi] = useEmblaCarousel(
     {
       loop: true,
-      align: "center",
+      align: "start",
       skipSnaps: false,
-      containScroll: false,
+      containScroll: "trimSnaps",
       startIndex: 0,
     },
     [
@@ -71,7 +124,6 @@ export function HeroBanner({ slides }: { slides?: HeroSlide[] }) {
     onSelect();
     emblaApi.on("select", onSelect);
     emblaApi.on("reInit", onSelect);
-    // Đo lại kích thước sau layout (mobile hay lệch trái nếu chưa reInit)
     const t = window.setTimeout(() => emblaApi.reInit(), 50);
     const onResize = () => emblaApi.reInit();
     window.addEventListener("resize", onResize);
@@ -86,136 +138,93 @@ export function HeroBanner({ slides }: { slides?: HeroSlide[] }) {
   const active = items[selected] || items[0];
 
   return (
-    <section className="hero-banner" aria-label="Banner cửa hàng">
-      <div className="hero-banner__bg" aria-hidden>
-        <span className="hero-banner__orb hero-banner__orb--a" />
-        <span className="hero-banner__orb hero-banner__orb--b" />
-        <span className="hero-banner__leaf hero-banner__leaf--1" />
-        <span className="hero-banner__leaf hero-banner__leaf--2" />
-        <span className="hero-banner__leaf hero-banner__leaf--3" />
-        <span className="hero-banner__mesh" />
-      </div>
-
-      <div className="hero-banner__inner">
-        {/* display:contents trên mobile → reorder: chữ → ảnh → nút */}
-        <div className="hero-banner__left">
-          <div className="hero-banner__copy">
-            <h1 className="hero-banner__title">
-              <span className="hero-banner__headline">
-                Biến góc nhà thành
-                <em> khu vườn xanh</em>
-              </span>
-            </h1>
-
-            <p className="hero-banner__desc">
-              <span className="hero-banner__desc-full">
-                Chậu đẹp · cây khỏe · đất & phân chuẩn — chọn dễ, đặt nhanh, nhận
-                hàng mới trả tiền.
-              </span>
-              <span className="hero-banner__desc-short">
-                Chậu đẹp · cây khỏe · đặt nhanh · COD tiện lợi.
-              </span>
-            </p>
+    <section className="hero-banner hero-banner--full" aria-label="Banner cửa hàng">
+      <div className="hero-banner__full-inner">
+        <div className="hero-banner__stage">
+          <div className="embla embla--hero" ref={emblaRef}>
+            <div className="embla__container">
+              {items.map((slide, i) => (
+                <div
+                  className={`embla__slide ${i === selected ? "is-active" : ""}`}
+                  key={`${slide.src}-${i}`}
+                >
+                  <div className="hero-banner__frame">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={slide.src}
+                      alt={slide.alt}
+                      className="hero-banner__img"
+                      loading={i === 0 ? "eager" : "lazy"}
+                      fetchPriority={i === 0 ? "high" : undefined}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="hero-banner__actions">
+          {/* Chữ + CTA nằm vùng trống bên trái ảnh */}
+          <div className="hero-banner__copy-overlay">
+            <p className="hero-banner__eyebrow-script">
+              {active?.eyebrow || "Mang thiên nhiên"}
+            </p>
+            <h1 className="hero-banner__headline-overlay">
+              {active?.title || "Vào không gian sống của bạn"}
+            </h1>
+            <p className="hero-banner__desc-overlay">
+              {active?.desc ||
+                "Chậu cây cảnh đa dạng, đẹp mắt, chất lượng cao cho ngôi nhà thêm xanh."}
+            </p>
             <Link
-              href={active?.href || "/tim?sort=ban_chay"}
+              href={active?.href || "/tim"}
               className="hero-banner__cta hero-banner__cta--primary"
             >
-              Mua ngay
+              {active?.cta || "Khám phá ngay"}
               <ArrowRight size={18} strokeWidth={2.4} aria-hidden />
             </Link>
-            <a
-              href={ZALO_SI}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hero-banner__cta hero-banner__cta--ghost"
-            >
-              Báo giá sỉ · Zalo
-            </a>
           </div>
         </div>
 
-        <div className="hero-banner__media">
-          <div className="hero-banner__showcase">
-            {active?.label ? (
-              <div className="hero-banner__chip" key={active.label}>
-                {active.label}
-              </div>
-            ) : null}
+        <div className="hero-banner__controls">
+          <button
+            type="button"
+            aria-label="Slide trước"
+            className="hero-banner__nav"
+            onClick={() => emblaApi?.scrollPrev()}
+          >
+            <ChevronLeft size={18} />
+          </button>
 
-            <div className="hero-banner__stage">
-              <div className="embla embla--hero" ref={emblaRef}>
-                <div className="embla__container">
-                  {items.map((slide, i) => (
-                    <div
-                      className={`embla__slide ${i === selected ? "is-active" : ""}`}
-                      key={`${slide.src}-${i}`}
-                    >
-                      <Link
-                        href={slide.href || "/tim"}
-                        className="hero-banner__frame"
-                        aria-label={slide.alt || slide.label || "Xem sản phẩm"}
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={slide.src}
-                          alt={slide.alt}
-                          className="hero-banner__img"
-                          loading={i === 0 ? "eager" : "lazy"}
-                          fetchPriority={i === 0 ? "high" : undefined}
-                        />
-                        <span className="hero-banner__shine" aria-hidden />
-                      </Link>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+          <div className="hero-banner__dots" role="tablist" aria-label="Chọn banner">
+            {items.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                role="tab"
+                aria-selected={i === selected}
+                aria-label={`Banner ${i + 1}`}
+                className={`hero-banner__dot ${i === selected ? "is-active" : ""}`}
+                onClick={() => emblaApi?.scrollTo(i)}
+              >
+                {i === selected ? (
+                  <span
+                    key={progressKey}
+                    className="hero-banner__dot-progress"
+                    style={{ animationDuration: `${AUTOPLAY_MS}ms` }}
+                  />
+                ) : null}
+              </button>
+            ))}
           </div>
 
-          <div className="hero-banner__controls">
-            <button
-              type="button"
-              aria-label="Slide trước"
-              className="hero-banner__nav"
-              onClick={() => emblaApi?.scrollPrev()}
-            >
-              <ChevronLeft size={18} />
-            </button>
-
-            <div className="hero-banner__dots" role="tablist" aria-label="Chọn banner">
-              {items.map((_, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  role="tab"
-                  aria-selected={i === selected}
-                  aria-label={`Banner ${i + 1}`}
-                  className={`hero-banner__dot ${i === selected ? "is-active" : ""}`}
-                  onClick={() => emblaApi?.scrollTo(i)}
-                >
-                  {i === selected ? (
-                    <span
-                      key={progressKey}
-                      className="hero-banner__dot-progress"
-                      style={{ animationDuration: `${AUTOPLAY_MS}ms` }}
-                    />
-                  ) : null}
-                </button>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              aria-label="Slide sau"
-              className="hero-banner__nav"
-              onClick={() => emblaApi?.scrollNext()}
-            >
-              <ChevronRight size={18} />
-            </button>
-          </div>
+          <button
+            type="button"
+            aria-label="Slide sau"
+            className="hero-banner__nav"
+            onClick={() => emblaApi?.scrollNext()}
+          >
+            <ChevronRight size={18} />
+          </button>
         </div>
       </div>
     </section>

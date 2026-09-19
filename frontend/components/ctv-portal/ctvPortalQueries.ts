@@ -12,7 +12,9 @@ import type {
 } from "./types";
 import type { PayoutBankInput } from "./schemas";
 
-export function useCtvMeStats(opts?: { refetchInterval?: number | false }) {
+export function useCtvMeStats(opts?: {
+  refetchInterval?: number | false | (() => number | false);
+}) {
   return useQuery({
     queryKey: ["ctv-portal", "stats"],
     queryFn: () => ctvPortalFetch<CtvStats>("/api/shop/ctv/me/stats"),
@@ -23,7 +25,7 @@ export function useCtvMeStats(opts?: { refetchInterval?: number | false }) {
 export function useCtvMeOverview(
   from: string,
   to: string,
-  opts?: { refetchInterval?: number | false }
+  opts?: { refetchInterval?: number | false | (() => number | false) }
 ) {
   return useQuery({
     queryKey: ["ctv-portal", "overview", from, to],
@@ -36,7 +38,9 @@ export function useCtvMeOverview(
   });
 }
 
-export function useCtvMeBills(opts?: { refetchInterval?: number | false }) {
+export function useCtvMeBills(opts?: {
+  refetchInterval?: number | false | (() => number | false);
+}) {
   return useQuery({
     queryKey: ["ctv-portal", "bills"],
     queryFn: () =>
@@ -55,7 +59,10 @@ export function useCtvMeConversions(
     orderStatus?: string;
     paymentStatus?: string;
   },
-  opts?: { enabled?: boolean; refetchInterval?: number | false }
+  opts?: {
+    enabled?: boolean;
+    refetchInterval?: number | false | (() => number | false);
+  }
 ) {
   const qs = new URLSearchParams({ from: params.from, to: params.to });
   if (params.orderCode?.trim()) qs.set("orderCode", params.orderCode.trim());

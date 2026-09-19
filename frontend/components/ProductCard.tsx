@@ -118,9 +118,7 @@ export function ProductCard({
             <img
               src={product.anh}
               alt={product.ten}
-              className={`h-full w-full object-cover transition duration-500 ease-out md:group-hover:scale-[1.06] ${
-                preOrder ? "opacity-55 saturate-50" : ""
-              }`}
+              className={`h-full w-full object-cover transition duration-500 ease-out md:group-hover:scale-[1.06]`}
               loading="lazy"
             />
           ) : (
@@ -149,7 +147,7 @@ export function ProductCard({
               </span>
             ) : null}
             {!preOrder && manualBadge === "ban_chay" ? (
-              <span className="rounded-full bg-gradient-to-r from-[var(--aloha-gold)] to-[var(--aloha-gold)] px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white shadow-sm">
+              <span className="rounded-full bg-[var(--aloha-terracotta)] px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white shadow-sm">
                 Bán chạy
               </span>
             ) : null}
@@ -294,7 +292,7 @@ export function ProductGrid({
   const gridClass = homeRow6
     ? "grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 xl:gap-3"
     : shopee
-      ? "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 xl:grid-cols-5"
+      ? "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 xl:grid-cols-4"
       : "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4";
 
   return (

@@ -353,7 +353,7 @@ export async function expireUnpaidShopOrders(
     await releaseHoldsForExpiredOrders(shopDb, codes).catch(() => undefined);
   }
   if (r.modifiedCount > 0) {
-    syncBus.publish(["shop_orders"], "shop-expire", {});
+    syncBus.publish(["shop_orders"], "shop-expire", { ids: codes });
   }
   return r.modifiedCount;
 }

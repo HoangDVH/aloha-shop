@@ -6,6 +6,7 @@ import { Toaster } from "sonner";
 import { AdminSidebar } from "@/components/admin/shell/AdminSidebar";
 import { AdminAntdProvider } from "@/components/admin/AdminAntdProvider";
 import { useAdminSession } from "@/components/admin/auth/useAdminSession";
+import { AdminOpsSync } from "@/components/admin/shell/AdminOpsSync";
 import { Loader2 } from "lucide-react";
 
 export function AdminShell({ children }: { children: ReactNode }) {
@@ -32,6 +33,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   return (
     <AdminAntdProvider>
+      <AdminOpsSync enabled />
       <div className="flex min-h-screen bg-[#F7F8FA] text-[var(--aloha-ink)]">
         <AdminSidebar />
         <main className="min-h-screen min-w-0 flex-1 bg-[#F7F8FA]">

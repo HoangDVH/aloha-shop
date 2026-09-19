@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Play, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Play, X } from "lucide-react";
 
 type MediaItem =
   | { kind: "video"; src: string; file: boolean }
@@ -133,11 +133,16 @@ export function ProductVideoLightbox({
 
   const isImage = current.kind === "image";
   const showBlurBg = current.kind === "video" && current.file;
+  const canNav = media.length > 1;
 
   const goTo = (i: number) => {
     if (!media.length) return;
     setIdx(((i % media.length) + media.length) % media.length);
   };
+
+  const navBtnClass = isImage
+    ? "bg-white text-[var(--aloha-green)] shadow-md ring-1 ring-black/10 hover:bg-[var(--aloha-green-light)]"
+    : "bg-white/15 text-white hover:bg-white/25";
 
   return (
     <div
@@ -163,7 +168,7 @@ export function ProductVideoLightbox({
 
       <div
         ref={stageRef}
-        className="relative flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden px-2 py-2"
+        className="relative flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden px-2 py-2 sm:px-14"
       >
         {isImage ? (
           <div className="absolute inset-0 bg-[#f5f5f5]" aria-hidden />
@@ -196,6 +201,27 @@ export function ProductVideoLightbox({
         ) : (
           <div className="absolute inset-0 bg-[#111]" aria-hidden />
         )}
+
+        {canNav ? (
+          <>
+            <button
+              type="button"
+              className={`absolute left-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full transition sm:left-3 sm:h-12 sm:w-12 ${navBtnClass}`}
+              onClick={() => goTo(safeIdx - 1)}
+              aria-label="Ảnh trước"
+            >
+              <ChevronLeft size={26} strokeWidth={2.25} />
+            </button>
+            <button
+              type="button"
+              className={`absolute right-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full transition sm:right-3 sm:h-12 sm:w-12 ${navBtnClass}`}
+              onClick={() => goTo(safeIdx + 1)}
+              aria-label="Ảnh sau"
+            >
+              <ChevronRight size={26} strokeWidth={2.25} />
+            </button>
+          </>
+        ) : null}
 
         {isImage ? (
           // eslint-disable-next-line @next/next/no-img-element

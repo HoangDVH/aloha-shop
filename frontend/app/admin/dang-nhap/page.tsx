@@ -44,7 +44,7 @@ export default function AdminLoginPage() {
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
         <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: "url(/banners/banner-cay-canh.png)" }}
+          style={{ backgroundImage: "url(/banners/banner-hero-01.png?v=6)" }}
         />
         <div
           className="absolute inset-0"

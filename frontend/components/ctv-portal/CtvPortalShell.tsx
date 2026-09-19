@@ -18,6 +18,7 @@ import {
 import { AdminAntdProvider } from "@/components/admin/AdminAntdProvider";
 import { useShopAuth } from "@/components/ShopAuthProvider";
 import { CTV_PENDING_PATH, isCtvPendingBlocked } from "@/lib/ctvGate";
+import { CtvMeStreamSync } from "@/components/ctv-portal/CtvMeStreamSync";
 import { Toaster } from "sonner";
 
 const NAV = [
@@ -147,6 +148,7 @@ export function CtvPortalShell({ children }: { children: ReactNode }) {
 
   return (
     <AdminAntdProvider>
+      <CtvMeStreamSync />
       <div className="flex min-h-screen bg-[#F7F8FA] text-[var(--aloha-ink)]">
         <aside className="sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col border-r border-[#e8eaed] bg-white lg:flex">
           <SidebarNav />

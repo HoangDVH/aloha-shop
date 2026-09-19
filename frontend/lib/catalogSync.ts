@@ -54,9 +54,20 @@ function emitAppearance(detail: ShopAppearanceChangeDetail) {
   window.dispatchEvent(new CustomEvent(SHOP_APPEARANCE_CHANGED, { detail }));
 }
 
+function isPageVisible() {
+  return typeof document === "undefined" || document.visibilityState === "visible";
+}
+
+/** Exponential backoff + jitter, cap 30s. */
+function nextBackoffMs(attempt: number) {
+  const base = Math.min(30_000, 2000 * Math.pow(2, Math.max(0, attempt)));
+  const jitter = Math.floor(Math.random() * 500);
+  return base + jitter;
+}
+
 /**
- * Một kết nối SSE toàn shop + fallback poll 20s khi SSE lỗi
- * (tránh phải chờ KV poller ~10 phút).
+ * SSE catalog + appearance.
+ * Fallback poll chỉ khi SSE down + tab visible (chuẩn marketplace).
  */
 export function startShopCatalogStream(): () => void {
   if (typeof window === "undefined") return () => {};
@@ -66,6 +77,7 @@ export function startShopCatalogStream(): () => void {
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   let fallbackTimer: ReturnType<typeof setInterval> | null = null;
   let sseOk = false;
+  let reconnectAttempt = 0;
 
   const clearFallback = () => {
     if (fallbackTimer) {
@@ -76,13 +88,26 @@ export function startShopCatalogStream(): () => void {
 
   const startFallback = () => {
     if (fallbackTimer || stopped) return;
+    if (!isPageVisible()) return;
     fallbackTimer = setInterval(() => {
+      if (!isPageVisible() || sseOk) return;
       emitCatalog({ ids: [], at: Date.now(), source: "fallback-poll" });
-    }, 8_000);
+    }, 40_000);
+  };
+
+  const scheduleReconnect = () => {
+    if (stopped || reconnectTimer) return;
+    const delay = nextBackoffMs(reconnectAttempt);
+    reconnectAttempt += 1;
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      connect();
+    }, delay);
   };
 
   const connect = () => {
-    if (stopped || typeof EventSource === "undefined") {
+    if (stopped) return;
+    if (typeof EventSource === "undefined") {
       startFallback();
       return;
     }
@@ -95,10 +120,12 @@ export function startShopCatalogStream(): () => void {
     }
     es.addEventListener("hello", () => {
       sseOk = true;
+      reconnectAttempt = 0;
       clearFallback();
     });
     es.addEventListener("catalog", (ev) => {
       sseOk = true;
+      reconnectAttempt = 0;
       clearFallback();
       try {
         const data = JSON.parse(String((ev as MessageEvent).data || "{}")) as {
@@ -117,6 +144,7 @@ export function startShopCatalogStream(): () => void {
     });
     es.addEventListener("appearance", (ev) => {
       sseOk = true;
+      reconnectAttempt = 0;
       clearFallback();
       try {
         const data = JSON.parse(String((ev as MessageEvent).data || "{}")) as {
@@ -144,25 +172,30 @@ export function startShopCatalogStream(): () => void {
     };
   };
 
-  const scheduleReconnect = () => {
-    if (stopped || reconnectTimer) return;
-    reconnectTimer = setTimeout(() => {
-      reconnectTimer = null;
-      connect();
-    }, 2500);
+  const onVis = () => {
+    if (stopped) return;
+    if (!isPageVisible()) {
+      clearFallback();
+      return;
+    }
+    if (!sseOk) {
+      startFallback();
+      if (!es && !reconnectTimer) scheduleReconnect();
+    }
   };
 
   connect();
-  // Nếu sau 4s chưa hello → bật fallback ngay
   const boot = setTimeout(() => {
     if (!sseOk) startFallback();
   }, 4000);
+  document.addEventListener("visibilitychange", onVis);
 
   return () => {
     stopped = true;
     clearTimeout(boot);
     if (reconnectTimer) clearTimeout(reconnectTimer);
     clearFallback();
+    document.removeEventListener("visibilitychange", onVis);
     try {
       es?.close();
     } catch {

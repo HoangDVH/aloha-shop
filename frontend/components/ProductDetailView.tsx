@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { ChevronRight } from "lucide-react";
 import { formatVnd, type ShopProduct } from "@/lib/api";
 import { isPreOrderTon, useCart } from "@/lib/cart";
 import { useToast } from "@/components/Toast";
@@ -350,13 +351,20 @@ export function ProductDetailView({
   };
 
   return (
-    <div className="shop-pb-sticky mx-auto w-full min-w-0 max-w-6xl space-y-4 overflow-x-clip px-3 py-2 sm:px-4 sm:py-3 lg:px-0">
-      {/* Cả breadcrumb + khung chi tiết vừa trong phần còn lại dưới header — không cần kéo */}
-      <div className="flex min-w-0 max-w-full flex-col gap-2 lg:h-[calc(100svh-7.5rem)] lg:max-h-[calc(100svh-7.5rem)] lg:overflow-hidden">
+    <div className="shop-pb-sticky mx-auto w-full min-w-0 max-w-7xl space-y-2 overflow-x-clip px-4 py-2 sm:py-3">
+      {/* Chiều rộng khung = navbar (max-w-7xl) */}
+      <div className="flex min-w-0 max-w-full flex-col gap-2 lg:h-[calc(100svh-var(--shop-chrome-h,7.5rem))] lg:max-h-[calc(100svh-var(--shop-chrome-h,7.5rem))] lg:overflow-hidden">
         <nav className="flex min-w-0 shrink-0 flex-wrap items-center gap-1 px-1 text-xs text-slate-500">
           {crumbs.map((c, i) => (
             <span key={c.href + i} className="inline-flex max-w-full items-center gap-1">
-              {i > 0 ? <span className="text-slate-300">›</span> : null}
+              {i > 0 ? (
+                <ChevronRight
+                  size={14}
+                  strokeWidth={2.5}
+                  className="mx-0.5 shrink-0 text-slate-500"
+                  aria-hidden
+                />
+              ) : null}
               {i < crumbs.length - 1 ? (
                 <Link href={c.href} className="line-clamp-1 hover:text-[var(--aloha-green)] hover:underline">
                   {c.label}

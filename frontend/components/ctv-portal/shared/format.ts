@@ -2,6 +2,120 @@ export function formatVnd(n: number) {
   return `${Math.round(n || 0).toLocaleString("vi-VN")}đ`;
 }
 
+/** Trạng thái HH phía CTV — tiếng đời thường, không thuật ngữ kế toán */
+export type CtvCommissionStatusKey =
+  | "held"
+  | "eligible"
+  | "billed"
+  | "paid_out"
+  | "cancelled"
+  | "flagged"
+  | "none";
+
+export const CTV_COMMISSION_UX: Record<
+  CtvCommissionStatusKey,
+  { label: string; explain: string; color: string }
+> = {
+  held: {
+    label: "Đang giữ",
+    explain: "Đơn mới giao, chờ hết thời gian đổi/trả",
+    color: "orange",
+  },
+  eligible: {
+    label: "Sắp nhận",
+    explain: "Đã đủ điều kiện, chờ shop chi",
+    color: "green",
+  },
+  billed: {
+    label: "Đang chi",
+    explain: "Shop đã chốt vào đợt thanh toán lần này",
+    color: "blue",
+  },
+  paid_out: {
+    label: "Đã nhận",
+    explain: "Đã chuyển tiền",
+    color: "cyan",
+  },
+  cancelled: {
+    label: "Không được nhận",
+    explain: "Đơn hủy / không tính hoa hồng",
+    color: "default",
+  },
+  flagged: {
+    label: "Đang kiểm tra",
+    explain: "Shop đang rà soát, tạm chưa chi",
+    color: "magenta",
+  },
+  none: {
+    label: "Chưa phát sinh",
+    explain: "Đơn chưa giao xong nên chưa có hoa hồng",
+    color: "default",
+  },
+};
+
+/** Ưu tiên: cần chú ý → đang xử lý tiền → đã xong */
+export function resolveCtvCommissionStatus(
+  statuses: Array<string | null | undefined>
+): CtvCommissionStatusKey {
+  const set = new Set(
+    statuses.map((s) => String(s || "").trim().toLowerCase()).filter(Boolean)
+  );
+  if (!set.size) return "none";
+  if (set.has("flagged")) return "flagged";
+  if (set.has("billed")) return "billed";
+  if (set.has("eligible")) return "eligible";
+  if (set.has("held")) return "held";
+  if (set.has("paid_out")) return "paid_out";
+  if (set.has("cancelled")) return "cancelled";
+  // API đã map sẵn nhãn Việt
+  for (const [key, ux] of Object.entries(CTV_COMMISSION_UX) as Array<
+    [CtvCommissionStatusKey, { label: string }]
+  >) {
+    if ([...set].some((s) => s === ux.label.toLowerCase() || s === key)) {
+      if (key !== "none") return key;
+    }
+  }
+  if ([...set].some((s) => s.includes("kiểm tra") || s.includes("kiem tra")))
+    return "flagged";
+  if ([...set].some((s) => s.includes("không được") || s.includes("khong duoc")))
+    return "cancelled";
+  if ([...set].some((s) => s.includes("đang chi") || s.includes("dang chi")))
+    return "billed";
+  if ([...set].some((s) => s.includes("sắp nhận") || s.includes("sap nhan")))
+    return "eligible";
+  if ([...set].some((s) => s.includes("đang giữ") || s.includes("tạm giữ")))
+    return "held";
+  if ([...set].some((s) => s.includes("đã nhận") || s.includes("đã chi")))
+    return "paid_out";
+  if ([...set].some((s) => s.includes("chưa phát sinh"))) return "none";
+  return "none";
+}
+
+export function ctvCommissionHint(
+  key: CtvCommissionStatusKey,
+  opts?: {
+    holdDays?: number;
+    period?: string | null;
+    paidAt?: string | null;
+  }
+): string {
+  const base = CTV_COMMISSION_UX[key]?.explain || "";
+  if (key === "held" && opts?.holdDays) {
+    return `Còn chờ hết ${opts.holdDays} ngày đổi/trả`;
+  }
+  if (key === "billed" && opts?.period) {
+    const m = /^(\d{4})-(\d{2})$/.exec(opts.period);
+    if (m) return `Thuộc đợt chi tháng ${Number(m[2])}/${m[1]}`;
+  }
+  if (key === "paid_out" && opts?.paidAt) {
+    const d = new Date(opts.paidAt);
+    if (Number.isFinite(d.getTime())) {
+      return `Đã chuyển ngày ${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
+    }
+  }
+  return base;
+}
+
 export function formatMoneyCompact(n: number) {
   const v = Math.round(n || 0);
   if (v >= 1_000_000_000)

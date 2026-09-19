@@ -212,23 +212,50 @@ export default function DonHangStatusPage() {
 
   useEffect(() => {
     if (!live) return;
-    const unsub = subscribeShopOrdersStream(() => {
-      void reload(true);
-    });
-    const pollMs = (() => {
-      const n = Number(
-        process.env.NEXT_PUBLIC_ORDER_POLL_MS ||
-          process.env.SHOP_ORDER_POLL_MS ||
-          5000
-      );
-      return Number.isFinite(n) && n >= 3000 ? Math.floor(n) : 5000;
-    })();
-    const poll = setInterval(() => {
-      void reload(true);
-    }, pollMs);
+    let sseOk = false;
+    let poll: ReturnType<typeof setInterval> | null = null;
+    const clearPoll = () => {
+      if (poll) {
+        clearInterval(poll);
+        poll = null;
+      }
+    };
+    const startPoll = () => {
+      if (poll) return;
+      poll = setInterval(() => {
+        if (typeof document !== "undefined" && document.visibilityState !== "visible")
+          return;
+        if (sseOk) return;
+        void reload(true);
+      }, 15_000);
+    };
+    const unsub = subscribeShopOrdersStream(
+      () => {
+        void reload(true);
+      },
+      {
+        onStatus: (ok) => {
+          sseOk = ok;
+          if (ok) clearPoll();
+          else startPoll();
+        },
+      }
+    );
+    const boot = window.setTimeout(() => {
+      if (!sseOk) startPoll();
+    }, 5000);
+    const onVis = () => {
+      if (document.visibilityState === "visible" && !sseOk) {
+        void reload(true);
+        startPoll();
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
     return () => {
       unsub();
-      clearInterval(poll);
+      clearPoll();
+      window.clearTimeout(boot);
+      document.removeEventListener("visibilitychange", onVis);
     };
   }, [live, reload]);
 

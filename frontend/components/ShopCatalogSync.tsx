@@ -1,59 +1,47 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   onShopAppearanceChanged,
   onShopCatalogChanged,
   startShopCatalogStream,
-  SHOP_CATALOG_CHANGED,
 } from "@/lib/catalogSync";
 import { refreshCartPricesFromCatalog } from "@/lib/cartPriceRefresh";
 
+function isStorefrontPath(pathname: string) {
+  const p = pathname || "/";
+  if (p.startsWith("/admin")) return false;
+  if (p.startsWith("/cong-tac-vien")) return false;
+  return true;
+}
+
 /**
- * SSE catalog + appearance: Xuất bản Website bán hàng → shop tự refresh, không cần F5.
+ * SSE catalog + appearance — chỉ storefront (không gắn poll nền lên admin/CTV).
  */
 export function ShopCatalogSync() {
   const router = useRouter();
-
-  useEffect(() => startShopCatalogStream(), []);
-
-  useEffect(
-    () =>
-      onShopCatalogChanged(() => {
-        void refreshCartPricesFromCatalog().catch(() => undefined);
-      }),
-    []
-  );
-
-  useEffect(
-    () =>
-      onShopAppearanceChanged(() => {
-        router.refresh();
-      }),
-    [router]
-  );
+  const pathname = usePathname() || "/";
+  const enabled = isStorefrontPath(pathname);
 
   useEffect(() => {
-    const tick = () => {
-      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
-      window.dispatchEvent(
-        new CustomEvent(SHOP_CATALOG_CHANGED, {
-          detail: { ids: [], at: Date.now(), source: "poll-fallback" },
-        })
-      );
+    if (!enabled) return;
+    return startShopCatalogStream();
+  }, [enabled]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    return onShopCatalogChanged(() => {
       void refreshCartPricesFromCatalog().catch(() => undefined);
-    };
-    const id = window.setInterval(tick, 8_000);
-    const onVis = () => {
-      if (document.visibilityState === "visible") tick();
-    };
-    document.addEventListener("visibilitychange", onVis);
-    return () => {
-      window.clearInterval(id);
-      document.removeEventListener("visibilitychange", onVis);
-    };
-  }, []);
+    });
+  }, [enabled]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    return onShopAppearanceChanged(() => {
+      router.refresh();
+    });
+  }, [enabled, router]);
 
   return null;
 }

@@ -66,8 +66,8 @@ export function fallbackAppearance(): PublicAppearance {
     theme: {
       siteName: "ALOHA Thế Giới Chậu Cây",
       logoUrl: "/brand/logo-header-on-theme.png?v=1",
-      primaryColor: "#16C45A",
-      headerBg: "#12A34A",
+      primaryColor: "#5F7D4E",
+      headerBg: "#FAF9F5",
       fontFamily: "system",
       faviconUrl: "/brand/logo-icon.png",
       seo: {

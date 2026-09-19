@@ -232,16 +232,23 @@ export async function holdCommissionsForOrder(
   return { ok: true, created, flagged };
 }
 
-/** held quá eligibleAt → eligible (lazy). */
-export async function clearHeldCommissions(shopDb: Db): Promise<number> {
+/** held quá eligibleAt → eligible (lazy). Có thể hẹp theo ctvCode. */
+export async function clearHeldCommissions(
+  shopDb: Db,
+  opts?: { ctvCode?: string }
+): Promise<number> {
   const now = new Date().toISOString();
-  const r = await shopDb.collection(SHOP_COMMISSIONS).updateMany(
-    {
-      status: "held",
-      eligibleAt: { $lte: now },
-    },
-    { $set: { status: "eligible", clearedAt: now, updatedAt: now } }
-  );
+  const filter: Record<string, unknown> = {
+    status: "held",
+    eligibleAt: { $lte: now },
+  };
+  const code = String(opts?.ctvCode || "")
+    .trim()
+    .toUpperCase();
+  if (code) filter.ctvCode = code;
+  const r = await shopDb.collection(SHOP_COMMISSIONS).updateMany(filter, {
+    $set: { status: "eligible", clearedAt: now, updatedAt: now },
+  });
   return r.modifiedCount || 0;
 }
 

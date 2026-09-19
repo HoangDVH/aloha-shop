@@ -14,10 +14,31 @@ import {
 } from "antd";
 import { useCtvMeConversions } from "../ctvPortalQueries";
 import { useCtvPortalUiStore } from "../ctvPortalUiStore";
-import { exportCsv, formatDt, formatVnd, monthRange } from "../shared/format";
+import { exportCsv, formatDt, formatVnd, monthRange, CTV_COMMISSION_UX, resolveCtvCommissionStatus, ctvCommissionHint } from "../shared/format";
+import { visibleRefetchInterval } from "@/lib/visibleRefetchInterval";
 import type { ConversionRow } from "../types";
+import type { CtvCommissionStatusKey } from "../shared/format";
 
 const PAGE_SIZE = 10;
+
+function commissionCell(r: ConversionRow) {
+  const key = (r.commissionStatusKey
+    ? (r.commissionStatusKey as CtvCommissionStatusKey)
+    : resolveCtvCommissionStatus([r.commissionStatus])) as CtvCommissionStatusKey;
+  const ux = CTV_COMMISSION_UX[key] || CTV_COMMISSION_UX.none;
+  const hint =
+    r.commissionStatusHint ||
+    ctvCommissionHint(key) ||
+    ux.explain;
+  return (
+    <div className="min-w-[120px]">
+      <Tag color={ux.color} className="m-0">
+        {r.commissionStatus || ux.label}
+      </Tag>
+      <div className="mt-1 text-[11px] leading-snug text-slate-500">{hint}</div>
+    </div>
+  );
+}
 
 export function ConversionsPanel() {
   const { dateRange } = useCtvPortalUiStore();
@@ -36,7 +57,9 @@ export function ConversionsPanel() {
   });
   const [page, setPage] = useState(1);
 
-  const q = useCtvMeConversions(applied, { refetchInterval: 15_000 });
+  const q = useCtvMeConversions(applied, {
+    refetchInterval: visibleRefetchInterval(30_000),
+  });
   const rows = q.data || [];
 
   const columns = useMemo(
@@ -139,10 +162,8 @@ export function ConversionsPanel() {
       {
         title: "Trạng thái hoa hồng",
         dataIndex: "commissionStatus",
-        width: 148,
-        render: (v: string) => (
-          <span className="whitespace-nowrap text-[12px]">{v || "—"}</span>
-        ),
+        width: 168,
+        render: (_: string, r: ConversionRow) => commissionCell(r),
       },
       {
         title: "Người mua",
@@ -191,6 +212,7 @@ export function ConversionsPanel() {
         "payLabel",
         "completedAt",
         "commissionStatus",
+        "commissionStatusHint",
         "buyerStatus",
       ],
       rows.map((r) => [
@@ -203,6 +225,7 @@ export function ConversionsPanel() {
         r.payLabel || r.paymentStatus || "",
         r.completedAt || "",
         r.commissionStatus,
+        r.commissionStatusHint || "",
         r.buyerStatus,
       ])
     );

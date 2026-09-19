@@ -15,10 +15,10 @@ import { useShopLogoutAction } from "@/lib/useShopLogoutAction";
 import { applyNavConfig } from "@/lib/navConfig";
 import type { NavConfig, AppearanceTheme } from "@/lib/appearanceTypes";
 import { applyThemeCssVars } from "@/lib/themeCss";
+import { SHOP_OPEN_MOBILE_CATS } from "@/components/ShopMobileTabBar";
 const LOGO_HEADER_SRC = "/brand/logo-header-on-theme.png?v=1";
 const LOGO_WIDTH = 976;
 const LOGO_HEIGHT = 194;
-const DEFAULT_PRIMARY = "#16C45A";
 
 const DEFAULT_FOOTER = {
   address: "90/2 Nguyễn Phúc Chu, Phường Tân Bình, Thành phố Hồ Chí Minh",
@@ -88,6 +88,13 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
   const [theme, setTheme] = useState<AppearanceTheme | null>(null);
   const [mobileNav, setMobileNav] = useState(false);
   const chromeRef = useRef<HTMLElement | null>(null);
+
+  /** Tab bar mobile «Danh mục» → mở drawer danh mục. */
+  useEffect(() => {
+    const onOpen = () => setMobileNav(true);
+    window.addEventListener(SHOP_OPEN_MOBILE_CATS, onOpen);
+    return () => window.removeEventListener(SHOP_OPEN_MOBILE_CATS, onOpen);
+  }, []);
 
   /** Chiều cao header+nav → banner đầy khung hình (trừ chrome). */
   useEffect(() => {
@@ -167,10 +174,10 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
     setMobileNav(false);
   };
 
-  const headerBg = "var(--aloha-header)";
-  const headerBorder = "rgba(255,255,255,0.14)";
-  const chromeInk = "#FFFFFF";
-  const chromeHover = "hover:bg-white/15";
+  const chromeInk = "var(--aloha-green)";
+  const chromeHover = "hover:bg-[var(--aloha-green-light)]";
+  const iconClass = "text-[var(--aloha-green)]";
+  const linkTextClass = "text-[var(--aloha-green)]";
 
   /** Cùng URL Zalo với nút «Báo giá sỉ · Zalo» trên banner. */
   const wholesaleZaloUrl = zaloHref(
@@ -180,10 +187,10 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
   return (
     <header
       ref={chromeRef}
-      className="sticky top-0 z-50 shadow-sm"
+      className="sticky top-0 z-50 bg-[var(--aloha-cream-dark)] shadow-sm"
       style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
     >
-      <div className="border-b" style={{ background: headerBg, borderColor: headerBorder }}>
+      <div className="border-b border-[var(--aloha-line)] bg-[var(--aloha-cream-dark)]">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-2.5 lg:gap-5">
           <AlohaLogo
             onNavigate={closeMenus}
@@ -200,23 +207,23 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
               href={wholesaleZaloUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className={`inline-flex min-h-11 items-center gap-1 rounded-xl px-2 text-sm font-bold text-white ${chromeHover} lg:hidden`}
+              className={`inline-flex min-h-11 items-center gap-1 rounded-xl px-2 text-sm font-bold ${linkTextClass} ${chromeHover} lg:hidden`}
               aria-label="Nhận báo giá sỉ"
             >
-              <BadgePercent size={18} strokeWidth={2.25} aria-hidden className="text-[var(--aloha-cream)]" />
+              <BadgePercent size={18} strokeWidth={2.25} aria-hidden className={iconClass} />
               <span className="hidden sm:inline">Báo giá sỉ</span>
             </a>
             <HeaderAccountMenu />
             <Link
               href="/gio-hang"
-              className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl px-2 text-white ${chromeHover} sm:min-w-0 sm:px-3`}
+              className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl px-2 ${linkTextClass} ${chromeHover} sm:min-w-0 sm:px-3`}
               onClick={closeMenus}
               aria-label={`Giỏ hàng${count ? `, ${count} sản phẩm` : ""}`}
             >
               <span className="relative inline-flex">
-                <ShoppingBasket size={22} className="text-white" />
+                <ShoppingBasket size={22} className={iconClass} />
                 {count > 0 ? (
-                  <span className="absolute -right-2.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--aloha-gold)] px-1 text-[10px] font-black text-[var(--aloha-ink)] shadow-sm">
+                  <span className="absolute -right-2.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--aloha-terracotta)] px-1 text-[10px] font-black text-white shadow-sm">
                     {count > 99 ? "99+" : count}
                   </span>
                 ) : null}
@@ -225,7 +232,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
             </Link>
             <button
               type="button"
-              className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-white ${chromeHover} lg:hidden`}
+              className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl ${linkTextClass} ${chromeHover} lg:hidden`}
               onClick={() => setMobileNav((v) => !v)}
               aria-label="Menu"
               aria-expanded={mobileNav}
@@ -236,7 +243,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
         </div>
       </div>
 
-      <nav className="hidden overflow-visible border-b border-[var(--aloha-line)] bg-[var(--aloha-cream)] text-[var(--aloha-ink)] lg:block">
+      <nav className="hidden overflow-visible border-b border-[var(--aloha-line)] bg-white text-[var(--aloha-green)] lg:block">
         <div className="mx-auto flex max-w-7xl items-stretch overflow-visible px-1 sm:px-2">
           <div className="hidden min-w-0 flex-1 items-stretch lg:flex">
             {navApplied.before.map((c) => (
@@ -246,7 +253,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                 target={c.openInNewTab ? "_blank" : undefined}
                 rel={c.openInNewTab ? "noopener noreferrer" : undefined}
                 onClick={closeMenus}
-                className="group relative inline-flex shrink-0 items-center px-2.5 text-[13px] font-semibold text-[var(--aloha-ink)] hover:text-[var(--aloha-green)]"
+                className="group relative inline-flex shrink-0 items-center px-2.5 text-[13px] font-bold text-[var(--aloha-green)] hover:text-[var(--aloha-green-dark)]"
               >
                 {c.label}
                 <span
@@ -267,7 +274,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                 target={c.openInNewTab ? "_blank" : undefined}
                 rel={c.openInNewTab ? "noopener noreferrer" : undefined}
                 onClick={closeMenus}
-                className="group relative inline-flex shrink-0 items-center px-2.5 text-[13px] font-semibold text-[var(--aloha-ink)] hover:text-[var(--aloha-green)]"
+                className="group relative inline-flex shrink-0 items-center px-2.5 text-[13px] font-bold text-[var(--aloha-green)] hover:text-[var(--aloha-green-dark)]"
               >
                 {c.label}
                 <span
@@ -415,53 +422,53 @@ export function SiteFooter() {
   return (
     <footer
       id="ve-chung-toi"
-      className="mt-10 border-t border-white/10 bg-[var(--aloha-green-mid)] text-white md:mt-14"
+      className="mt-10 border-t border-[var(--aloha-line)] bg-[var(--aloha-cream-dark)] text-[var(--aloha-ink)] md:mt-14"
     >
       <div className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:grid-cols-2 sm:gap-8 sm:py-10 lg:grid-cols-3">
         <div>
-          <div className="text-base font-bold text-[var(--aloha-cream)]">{siteName}</div>
-          <p className="mt-2 text-sm leading-relaxed text-white/80">{footer.address}</p>
+          <div className="text-base font-bold text-[var(--aloha-ink)]">{siteName}</div>
+          <p className="mt-2 text-sm leading-relaxed text-[var(--aloha-muted)]">{footer.address}</p>
         </div>
         <div className="text-sm">
-          <div className="font-bold text-[var(--aloha-cream)]">Liên hệ</div>
-          <p className="mt-2 text-white/85">
+          <div className="font-bold text-[var(--aloha-ink)]">Liên hệ</div>
+          <p className="mt-2 text-[var(--aloha-muted)]">
             Zalo / Điện thoại:{" "}
             <a
               href={zaloHref(footer.zalo || footer.phone)}
               target="_blank"
               rel="noreferrer"
-              className="underline-offset-2 hover:text-white hover:underline"
+              className="font-semibold text-[var(--aloha-green)] underline-offset-2 hover:text-[var(--aloha-green-dark)] hover:underline"
             >
               {footer.phone || footer.zalo}
             </a>
           </p>
           {footer.email ? (
-            <p className="mt-1 text-white/85">
+            <p className="mt-1 text-[var(--aloha-muted)]">
               <a
                 href={`mailto:${footer.email}`}
-                className="underline-offset-2 hover:text-white hover:underline"
+                className="font-semibold text-[var(--aloha-green)] underline-offset-2 hover:text-[var(--aloha-green-dark)] hover:underline"
               >
                 {footer.email}
               </a>
             </p>
           ) : null}
         </div>
-        <div className="text-sm text-white/80">
-          <div className="font-bold text-[var(--aloha-cream)]">Mua sắm</div>
+        <div className="text-sm text-[var(--aloha-muted)]">
+          <div className="font-bold text-[var(--aloha-ink)]">Mua sắm</div>
           <div className="mt-2 flex flex-col gap-2">
-            <Link href="/tim" className="hover:text-white">
+            <Link href="/tim" className="hover:text-[var(--aloha-green)]">
               Tất cả sản phẩm
             </Link>
-            <Link href="/?sort=ban_chay" className="hover:text-white">
+            <Link href="/?sort=ban_chay" className="hover:text-[var(--aloha-green)]">
               Bán chạy
             </Link>
-            <Link href="/bai-viet" className="hover:text-white">
+            <Link href="/bai-viet" className="hover:text-[var(--aloha-green)]">
               Bài viết
             </Link>
           </div>
         </div>
       </div>
-      <div className="border-t border-white/10 px-4 py-3 text-center text-[11px] text-white/55">
+      <div className="border-t border-[var(--aloha-line)] px-4 py-3 text-center text-[11px] text-[var(--aloha-muted)]">
         © {new Date().getFullYear()} {siteName}
       </div>
     </footer>

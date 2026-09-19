@@ -55,7 +55,12 @@ import {
   usePatchCtvSettings,
 } from "./ctvQueries";
 import { useCtvUiStore, type CtvAdminSub } from "./ctvUiStore";
-import { COMMISSION_STATUS_LABEL, formatDt, formatVnd } from "./shared/format";
+import {
+  COMMISSION_STATUS_LABEL,
+  formatDt,
+  formatFraudFlags,
+  formatVnd,
+} from "./shared/format";
 import { CtvPagination } from "./shared/CtvPagination";
 import {
   AdminDateRangePicker,
@@ -1204,7 +1209,7 @@ function CommissionsHub({
                       });
                     }}
                   >
-                    Chốt kỳ
+                    Lấy danh sách CTV đủ điều kiện
                   </Button>
                   <Button
                     loading={exportM.isPending}
@@ -1242,7 +1247,7 @@ function CommissionsHub({
               {billQ.isLoading ? (
                 <Spin />
               ) : !bill ? (
-                <Empty description="Chưa có bill kỳ này — bấm Chốt kỳ để tạo" />
+                <Empty description="Chưa có bill kỳ này — bấm «Lấy danh sách CTV đủ điều kiện» để tạo" />
               ) : (
                 <div className="space-y-4">
                   <Space direction="vertical" size={4}>
@@ -1625,7 +1630,7 @@ function CommissionLinesTable({ embedded = false }: { embedded?: boolean }) {
                     {statusTag(s)}
                     {Array.isArray(r.fraudFlags) && r.fraudFlags.length ? (
                       <div className="mt-1 text-[11px] text-rose-600">
-                        {r.fraudFlags.join(", ")}
+                        {formatFraudFlags(r.fraudFlags)}
                       </div>
                     ) : null}
                     {Array.isArray(r.fraudDetails) && r.fraudDetails.length ? (

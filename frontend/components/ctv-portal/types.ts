@@ -1,11 +1,15 @@
+export type CtvStatsBucket = { amount: number; count: number };
+
 export type CtvStats = {
   ok?: boolean;
   ctvCode: string;
   returnHoldDays?: number;
-  held: { amount: number; count: number };
-  eligible: { amount: number; count: number };
-  billed: { amount: number; count: number };
-  paidOut: { amount: number; count: number };
+  held: CtvStatsBucket;
+  eligible: CtvStatsBucket;
+  billed: CtvStatsBucket;
+  paidOut: CtvStatsBucket;
+  flagged?: CtvStatsBucket;
+  cancelled?: CtvStatsBucket;
   pendingOrders?: { count: number; amount: number };
 };
 
@@ -110,6 +114,8 @@ export type ConversionRow = {
   products?: Array<{ ma: string; name: string; imageUrl: string }>;
   productSummary: string;
   commissionStatus: string;
+  commissionStatusKey?: string;
+  commissionStatusHint?: string;
 };
 
 export type PayoutBank = {
