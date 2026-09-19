@@ -134,7 +134,7 @@ async function CatalogBody({
       ? "Sản phẩm đang bán chạy - sắp hết"
       : effectiveBadge === "moi" || sort === "moi" || sort === "newest"
         ? "Sản phẩm mới"
-        : effectiveBadge === "giam_gia" || effectiveBadge === "noi_bat"
+        : effectiveBadge === "giam_gia"
           ? "Sản phẩm giảm giá"
           : effectiveBadge === "dat_truoc"
             ? "Sản phẩm đặt trước"
