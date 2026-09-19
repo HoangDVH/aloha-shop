@@ -14,7 +14,9 @@ export default function StorefrontLayout({ children }: { children: React.ReactNo
         <main className="min-h-[70vh]">{children}</main>
         <SiteFooter />
       </div>
-      <ShopMobileTabBar />
+      <Suspense fallback={null}>
+        <ShopMobileTabBar />
+      </Suspense>
       <ShopWelcomePopupMount />
     </>
   );
