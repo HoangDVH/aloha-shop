@@ -59,6 +59,17 @@ export function buildDefaultAppearanceLayout(): AppearanceLayout {
         },
       },
       {
+        id: id("moi"),
+        type: "product_section",
+        enabled: true,
+        props: {
+          title: "Sản phẩm mới",
+          source: "moi",
+          limit: 50,
+          sort: "moi",
+        },
+      },
+      {
         id: id("cay"),
         type: "product_section",
         enabled: true,

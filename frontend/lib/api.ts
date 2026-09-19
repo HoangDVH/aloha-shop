@@ -32,7 +32,7 @@ export type ShopProduct = {
   /** Pin tay trên web — số nhỏ hơn = lên trước */
   webPin?: number;
   /** Badge tay; thiếu = dùng hot tự động */
-  webBadge?: "ban_chay" | "moi" | "noi_bat";
+  webBadge?: "ban_chay_sap_het" | "giam_gia" | "dat_truoc" | "moi" | "ban_chay";
   /** Override SEO — ưu tiên hơn template appearance */
   seoTitle?: string;
   seoDescription?: string;
@@ -196,6 +196,8 @@ export async function fetchProducts(
     minPrice?: number;
     maxPrice?: number;
     inStock?: boolean;
+    /** Tồn tối đa (vd. 8 = nhãn sắp hết) */
+    maxTon?: number;
     sort?: string;
     /** attr=Name:Value (lặp) */
     attr?: string[];
@@ -204,8 +206,8 @@ export async function fetchProducts(
     loai?: string;
     /** Phạm vi trang chủ: bán chạy ∪ cây thành phẩm */
     home?: boolean;
-    /** Lọc theo nhãn tay: ban_chay | moi | noi_bat */
-    badge?: "ban_chay" | "moi" | "noi_bat";
+    /** Lọc theo nhãn tay: ban_chay_sap_het | giam_gia | dat_truoc | moi */
+    badge?: "ban_chay_sap_het" | "giam_gia" | "dat_truoc" | "moi" | "ban_chay" | "noi_bat";
   },
   /** Mặc định no-store (danh sách cần tồn mới). SP liên quan trên PDP: truyền revalidate. */
   cacheOpts?: { revalidate?: number; cache?: RequestCache }
@@ -233,6 +235,7 @@ export async function fetchProducts(
   if (opts.minPrice != null && opts.minPrice > 0) sp.set("minPrice", String(opts.minPrice));
   if (opts.maxPrice != null && opts.maxPrice > 0) sp.set("maxPrice", String(opts.maxPrice));
   if (opts.inStock) sp.set("inStock", "1");
+  if (opts.maxTon != null && opts.maxTon > 0) sp.set("maxTon", String(opts.maxTon));
   if (opts.sort) sp.set("sort", opts.sort);
   if (opts.loai) sp.set("loai", String(opts.loai).trim());
   if (opts.badge) sp.set("badge", opts.badge);

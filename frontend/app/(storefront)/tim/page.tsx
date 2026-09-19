@@ -21,6 +21,7 @@ type TimSp = {
   minPrice?: string;
   maxPrice?: string;
   inStock?: string;
+  maxTon?: string;
   sort?: string;
   badge?: string;
 };
@@ -57,11 +58,21 @@ async function CatalogBody({
   const minPrice = Number(sp.minPrice) || 0;
   const maxPrice = Number(sp.maxPrice) || 0;
   const inStock = String(sp.inStock || "") === "1";
+  const maxTon = Math.max(0, Math.min(999, Number(sp.maxTon) || 0));
   const sort = String(sp.sort || "ten");
   const badgeRaw = String(sp.badge || "").trim();
   const badge =
-    badgeRaw === "ban_chay" || badgeRaw === "moi" || badgeRaw === "noi_bat"
-      ? (badgeRaw as "ban_chay" | "moi" | "noi_bat")
+    badgeRaw === "ban_chay_sap_het" ||
+    badgeRaw === "giam_gia" ||
+    badgeRaw === "dat_truoc" ||
+    badgeRaw === "moi" ||
+    badgeRaw === "ban_chay"
+      ? (badgeRaw as
+          | "ban_chay_sap_het"
+          | "giam_gia"
+          | "dat_truoc"
+          | "moi"
+          | "ban_chay")
       : undefined;
 
   let items: Awaited<ReturnType<typeof fetchProducts>>["items"] = [];
@@ -83,6 +94,7 @@ async function CatalogBody({
       minPrice: minPrice || undefined,
       maxPrice: maxPrice || undefined,
       inStock: inStock || undefined,
+      maxTon: maxTon > 0 ? maxTon : undefined,
       sort,
       badge,
     });
@@ -98,7 +110,8 @@ async function CatalogBody({
       !loai &&
       !minPrice &&
       !maxPrice &&
-      !inStock
+      !inStock &&
+      !(maxTon > 0)
     ) {
       prod = await fetchProducts({
         page,
@@ -117,17 +130,23 @@ async function CatalogBody({
 
   const pageTitle = q
     ? undefined
-    : effectiveBadge === "moi"
-      ? "Sản phẩm mới"
-      : effectiveBadge === "noi_bat"
-        ? "Sản phẩm nổi bật"
-        : effectiveBadge === "ban_chay" || effectiveSort === "ban_chay"
-          ? "Sản phẩm bán chạy"
-          : sort === "price_asc"
-            ? "Giá thấp → cao"
-            : sort === "price_desc"
-              ? "Giá cao → thấp"
-              : undefined;
+    : maxTon > 0 && (effectiveSort === "ban_chay" || sort === "ban_chay")
+      ? "Sản phẩm đang bán chạy - sắp hết"
+      : effectiveBadge === "moi" || sort === "moi" || sort === "newest"
+        ? "Sản phẩm mới"
+        : effectiveBadge === "giam_gia" || effectiveBadge === "noi_bat"
+          ? "Sản phẩm giảm giá"
+          : effectiveBadge === "dat_truoc"
+            ? "Sản phẩm đặt trước"
+            : effectiveBadge === "ban_chay_sap_het" ||
+                effectiveBadge === "ban_chay" ||
+                effectiveSort === "ban_chay"
+              ? "Sản phẩm bán chạy và sắp hết"
+              : sort === "price_asc"
+                ? "Giá thấp → cao"
+                : sort === "price_desc"
+                  ? "Giá cao → thấp"
+                  : undefined;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">

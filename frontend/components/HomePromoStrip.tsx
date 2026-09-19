@@ -16,7 +16,7 @@ export function HomePromoStrip() {
             </p>
             <Link
               href="/tim"
-              className="mt-4 inline-flex min-h-11 items-center rounded-full bg-[var(--aloha-terracotta)] px-5 text-sm font-bold text-white transition hover:bg-[var(--aloha-terracotta-hover)]"
+              className="mt-4 inline-flex min-h-11 items-center rounded-full bg-[var(--aloha-green)] px-5 text-sm font-bold text-white transition hover:bg-[var(--aloha-green-dark)]"
             >
               Khám phá ngay →
             </Link>

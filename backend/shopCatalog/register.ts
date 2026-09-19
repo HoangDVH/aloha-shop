@@ -16,6 +16,7 @@ import {
 } from "../utils/categoryTree.ts";
 import { normalizeTrongLuongGram } from "../shopShipping/resolveWeight.js";
 import { mongoLoaiFilter } from "../utils/kvProductLoai.ts";
+import { normalizeWebBadge } from "./webBadge.js";
 import {
   buildAxesAndModels,
   compactAttributeFacets,
@@ -53,6 +54,13 @@ import {
   overlayProductCategoryFields,
   overlayProductCategoryFieldsMany,
 } from "./categoryMeta.ts";
+import {
+  productCreatedMs as kvProductCreatedMs,
+} from "../utils/productCreatedAt.js";
+import {
+  arrangeByAbsolutePin,
+  resolvePinBadgeScope,
+} from "./pinArrange.js";
 
 type GetDb = () => Promise<Db>;
 
@@ -465,7 +473,7 @@ function toPublicProduct(doc: Record<string, unknown>) {
   const trongLuong = trongLuongRaw > 0 ? trongLuongRaw : 0;
   const attributes = normalizeAttrs(doc.attributes);
   const webPin = Number(doc.webPin);
-  const webBadge = String(doc.webBadge || "").trim();
+  const webBadge = normalizeWebBadge(doc.webBadge);
   const categoryId = Number(doc.categoryId) || 0;
   const categoryName = String(doc.categoryName || "").trim();
   const nhom = deriveNhom(doc);
@@ -493,45 +501,67 @@ function toPublicProduct(doc: Record<string, unknown>) {
     attributes: attributes.length ? attributes : undefined,
     hasVariants: attributes.length > 0 ? true : undefined,
     webPin: Number.isFinite(webPin) && webPin > 0 ? Math.round(webPin) : undefined,
-    webBadge:
-      webBadge === "ban_chay" || webBadge === "moi" || webBadge === "noi_bat"
-        ? webBadge
-        : undefined,
+    webBadge: webBadge || undefined,
     seoTitle: String(doc.seoTitle || "").trim() || undefined,
     seoDescription: String(doc.seoDescription || "").trim() || undefined,
   };
 }
 
-function pinRank(p: { webPin?: number }) {
-  const n = Number(p.webPin);
-  return Number.isFinite(n) && n > 0 ? n : 1e9;
-}
-
+/**
+ * Ghim = vị trí tuyệt đối trong đúng nhãn (pinBadgeScope).
+ * Scope rỗng → không áp ghim (tránh đụng chéo nhãn).
+ */
 function sortPublicItems(
   items: ReturnType<typeof toPublicProduct>[],
-  sort: string
+  sort: string,
+  createdMsByMa?: Map<string, number>,
+  pinBadgeScope?: string | null
 ) {
+  const scope =
+    pinBadgeScope !== undefined
+      ? pinBadgeScope
+      : resolvePinBadgeScope({ sort });
   const next = [...items];
   if (sort === "price_asc") {
-    next.sort((a, b) => pinRank(a) - pinRank(b) || a.gia - b.gia);
+    return arrangeByAbsolutePin(next, (a, b) => a.gia - b.gia, scope);
   } else if (sort === "price_desc") {
-    next.sort((a, b) => pinRank(a) - pinRank(b) || b.gia - a.gia);
+    return arrangeByAbsolutePin(next, (a, b) => b.gia - a.gia, scope);
   } else if (sort === "ton_desc") {
-    next.sort(
-      (a, b) =>
-        pinRank(a) - pinRank(b) || b.ton - a.ton || a.ten.localeCompare(b.ten, "vi")
+    return arrangeByAbsolutePin(
+      next,
+      (a, b) => b.ton - a.ton || a.ten.localeCompare(b.ten, "vi"),
+      scope
     );
   } else if (sort === "ban_chay") {
-    // Không có rank doanh thu ở nhánh gọi này → xếp tên (không dùng tồn)
-    next.sort(
-      (a, b) => pinRank(a) - pinRank(b) || a.ten.localeCompare(b.ten, "vi")
+    return arrangeByAbsolutePin(
+      next,
+      (a, b) => a.ten.localeCompare(b.ten, "vi"),
+      scope || "ban_chay_sap_het"
     );
-  } else {
-    next.sort(
-      (a, b) => pinRank(a) - pinRank(b) || a.ten.localeCompare(b.ten, "vi")
-    );
+  } else if (sort === "moi" || sort === "newest") {
+    // «Mới» theo ngày — không ghim theo nhãn
+    const ts = (p: { ma?: string }) =>
+      createdMsByMa?.get(normalizeMa(p.ma)) || 0;
+    return [...next].sort((a, b) => {
+      const hb = ts(b) > 0 ? 1 : 0;
+      const ha = ts(a) > 0 ? 1 : 0;
+      if (hb !== ha) return hb - ha;
+      const tb = ts(b);
+      const ta = ts(a);
+      if (tb !== ta) return tb - ta;
+      return a.ten.localeCompare(b.ten, "vi");
+    });
   }
-  return next;
+  return arrangeByAbsolutePin(
+    next,
+    (a, b) => a.ten.localeCompare(b.ten, "vi"),
+    scope
+  );
+}
+
+/** ms ngày tạo từ shop.createdAt (đã sync KV). */
+function productCreatedMs(doc: Record<string, unknown>): number {
+  return kvProductCreatedMs(doc) || 0;
 }
 
 function dedupeListItems(
@@ -660,7 +690,7 @@ function hashIpFvn1a32(raw: string): string {
  * Xếp hạng SP theo doanh thu HĐ bán (qty × giá − CK dòng).
  * CHỈ ĐỌC aloha_sales_invoices — không update sản phẩm / store nội bộ.
  */
-async function loadRevenueRankMap(db: Db): Promise<Map<string, number>> {
+export async function loadRevenueRankMap(db: Db): Promise<Map<string, number>> {
   const cacheKey = `shop:bestsellers:revenue:v1:d${BESTSELLER_DAYS}`;
   const { body } = await cachedJson(
     cacheKey,
@@ -915,7 +945,12 @@ async function findByProductSlug(db: Db, slug: string) {
   return null;
 }
 
-export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
+export function registerShopApi(
+  app: Express,
+  getDb: GetDb,
+  getShopDb?: GetDb,
+  _getCatalogSourceDb?: GetDb
+) {
   /** Catalog/SP shop ưu tiên shop DB khi có getShopDb. */
   const catalogDb = getShopDb || getDb;
   app.options("/api/shop/*", (req, res) => {
@@ -994,17 +1029,19 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
       const minPrice = Math.max(0, Number(req.query.minPrice) || 0);
       const maxPrice = Math.max(0, Number(req.query.maxPrice) || 0);
       const inStock = String(req.query.inStock || "") === "1";
+      const maxTon = Math.max(0, Math.min(999, Number(req.query.maxTon) || 0));
       const attrFilters = parseAttrQuery(req.query.attr);
       const dvtFilters = parseDvtQuery(req.query.dvt);
       const loai = String(req.query.loai || "").trim();
       const badgeRaw = String(req.query.badge || req.query.webBadge || "").trim();
-      const badge =
-        badgeRaw === "ban_chay" || badgeRaw === "moi" || badgeRaw === "noi_bat"
-          ? badgeRaw
-          : "";
+      const badge = normalizeWebBadge(badgeRaw);
       const sortRaw = String(req.query.sort || "ten").trim();
       const sort =
-        sortRaw === "bestsellers" || sortRaw === "ban-chay" ? "ban_chay" : sortRaw;
+        sortRaw === "bestsellers" || sortRaw === "ban-chay"
+          ? "ban_chay"
+          : sortRaw === "newest"
+            ? "moi"
+            : sortRaw;
       const skip = (page - 1) * limit;
       const buyerEmail = requestShopBuyerEmail(req);
       const showZeroPrice = isShopTestBuyerEmail(buyerEmail);
@@ -1012,11 +1049,13 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
         minPrice > 0 ||
         maxPrice > 0 ||
         inStock ||
+        maxTon > 0 ||
         sort !== "ten" ||
         attrFilters.length > 0 ||
         dvtFilters.length > 0 ||
         Boolean(loai);
-      const cacheKey = `shop:products:v21:${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|${sort}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
+      const cacheKey = `shop:products:v31:${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|maxTon=${maxTon}|${sort}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
+      const pinScope = resolvePinBadgeScope({ sort, badge, maxTon });
 
       const { body, cache } = await cachedJson(cacheKey, async () => {
         const db = await catalogDb();
@@ -1045,7 +1084,15 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
           const homeFilter = await buildHomeScopeFilter(db);
           if (homeFilter) and.push(homeFilter);
         }
-        if (inStock) {
+        if (maxTon > 0) {
+          and.push({
+            $or: [
+              { ton: { $gt: 0, $lte: maxTon } },
+              { onHand: { $gt: 0, $lte: maxTon } },
+              { kvTon: { $gt: 0, $lte: maxTon } },
+            ],
+          });
+        } else if (inStock) {
           and.push({
             $or: [{ ton: { $gt: 0 } }, { onHand: { $gt: 0 } }, { kvTon: { $gt: 0 } }],
           });
@@ -1056,7 +1103,11 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
         if (dvtMongo) and.push(dvtMongo);
         const loaiMongo = mongoLoaiFilter(loai);
         if (loaiMongo) and.push(loaiMongo);
-        if (badge) and.push({ webBadge: badge });
+        if (badge === "ban_chay_sap_het") {
+          and.push({ webBadge: { $in: ["ban_chay_sap_het", "ban_chay"] } });
+        } else if (badge) {
+          and.push({ webBadge: badge });
+        }
         filter.$and = and;
 
         const col = db.collection(COL);
@@ -1085,6 +1136,9 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
           trongLuong: 1,
           webPin: 1,
           webBadge: 1,
+          kvId: 1,
+          id: 1,
+          createdAt: 1,
         };
 
         /** Bán chạy = xếp theo doanh thu HĐ (chỉ đọc). Không ghi aloha_products. */
@@ -1114,16 +1168,32 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
             if (minPrice > 0) sold = sold.filter((p) => p.gia >= minPrice);
             if (maxPrice > 0) sold = sold.filter((p) => p.gia <= maxPrice);
             if (inStock) sold = sold.filter((p) => p.ton > 0);
-            sold.sort((a, b) => {
-              const pin = pinRank(a) - pinRank(b);
-              if (pin !== 0) return pin;
-              const ra = rank.get(normalizeMa(a.ma)) || 0;
-              const rb = rank.get(normalizeMa(b.ma)) || 0;
-              if (rb !== ra) return rb - ra;
-              return a.ten.localeCompare(b.ten, "vi");
-            });
+            if (maxTon > 0) sold = sold.filter((p) => p.ton > 0 && p.ton <= maxTon);
+            sold = arrangeByAbsolutePin(
+              sold,
+              (a, b) => {
+                const ra = rank.get(normalizeMa(a.ma)) || 0;
+                const rb = rank.get(normalizeMa(b.ma)) || 0;
+                if (rb !== ra) return rb - ra;
+                return a.ten.localeCompare(b.ten, "vi");
+              },
+              badge || "ban_chay_sap_het"
+            );
 
             const soldMas = new Set(sold.map((p) => normalizeMa(p.ma)));
+            // maxTon (sắp hết): chỉ lấy SP có doanh thu ∩ tồn ≤ maxTon — không filler theo tên.
+            if (maxTon > 0) {
+              const totalRanked = sold.length;
+              return {
+                items: sold.slice(skip, skip + limit),
+                total: totalRanked,
+                page,
+                limit,
+                pages: Math.max(1, Math.ceil(totalRanked / limit)),
+                sortMode: "ban_chay",
+                ranked: totalRanked,
+              };
+            }
             const totalAll = await col.countDocuments(filter as any);
 
             if (skip < sold.length) {
@@ -1161,6 +1231,8 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
               let filler = dedupeListItems(fillerMapped.docs, fillerMapped.items);
               if (minPrice > 0) filler = filler.filter((p) => p.gia >= minPrice);
               if (maxPrice > 0) filler = filler.filter((p) => p.gia <= maxPrice);
+              if (inStock) filler = filler.filter((p) => p.ton > 0);
+              if (maxTon > 0) filler = filler.filter((p) => p.ton > 0 && p.ton <= maxTon);
               const merged = dedupeCanonicalPublic(
                 [...fromSold, ...filler],
                 new Map(),
@@ -1200,6 +1272,8 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
             let filler = dedupeListItems(fillerMapped.docs, fillerMapped.items);
             if (minPrice > 0) filler = filler.filter((p) => p.gia >= minPrice);
             if (maxPrice > 0) filler = filler.filter((p) => p.gia <= maxPrice);
+            if (inStock) filler = filler.filter((p) => p.ton > 0);
+            if (maxTon > 0) filler = filler.filter((p) => p.ton > 0 && p.ton <= maxTon);
             return {
               items: filler,
               total: totalAll,
@@ -1222,8 +1296,21 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
             .limit(5000)
             .toArray();
           const mapped = await mapDocsToPublicWithPriceBooks(db, docs as any[]);
+          const createdMsByMa = new Map<string, number>();
+          for (const d of mapped.docs as Record<string, unknown>[]) {
+            const ma = normalizeMa(d.ma);
+            if (!ma) continue;
+            const ms = productCreatedMs(d);
+            const prev = createdMsByMa.get(ma) || 0;
+            if (ms >= prev) createdMsByMa.set(ma, ms);
+          }
           const all = filterZeroPriceUnlessTestBuyer(
-            sortPublicItems(dedupeListItems(mapped.docs, mapped.items), sort),
+            sortPublicItems(
+              dedupeListItems(mapped.docs, mapped.items),
+              sort,
+              createdMsByMa,
+              pinScope
+            ),
             buyerEmail
           );
           const total = all.length;
@@ -1250,7 +1337,16 @@ export function registerShopApi(app: Express, getDb: GetDb, getShopDb?: GetDb) {
         if (minPrice > 0) items = items.filter((p) => p.gia >= minPrice);
         if (maxPrice > 0) items = items.filter((p) => p.gia <= maxPrice);
         if (inStock) items = items.filter((p) => p.ton > 0);
-        items = sortPublicItems(items, sort);
+        if (maxTon > 0) items = items.filter((p) => p.ton > 0 && p.ton <= maxTon);
+        const createdMsByMa = new Map<string, number>();
+        for (const d of mapped.docs as Record<string, unknown>[]) {
+          const ma = normalizeMa(d.ma);
+          if (!ma) continue;
+          const ms = productCreatedMs(d);
+          const prev = createdMsByMa.get(ma) || 0;
+          if (ms >= prev) createdMsByMa.set(ma, ms);
+        }
+        items = sortPublicItems(items, sort, createdMsByMa, pinScope);
 
         const total = items.length;
         const pageItems = items.slice(skip, skip + limit);

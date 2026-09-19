@@ -14,9 +14,21 @@ import {
 import { memoryCacheClear, redisInvalidateShopCache } from "../redis.js";
 import { syncBus } from "../syncBus.js";
 import { invalidateCategoryMetaCache } from "./categoryMeta.ts";
+import { parseKvDate } from "../utils/productCreatedAt.js";
 
 const CAT_COL = "categories";
 const PROD_COL = "aloha_products";
+
+function pickOpsCreatedRaw(p: Record<string, unknown> | undefined): unknown {
+  if (!p) return null;
+  return p.createdDate ?? p.CreatedDate ?? p.taoLuc ?? null;
+}
+
+function createdAtIso(raw: unknown): string {
+  if (raw instanceof Date) return raw.toISOString();
+  const d = parseKvDate(raw);
+  return d ? d.toISOString() : "";
+}
 
 export type SyncCatalogFromOpsOptions = {
   dryRun?: boolean;
@@ -269,6 +281,9 @@ export async function syncCatalogFromOps(
       .project({
         ma: 1,
         categoryId: 1,
+        createdDate: 1,
+        CreatedDate: 1,
+        taoLuc: 1,
       })
       .toArray();
     const opsByMa = new Map<string, Record<string, unknown>>();
@@ -287,6 +302,7 @@ export async function syncCatalogFromOps(
         categoryId: 1,
         categoryName: 1,
         ancestor: 1,
+        createdAt: 1,
       })
       .toArray();
 
@@ -305,25 +321,28 @@ export async function syncCatalogFromOps(
 
       const fromId = asCatId((sp as any).categoryId);
       const toId = op ? asCatId(op.categoryId) || fromId : fromId;
-      if (!toId) {
-        productResult.unchanged += 1;
-        continue;
-      }
-      const meta = catMeta.get(toId);
-      if (!meta) {
-        productResult.unchanged += 1;
-        continue;
-      }
+      const meta = toId ? catMeta.get(toId) : undefined;
 
       const fromName = String((sp as any).categoryName || "").trim();
-      const toName = meta.name;
-      const toAncestor = meta.ancestor;
+      const toName = meta?.name || "";
+      const toAncestor = meta?.ancestor;
 
       const setDoc: Record<string, unknown> = {};
-      if (toId !== fromId) setDoc.categoryId = toId;
-      if (toName && toName !== fromName) setDoc.categoryName = toName;
-      if (!sameAncestor((sp as any).ancestor, toAncestor)) {
-        setDoc.ancestor = toAncestor;
+      if (meta && toId) {
+        if (toId !== fromId) setDoc.categoryId = toId;
+        if (toName && toName !== fromName) setDoc.categoryName = toName;
+        if (toAncestor && !sameAncestor((sp as any).ancestor, toAncestor)) {
+          setDoc.ancestor = toAncestor;
+        }
+      }
+
+      // Chỉ sync ngày tạo KV → createdAt (không thêm field mới).
+      if (op) {
+        const nextCreated = createdAtIso(pickOpsCreatedRaw(op));
+        if (nextCreated) {
+          const prevCreated = createdAtIso((sp as any).createdAt);
+          if (prevCreated !== nextCreated) setDoc.createdAt = nextCreated;
+        }
       }
 
       if (!Object.keys(setDoc).length) {
@@ -336,14 +355,19 @@ export async function syncCatalogFromOps(
         productResult.sampleUpdates.push({
           ma,
           fromId,
-          toId,
+          toId: toId || fromId,
           fromName,
-          toName,
+          toName: toName || fromName,
         });
       }
 
       if (!dryRun) {
-        setDoc.updatedAt = now;
+        // Không đụng updatedAt khi chỉ sửa createdAt — giữ mốc cập nhật khác nguyên.
+        if (
+          Object.keys(setDoc).some((k) => k !== "createdAt")
+        ) {
+          setDoc.updatedAt = now;
+        }
         const update: Record<string, unknown> = { $set: setDoc };
         if (unsetLegacyNhom) {
           update.$unset = { nhom: "", nhomPath: "" };

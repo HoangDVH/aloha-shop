@@ -162,6 +162,39 @@ export function ShopAppearanceEditor() {
 
   const previewSrc = `${SHOP_PREVIEW_URL}/?_preview=${previewKey}`;
 
+  /** Đảm bảo có khối «Sản phẩm mới» ngay dưới «Sản phẩm bán chạy». */
+  const ensureMoiProductBlock = (layout: AppearanceLayout): AppearanceLayout => {
+    const hasMoi = layout.blocks.some(
+      (b) =>
+        b.type === "product_section" && String(b.props?.source || "") === "moi"
+    );
+    if (hasMoi) return layout;
+    const moiBlock: AppearanceBlock = {
+      id: newId("moi"),
+      type: "product_section",
+      enabled: true,
+      props: {
+        title: "Sản phẩm mới",
+        source: "moi",
+        limit: 50,
+        sort: "moi",
+      },
+    };
+    const hotIdx = layout.blocks.findIndex(
+      (b) =>
+        b.type === "product_section" &&
+        (String(b.props?.source || "") === "ban_chay" ||
+          String(b.props?.source || "") === "ban_chay_sap_het")
+    );
+    const blocks = [...layout.blocks];
+    if (hotIdx >= 0) blocks.splice(hotIdx + 1, 0, moiBlock);
+    else {
+      const featureIdx = blocks.findIndex((b) => b.type === "feature_strip");
+      blocks.splice(featureIdx >= 0 ? featureIdx + 1 : 0, 0, moiBlock);
+    }
+    return { ...layout, blocks };
+  };
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -176,16 +209,17 @@ export function ShopAppearanceEditor() {
           items: [] as CatNode[],
         })),
       ]);
-      setDraft(r.draft);
+      const draftWithMoi = ensureMoiProductBlock(r.draft);
+      setDraft(draftWithMoi);
       setCats(tree.items || []);
-      setDirtyFlag(!!r.dirty);
+      setDirtyFlag(!!r.dirty || draftWithMoi.blocks.length !== r.draft.blocks.length);
       setHistory(Array.isArray(r.history) ? r.history : []);
       setScheduledAt(r.scheduledPublishAt || null);
       const split = splitLocalFromIso(r.scheduledPublishAt);
       setScheduleDate(split.date);
       setScheduleTime(split.time);
       setSelectedId((id) =>
-        id && r.draft.blocks.some((b) => b.id === id) ? id : null
+        id && draftWithMoi.blocks.some((b) => b.id === id) ? id : null
       );
     } catch (e: any) {
       toast.error(e?.message || "Không tải được giao diện");
@@ -1062,40 +1096,59 @@ export function ShopAppearanceEditor() {
                             </WbField>
                             <WbField
                               label="Nguồn sản phẩm"
-                              hint="Mới / Nổi bật / Bán chạy lấy SP đã gắn NHÃN tương ứng ở tab Sản phẩm web"
+                              hint="Lấy SP đã gắn NHÃN tương ứng ở tab Hàng hóa web"
                             >
                               <select
                                 className={wbSelect}
                                 value={
                                   String(b.props.source || "ban_chay") === "nhom"
                                     ? "category"
-                                    : String(b.props.source || "ban_chay")
+                                    : String(b.props.source || "ban_chay") === "noi_bat"
+                                      ? "giam_gia"
+                                      : String(b.props.source || "ban_chay") === "ban_chay"
+                                        ? "ban_chay"
+                                        : String(b.props.source || "ban_chay")
                                 }
                                 onChange={(e) => {
                                   const source = e.target.value;
                                   const labelTitle =
                                     source === "moi"
                                       ? "Sản phẩm mới"
-                                      : source === "noi_bat"
-                                        ? "Sản phẩm nổi bật"
-                                        : source === "ban_chay"
-                                          ? "Sản phẩm bán chạy"
-                                          : "";
+                                      : source === "giam_gia"
+                                        ? "Sản phẩm giảm giá"
+                                        : source === "dat_truoc"
+                                          ? "Sản phẩm đặt trước"
+                                          : source === "ban_chay_sap_het"
+                                            ? "Sản phẩm bán chạy và sắp hết"
+                                            : source === "ban_chay"
+                                              ? "Sản phẩm bán chạy"
+                                              : "";
                                   updateProps(b.id, {
                                     source,
+                                    ...(source === "moi" ? { sort: "moi", limit: 50 } : {}),
                                     ...(labelTitle &&
                                     (!b.props.title ||
-                                      ["Mục sản phẩm mới", "Sản phẩm bán chạy", "Sản phẩm mới", "Sản phẩm nổi bật"].includes(
-                                        String(b.props.title)
-                                      ))
+                                      [
+                                        "Mục sản phẩm mới",
+                                        "Sản phẩm bán chạy",
+                                        "Sản phẩm mới",
+                                        "Sản phẩm nổi bật",
+                                        "Sản phẩm giảm giá",
+                                        "Sản phẩm đặt trước",
+                                        "Sản phẩm bán chạy và sắp hết",
+                                      ].includes(String(b.props.title)))
                                       ? { title: labelTitle }
                                       : {}),
                                   });
                                 }}
                               >
-                                <option value="ban_chay">Theo nhãn: Bán chạy</option>
-                                <option value="moi">Theo nhãn: Mới</option>
-                                <option value="noi_bat">Theo nhãn: Nổi bật</option>
+                                <option value="ban_chay">Theo doanh thu: Bán chạy</option>
+                                <option value="moi">Theo thời gian: Sản phẩm mới (top 50)</option>
+                                <option value="ban_chay_sap_het">
+                                  Theo nhãn: Bán chạy và sắp hết
+                                </option>
+                                <option value="giam_gia">Theo nhãn: Giảm giá</option>
+                                <option value="dat_truoc">Theo nhãn: Đặt trước</option>
                                 <option value="category">Theo nhóm hàng (categoryId)</option>
                               </select>
                             </WbField>

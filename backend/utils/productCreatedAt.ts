@@ -1,6 +1,5 @@
 /**
- * Ngày tạo SP theo KiotViet (createdDate / taoLuc).
- * Không dùng createdAt (ngày import Mongo) để xếp danh sách — dễ ra thứ tự A–Z / ngày đồng bộ.
+ * Ngày tạo SP — ưu tiên field KV; trên shop dùng createdAt (đã sync từ KV).
  */
 
 function pad2(n: number) {
@@ -39,29 +38,23 @@ function ymdFromRaw(raw: unknown): string {
   return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
 }
 
-/** Ngày KV: 7 số lẻ, hoặc ISO khi đã có ID KV. Không có ID + đuôi Z = giờ import Mongo. */
-function isUsableCreatedDate(raw: unknown, kvId: number): boolean {
-  const s = String(raw ?? "").trim();
-  if (!s) return false;
-  if (!parseKvDate(s)) return false;
-  if (/\.\d{7}/.test(s)) return true;
-  if (/Z$/i.test(s) && kvId <= 0) return false;
-  return true;
-}
-
-/** Ngày tạo KV — không dùng createdAt (ngày import Mongo). */
+/** Ngày tạo: KV fields trước, rồi createdAt (shop đã sync ngày KV). */
 function pickProductCreatedRaw(p: any): unknown {
   if (!p) return null;
-  const kv = productKvId(p);
   for (const key of ["createdDate", "CreatedDate", "taoLuc"]) {
     const raw = p[key];
     if (raw == null || raw === "") continue;
-    if (isUsableCreatedDate(raw, kv)) return raw;
+    if (parseKvDate(raw)) return raw;
+  }
+  for (const key of ["createdAt", "createdAtIso"]) {
+    const raw = p[key];
+    if (raw == null || raw === "") continue;
+    if (parseKvDate(raw)) return raw;
   }
   return null;
 }
 
-/** Mốc tạo SP (ms) theo ngày KV. */
+/** Mốc tạo SP (ms) theo ngày KV / createdAt shop. */
 export function productCreatedMs(p: any): number | null {
   const raw = pickProductCreatedRaw(p);
   if (!raw) return null;
@@ -74,7 +67,7 @@ export function productKvId(p: any): number {
 }
 
 /**
- * Mới nhất trước: ngày tạo KV → mã KV (ID tăng = SP mới) → mã SP.
+ * Mới nhất trước: ngày tạo → mã KV (ID tăng = SP mới) → mã SP.
  */
 export function sortByNewest<T extends Record<string, any>>(list: T[]): T[] {
   return [...(list || [])].sort((a, b) => {

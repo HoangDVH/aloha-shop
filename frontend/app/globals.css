@@ -932,19 +932,23 @@ body {
   }
 
   .hero-banner--full .hero-banner__copy-overlay .hero-banner__cta {
-    margin-top: 0.85rem;
-    min-height: 2.35rem;
-    padding: 0.45rem 0.95rem;
-    font-size: 0.8rem;
-    gap: 0.3rem;
+    margin-top: 0.75rem;
+    align-self: flex-start;
+    width: auto;
+    max-width: max-content;
+    flex: 0 0 auto;
+    min-height: 2.1rem;
+    padding: 0.35rem 0.85rem;
+    font-size: 0.75rem;
+    gap: 0.25rem;
     box-shadow:
       0 1px 0 color-mix(in srgb, #fff 18%, transparent) inset,
-      0 6px 14px color-mix(in srgb, var(--aloha-terracotta, #c67b5c) 22%, transparent);
+      0 4px 12px color-mix(in srgb, var(--aloha-green) 20%, transparent);
   }
 
   .hero-banner--full .hero-banner__copy-overlay .hero-banner__cta svg {
-    width: 0.95rem;
-    height: 0.95rem;
+    width: 0.85rem;
+    height: 0.85rem;
   }
 
   .hero-banner--full .hero-banner__img {
@@ -1241,19 +1245,19 @@ body {
 }
 
 .hero-banner__cta--primary {
-  background: var(--aloha-terracotta, #c67b5c);
+  background: var(--aloha-green);
   color: #fff;
   box-shadow:
     0 1px 0 color-mix(in srgb, #fff 22%, transparent) inset,
-    0 12px 28px color-mix(in srgb, var(--aloha-terracotta, #c67b5c) 32%, transparent);
+    0 12px 28px color-mix(in srgb, var(--aloha-green) 32%, transparent);
 }
 
 .hero-banner__cta--primary:hover {
   transform: translateY(-2px);
-  background: var(--aloha-terracotta-hover, #b0684a);
+  background: var(--aloha-green-dark);
   box-shadow:
     0 1px 0 color-mix(in srgb, #fff 18%, transparent) inset,
-    0 16px 34px color-mix(in srgb, var(--aloha-terracotta-hover, #b0684a) 36%, transparent);
+    0 16px 34px color-mix(in srgb, var(--aloha-green-dark) 36%, transparent);
 }
 
 .hero-banner__cta--primary:hover svg {
@@ -1556,10 +1560,12 @@ body {
   }
 
   .hero-banner__cta {
-    flex: 1 1 auto;
-    min-height: 2.45rem;
-    padding: 0.5rem 0.9rem;
-    font-size: 0.84rem;
+    flex: 0 0 auto;
+    width: auto;
+    max-width: max-content;
+    min-height: 2.15rem;
+    padding: 0.4rem 0.85rem;
+    font-size: 0.78rem;
   }
 
   .hero-banner__cta--primary svg {
@@ -1762,5 +1768,122 @@ body {
   .section-title-leaf {
     width: 0.95rem;
     height: 0.95rem;
+  }
+}
+
+/* Trang chủ — mục săn SP sắp hết (carousel) */
+.home-low-stock__panel {
+  background:
+    radial-gradient(ellipse 48% 42% at 8% 12%, color-mix(in srgb, #b7d4a8 28%, transparent), transparent 70%),
+    radial-gradient(ellipse 42% 38% at 92% 88%, color-mix(in srgb, #c5dbb8 22%, transparent), transparent 72%),
+    #ffffff;
+  box-shadow: 0 8px 28px -16px rgba(63, 95, 53, 0.22);
+  border: 1px solid color-mix(in srgb, var(--aloha-green) 10%, #e8eee4);
+}
+
+.home-low-stock__view-all {
+  background: #fff;
+}
+
+.home-low-stock__wave {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  z-index: 0;
+  width: min(28rem, 70%);
+  height: 2.75rem;
+  transform: translateX(-50%);
+  pointer-events: none;
+  background: radial-gradient(ellipse 70% 100% at 50% 100%, color-mix(in srgb, #b7d4a8 35%, transparent), transparent 72%);
+}
+
+.home-low-stock__blob {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(1px);
+}
+
+.home-low-stock__blob--tl {
+  top: -3rem;
+  left: -2rem;
+  width: 12rem;
+  height: 10rem;
+  background: color-mix(in srgb, #cfe0c4 55%, transparent);
+}
+
+.home-low-stock__blob--br {
+  right: -2.5rem;
+  bottom: -3.5rem;
+  width: 14rem;
+  height: 11rem;
+  background: color-mix(in srgb, #d7e6ce 50%, transparent);
+}
+
+.home-low-stock__nav {
+  position: absolute;
+  top: 42%;
+  z-index: 20;
+  display: inline-flex;
+  height: 2.35rem;
+  width: 2.35rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #fff;
+  color: #64748b;
+  box-shadow: 0 6px 16px -8px rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  transition: color 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+}
+
+.home-low-stock__nav:hover:not(:disabled) {
+  color: var(--aloha-green-dark);
+  background: #fff;
+}
+
+.home-low-stock__nav:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.embla--home-sale {
+  overflow: hidden;
+  margin: 0 0.35rem;
+}
+
+.embla--home-sale .embla__container {
+  display: flex;
+  margin-left: -0.5rem;
+}
+
+.embla--home-sale .embla__slide {
+  flex: 0 0 50%;
+  min-width: 0;
+  padding-left: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .embla--home-sale .embla__slide {
+    flex-basis: 33.333%;
+  }
+}
+
+@media (min-width: 768px) {
+  .embla--home-sale .embla__slide {
+    flex-basis: 25%;
+  }
+}
+
+@media (min-width: 1024px) {
+  .embla--home-sale .embla__slide {
+    flex-basis: 20%;
+  }
+}
+
+@media (min-width: 1280px) {
+  .embla--home-sale .embla__slide {
+    flex-basis: 16.666%;
   }
 }

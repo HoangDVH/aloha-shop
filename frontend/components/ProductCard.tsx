@@ -141,27 +141,20 @@ export function ProductCard({
           ) : null}
 
           <div className="absolute left-2 top-2 z-10 flex flex-col gap-1">
-            {preOrder ? (
+            {preOrder || manualBadge === "dat_truoc" ? (
               <span className="rounded-full bg-amber-600/95 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm backdrop-blur-sm">
                 Đặt trước
               </span>
             ) : null}
-            {!preOrder && manualBadge === "ban_chay" ? (
-              <span className="rounded-full bg-[var(--aloha-terracotta)] px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white shadow-sm">
-                Bán chạy
+            {!preOrder && manualBadge === "giam_gia" ? (
+              <span className="rounded-full bg-rose-600/95 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white shadow-sm">
+                Giảm giá
               </span>
             ) : null}
-            {!preOrder && manualBadge === "moi" ? (
-              <span className="rounded-full bg-sky-600/95 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white shadow-sm">
-                Mới
-              </span>
-            ) : null}
-            {!preOrder && manualBadge === "noi_bat" ? (
-              <span className="rounded-full bg-[var(--aloha-green)] px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white shadow-sm">
-                Nổi bật
-              </span>
-            ) : null}
-            {lowStock ? (
+            {!preOrder &&
+            (lowStock ||
+              manualBadge === "ban_chay_sap_het" ||
+              manualBadge === "ban_chay") ? (
               <span className="rounded-full bg-amber-500/95 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
                 Sắp hết
               </span>
@@ -208,9 +201,6 @@ export function ProductCard({
               </span>
             ) : null}
           </div>
-          {preOrder ? (
-            <p className="mt-1 text-[11px] font-semibold text-amber-700">Đặt trước</p>
-          ) : null}
         </div>
       </div>
     </article>

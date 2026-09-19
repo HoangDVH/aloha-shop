@@ -10,6 +10,7 @@ import { ShopCategorySelect } from "@/components/ShopCategorySelect";
 import { websiteApi } from "../api";
 import { WbBtn } from "../ui";
 import { AdminTableRowSkeleton } from "@/components/admin/ui/AdminSkeleton";
+import { WEB_BADGE_LABELS, WEB_BADGE_VALUES, type WebBadge } from "@/lib/webBadge";
 
 type Row = {
   ma: string;
@@ -22,8 +23,6 @@ type Row = {
   hienThiWeb: boolean;
   webPin?: number;
   webBadge?: string;
-  seoTitle?: string;
-  seoDescription?: string;
 };
 
 function fmtVnd(n: number) {
@@ -36,18 +35,16 @@ const VISIBLE_OPTIONS = [
 ];
 
 const BADGE_OPTIONS = [
-  { value: "", label: "Tự động" },
-  { value: "ban_chay", label: "Bán chạy" },
-  { value: "moi", label: "Mới" },
-  { value: "noi_bat", label: "Nổi bật" },
+  { value: "", label: "Chưa gắn" },
+  ...WEB_BADGE_VALUES.map((v) => ({ value: v, label: WEB_BADGE_LABELS[v] })),
 ];
 
 const BADGE_FILTER_OPTIONS = [
-  { value: "auto", label: "Nhãn tự động" },
-  { value: "ban_chay", label: "Bán chạy" },
-  { value: "moi", label: "Mới" },
-  { value: "noi_bat", label: "Nổi bật" },
+  { value: "auto", label: "Chưa gắn nhãn" },
+  ...WEB_BADGE_VALUES.map((v) => ({ value: v, label: WEB_BADGE_LABELS[v] })),
 ];
+
+type BadgeFilter = "all" | "auto" | WebBadge;
 
 export function ShopWebProductsAdmin() {
   /** Chữ đang gõ — chỉ nuôi dropdown. */
@@ -58,9 +55,8 @@ export function ShopWebProductsAdmin() {
   const [suggestions, setSuggestions] = useState<Row[]>([]);
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [visible, setVisible] = useState<"all" | "1" | "0">("all");
-  const [badgeFilter, setBadgeFilter] = useState<
-    "all" | "auto" | "ban_chay" | "moi" | "noi_bat"
-  >("all");
+  const [badgeFilter, setBadgeFilter] = useState<BadgeFilter>("all");
+  const [applyingDefaults, setApplyingDefaults] = useState(false);
   /** Đường dẫn nhóm — cùng ShopCategorySelect trang chủ shop */
   const [selectedNhoms, setSelectedNhoms] = useState<string[]>([]);
   const [page, setPage] = useState(1);
@@ -69,7 +65,6 @@ export function ShopWebProductsAdmin() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [busyMa, setBusyMa] = useState<string | null>(null);
-  const [seoOpenMa, setSeoOpenMa] = useState<string | null>(null);
   const draftRef = useRef("");
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const suggestSeq = useRef(0);
@@ -205,15 +200,32 @@ export function ShopWebProductsAdmin() {
   ) => {
     setBusyMa(row.ma);
     try {
-      await websiteApi(
-        `/api/shop/admin/products/${encodeURIComponent(row.ma)}/merchandising`,
-        {
-          method: "PATCH",
-          body: JSON.stringify(patch),
+      const r = await websiteApi<{
+        ok?: boolean;
+        webPin?: number;
+        webBadge?: string;
+        clearedMas?: string[];
+      }>(`/api/shop/admin/products/${encodeURIComponent(row.ma)}/merchandising`, {
+        method: "PATCH",
+        body: JSON.stringify(patch),
+      });
+      patchRow(row.ma, {
+        webPin: r.webPin !== undefined ? r.webPin : patch.webPin,
+        webBadge: r.webBadge !== undefined ? r.webBadge : patch.webBadge,
+      });
+      if (r.clearedMas?.length) {
+        for (const m of r.clearedMas) {
+          patchRow(m, { webPin: 0 });
         }
-      );
-      patchRow(row.ma, patch);
-      toast.success(`Đã lưu ghim/nhãn ${row.ma}`);
+        toast.success(
+          `Đã lưu ${row.ma}` +
+            (r.clearedMas.length
+              ? ` · nhả ghim: ${r.clearedMas.join(", ")}`
+              : "")
+        );
+      } else {
+        toast.success(`Đã lưu ghim/nhãn ${row.ma}`);
+      }
     } catch (e: any) {
       toast.error(e?.message || "Lưu ghim/nhãn thất bại");
       void load();
@@ -222,26 +234,26 @@ export function ShopWebProductsAdmin() {
     }
   };
 
-  const saveSeo = async (
-    row: Row,
-    patch: { seoTitle?: string; seoDescription?: string }
-  ) => {
-    setBusyMa(row.ma);
+  const applyDefaultBadges = async () => {
+    if (applyingDefaults) return;
+    setApplyingDefaults(true);
     try {
-      await websiteApi(
-        `/api/shop/admin/products/${encodeURIComponent(row.ma)}/seo`,
-        {
-          method: "PATCH",
-          body: JSON.stringify(patch),
-        }
+      const r = await websiteApi<{
+        banChaySapHet: number;
+        datTruoc: number;
+        moi: number;
+        updated: number;
+        skippedManual: number;
+      }>("/api/shop/admin/products/apply-default-badges", { method: "POST" });
+      toast.success(
+        `Đã áp nhãn mặc định: ${r.banChaySapHet || 0} bán chạy+sắp hết · ${r.datTruoc || 0} đặt trước` +
+          (r.skippedManual ? ` · bỏ qua ${r.skippedManual} đã gắn nhãn` : "")
       );
-      patchRow(row.ma, patch);
-      toast.success(`Đã lưu SEO ${row.ma}`);
-    } catch (e: any) {
-      toast.error(e?.message || "Lưu SEO thất bại");
       void load();
+    } catch (e: any) {
+      toast.error(e?.message || "Áp nhãn mặc định thất bại");
     } finally {
-      setBusyMa(null);
+      setApplyingDefaults(false);
     }
   };
 
@@ -252,20 +264,39 @@ export function ShopWebProductsAdmin() {
           <div>
             <h2 className="text-[15px] font-semibold text-gray-900">Hàng hóa trên web</h2>
             <p className="mt-0.5 text-[12px] text-gray-500">
-              Hiện/ẩn · Ghim · Nhãn tay. «Tự động» = chưa gắn nhãn; shop có thể vẫn hiện
-              «Bán chạy» khi tồn &gt; 20.
+              Hiện/ẩn · Ghim theo nhãn đang chọn (số = vị trí trong nhãn đó; cùng số cùng
+              nhãn sẽ thay SP cũ) · Đã gắn nhãn = khóa đến khi chọn «Chưa gắn» rồi «Áp nhãn
+              mặc định». Mục «Sản phẩm mới» xếp theo ngày tạo, không gắn cứng nhãn Mới. 4
+              nhãn: Bán chạy và sắp hết · Giảm giá · Đặt trước · Mới.
             </p>
           </div>
-          <p className="text-[12px] font-medium text-gray-600">
-            Tổng{" "}
-            <span className="tabular-nums text-[#0F9D58]">
-              {total.toLocaleString("vi-VN")}
-            </span>{" "}
-            hàng hóa
-            {appliedQ ? (
-              <span className="ml-1 text-gray-400">· lọc «{appliedQ}»</span>
-            ) : null}
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <WbBtn
+              type="button"
+              variant="secondary"
+              disabled={applyingDefaults || loading}
+              onClick={() => void applyDefaultBadges()}
+              className="!h-9 !text-[12px]"
+            >
+              {applyingDefaults ? (
+                <>
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Đang áp…
+                </>
+              ) : (
+                "Áp nhãn mặc định"
+              )}
+            </WbBtn>
+            <p className="text-[12px] font-medium text-gray-600">
+              Tổng{" "}
+              <span className="tabular-nums text-[#0F9D58]">
+                {total.toLocaleString("vi-VN")}
+              </span>{" "}
+              hàng hóa
+              {appliedQ ? (
+                <span className="ml-1 text-gray-400">· lọc «{appliedQ}»</span>
+              ) : null}
+            </p>
+          </div>
         </div>
 
         <div className="mt-4 grid items-center gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.1fr)_minmax(180px,0.85fr)_minmax(150px,0.65fr)_minmax(150px,0.65fr)_auto]">
@@ -396,9 +427,7 @@ export function ShopWebProductsAdmin() {
               options={BADGE_FILTER_OPTIONS}
               onChange={(v) => {
                 setPage(1);
-                setBadgeFilter(
-                  (v as "auto" | "ban_chay" | "moi" | "noi_bat") || "all"
-                );
+                setBadgeFilter((v as BadgeFilter) || "all");
               }}
             />
           </div>
@@ -417,7 +446,7 @@ export function ShopWebProductsAdmin() {
                 <th className="px-4 py-3 font-semibold">Nhóm hàng</th>
                 <th className="px-4 py-3 text-right font-semibold">Giá bán</th>
                 <th className="px-4 py-3 text-right font-semibold">Có sẵn</th>
-                <th className="px-3 py-3 text-center font-semibold" title="Số nhỏ hơn = lên trước">
+                <th className="px-3 py-3 text-center font-semibold" title="Số = vị trí trong nhãn đang gắn">
                   Ghim
                 </th>
                 <th className="px-3 py-3 text-center font-semibold">Nhãn</th>
@@ -433,8 +462,27 @@ export function ShopWebProductsAdmin() {
                 </>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-20 text-center text-[13px] text-gray-400">
-                    Không có hàng hóa phù hợp
+                  <td colSpan={7} className="px-4 py-16 text-center text-[13px] text-gray-500">
+                    {badgeFilter === "ban_chay_sap_het" || badgeFilter === "dat_truoc" ? (
+                      <div className="mx-auto max-w-md space-y-2">
+                        <p className="font-medium text-gray-600">
+                          Chưa có sản phẩm gắn nhãn «
+                          {badgeFilter === "ban_chay_sap_het"
+                            ? "Bán chạy và sắp hết"
+                            : "Đặt trước"}
+                          ».
+                        </p>
+                        <p className="text-[12px] text-gray-400">
+                          Bộ lọc chỉ hiện SP đã lưu nhãn trong DB. Bấm{" "}
+                          <strong className="font-semibold text-[#0F9D58]">
+                            Áp nhãn mặc định
+                          </strong>{" "}
+                          (góc phải trên) để gắn tự động, rồi lọc lại.
+                        </p>
+                      </div>
+                    ) : (
+                      "Không có hàng hóa phù hợp"
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -457,16 +505,6 @@ export function ShopWebProductsAdmin() {
                           <div className="truncate font-mono text-[11px] text-gray-400">
                             {row.ma}
                           </div>
-                          <button
-                            type="button"
-                            className="mt-0.5 text-[11px] font-bold text-[#0F9D58] hover:underline"
-                            onClick={() =>
-                              setSeoOpenMa((m) => (m === row.ma ? null : row.ma))
-                            }
-                          >
-                            {seoOpenMa === row.ma ? "Đóng SEO" : "SEO"}
-                            {row.seoTitle ? " · đã ghi đè" : ""}
-                          </button>
                         </div>
                       </div>
                     </td>
@@ -487,10 +525,15 @@ export function ShopWebProductsAdmin() {
                         type="number"
                         min={0}
                         max={9999}
-                        disabled={busyMa === row.ma}
-                        className="mx-auto h-8 w-16 rounded-md border border-gray-200 bg-white px-1.5 text-center text-[12px] tabular-nums outline-none focus:border-[#0F9D58]"
+                        disabled={busyMa === row.ma || !row.webBadge}
+                        className="mx-auto h-8 w-16 rounded-md border border-gray-200 bg-white px-1.5 text-center text-[12px] tabular-nums outline-none focus:border-[#0F9D58] disabled:bg-gray-50 disabled:text-gray-400"
                         value={Number(row.webPin) > 0 ? Number(row.webPin) : ""}
                         placeholder="—"
+                        title={
+                          row.webBadge
+                            ? "Ghim trong nhãn đang chọn: 1 = đầu danh sách khu đó"
+                            : "Chọn nhãn trước khi ghim"
+                        }
                         onFocus={(e) => {
                           e.currentTarget.dataset.saved = String(Number(row.webPin) || 0);
                         }}
@@ -503,6 +546,7 @@ export function ShopWebProductsAdmin() {
                           patchRow(row.ma, { webPin: n });
                         }}
                         onBlur={(e) => {
+                          if (!row.webBadge) return;
                           const raw = e.target.value.trim();
                           const n =
                             raw === ""
@@ -516,11 +560,20 @@ export function ShopWebProductsAdmin() {
                     <td className="px-3 py-3 text-center">
                       <select
                         disabled={busyMa === row.ma}
-                        className="h-8 max-w-[118px] rounded-md border border-gray-200 bg-white px-1.5 text-[12px] outline-none focus:border-[#0F9D58]"
+                        className="h-8 max-w-[160px] rounded-md border border-gray-200 bg-white px-1.5 text-[12px] outline-none focus:border-[#0F9D58]"
                         value={row.webBadge || ""}
+                        title={
+                          row.webBadge
+                            ? WEB_BADGE_LABELS[row.webBadge as WebBadge] || row.webBadge
+                            : "Chưa gắn — có thể «Áp nhãn mặc định»"
+                        }
                         onChange={(e) => {
                           const webBadge = e.target.value;
-                          void saveMerch({ ...row, webBadge }, { webBadge });
+                          const patch: { webBadge: string; webPin?: number } = {
+                            webBadge,
+                          };
+                          if (!webBadge) patch.webPin = 0;
+                          void saveMerch({ ...row, webBadge }, patch);
                         }}
                       >
                         {BADGE_OPTIONS.map((o) => (
@@ -555,49 +608,6 @@ export function ShopWebProductsAdmin() {
                       </button>
                     </td>
                   </tr>
-                  {seoOpenMa === row.ma ? (
-                    <tr className="border-b border-gray-100 bg-[#F7F9F6]">
-                      <td colSpan={7} className="px-4 py-3">
-                        <p className="mb-2 text-[12px] font-semibold text-slate-700">
-                          SEO trên Google — để trống = dùng template chung
-                        </p>
-                        <div className="grid gap-2 md:grid-cols-2">
-                          <input
-                            className="h-9 rounded-lg border border-gray-200 bg-white px-3 text-[13px] outline-none focus:border-[#0F9D58]"
-                            placeholder="Tiêu đề SEO (ghi đè)"
-                            defaultValue={row.seoTitle || ""}
-                            id={`seo-title-${row.ma}`}
-                          />
-                          <input
-                            className="h-9 rounded-lg border border-gray-200 bg-white px-3 text-[13px] outline-none focus:border-[#0F9D58]"
-                            placeholder="Mô tả SEO (ghi đè)"
-                            defaultValue={row.seoDescription || ""}
-                            id={`seo-desc-${row.ma}`}
-                          />
-                        </div>
-                        <div className="mt-2">
-                          <WbBtn
-                            variant="primary"
-                            disabled={busyMa === row.ma}
-                            onClick={() => {
-                              const titleEl = document.getElementById(
-                                `seo-title-${row.ma}`
-                              ) as HTMLInputElement | null;
-                              const descEl = document.getElementById(
-                                `seo-desc-${row.ma}`
-                              ) as HTMLInputElement | null;
-                              void saveSeo(row, {
-                                seoTitle: titleEl?.value || "",
-                                seoDescription: descEl?.value || "",
-                              });
-                            }}
-                          >
-                            Lưu SEO
-                          </WbBtn>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : null}
                   </Fragment>
                 ))
               )}

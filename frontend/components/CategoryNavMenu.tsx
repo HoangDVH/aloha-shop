@@ -256,7 +256,7 @@ function MultiColumnFlyout({
                 href={categoryHref(root)}
                 onClick={onNavigate}
                 title={root.name}
-                className="shrink-0 border-b border-[var(--aloha-line)] px-4 py-2 text-sm font-bold leading-snug text-[var(--aloha-green)] hover:bg-[var(--aloha-green)] hover:text-white"
+                className="shrink-0 border-b border-[var(--aloha-line)] bg-white px-4 py-2 text-sm font-bold leading-snug text-[var(--aloha-green)] hover:bg-[var(--aloha-green-light)] hover:underline"
               >
                 <span className="line-clamp-2 break-words">Tất cả {root.name}</span>
               </Link>

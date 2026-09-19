@@ -199,7 +199,7 @@ if (uploadsFallbackOrigin) {
 
 // Staff auth (ops DB) + shop storefront + admin
 registerAuthRoutes(app, getOpsDb);
-registerShopApi(app, getDb, getDb);
+registerShopApi(app, getDb, getDb, getCatalogSourceDb);
 registerShopAuthRoutes(app, getDb);
 registerShopAddressRoutes(app, getDb);
 registerShopCartRoutes(app, getDb);
@@ -209,7 +209,7 @@ registerShopShippingRoutes(app, getDb, getOpsDb);
 registerShopCtvMeRoutes(app, getDb, getOpsDb);
 registerShopAppearanceRoutes(app, getOpsDb, getDb);
 registerShopArticlesRoutes(app, getOpsDb, getDb);
-registerShopProductsAdminRoutes(app, getOpsDb, getDb);
+registerShopProductsAdminRoutes(app, getOpsDb, getDb, getCatalogSourceDb);
 registerShopCatalogSyncFromOpsRoutes(app, getOpsDb, getDb, getCatalogSourceDb);
 registerShopSeoRedirectRoutes(app, getOpsDb, getDb);
 registerShopAccountsAdminRoutes(app, getOpsDb, getDb);

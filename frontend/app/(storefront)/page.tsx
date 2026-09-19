@@ -68,7 +68,7 @@ async function HomeSections() {
   let err = "";
   let main: ReactNode = null;
   try {
-    main = await renderHomeMainSections();
+    main = await renderHomeMainSections(appearance.blocks);
   } catch (e: any) {
     err = e?.message || "Không tải được catalog.";
   }

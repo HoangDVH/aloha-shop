@@ -43,6 +43,7 @@ type CatalogSp = {
   minPrice?: string;
   maxPrice?: string;
   inStock?: string;
+  maxTon?: string;
   sort?: string;
   page?: string;
   badge?: string;
@@ -86,6 +87,7 @@ export function shouldNoIndexCatalog(
   if (String(sp.badge || "").trim()) return true;
   if (Number(sp.minPrice) > 0 || Number(sp.maxPrice) > 0) return true;
   if (String(sp.inStock || "") === "1") return true;
+  if (Number(sp.maxTon) > 0) return true;
   if (page > 1) return true;
   if (sort && sort !== defaultSort) return true;
   if (opts?.treatNhomAsFilter && (nhomCount > 0 || cidCount > 0)) return true;

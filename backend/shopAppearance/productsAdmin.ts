@@ -18,8 +18,16 @@ import {
   loadCategoryMetaById,
   overlayProductCategoryFields,
 } from "../shopCatalog/categoryMeta.js";
+import {
+  isLowStockTon,
+  isPreOrderTon,
+  normalizeWebBadge,
+  WEB_BADGE_VALUES,
+} from "../shopCatalog/webBadge.js";
+import { loadRevenueRankMap } from "../shopCatalog/register.js";
 
 const COL = "aloha_products";
+const LOW_STOCK_MAX = 8;
 
 function publicPrice(doc: Record<string, unknown>): number {
   const n = Number(
@@ -62,7 +70,8 @@ function productMatchesQuery(
 export function registerShopProductsAdminRoutes(
   app: Express,
   getDb: GetDb,
-  getShopDb?: GetDb
+  getShopDb?: GetDb,
+  _getCatalogSourceDb?: GetDb
 ) {
   const gate = [requireAuth(getDb), requireActive, requireManager];
   const productsDb = getShopDb || getDb;
@@ -104,15 +113,16 @@ export function registerShopProductsAdminRoutes(
               { webBadge: { $exists: false } },
               { webBadge: null },
               { webBadge: "" },
-              { webBadge: { $nin: ["ban_chay", "moi", "noi_bat"] } },
+              { webBadge: { $nin: [...WEB_BADGE_VALUES, "ban_chay"] } },
             ],
           });
-        } else if (
-          badge === "ban_chay" ||
-          badge === "moi" ||
-          badge === "noi_bat"
-        ) {
-          and.push({ webBadge: badge });
+        } else {
+          const n = normalizeWebBadge(badge);
+          if (n === "ban_chay_sap_het") {
+            and.push({ webBadge: { $in: ["ban_chay_sap_het", "ban_chay"] } });
+          } else if (n) {
+            and.push({ webBadge: n });
+          }
         }
 
         const filter = { $and: and };
@@ -142,15 +152,28 @@ export function registerShopProductsAdminRoutes(
 
         let rows: any[];
         let total: number;
+        const badgeNorm = normalizeWebBadge(badge);
+        const sortPinned =
+          badgeNorm && badge !== "auto"
+            ? { webPin: 1 as const, ten: 1 as const }
+            : { ten: 1 as const };
 
         if (q) {
           // Quét theo lọc nhóm/trạng thái rồi khớp bỏ dấu (kho ~ vài nghìn SP — ổn cho admin).
           const all = await col
             .find(filter as any)
             .project(projection)
-            .sort({ ten: 1 })
+            .sort(sortPinned)
             .toArray();
           const matched = all.filter((d) => productMatchesQuery(d, q));
+          if (badgeNorm && badge !== "auto") {
+            matched.sort((a, b) => {
+              const pa = Number(a.webPin) > 0 ? Number(a.webPin) : 1e9;
+              const pb = Number(b.webPin) > 0 ? Number(b.webPin) : 1e9;
+              if (pa !== pb) return pa - pb;
+              return String(a.ten || "").localeCompare(String(b.ten || ""), "vi");
+            });
+          }
           total = matched.length;
           rows = matched.slice((page - 1) * limit, page * limit);
         } else {
@@ -159,7 +182,7 @@ export function registerShopProductsAdminRoutes(
             col
               .find(filter as any)
               .project(projection)
-              .sort({ ten: 1 })
+              .sort(sortPinned)
               .skip((page - 1) * limit)
               .limit(limit)
               .toArray(),
@@ -189,12 +212,7 @@ export function registerShopProductsAdminRoutes(
           ton: publicTon(aligned as any),
           hienThiWeb: aligned.hienThiWeb !== false,
           webPin: Number(aligned.webPin) > 0 ? Math.round(Number(aligned.webPin)) : 0,
-          webBadge:
-            aligned.webBadge === "ban_chay" ||
-            aligned.webBadge === "moi" ||
-            aligned.webBadge === "noi_bat"
-              ? String(aligned.webBadge)
-              : "",
+          webBadge: normalizeWebBadge(aligned.webBadge),
           seoTitle: String(aligned.seoTitle || ""),
           seoDescription: String(aligned.seoDescription || ""),
         };
@@ -224,31 +242,79 @@ export function registerShopProductsAdminRoutes(
           res.status(400).json({ error: "missing_ma" });
           return;
         }
-        const $set: Record<string, unknown> = {
-          merchandisingUpdatedAt: new Date().toISOString(),
-        };
-        if (req.body?.webPin !== undefined) {
-          const n = Number(req.body.webPin);
-          $set.webPin = Number.isFinite(n) && n > 0 ? Math.min(9999, Math.round(n)) : 0;
-        }
-        if (req.body?.webBadge !== undefined) {
-          const b = String(req.body.webBadge || "").trim();
-          $set.webBadge =
-            b === "ban_chay" || b === "moi" || b === "noi_bat" ? b : "";
-        }
-        const r = await db.collection(COL).updateOne(
-          {
-            $or: [{ ma }, { ma: ma.toUpperCase() }, { ma: ma.toLowerCase() }],
-          } as any,
-          { $set }
-        );
-        if (!r.matchedCount) {
+        const col = db.collection(COL);
+        const maFilter = {
+          $or: [{ ma }, { ma: ma.toUpperCase() }, { ma: ma.toLowerCase() }],
+        } as any;
+        const cur = await col.findOne(maFilter, {
+          projection: { ma: 1, webBadge: 1, webPin: 1 },
+        });
+        if (!cur) {
           res.status(404).json({ error: "not_found" });
           return;
         }
+
+        const $set: Record<string, unknown> = {
+          merchandisingUpdatedAt: new Date().toISOString(),
+        };
+        let nextBadge = normalizeWebBadge(cur.webBadge);
+        if (req.body?.webBadge !== undefined) {
+          nextBadge = normalizeWebBadge(req.body.webBadge);
+          $set.webBadge = nextBadge;
+        }
+
+        let nextPin = Number(cur.webPin) > 0 ? Math.round(Number(cur.webPin)) : 0;
+        if (req.body?.webPin !== undefined) {
+          const n = Number(req.body.webPin);
+          nextPin = Number.isFinite(n) && n > 0 ? Math.min(9999, Math.round(n)) : 0;
+        }
+
+        // Xóa nhãn → xóa ghim. Ghim khi chưa có nhãn → không lưu.
+        if (!nextBadge) nextPin = 0;
+        $set.webPin = nextPin;
+
+        const clearedMas: string[] = [];
+        if (nextBadge && nextPin > 0) {
+          const badgeIn =
+            nextBadge === "ban_chay_sap_het"
+              ? ["ban_chay_sap_het", "ban_chay"]
+              : [nextBadge];
+          const rivals = await col
+            .find({
+              webPin: nextPin,
+              webBadge: { $in: badgeIn },
+              ma: { $nin: [ma, ma.toUpperCase(), ma.toLowerCase()] },
+            } as any)
+            .project({ ma: 1 })
+            .toArray();
+          for (const r of rivals) {
+            const rm = String(r.ma || "").trim();
+            if (!rm) continue;
+            clearedMas.push(rm);
+            await col.updateOne(
+              { ma: rm } as any,
+              {
+                $set: {
+                  webPin: 0,
+                  merchandisingUpdatedAt: new Date().toISOString(),
+                },
+              }
+            );
+          }
+        }
+
+        await col.updateOne(maFilter, { $set });
         await redisInvalidateShopCache();
-        syncBus.publish(["aloha_products"], "web-merchandising", { ids: [ma] });
-        res.json({ ok: true, ma, ...$set });
+        syncBus.publish(["aloha_products"], "web-merchandising", {
+          ids: [ma, ...clearedMas],
+        });
+        res.json({
+          ok: true,
+          ma,
+          webPin: nextPin,
+          webBadge: nextBadge,
+          clearedMas,
+        });
       } catch (e: any) {
         res.status(500).json({ error: e?.message || "merchandising_failed" });
       }
@@ -323,6 +389,109 @@ export function registerShopProductsAdminRoutes(
         res.json({ ok: true, ma, hienThiWeb });
       } catch (e: any) {
         res.status(500).json({ error: e?.message || "visibility_failed" });
+      }
+    }
+  );
+
+  app.post(
+    "/api/shop/admin/products/apply-default-badges",
+    ...gate,
+    async (_req: AuthRequest, res: Response) => {
+      try {
+        const db = await productsDb();
+        const col = db.collection(COL);
+        const rank = await loadRevenueRankMap(db);
+        const docs = await col
+          .find({})
+          .project({
+            ma: 1,
+            ton: 1,
+            onHand: 1,
+            kvTon: 1,
+            webBadge: 1,
+            createdAt: 1,
+          })
+          .toArray();
+
+        const now = new Date().toISOString();
+        let banChaySapHet = 0;
+        let datTruoc = 0;
+        let skippedManual = 0;
+        const ops: import("mongodb").AnyBulkWriteOperation[] = [];
+
+        for (const d of docs) {
+          const ma = String(d.ma || "").trim();
+          if (!ma) continue;
+          const legacyRaw = String(d.webBadge || "").trim();
+          const current = normalizeWebBadge(legacyRaw);
+          // Đã gắn 1 trong 4 nhãn → khóa (không đè). Legacy/rỗng → được áp.
+          const isOpen =
+            !legacyRaw ||
+            legacyRaw === "ban_chay" ||
+            legacyRaw === "noi_bat" ||
+            !current;
+          if (!isOpen) {
+            skippedManual++;
+            continue;
+          }
+
+          const ton = publicTon(d as Record<string, unknown>);
+          const maKey = ma.toUpperCase();
+          let next = "";
+          if (isPreOrderTon(ton)) {
+            next = "dat_truoc";
+          } else if (isLowStockTon(ton, LOW_STOCK_MAX) && rank.has(maKey)) {
+            next = "ban_chay_sap_het";
+          }
+          // Không gắn cứng «moi» — mục mới theo createdAt
+
+          if (next === current && legacyRaw !== "ban_chay" && legacyRaw !== "noi_bat") {
+            continue;
+          }
+          if (!next && !legacyRaw) continue;
+
+          const setDoc: Record<string, unknown> = {
+            webBadge: next,
+            merchandisingUpdatedAt: now,
+          };
+          ops.push({
+            updateOne: {
+              filter: { ma } as any,
+              update: { $set: setDoc },
+            },
+          });
+          if (next === "ban_chay_sap_het") banChaySapHet++;
+          else if (next === "dat_truoc") datTruoc++;
+        }
+
+        let modified = 0;
+        const chunk = 500;
+        for (let i = 0; i < ops.length; i += chunk) {
+          const slice = ops.slice(i, i + chunk);
+          if (!slice.length) continue;
+          const r = await col.bulkWrite(slice, { ordered: false });
+          modified += r.modifiedCount + r.upsertedCount;
+        }
+
+        await redisInvalidateShopCache();
+        syncBus.publish(["aloha_products"], "web-badge-defaults", {
+          banChaySapHet,
+          datTruoc,
+        });
+
+        res.json({
+          ok: true,
+          scanned: docs.length,
+          updated: ops.length,
+          modified,
+          banChaySapHet,
+          datTruoc,
+          moi: 0,
+          skippedManual,
+          rankedBestsellers: rank.size,
+        });
+      } catch (e: any) {
+        res.status(500).json({ error: e?.message || "apply_default_badges_failed" });
       }
     }
   );

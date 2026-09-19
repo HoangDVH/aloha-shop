@@ -25,6 +25,7 @@ export const PRICE_PRESETS = [
 
 export const SORT_OPTIONS = [
   { value: "ban_chay", label: "Bán chạy" },
+  { value: "moi", label: "Mới nhất" },
   { value: "ten", label: "Tên A–Z" },
   { value: "price_asc", label: "Giá thấp → cao" },
   { value: "price_desc", label: "Giá cao → thấp" },

@@ -3,11 +3,38 @@ import { HeroBanner, type HeroSlide } from "@/components/HeroBanner";
 import { HomeTrustBar } from "@/components/HomeTrustBar";
 import { HomeFeaturedCategories } from "@/components/HomeFeaturedCategories";
 import { HomeFeaturedProducts } from "@/components/HomeFeaturedProducts";
+import { HomeLowStockSale } from "@/components/HomeLowStockSale";
 import { HomePromoStrip } from "@/components/HomePromoStrip";
 import { HomeArticleSection } from "@/components/HomeArticleSection";
 import { HomeProductSection } from "@/components/HomeProductSection";
 import { categoryHref, fetchArticles, fetchProducts } from "@/lib/api";
 import type { AppearanceBlock } from "@/lib/appearanceTypes";
+
+const LOW_STOCK_MAX = 8;
+const LOW_STOCK_HOME_LIMIT = 20;
+
+function isLowStockProduct(ton: number | undefined | null) {
+  const n = Number(ton);
+  return Number.isFinite(n) && n > 0 && n <= LOW_STOCK_MAX;
+}
+
+/** Top SP vừa bán chạy (doanh thu) vừa sắp hết — trang chủ. */
+async function loadLowStockProducts() {
+  try {
+    const res = await fetchProducts({
+      page: 1,
+      limit: LOW_STOCK_HOME_LIMIT,
+      inStock: true,
+      maxTon: LOW_STOCK_MAX,
+      sort: "ban_chay",
+    });
+    return (res.items || [])
+      .filter((p) => isLowStockProduct(p.ton))
+      .slice(0, LOW_STOCK_HOME_LIMIT);
+  } catch {
+    return [];
+  }
+}
 
 async function ProductSectionBlock({ props }: { props: Record<string, unknown> }) {
   const title = String(props.title || "Sản phẩm");
@@ -22,19 +49,44 @@ async function ProductSectionBlock({ props }: { props: Record<string, unknown> }
     (source === "nhom" || source === "category") &&
     (categoryId > 0 || Boolean(nhomPath));
   const byBadge =
-    source === "ban_chay" || source === "moi" || source === "noi_bat";
+    source === "ban_chay_sap_het" ||
+    source === "giam_gia" ||
+    source === "dat_truoc" ||
+    source === "moi" ||
+    source === "ban_chay" ||
+    source === "noi_bat";
 
   let products: Awaited<ReturnType<typeof fetchProducts>>["items"] = [];
   let banChayByRevenue = false;
   try {
-    if (byBadge) {
+    if (source === "moi") {
+      const res = await fetchProducts({
+        page: 1,
+        limit,
+        sort: "moi",
+      });
+      products = res.items || [];
+    } else if (byBadge) {
+      const badgeKey =
+        source === "ban_chay" || source === "noi_bat"
+          ? source === "ban_chay"
+            ? "ban_chay_sap_het"
+            : "giam_gia"
+          : (source as
+              | "ban_chay_sap_het"
+              | "giam_gia"
+              | "dat_truoc"
+              | "moi");
       let res = await fetchProducts({
         page: 1,
         limit,
-        badge: source as "ban_chay" | "moi" | "noi_bat",
+        badge: badgeKey,
         sort: "ten",
       });
-      if (!res.items?.length && source === "ban_chay") {
+      if (
+        !res.items?.length &&
+        (source === "ban_chay" || source === "ban_chay_sap_het")
+      ) {
         res = await fetchProducts({ page: 1, limit, sort: "ban_chay" });
         banChayByRevenue = true;
       }
@@ -62,11 +114,13 @@ async function ProductSectionBlock({ props }: { props: Record<string, unknown> }
         path: nhomPath || nhomName,
         categoryId: categoryId > 0 ? categoryId : undefined,
       })
-    : source === "ban_chay" || banChayByRevenue
-      ? "/tim?sort=ban_chay"
-      : byBadge
-        ? `/tim?badge=${encodeURIComponent(source)}`
-        : "/tim?sort=ban_chay";
+    : source === "moi"
+      ? "/tim?sort=moi&badge=moi"
+      : source === "ban_chay" || banChayByRevenue
+        ? "/tim?sort=ban_chay"
+        : byBadge
+          ? `/tim?badge=${encodeURIComponent(source === "ban_chay" ? "ban_chay_sap_het" : source)}`
+          : "/tim?sort=ban_chay";
 
   return <HomeProductSection title={title} href={href} products={products} />;
 }
@@ -143,28 +197,67 @@ export async function renderTopBlocks(blocks: AppearanceBlock[]) {
       <HomeFeaturedCategories />
     </div>
   );
+  const lowStock = await loadLowStockProducts();
+  if (lowStock.length) {
+    nodes.push(
+      <div key="low-stock-sale">
+        <HomeLowStockSale products={lowStock} />
+      </div>
+    );
+  }
   return <>{nodes}</>;
 }
 
-/** Homepage: SP bán chạy + promo + bài viết. */
-export async function renderHomeMainSections() {
-  const limit = 12;
-  let banChay: Awaited<ReturnType<typeof fetchProducts>>["items"] = [];
+/** Homepage: SP bán chạy + SP mới + promo + bài viết (tôn trọng bật/tắt khối appearance). */
+export async function renderHomeMainSections(blocks: AppearanceBlock[] = []) {
+  const productBlocks = (blocks || []).filter((b) => b && b.type === "product_section");
 
-  try {
-    const a = await fetchProducts({ page: 1, limit, sort: "ban_chay" });
-    banChay = a.items || [];
-    if (!banChay.length) {
-      const fallback = await fetchProducts({
-        page: 1,
-        limit,
-        badge: "ban_chay",
-        sort: "ten",
-      });
-      banChay = fallback.items || [];
+  const findBlock = (...sources: string[]) =>
+    productBlocks.find((b) => sources.includes(String(b.props?.source || "").trim()));
+
+  const banChayBlock = findBlock("ban_chay", "ban_chay_sap_het");
+  const moiBlock = findBlock("moi");
+  // Thiếu khối trong appearance → mặc định bật; có khối thì theo enabled
+  const showBanChay = banChayBlock ? banChayBlock.enabled !== false : true;
+  const showMoi = moiBlock ? moiBlock.enabled !== false : true;
+
+  const banChayLimit = Math.max(
+    6,
+    Math.min(48, Number(banChayBlock?.props?.limit) || 12)
+  );
+  const moiLimit = Math.max(6, Math.min(50, Number(moiBlock?.props?.limit) || 50));
+
+  let banChay: Awaited<ReturnType<typeof fetchProducts>>["items"] = [];
+  if (showBanChay) {
+    try {
+      const a = await fetchProducts({ page: 1, limit: banChayLimit, sort: "ban_chay" });
+      banChay = a.items || [];
+      if (!banChay.length) {
+        const fallback = await fetchProducts({
+          page: 1,
+          limit: banChayLimit,
+          badge: "ban_chay_sap_het",
+          sort: "ten",
+        });
+        banChay = fallback.items || [];
+      }
+    } catch {
+      /* empty */
     }
-  } catch {
-    /* empty */
+  }
+
+  let moi: Awaited<ReturnType<typeof fetchProducts>>["items"] = [];
+  if (showMoi) {
+    try {
+      const res = await fetchProducts({
+        page: 1,
+        limit: moiLimit,
+        sort: "moi",
+      });
+      moi = res.items || [];
+    } catch {
+      /* empty */
+    }
   }
 
   let articles: Awaited<ReturnType<typeof fetchArticles>>["items"] = [];
@@ -172,12 +265,28 @@ export async function renderHomeMainSections() {
     const res = await fetchArticles({ page: 1, limit: 4 });
     articles = res.items || [];
   } catch {
-    articles = [];
+    /* empty */
   }
 
   return (
     <>
-      <HomeFeaturedProducts banChay={banChay} />
+      {showBanChay ? (
+        <HomeFeaturedProducts
+          title="SẢN PHẨM BÁN CHẠY"
+          products={banChay}
+          href="/tim?sort=ban_chay"
+          limit={banChayLimit}
+        />
+      ) : null}
+      {showMoi ? (
+        <HomeFeaturedProducts
+          title="SẢN PHẨM MỚI"
+          products={moi}
+          href="/tim?sort=moi&badge=moi"
+          limit={moiLimit}
+          ctaLabel="Xem thêm sản phẩm mới →"
+        />
+      ) : null}
       <HomePromoStrip />
       {articles.length ? (
         <div className="bg-[var(--aloha-surface)] py-8 sm:py-10">
@@ -216,7 +325,7 @@ export async function HomeBlockRenderer({ blocks }: { blocks: AppearanceBlock[] 
   return (
     <>
       {await renderTopBlocks(top)}
-      {await renderHomeMainSections()}
+      {await renderHomeMainSections(blocks || [])}
     </>
   );
 }

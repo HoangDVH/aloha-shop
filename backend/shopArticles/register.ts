@@ -22,6 +22,7 @@ import {
   type ShopArticleDoc,
 } from "./types.js";
 import mammoth from "mammoth";
+import { normalizeWebBadge } from "../shopCatalog/webBadge.js";
 
 const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 40 * 1024 * 1024;
@@ -158,7 +159,7 @@ function toMiniProduct(doc: Record<string, unknown>) {
     "san-pham";
   const catSlug = slugifyVi(catLeaf) || "san-pham";
   const pSlug = `${slugifyVi(ten) || "sp"}--${slugifyVi(ma) || "x"}`;
-  const webBadge = String(doc.webBadge || "").trim();
+  const webBadge = normalizeWebBadge(doc.webBadge);
   return {
     ma,
     ten,
@@ -173,10 +174,7 @@ function toMiniProduct(doc: Record<string, unknown>) {
     path: `/c/${catSlug}/p/${pSlug}`,
     categorySlug: catSlug,
     productSlug: pSlug,
-    webBadge:
-      webBadge === "ban_chay" || webBadge === "moi" || webBadge === "noi_bat"
-        ? webBadge
-        : undefined,
+    webBadge: webBadge || undefined,
   };
 }
 
