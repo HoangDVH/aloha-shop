@@ -1,32 +1,37 @@
 @import "tailwindcss";
 
 :root {
-  /* Header/footer kem ấm #FEF0D3; navbar trắng; nút/nav xanh #5F7D4E */
-  --aloha-green: #5f7d4e;
-  --aloha-green-hover: #3f5f35;
-  --aloha-green-mid: #3f5f35;
-  --aloha-green-dark: #3f5f35;
-  --aloha-green-light: #eef2eb;
-  --aloha-green-bright: #7a9a68;
-  --aloha-gold: #c67b5c;
-  --aloha-terracotta: #c67b5c;
-  --aloha-terracotta-hover: #b0684a;
-  --aloha-header: #fef0d3;
-  --aloha-cream: #faf9f5;
-  --aloha-cream-dark: #fef0d3;
+  /* Brand guide Aloha ? ?�ng 100% */
+  --aloha-green: #2e7d32;
+  --aloha-green-hover: #4caf50;
+  --aloha-green-mid: #2e7d32;
+  --aloha-green-dark: #1b5e20;
+  --aloha-green-light: #e8f5e9;
+  --aloha-green-bright: #4caf50;
+  --aloha-gold: #ff6800;
+  --aloha-terracotta: #ff6f61;
+  --aloha-terracotta-hover: #e85a4f;
+  --aloha-header: #ffffff;
+  --aloha-cream: #f1f8ef;
+  --aloha-cream-dark: #fff8e1;
   --aloha-cream-light: #ffffff;
-  --aloha-surface: #f5f5f5;
+  --aloha-surface: #ffffff;
   --aloha-card: #ffffff;
-  --aloha-ink: #292b27;
-  --aloha-muted: #73766f;
-  --aloha-line: #ebe8dc;
-  --aloha-price: #5f7d4e;
-  --aloha-sale: #d45454;
-  --aloha-error: #dc6b6b;
+  --aloha-ink: #333333;
+  --aloha-muted: #6b7280;
+  --aloha-line: #e5e7eb;
+  --aloha-border-brown: #e8dcc6;
+  --aloha-shock: #ff6800;
+  --aloha-price: #ef4444;
+  --aloha-sale: #ef4444;
+  --aloha-error: #ef4444;
+  --aloha-success: #22c55e;
+  --aloha-info: #3b82f6;
+  --aloha-warning: #f59e0b;
   --aloha-radius: 0.875rem;
   --aloha-radius-lg: 1.25rem;
-  --aloha-shadow: 0 2px 14px rgba(63, 95, 53, 0.07);
-  --aloha-shadow-lg: 0 16px 40px rgba(95, 125, 78, 0.12);
+  --aloha-shadow: 0 2px 14px rgba(46, 125, 50, 0.08);
+  --aloha-shadow-lg: 0 16px 40px rgba(46, 125, 50, 0.12);
   --aloha-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --shop-chrome-h: 7.5rem;
 }
@@ -35,7 +40,7 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Search dropdown mở: thanh danh mục không nhận click (tránh cướp hàng SP đầu). */
+/* Search dropdown m?: thanh danh m?c kh�ng nh?n click (tr�nh c??p h�ng SP ??u). */
 html[data-shop-search-open] header nav {
   pointer-events: none !important;
 }
@@ -47,7 +52,7 @@ body {
   overflow-x: clip;
 }
 
-/* Nút chính storefront — hover sáng hơn một nấc */
+/* N�t ch�nh ? Dark Green #2E7D32, hover Light Green #4CAF50 */
 .btn-aloha-primary {
   background: var(--aloha-green);
   color: #fff;
@@ -57,28 +62,52 @@ body {
   background: var(--aloha-green-hover);
 }
 .btn-aloha-primary:active:not(:disabled) {
-  background: var(--aloha-green-mid);
+  background: var(--aloha-green-dark);
 }
 
-/* Nút phụ */
+/* N�t ph? (pastel) */
 .btn-aloha-secondary {
   background: var(--aloha-green-light);
-  color: var(--aloha-green-mid);
+  color: var(--aloha-green);
   transition: filter 0.15s ease;
 }
 .btn-aloha-secondary:hover:not(:disabled) {
   filter: brightness(0.97);
 }
 
-/* Sticky bottom bars (PDP / giỏ / checkout) — đệm đáy + safe-area; nhấc lên trên tab bar mobile */
+/* Outline ? tr?ng + vi?n xanh */
+.btn-aloha-outline {
+  background: #fff;
+  color: var(--aloha-green);
+  border: 1.5px solid var(--aloha-green);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.btn-aloha-outline:hover:not(:disabled) {
+  background: var(--aloha-green-light);
+}
+
+/* Ghost ? ch? ch? x�m */
+.btn-aloha-ghost {
+  background: transparent;
+  color: var(--aloha-muted);
+  border: 0;
+  transition: color 0.15s ease;
+}
+.btn-aloha-ghost:hover:not(:disabled) {
+  color: var(--aloha-green);
+}
+
+/* Sticky bottom bars (PDP / gi? / checkout) ? ??m ?�y + safe-area; nh?c l�n tr�n tab bar mobile */
 .shop-sticky-bottom {
-  bottom: calc(var(--shop-mobile-tab-h, 0px) + env(safe-area-inset-bottom, 0px)) !important;
+  bottom: calc(
+    var(--shop-mobile-tab-h, 0px) + 0.5rem + env(safe-area-inset-bottom, 0px)
+  ) !important;
   padding-bottom: 0.625rem;
 }
 
 .shop-pb-sticky {
   padding-bottom: calc(
-    11rem + var(--shop-mobile-tab-h, 0px) + env(safe-area-inset-bottom, 0px)
+    11rem + var(--shop-mobile-tab-h, 0px) + 0.5rem + env(safe-area-inset-bottom, 0px)
   );
 }
 
@@ -94,12 +123,15 @@ body {
   }
 
   .shop-storefront-with-tabbar {
-    padding-bottom: calc(var(--shop-mobile-tab-h) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(
+      var(--shop-mobile-tab-h) + 0.5rem + env(safe-area-inset-bottom, 0px)
+    );
   }
 }
 
 .shop-mobile-tabbar {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  /* ??m ?�y nh? + safe-area ? tr�nh d�nh s�t m�p m�n h�nh */
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
   box-shadow: 0 -4px 18px rgba(41, 43, 39, 0.06);
 }
 
@@ -112,7 +144,7 @@ body {
   gap: 0.15rem;
   min-width: 0;
   padding: 0.35rem 0.25rem;
-  color: #5c5f58;
+  color: #6b7280;
   font-size: 0.75rem;
   font-weight: 500;
   line-height: 1.1;
@@ -124,7 +156,7 @@ body {
 }
 
 .shop-mobile-tab.is-active {
-  color: var(--aloha-green-dark, #3f5f35);
+  color: var(--aloha-green, #2e7d32);
   font-weight: 700;
 }
 
@@ -153,7 +185,7 @@ body {
   animation: fade-up 0.45s ease-out both;
 }
 
-/* Card danh sách bài: khung như card SP — contain để không cắt chữ/ảnh */
+/* Card danh s�ch b�i: khung nh? card SP ? contain ?? kh�ng c?t ch?/?nh */
 .article-card-cover {
   position: relative;
   display: block;
@@ -164,7 +196,7 @@ body {
   flex-shrink: 0;
 }
 
-/* Trang chủ editorial: khung vuông + cover (phủ kín, cắt viền trắng hai bên nếu có) */
+/* Trang ch? editorial: khung vu�ng + cover (ph? k�n, c?t vi?n tr?ng hai b�n n?u c�) */
 .article-card-cover--editorial {
   aspect-ratio: 1 / 1;
 }
@@ -179,7 +211,7 @@ body {
   object-position: center;
 }
 
-/* Ảnh trong chi tiết bài: rộng/cao theo lúc soạn (inline style); mặc định height auto */
+/* ?nh trong chi ti?t b�i: r?ng/cao theo l�c so?n (inline style); m?c ??nh height auto */
 .article-cover,
 .article-img-frame {
   position: relative;
@@ -211,7 +243,7 @@ body {
   background: transparent;
 }
 
-/* Khung có chiều cao cố định (kéo giữa cạnh kiểu Word) */
+/* Khung c� chi?u cao c? ??nh (k�o gi?a c?nh ki?u Word) */
 .article-img-frame[style*="height:"] .article-img-frame__img {
   height: 100%;
   object-fit: fill;
@@ -224,7 +256,7 @@ body {
   cursor: zoom-in;
 }
 
-/* Tôn trọng căn trái/giữa/phải từ editor (margin auto) */
+/* T�n tr?ng c?n tr�i/gi?a/ph?i t? editor (margin auto) */
 .article-body .article-img-frame[style*="margin-left: auto"] {
   margin-left: auto !important;
 }
@@ -249,7 +281,7 @@ body {
   cursor: zoom-in;
 }
 
-/* Ảnh lẻ — tôn trọng width; không ép height nếu đã set inline */
+/* ?nh l? ? t�n tr?ng width; kh�ng �p height n?u ?� set inline */
 .article-body > p > img,
 .article-body img:not(.article-img-frame__img):not(.article-cover__img) {
   display: block;
@@ -268,7 +300,7 @@ body {
   margin: 0;
 }
 
-/* Video YouTube/Vimeo trong bài */
+/* Video YouTube/Vimeo trong b�i */
 .article-body .article-video,
 .article-body figure.article-video {
   position: relative;
@@ -288,7 +320,7 @@ body {
   border: 0;
 }
 
-/* Link nổi bật — kiểu TGDĐ */
+/* Link n?i b?t ? ki?u TGD? */
 .article-body a.article-link,
 .article-body a:not(.article-hashtag) {
   color: var(--aloha-green);
@@ -303,7 +335,7 @@ body {
   opacity: 0.85;
 }
 
-/* Hashtag dạng pill bấm được */
+/* Hashtag d?ng pill b?m ???c */
 .article-body a.article-hashtag {
   display: inline-flex;
   align-items: center;
@@ -329,8 +361,8 @@ body {
 }
 
 /*
- * Typo bài viết — khớp app nội bộ (Be Vietnam Pro, KHÔNG bị Tailwind preflight).
- * Shop dùng @import "tailwindcss" → p/h*/ul bị margin:0 + list-style:none.
+ * Typo b�i vi?t ? kh?p app n?i b? (Be Vietnam Pro, KH�NG b? Tailwind preflight).
+ * Shop d�ng @import "tailwindcss" ? p/h*/ul b? margin:0 + list-style:none.
  */
 .article-body {
   font-family: var(
@@ -380,7 +412,7 @@ body {
   letter-spacing: 0.015em;
 }
 
-/* Khoảng cách sau nhãn đậm (Tên sản phẩm: …) — tránh dính chữ */
+/* Kho?ng c�ch sau nh�n ??m (T�n s?n ph?m: ?) ? tr�nh d�nh ch? */
 .article-body li > strong:first-child,
 .article-body p > strong:first-child {
   margin-right: 0.15em;
@@ -464,7 +496,7 @@ body {
   margin: 0.15rem 0;
 }
 
-/* Loading toàn trang — logo nhỏ + vòng quay (kiểu KiotViet) */
+/* Loading to�n trang ? logo nh? + v�ng quay (ki?u KiotViet) */
 .shop-page-loader {
   background: rgba(255, 251, 240, 0.94);
   backdrop-filter: blur(6px);
@@ -635,7 +667,7 @@ body {
   min-width: 0;
 }
 
-/* PDP gallery — mỗi slide đúng 100% viewport (tránh mobile lệch nửa ảnh) */
+/* PDP gallery ? m?i slide ?�ng 100% viewport (tr�nh mobile l?ch n?a ?nh) */
 .embla--pdp {
   width: 100%;
   height: 100%;
@@ -658,55 +690,24 @@ body {
   height: 100%;
 }
 
-/* Card SP — nút giỏ kiểu sàn TMĐT: hover mới hiện (desktop) */
+/* Card SP — nút giỏ chỉ hiện khi hover (desktop); mobile luôn hiện */
 .product-card__add-wrap {
   display: flex;
   justify-content: flex-end;
-}
-
-.product-card__add {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  min-height: 2.35rem;
-  padding: 0.45rem 0.7rem;
-  border-radius: 999px;
-  background: var(--aloha-green);
-  color: #fff;
-  font-size: 0.75rem;
-  font-weight: 800;
-  box-shadow: 0 10px 22px color-mix(in srgb, #000 28%, transparent);
+  align-items: flex-end;
+  margin-top: 0.35rem;
+  opacity: 1;
+  transform: none;
   transition:
-    transform 0.2s ease,
-    background 0.2s ease,
-    opacity 0.25s ease,
-    box-shadow 0.2s ease;
+    opacity 0.18s ease,
+    transform 0.18s ease;
 }
 
-.product-card__add:hover {
-  background: var(--aloha-green-mid);
-  transform: translateY(-1px);
-}
-
-.product-card__add:active {
-  transform: scale(0.97);
-}
-
-.product-card__add-label {
-  display: none;
-}
-
-/* Máy có chuột: ẩn mặc định, hiện khi hover card */
 @media (hover: hover) and (pointer: fine) {
   .product-card__add-wrap {
-    justify-content: stretch;
     opacity: 0;
-    transform: translateY(0.55rem);
+    transform: translateY(4px);
     pointer-events: none;
-    transition:
-      opacity 0.28s ease,
-      transform 0.28s ease;
   }
 
   .group:hover .product-card__add-wrap,
@@ -715,53 +716,42 @@ body {
     transform: translateY(0);
     pointer-events: auto;
   }
-
-  .product-card__add {
-    width: 100%;
-    min-height: 2.55rem;
-    border-radius: 0.7rem;
-    font-size: 0.8rem;
-  }
-
-  .product-card__add-label {
-    display: inline;
-  }
 }
 
-/* Cảm ứng: icon tròn góc phải ảnh — luôn thấy để bấm */
-@media (hover: none), (pointer: coarse) {
-  .product-card__add-wrap {
-    inset: auto 0.5rem 0.5rem auto;
-    left: auto;
-    right: 0.5rem;
-    bottom: 0.5rem;
-    width: auto;
-    padding: 0;
-    justify-content: flex-end;
-    opacity: 1;
-    transform: none;
-    pointer-events: auto;
-  }
-
-  .product-card__add {
-    width: 2.75rem;
-    height: 2.75rem;
-    min-height: 2.75rem;
-    padding: 0;
-  }
-
-  .product-card__add-label {
-    display: none;
-  }
-
-  /* Badge video Shopee: lệch trái nút giỏ để không đè nhau */
-  .product-card__video-badge {
-    right: 3.4rem;
-    bottom: 0.55rem;
-  }
+.product-card__add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  min-height: 2.25rem;
+  padding: 0;
+  border-radius: 0.4rem;
+  background: var(--aloha-green);
+  color: #fff;
+  font-size: 0;
+  font-weight: 800;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--aloha-green) 28%, transparent);
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-/* Hero full-bleed — full ngang, cao 80svh−chrome; ảnh đúng tỉ lệ khung + cover */
+.product-card__add:hover {
+  background: var(--aloha-green-hover);
+  transform: translateY(-1px);
+}
+
+.product-card__add:active {
+  transform: scale(0.96);
+}
+
+.product-card__add-label {
+  display: none;
+}
+
+/* Hero full-bleed ? full ngang, cao 80svh?chrome; ?nh ?�ng t? l? khung + cover */
 .hero-banner--full {
   color: var(--aloha-ink);
   padding: 0;
@@ -783,9 +773,12 @@ body {
   position: relative;
   padding: 0;
   width: 100%;
-  height: calc(80svh - var(--shop-chrome-h, 7.5rem));
-  min-height: 14rem;
-  background: var(--aloha-cream, #fffdd0);
+  /* Cùng tỉ lệ hero 01–03 (2170×725) — mọi slide cùng cao, USP vẫn trong khung nhìn */
+  aspect-ratio: 2170 / 725;
+  height: auto;
+  min-height: 0;
+  max-height: min(42rem, calc(100svh - var(--shop-chrome-h, 7.5rem) - 6.5rem));
+  background: #f7faf5;
 }
 
 .hero-banner--full .hero-banner__stage::before {
@@ -810,13 +803,13 @@ body {
   height: 100%;
   padding: 0;
   opacity: 1;
-  transform: none;
-  transition: none;
+  transform: none !important;
+  transition: none !important;
 }
 
 .hero-banner--full .embla--hero .embla__slide.is-active {
   opacity: 1;
-  transform: none;
+  transform: none !important;
 }
 
 .hero-banner--full .hero-banner__frame {
@@ -827,28 +820,30 @@ body {
   max-height: none;
   border-radius: 0;
   border: none;
-  background: var(--aloha-cream, #fffdd0);
+  background: #f7faf5;
   box-shadow: none;
   overflow: hidden;
+  transform: none !important;
 }
 
 .hero-banner--full .hero-banner__frame:hover .hero-banner__img {
-  transform: none;
-}
-
-.hero-banner--full .hero-banner__img {
-  width: 100%;
-  height: 100%;
-  /* Ảnh đã thiết kế đúng tỉ lệ khung → cover không cắt SP */
-  object-fit: cover;
-  object-position: right center;
-  background: var(--aloha-cream, #fffdd0);
-  transition: none;
   transform: none !important;
 }
 
+.hero-banner--full .hero-banner__img,
+.hero-banner--full .embla--hero .embla__slide .hero-banner__img,
 .hero-banner--full .embla--hero .embla__slide.is-active .hero-banner__img {
+  width: 100%;
+  height: 100% !important;
+  max-width: 100%;
+  display: block;
+  object-fit: cover !important;
+  object-position: center center !important;
+  background: #f7faf5;
+  transition: none !important;
   transform: none !important;
+  will-change: auto !important;
+  image-rendering: auto;
 }
 
 .hero-banner--full .hero-banner__copy-overlay {
@@ -873,7 +868,7 @@ body {
   font-size: clamp(1.55rem, 3.4vw, 2.35rem);
   font-style: normal;
   font-weight: 400;
-  color: var(--aloha-green-dark, #3f5f35);
+  color: var(--aloha-green-dark, #1b5e20);
   line-height: 1.15;
   letter-spacing: 0.01em;
   word-break: keep-all;
@@ -922,14 +917,20 @@ body {
 
 @media (max-width: 767px) {
   /*
-   * Mobile: tỉ lệ ~2:1 (cao hơn dải 2560/1000) để chữ/CTA đọc được;
-   * ảnh cover căn giữa — vẫn thấy SP.
+   * Mobile: giữ cùng tỉ lệ khung mọi slide (tránh CTV phình cao đẩy mất USP).
    */
   .hero-banner--full .hero-banner__stage {
     height: auto;
     min-height: 0;
-    aspect-ratio: 2 / 1;
-    max-height: min(52vw, 18rem);
+    aspect-ratio: 2170 / 725;
+    max-height: min(22rem, calc(100svh - var(--shop-chrome-h, 7.5rem) - 5rem));
+  }
+
+  .hero-banner--full .hero-banner__img {
+    object-fit: cover !important;
+    object-position: center center !important;
+    width: 100%;
+    height: 100% !important;
   }
 
   .hero-banner--full .hero-banner__copy-overlay {
@@ -977,15 +978,9 @@ body {
     height: 1rem;
   }
 
-  .hero-banner--full .hero-banner__img {
-    object-fit: cover;
-    object-position: center center;
-    width: 100%;
-    height: 100%;
-  }
-
   .hero-banner--full .hero-banner__frame {
-    background: var(--aloha-cream, #fffdd0);
+    background: #f7faf5;
+    height: 100%;
   }
 
   .hero-banner--full .hero-banner__controls {
@@ -1037,7 +1032,7 @@ body {
   }
 }
 
-/* Hero — nền kem + chữ tối + CTA xanh (palette mock) */
+/* Hero ? n?n kem + ch? t?i + CTA xanh (palette mock) */
 .hero-banner {
   position: relative;
   width: 100%;
@@ -1518,6 +1513,15 @@ body {
   transform: scale(1.05);
 }
 
+/* Banner full (ch? bake trong ?nh): tuy?t ??i kh�ng scale ? scale l�m m? ch? */
+.hero-banner--full .hero-banner__img,
+.hero-banner--full .embla--hero .embla__slide.is-active .hero-banner__img,
+.hero-banner--full .hero-banner__frame:hover .hero-banner__img {
+  transition: none !important;
+  transform: none !important;
+  will-change: auto !important;
+}
+
 .hero-banner__controls {
   display: flex;
   align-items: center;
@@ -1579,7 +1583,7 @@ body {
 }
 
 @media (max-width: 767px) {
-  /* Banner mobile gọn — chữ → ảnh căn giữa → nút dưới ảnh */
+  /* Banner mobile g?n ? ch? ? ?nh c?n gi?a ? n�t d??i ?nh */
   .hero-banner__inner {
     gap: 0.65rem;
     padding: 0.85rem 0.85rem 1rem;
@@ -1627,7 +1631,7 @@ body {
     gap: 0.35rem 0.65rem;
   }
 
-  /* Mobile: ẩn dòng mô tả dưới tiêu đề */
+  /* Mobile: ?n d�ng m� t? d??i ti�u ?? */
   .hero-banner__desc {
     display: none;
   }
@@ -1671,7 +1675,7 @@ body {
     right: 10%;
   }
 
-  /* Mobile: ảnh full bề rộng khung, Embla căn giữa */
+  /* Mobile: ?nh full b? r?ng khung, Embla c?n gi?a */
   .embla--hero {
     width: 100%;
     overflow: hidden;
@@ -1798,7 +1802,7 @@ body {
   }
 }
 
-/* Tiêu đề section — lá + gạch */
+/* Ti�u ?? section ? l� + g?ch */
 .section-title-ornament {
   display: inline-flex;
   align-items: center;
@@ -1874,7 +1878,53 @@ body {
   }
 }
 
-/* Trang chủ — mục săn SP sắp hết (carousel) */
+/* Trang chủ — Flash sale (layout mock: cột trái promo + card SP) */
+.home-flash-sale__panel {
+  background:
+    radial-gradient(ellipse 48% 70% at 8% 20%, color-mix(in srgb, #e8d9a8 35%, transparent), transparent 68%),
+    radial-gradient(ellipse 42% 55% at 92% 75%, color-mix(in srgb, #f0e4b8 28%, transparent), transparent 70%),
+    linear-gradient(120deg, #f7f0d8 0%, #FDF6E3 42%, #f5ecd4 100%);
+  box-shadow:
+    0 14px 40px -16px rgba(120, 95, 40, 0.28),
+    0 0 0 1px color-mix(in srgb, #c9bf7a 28%, #e8eee4);
+  border: none;
+  min-height: 17rem;
+}
+
+@media (min-width: 1024px) {
+  .home-flash-sale__panel {
+    min-height: 22rem;
+  }
+}
+
+.home-flash-sale__badge {
+  animation: home-flash-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes home-flash-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 4px 14px rgba(27, 94, 32, 0.28);
+  }
+  50% {
+    transform: scale(1.04);
+    box-shadow: 0 6px 20px rgba(27, 94, 32, 0.4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-flash-sale__badge {
+    animation: none;
+  }
+}
+
+.ctv-recruit-script {
+  font-family: var(--font-hero-script);
+  font-weight: 400;
+}
+
+/* Trang ch? ? m?c s?n SP s?p h?t (carousel) */
 .home-low-stock__panel {
   background:
     radial-gradient(ellipse 48% 42% at 8% 12%, color-mix(in srgb, #b7d4a8 28%, transparent), transparent 70%),
@@ -1962,15 +2012,15 @@ body {
 }
 
 .embla--home-sale .embla__slide {
-  /* Mobile: ~2.2 card visible — peep cạnh phải gợi swipe (chuẩn sàn) */
-  flex: 0 0 42%;
+  /* Flash sale: tối đa 3 card như mock */
+  flex: 0 0 85%;
   min-width: 0;
   padding-left: 0.5rem;
 }
 
 @media (min-width: 480px) {
   .embla--home-sale .embla__slide {
-    flex-basis: 50%;
+    flex-basis: 48%;
   }
 }
 
@@ -1982,18 +2032,31 @@ body {
 
 @media (min-width: 768px) {
   .embla--home-sale .embla__slide {
-    flex-basis: 25%;
+    flex-basis: 33.333%;
   }
 }
 
 @media (min-width: 1024px) {
   .embla--home-sale .embla__slide {
-    flex-basis: 20%;
+    flex-basis: 33.333%;
   }
 }
 
 @media (min-width: 1280px) {
   .embla--home-sale .embla__slide {
-    flex-basis: 16.666%;
+    flex-basis: 33.333%;
   }
+}
+
+/* Banner CTV — giữ file CSS cũ (khối đã tắt trên trang chủ) */
+.home-ctv-banner {
+  /* Banner CTV 1024x256 (~2/3 cao gốc) — hiện full theo tỉ lệ ảnh */
+  width: 100%;
+  aspect-ratio: 1024 / 256;
+  height: auto;
+}
+.home-ctv-banner__img {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
 }

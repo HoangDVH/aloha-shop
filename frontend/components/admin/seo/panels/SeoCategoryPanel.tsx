@@ -36,7 +36,7 @@ export function SeoCategoryPanel() {
   const save = useSaveSeoDraft();
   const publish = usePublishSeo();
   const seo = q.data?.draft?.theme?.seo;
-  const siteName = q.data?.draft?.theme?.siteName || "ALOHA Thế Giới Chậu Cây";
+  const siteName = q.data?.draft?.theme?.siteName || "ALOHA THẾ GIỚI CHẬU CÂY";
 
   const form = useForm<SeoCategoryTplInput>({
     resolver: zodResolver(seoCategoryTplSchema),

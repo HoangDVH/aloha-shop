@@ -79,7 +79,7 @@ export function AdminSidebar() {
           ALOHA Admin
         </p>
         <p className="mt-0.5 text-sm font-bold text-[var(--aloha-ink)]">
-          Aloha — Thế giới chậu cây
+          ALOHA — THẾ GIỚI CHẬU CÂY
         </p>
       </div>
       <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">

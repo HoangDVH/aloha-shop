@@ -47,13 +47,13 @@ export async function generateMetadata({
     const price = formatVnd(item.gia);
     const stock =
       item.ton > 0
-        ? `Còn khoảng ${item.ton} ${item.dvt || ""}`.trim()
+        ? `Còn khoảng ${Math.max(0, Math.floor(Number(item.ton) || 0))} ${item.dvt || ""}`.trim()
         : "Đặt trước — giao khi có hàng";
     const descPlain = plainText(item.description || "");
     const fallbackDescription =
       descPlain.slice(0, 140) ||
-      `${item.ten} — Giá ${price}. ${stock}. Mua tại ALOHA Thế Giới Chậu Cây.`;
-    const siteName = app.theme?.siteName?.trim() || "ALOHA Thế Giới Chậu Cây";
+      `${item.ten} — Giá ${price}. ${stock}. Mua tại ALOHA THẾ GIỚI CHẬU CÂY.`;
+    const siteName = app.theme?.siteName?.trim() || "ALOHA THẾ GIỚI CHẬU CÂY";
     const seo = app.theme?.seo;
 
     const resolved = resolveProductSeo({

@@ -177,7 +177,7 @@ th{background:#2e7d32!important;color:#fff!important;font-weight:bold;text-align
 .footer-sig .box{width:30%}.footer-sig .title{font-weight:bold;margin-bottom:60px}
 </style></head><body>
 <div class="header-container">
-  <div class="company-info"><b>CÔNG TY TMĐT SX HOA VIỆT</b><div>ALOHA Thế Giới Chậu Cây — Bảng giá</div></div>
+  <div class="company-info"><b>CÔNG TY TMĐT SX HOA VIỆT</b><div>ALOHA THẾ GIỚI CHẬU CÂY — Bảng giá</div></div>
   <div class="doc-title"><h1>${docTitle}</h1><div>Thời gian in: ${todayStr}</div><div>Số lượng sản phẩm: ${rows.length}</div></div>
 </div>
 <table><thead><tr>

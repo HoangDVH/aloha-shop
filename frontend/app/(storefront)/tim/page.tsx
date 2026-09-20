@@ -39,7 +39,7 @@ export async function generateMetadata({
   return {
     title: "Tất cả sản phẩm",
     description:
-      "Danh mục toàn bộ sản phẩm tại ALOHA Thế Giới Chậu Cây — chậu cây, cây cảnh, phụ kiện.",
+      "Danh mục toàn bộ sản phẩm tại ALOHA THẾ GIỚI CHẬU CÂY — chậu cây, cây cảnh, phụ kiện.",
   };
 }
 

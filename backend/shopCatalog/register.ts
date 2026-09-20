@@ -264,6 +264,8 @@ type ShopNavNode = {
   count: number;
   hasChild: boolean;
   rank: number;
+  /** Ảnh SP đại diện — chỉ gắn cho node lá (đúng categoryId) */
+  image?: string;
   subs: ShopNavNode[];
 };
 
@@ -278,6 +280,95 @@ function kvNodeToShopNav(node: CategoryNode): ShopNavNode {
     rank: Number(node.sortOrder) || 0,
     subs: node.children.map(kvNodeToShopNav),
   };
+}
+
+/** Map categoryId → ảnh SP đầu tiên (batch, không N+1). */
+async function loadCategoryImageMap(db: Db): Promise<Map<number, string>> {
+  const map = new Map<number, string>();
+  try {
+    const rows = await db
+      .collection(COL)
+      .aggregate(
+        [
+          {
+            $match: {
+              $and: [
+                ...((shopFilterBase().$and as object[]) || []),
+                { categoryId: { $exists: true, $ne: null } },
+              ],
+            },
+          },
+          {
+            $project: {
+              categoryId: 1,
+              anh: 1,
+              img0: { $arrayElemAt: ["$images", 0] },
+            },
+          },
+          {
+            $addFields: {
+              image: {
+                $let: {
+                  vars: {
+                    a: { $trim: { input: { $ifNull: ["$anh", ""] } } },
+                    b: { $trim: { input: { $ifNull: ["$img0", ""] } } },
+                  },
+                  in: {
+                    $cond: [{ $ne: ["$$a", ""] }, "$$a", "$$b"],
+                  },
+                },
+              },
+            },
+          },
+          { $match: { image: { $type: "string", $ne: "" } } },
+          {
+            $group: {
+              _id: "$categoryId",
+              image: { $first: "$image" },
+            },
+          },
+        ],
+        { allowDiskUse: true }
+      )
+      .toArray();
+
+    for (const row of rows) {
+      const id = Number((row as { _id?: unknown })._id) || 0;
+      const image = String((row as { image?: unknown }).image || "").trim();
+      if (id && image) map.set(id, image);
+    }
+  } catch {
+    /* tree vẫn trả về — không ảnh hơn là 500 */
+  }
+  return map;
+}
+
+/** Gắn ảnh SP: lá theo categoryId; nhóm cha lấy ảnh lá con đầu tiên (chip L2). */
+function attachLeafImages(
+  nodes: ShopNavNode[],
+  imageByCat: Map<number, string>
+): ShopNavNode[] {
+  return nodes.map((n) => {
+    const subs = attachLeafImages(n.subs || [], imageByCat);
+    const isLeaf = subs.length === 0;
+    let image = isLeaf ? imageByCat.get(n.id) : undefined;
+    if (!image) {
+      for (const c of subs) {
+        const img = String(c.image || "").trim();
+        if (img) {
+          image = img;
+          break;
+        }
+      }
+    }
+    if (!image) image = imageByCat.get(n.id);
+    return {
+      ...n,
+      hasChild: subs.length > 0,
+      subs,
+      ...(image ? { image } : {}),
+    };
+  });
 }
 
 /**
@@ -310,7 +401,14 @@ async function buildShopKvCategoryTree(db: Db): Promise<{ tree: CategoryNode[]; 
     .toArray();
 
   const tree = buildCategoryTreeFromKv(kvRows, productRows);
-  return { tree, items: tree.map(kvNodeToShopNav) };
+  let imageByCat = new Map<number, string>();
+  try {
+    imageByCat = await loadCategoryImageMap(db);
+  } catch {
+    imageByCat = new Map();
+  }
+  const items = attachLeafImages(tree.map(kvNodeToShopNav), imageByCat);
+  return { tree, items };
 }
 
 function mergeCategoryFilters(
@@ -1017,7 +1115,7 @@ export function registerShopApi(
   app.get("/api/shop/category-tree", async (req, res) => {
     setCors(req, res);
     try {
-      const { body, cache } = await cachedJson("shop:category-tree:v8", async () => {
+      const { body, cache } = await cachedJson("shop:category-tree:v12", async () => {
         const db = await catalogDb();
         const { items } = await buildShopKvCategoryTree(db);
         return { items };

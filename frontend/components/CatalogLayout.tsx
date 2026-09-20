@@ -20,6 +20,7 @@ import {
 } from "@/lib/api";
 import { clearAttrDvtParams } from "@/lib/parseShopFilters";
 import { CatalogFilterPanel } from "@/components/catalog/CatalogFilterPanel";
+import { CatalogSubcatBar } from "@/components/catalog/CatalogSubcatBar";
 import {
   PIN_CATALOG_KEY,
   SORT_TOOLBAR,
@@ -644,6 +645,7 @@ export function CatalogLayout({
         allProductsPage={allProductsPage}
         hasCategoryScope={selectedCategoryIds.length > 0 || categoryLocked}
         lockCategory={categoryLocked}
+        categoryIds={selectedCategoryIds}
         categoryLockLabel={nhomTitle ? `Danh mục: ${nhomTitle}` : "Đang lọc trong danh mục này"}
         minPrice={activeDraft.minPrice}
         maxPrice={activeDraft.maxPrice}
@@ -686,130 +688,192 @@ export function CatalogLayout({
         </div>
       ) : null}
 
-      {/* Toolbar: mobile = 2 hàng cuộn ngang (Lọc|chip · Sort); desktop = 1 hàng */}
+      {/* Toolbar: Lọc + L2/L3 (TGDĐ) · Sort */}
       {!filtersOnly ? (
-        <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
-          <div className="-mx-1 flex min-w-0 flex-1 items-center gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <button
-              type="button"
-              onClick={openFilterModal}
-              className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-3.5 text-sm font-bold shadow-sm transition ${
-                secondaryFilterCount > 0
-                  ? "bg-[var(--aloha-green)] text-white"
-                  : "border border-[var(--aloha-line)] bg-white text-[var(--aloha-ink)] hover:border-[var(--aloha-green)] hover:text-[var(--aloha-green)]"
-              }`}
-            >
-              <SlidersHorizontal size={16} />
-              Lọc
-              {secondaryFilterCount > 0 ? (
-                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 px-1.5 text-[11px] font-black">
-                  {secondaryFilterCount}
-                </span>
-              ) : null}
-            </button>
-
-            {activeFilters.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                onClick={t.clear}
-                className="inline-flex h-11 max-w-[200px] shrink-0 items-center gap-1.5 truncate rounded-full border border-[var(--aloha-line)] bg-white px-3 text-xs font-semibold text-slate-700"
-              >
-                <span className="truncate">{t.label}</span>
-                <X size={14} className="shrink-0 text-slate-400" />
-              </button>
-            ))}
-            {secondaryFilterCount >= 1 ? (
-              <button
-                type="button"
-                className="inline-flex h-11 shrink-0 items-center text-xs font-semibold text-slate-500 underline-offset-2 hover:text-[var(--aloha-green)] hover:underline"
-                onClick={() => navigateQs(clearSecondaryFilters())}
-              >
-                Xóa lọc
-              </button>
-            ) : null}
-          </div>
-
-          <div className="-mx-1 flex shrink-0 items-center gap-x-3 overflow-x-auto px-1 [scrollbar-width:none] sm:gap-x-4 [&::-webkit-scrollbar]:hidden lg:overflow-visible">
-            <span className="hidden shrink-0 text-sm font-semibold text-slate-500 sm:inline">Sắp xếp theo:</span>
-            {SORT_TOOLBAR.map((o) => {
-              const isPrice = o.value === "price";
-              const active = isPrice
-                ? sort === "price_asc" || sort === "price_desc"
-                : sort === o.value;
-              if (isPrice) {
-                return (
-                  <div key={o.value} className="relative shrink-0" data-price-sort-menu>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSortClick("price");
-                      }}
-                      className={`inline-flex h-11 items-center gap-1 text-sm transition ${
-                        active || priceMenuOpen
-                          ? "font-extrabold text-[var(--aloha-green)]"
-                          : "font-semibold text-slate-600 hover:text-[var(--aloha-green)]"
-                      }`}
-                    >
-                      Giá
-                      <ChevronUp
-                        size={14}
-                        className={`transition ${priceMenuOpen ? "" : "rotate-180 opacity-70"}`}
-                      />
-                    </button>
-                    {priceMenuOpen ? (
-                      <div className="absolute right-0 top-full z-[60] mt-1 min-w-[168px] overflow-hidden rounded-2xl bg-white py-1.5 shadow-lg ring-1 ring-black/8">
-                        <button
-                          type="button"
-                          className={`block w-full px-4 py-2.5 text-left text-sm transition hover:bg-[var(--aloha-cream)] ${
-                            sort === "price_asc"
-                              ? "font-bold text-[var(--aloha-green)]"
-                              : "font-medium text-slate-600"
-                          }`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setPriceMenuOpen(false);
-                            pushParams({ sort: "price_asc", page: null });
-                          }}
-                        >
-                          Giá thấp - cao
-                        </button>
-                        <button
-                          type="button"
-                          className={`block w-full px-4 py-2.5 text-left text-sm transition hover:bg-[var(--aloha-cream)] ${
-                            sort === "price_desc"
-                              ? "font-bold text-[var(--aloha-green)]"
-                              : "font-medium text-slate-600"
-                          }`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setPriceMenuOpen(false);
-                            pushParams({ sort: "price_desc", page: null });
-                          }}
-                        >
-                          Giá cao - thấp
-                        </button>
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              }
-              return (
+        <div className="flex flex-col gap-2.5">
+          {categoryLocked ? (
+            <CatalogSubcatBar
+              categoryIds={selectedCategoryIds}
+              filterButton={
                 <button
-                  key={o.value}
                   type="button"
-                  onClick={() => onSortClick(o.value)}
-                  className={`inline-flex h-11 shrink-0 items-center text-sm transition ${
-                    active
-                      ? "font-extrabold text-[var(--aloha-green)] underline decoration-2 underline-offset-8"
-                      : "font-semibold text-slate-600 hover:text-[var(--aloha-green)]"
+                  onClick={openFilterModal}
+                  className={`inline-flex h-10 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm font-bold transition ${
+                    secondaryFilterCount > 0
+                      ? "border-[var(--aloha-green)] bg-[var(--aloha-green-light)] text-[var(--aloha-green)]"
+                      : "border-[var(--aloha-green)] bg-white text-[var(--aloha-green)] hover:bg-[var(--aloha-green-light)]"
                   }`}
                 >
-                  {o.label}
+                  <span className="relative">
+                    <SlidersHorizontal size={16} />
+                    {secondaryFilterCount > 0 ? (
+                      <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-orange-500" />
+                    ) : null}
+                  </span>
+                  Lọc
                 </button>
-              );
-            })}
+              }
+            />
+          ) : (
+            <div className="flex min-w-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={openFilterModal}
+                className={`inline-flex h-10 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm font-bold transition ${
+                  secondaryFilterCount > 0
+                    ? "border-[var(--aloha-green)] bg-[var(--aloha-green)] text-white"
+                    : "border-[var(--aloha-green)] bg-white text-[var(--aloha-green)] hover:bg-[var(--aloha-green-light)]"
+                }`}
+              >
+                <SlidersHorizontal size={16} />
+                Lọc
+                {secondaryFilterCount > 0 ? (
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 px-1.5 text-[11px] font-black">
+                    {secondaryFilterCount}
+                  </span>
+                ) : null}
+              </button>
+              <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {activeFilters.map((t) => (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={t.clear}
+                    className="inline-flex h-10 max-w-[200px] shrink-0 items-center gap-1.5 truncate rounded-md border border-[var(--aloha-line)] bg-white px-3 text-xs font-semibold text-slate-700"
+                  >
+                    <span className="truncate">{t.label}</span>
+                    <X size={14} className="shrink-0 text-slate-400" />
+                  </button>
+                ))}
+                {secondaryFilterCount >= 1 ? (
+                  <button
+                    type="button"
+                    className="inline-flex h-10 shrink-0 items-center text-xs font-semibold text-slate-500 underline-offset-2 hover:text-[var(--aloha-green)] hover:underline"
+                    onClick={() => navigateQs(clearSecondaryFilters())}
+                  >
+                    Xóa lọc
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          )}
+
+          {categoryLocked && activeFilters.length ? (
+            <div className="flex min-w-0 items-center gap-2 overflow-x-auto pl-[4.25rem] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {activeFilters.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={t.clear}
+                  className="inline-flex h-9 max-w-[200px] shrink-0 items-center gap-1.5 truncate rounded-md border border-[var(--aloha-line)] bg-white px-2.5 text-xs font-semibold text-slate-700"
+                >
+                  <span className="truncate">{t.label}</span>
+                  <X size={14} className="shrink-0 text-slate-400" />
+                </button>
+              ))}
+              {secondaryFilterCount >= 1 ? (
+                <button
+                  type="button"
+                  className="inline-flex h-9 shrink-0 items-center text-xs font-semibold text-slate-500 underline-offset-2 hover:text-[var(--aloha-green)] hover:underline"
+                  onClick={() => navigateQs(clearSecondaryFilters())}
+                >
+                  Xóa lọc
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+
+          {/* Sort — mobile full-bleed kiểu TGDĐ; desktop giữ nhãn */}
+          <div className="-mx-4 border-y border-[#eee] bg-white sm:mx-0 sm:border-0 sm:bg-transparent">
+            <div className="flex w-full items-center justify-around overflow-x-auto px-2 [scrollbar-width:none] sm:justify-start sm:gap-x-4 sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden">
+              <span className="mr-1 hidden shrink-0 text-sm font-semibold text-slate-500 sm:inline">
+                Sắp xếp theo:
+              </span>
+              {SORT_TOOLBAR.map((o, idx) => {
+                const isPrice = o.value === "price";
+                const active = isPrice
+                  ? sort === "price_asc" || sort === "price_desc"
+                  : sort === o.value;
+                return (
+                  <span key={o.value} className="inline-flex items-center">
+                    {idx > 0 ? (
+                      <span
+                        className="mx-1 h-1 w-1 shrink-0 rounded-full bg-[#cfcfcf] sm:hidden"
+                        aria-hidden
+                      />
+                    ) : null}
+                    {isPrice ? (
+                      <div className="relative shrink-0" data-price-sort-menu>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSortClick("price");
+                          }}
+                          className={`inline-flex h-10 items-center gap-0.5 px-1.5 text-[13px] transition sm:h-11 sm:px-0 sm:text-sm ${
+                            active || priceMenuOpen
+                              ? "font-bold text-[var(--aloha-green)]"
+                              : "font-medium text-[#444] hover:text-[var(--aloha-green)]"
+                          }`}
+                        >
+                          Giá
+                          <ChevronUp
+                            size={14}
+                            className={`transition ${priceMenuOpen ? "" : "rotate-180 opacity-70"}`}
+                          />
+                        </button>
+                        {priceMenuOpen ? (
+                          <div className="absolute right-0 top-full z-[60] mt-1 min-w-[168px] overflow-hidden rounded-2xl bg-white py-1.5 shadow-lg ring-1 ring-black/8">
+                            <button
+                              type="button"
+                              className={`block w-full px-4 py-2.5 text-left text-sm transition hover:bg-[var(--aloha-cream)] ${
+                                sort === "price_asc"
+                                  ? "font-bold text-[var(--aloha-green)]"
+                                  : "font-medium text-slate-600"
+                              }`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPriceMenuOpen(false);
+                                pushParams({ sort: "price_asc", page: null });
+                              }}
+                            >
+                              Giá thấp - cao
+                            </button>
+                            <button
+                              type="button"
+                              className={`block w-full px-4 py-2.5 text-left text-sm transition hover:bg-[var(--aloha-cream)] ${
+                                sort === "price_desc"
+                                  ? "font-bold text-[var(--aloha-green)]"
+                                  : "font-medium text-slate-600"
+                              }`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPriceMenuOpen(false);
+                                pushParams({ sort: "price_desc", page: null });
+                              }}
+                            >
+                              Giá cao - thấp
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onSortClick(o.value)}
+                        className={`inline-flex h-10 shrink-0 items-center px-1.5 text-[13px] transition sm:h-11 sm:px-0 sm:text-sm ${
+                          active
+                            ? "font-bold text-[var(--aloha-green)]"
+                            : "font-medium text-[#444] hover:text-[var(--aloha-green)]"
+                        }`}
+                      >
+                        {o.label}
+                      </button>
+                    )}
+                  </span>
+                );
+              })}
+            </div>
           </div>
         </div>
       ) : (
@@ -817,10 +881,10 @@ export function CatalogLayout({
           <button
             type="button"
             onClick={openFilterModal}
-            className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-3.5 text-sm font-bold shadow-sm transition ${
+            className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-md border px-3.5 text-sm font-bold transition ${
               secondaryFilterCount > 0
-                ? "bg-[var(--aloha-green)] text-white"
-                : "border border-[var(--aloha-line)] bg-white text-[var(--aloha-ink)] hover:border-[var(--aloha-green)] hover:text-[var(--aloha-green)]"
+                ? "border-[var(--aloha-green)] bg-[var(--aloha-green)] text-white"
+                : "border-[var(--aloha-green)] bg-white text-[var(--aloha-green)]"
             }`}
           >
             <SlidersHorizontal size={16} />

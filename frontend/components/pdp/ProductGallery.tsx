@@ -114,25 +114,56 @@ export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
         {current ? (
           current.kind === "video" ? (
             <div className="absolute inset-0 overflow-hidden bg-[var(--aloha-cream)]">
-              {poster ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={poster}
-                  alt=""
-                  className="absolute inset-0 h-full w-full object-contain"
+              {current.file ? (
+                <video
+                  key={current.src}
+                  src={current.src}
+                  className="absolute inset-0 h-full w-full cursor-pointer object-contain"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  poster={poster || undefined}
+                  onClick={() => openMediaLightbox(idx)}
                 />
               ) : (
-                <div className="absolute inset-0 bg-[var(--aloha-green-light)]" />
+                <>
+                  {poster ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={poster}
+                      alt=""
+                      className="absolute inset-0 h-full w-full object-contain"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-[var(--aloha-green-light)]" />
+                  )}
+                  <iframe
+                    key={current.src}
+                    src={
+                      /youtube\.com|youtu\.be|youtube-nocookie/i.test(current.src)
+                        ? current.src
+                            .replace("watch?v=", "embed/")
+                            .replace("youtu.be/", "www.youtube.com/embed/")
+                            .split("&")[0] +
+                          (current.src.includes("?") ? "&" : "?") +
+                          "autoplay=1&mute=1&playsinline=1&loop=1"
+                        : current.src
+                    }
+                    title={alt}
+                    className="absolute inset-0 h-full w-full border-0"
+                    allow="autoplay; encrypted-media; picture-in-picture"
+                    allowFullScreen
+                  />
+                </>
               )}
               <button
                 type="button"
                 onClick={() => openMediaLightbox(idx)}
-                className="absolute inset-0 z-[2] flex items-center justify-center bg-black/10 transition hover:bg-black/20"
+                className="absolute bottom-2 right-2 z-[3] inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-white/95 text-slate-500 shadow-sm ring-1 ring-black/5"
                 aria-label="Xem video phóng to"
               >
-                <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/95 shadow-lg ring-1 ring-black/10 sm:h-[4.5rem] sm:w-[4.5rem]">
-                  <Play className="ml-1 h-8 w-8 fill-[var(--aloha-green)] text-[var(--aloha-green)] sm:h-9 sm:w-9" />
-                </span>
+                <Maximize2 size={16} />
               </button>
             </div>
           ) : (

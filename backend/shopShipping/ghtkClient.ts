@@ -159,7 +159,7 @@ export async function createGhtkOrder(input: ShipmentOrderInput): Promise<Shipme
   const pickProvince = PICK_PROVINCE();
   const pickDistrict = String(process.env.GHTK_PICK_DISTRICT || "").trim();
   const pickWard = String(process.env.GHTK_PICK_WARD || "").trim();
-  const pickName = String(process.env.GHTK_PICK_NAME || "ALOHA Thế Giới Chậu Cây").trim();
+  const pickName = String(process.env.GHTK_PICK_NAME || "ALOHA THẾ GIỚI CHẬU CÂY").trim();
   const pickPhone = String(process.env.GHTK_PICK_PHONE || "").trim();
 
   const body = {

@@ -1,5 +1,6 @@
 import { shopApiBase } from "./api";
 import type { AppearanceBlock, NavConfig, AppearanceTheme } from "./appearanceTypes";
+import { SHOP_BRAND } from "./brand";
 
 export type PublicAppearance = {
   theme: AppearanceTheme;
@@ -86,16 +87,15 @@ const FALLBACK_BLOCKS: AppearanceBlock[] = [
 export function fallbackAppearance(): PublicAppearance {
   return {
     theme: {
-      siteName: "ALOHA Thế Giới Chậu Cây",
+      siteName: SHOP_BRAND,
       logoUrl: "/brand/logo-header-on-theme.png?v=1",
-      primaryColor: "#5F7D4E",
-      headerBg: "#FAF9F5",
+      primaryColor: "#2E7D32",
+      headerBg: "#FFFFFF",
       fontFamily: "system",
       faviconUrl: "/brand/logo-icon.png",
       seo: {
-        title: "ALOHA Thế Giới Chậu Cây",
-        description:
-          "Mua chậu cây & cây cảnh tại ALOHA Thế Giới Chậu Cây — TP.HCM. Xanh mát, dễ chọn, giao nhanh.",
+        title: SHOP_BRAND,
+        description: `Mua chậu cây & cây cảnh tại ${SHOP_BRAND} — TP.HCM. Xanh mát, dễ chọn, giao nhanh.`,
       },
       popup: {
         enabled: false,

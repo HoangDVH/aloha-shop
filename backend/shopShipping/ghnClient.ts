@@ -132,7 +132,7 @@ export async function createGhnOrder(input: ShipmentOrderInput): Promise<Shipmen
       payment_type_id: (input.codAmount || 0) > 0 ? 2 : 1,
       note: input.note || `Đơn web ${input.orderCode}`,
       required_note: "CHOXEMHANGKHONGTHU",
-      from_name: String(process.env.GHN_FROM_NAME || "ALOHA Thế Giới Chậu Cây"),
+      from_name: String(process.env.GHN_FROM_NAME || "ALOHA THẾ GIỚI CHẬU CÂY"),
       from_phone: String(process.env.GHN_FROM_PHONE || ""),
       from_address: String(process.env.GHN_FROM_ADDRESS || "Tân Bình, HCM"),
       from_ward_name: String(process.env.GHTK_PICK_WARD || ""),

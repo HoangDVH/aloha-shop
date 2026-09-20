@@ -2,21 +2,24 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ShoppingBasket, Menu, X, LogOut, Receipt, BadgePercent, Home } from "lucide-react";
+import {
+  ShoppingCart,
+  Menu,
+  X,
+  BadgePercent,
+} from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { fetchCategoryTreeCached, shopApiBase, type ShopCategoryNavNode } from "@/lib/api";
 import { HeaderSearch } from "@/components/HeaderSearch";
 import { HeaderAccountMenu } from "@/components/HeaderAccountMenu";
-import { AccountAvatar } from "@/components/AccountAvatar";
-import { useShopAuth } from "@/components/ShopAuthProvider";
-import { CategoryMobileNav, CategoryNavBar } from "@/components/CategoryNavMenu";
-import { useShopLoginHref } from "@/lib/useShopLoginHref";
-import { useShopLogoutAction } from "@/lib/useShopLogoutAction";
+import { CategoryMobileNav } from "@/components/CategoryNavMenu";
+import { CategoryMegaMenu } from "@/components/CategoryMegaMenu";
 import { applyNavConfig } from "@/lib/navConfig";
 import type { NavConfig, AppearanceTheme } from "@/lib/appearanceTypes";
 import { applyThemeCssVars } from "@/lib/themeCss";
 import { onShopAppearanceChanged } from "@/lib/catalogSync";
 import { SHOP_OPEN_MOBILE_CATS } from "@/components/ShopMobileTabBar";
+import { SHOP_BRAND, shopBrand } from "@/lib/brand";
 const LOGO_HEADER_SRC = "/brand/logo-header-on-theme.png?v=1";
 const LOGO_WIDTH = 976;
 const LOGO_HEIGHT = 194;
@@ -56,7 +59,7 @@ function AlohaLogo({
   siteName?: string;
 }) {
   const src = resolveThemeLogoSrc(logoUrl);
-  const title = siteName || "ALOHA Thế Giới Chậu Cây";
+  const title = shopBrand(siteName) || SHOP_BRAND;
   return (
     <Link
       href="/"
@@ -79,9 +82,6 @@ function AlohaLogo({
 
 export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNode[] }) {
   const count = useCart((s) => s.lines.reduce((n, l) => n + l.qty, 0));
-  const { user } = useShopAuth();
-  const loginHref = useShopLoginHref();
-  const { logout, isPending: logoutPending } = useShopLogoutAction();
   const [tree, setTree] = useState<ShopCategoryNavNode[]>(() =>
     categoryTree?.length ? categoryTree : []
   );
@@ -171,10 +171,10 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
     setMobileNav(false);
   };
 
-  const chromeInk = "var(--aloha-green)";
+  const chromeInk = "var(--aloha-ink)";
   const chromeHover = "hover:bg-[var(--aloha-green-light)]";
-  const iconClass = "text-[var(--aloha-green)]";
-  const linkTextClass = "text-[var(--aloha-green)]";
+  const iconClass = "text-[var(--aloha-muted)]";
+  const linkTextClass = "text-[var(--aloha-ink)]";
 
   /** Cùng URL Zalo với nút «Báo giá sỉ · Zalo» trên banner. */
   const wholesaleZaloUrl = zaloHref(
@@ -184,10 +184,11 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
   return (
     <header
       ref={chromeRef}
-      className="sticky top-0 z-50 bg-[var(--aloha-cream-dark)] shadow-sm"
+      className="sticky top-0 z-50 shadow-sm"
       style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
     >
-      <div className="border-b border-[var(--aloha-line)] bg-[var(--aloha-cream-dark)]">
+      {/* Hàng logo + search — kem ấm #FDF6E3 */}
+      <div className="border-b border-[var(--aloha-border-brown)]/40 bg-[#FDF6E3]">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-2 gap-y-2 px-3 py-2 sm:gap-x-3 sm:px-4 sm:py-2.5 lg:flex-nowrap lg:gap-5">
           <AlohaLogo
             onNavigate={closeMenus}
@@ -214,14 +215,14 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
             <HeaderAccountMenu />
             <Link
               href="/gio-hang"
-              className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl px-2 ${linkTextClass} ${chromeHover} sm:min-w-0 sm:px-3`}
+              className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-2 text-[var(--aloha-green-dark)] ${chromeHover} sm:px-3`}
               onClick={closeMenus}
               aria-label={`Giỏ hàng${count ? `, ${count} sản phẩm` : ""}`}
             >
               <span className="relative inline-flex">
-                <ShoppingBasket size={22} className={iconClass} />
+                <ShoppingCart size={22} strokeWidth={1.75} aria-hidden />
                 {count > 0 ? (
-                  <span className="absolute -right-2.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--aloha-terracotta)] px-1 text-[10px] font-black text-white shadow-sm">
+                  <span className="absolute -right-2.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--aloha-green)] px-1 text-[10px] font-black text-white shadow-sm">
                     {count > 99 ? "99+" : count}
                   </span>
                 ) : null}
@@ -241,68 +242,54 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
         </div>
       </div>
 
-      <nav className="hidden overflow-visible border-b border-[var(--aloha-line)] bg-white text-[var(--aloha-green)] lg:block">
-        <div className="mx-auto flex max-w-7xl items-stretch overflow-visible px-1 sm:px-2">
-          <div className="hidden min-w-0 flex-1 items-stretch lg:flex">
-            <Link
-              href="/"
-              onClick={closeMenus}
-              className="group relative inline-flex shrink-0 items-center gap-1.5 px-3 text-[15px] font-extrabold text-[var(--aloha-green)] hover:text-[var(--aloha-green-dark)] xl:text-base"
-            >
-              <Home size={18} strokeWidth={2.25} className="shrink-0" aria-hidden />
-              Trang chủ
-              <span
-                className="pointer-events-none absolute inset-x-2 bottom-0 h-[2.5px] rounded-full bg-[var(--aloha-green)] opacity-0 transition-opacity group-hover:opacity-100"
-                aria-hidden
-              />
-            </Link>
-            {navApplied.before.map((c) => (
-              <a
-                key={c.id}
-                href={c.href}
-                target={c.openInNewTab ? "_blank" : undefined}
-                rel={c.openInNewTab ? "noopener noreferrer" : undefined}
-                onClick={closeMenus}
-                className="group relative inline-flex shrink-0 items-center px-2.5 text-[15px] font-extrabold text-[var(--aloha-green)] hover:text-[var(--aloha-green-dark)] xl:text-base"
-              >
-                {c.label}
-                <span
-                  className="pointer-events-none absolute inset-x-2 bottom-0 h-[2.5px] rounded-full bg-[var(--aloha-green)] opacity-0 transition-opacity group-hover:opacity-100"
-                  aria-hidden
-                />
-              </a>
-            ))}
-            <CategoryNavBar
-              tree={navApplied.tree}
-              onNavigate={closeMenus}
-              className="flex min-w-0 flex-1"
-            />
-            {navApplied.after.map((c) => (
-              <a
-                key={c.id}
-                href={c.href}
-                target={c.openInNewTab ? "_blank" : undefined}
-                rel={c.openInNewTab ? "noopener noreferrer" : undefined}
-                onClick={closeMenus}
-                className="group relative inline-flex shrink-0 items-center px-2.5 text-[15px] font-extrabold text-[var(--aloha-green)] hover:text-[var(--aloha-green-dark)] xl:text-base"
-              >
-                {c.label}
-                <span
-                  className="pointer-events-none absolute inset-x-2 bottom-0 h-[2.5px] rounded-full bg-[var(--aloha-green)] opacity-0 transition-opacity group-hover:opacity-100"
-                  aria-hidden
-                />
-              </a>
-            ))}
+      {/* Hàng menu — nền trắng; nav sát Danh mục, cách đều như TMĐT */}
+      <nav className="hidden overflow-visible border-b border-[var(--aloha-line)] bg-white text-[var(--aloha-ink)] lg:block">
+        <div className="mx-auto flex max-w-7xl items-stretch gap-1 overflow-visible px-3 sm:gap-2 sm:px-4">
+          {/* Trái: Danh mục sản phẩm */}
+          <CategoryMegaMenu tree={navApplied.tree} onNavigate={closeMenus} />
+
+          {/* Các mục nav — sát danh mục, chia đều khoảng trống còn lại */}
+          <div className="flex min-w-0 flex-1 items-stretch">
+            {[
+              { href: "/", label: "Trang chủ" },
+              { href: "/tim", label: "Sản phẩm" },
+              { href: "/tim?sort=ban_chay&inStock=1", label: "Ưu đãi" },
+              { href: "/bai-viet", label: "Bài viết" },
+              { href: "/#ve-chung-toi", label: "Về Aloha" },
+              { href: wholesaleZaloUrl, label: "Báo giá sỉ", external: true },
+              { href: "/tuyen-ctv", label: "Tuyển CTV" },
+            ].map((item) => {
+              const cls =
+                "group relative inline-flex h-full min-w-0 flex-1 items-center justify-center px-1 text-[13px] font-semibold text-[var(--aloha-ink)] hover:text-[var(--aloha-green)] xl:px-1.5 xl:text-[14px]";
+              if (item.external) {
+                return (
+                  <a
+                    key={item.label}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={closeMenus}
+                    className={cls}
+                  >
+                    <span className="truncate">{item.label}</span>
+                    <span
+                      className="pointer-events-none absolute inset-x-2 bottom-0 h-[2.5px] rounded-full bg-[var(--aloha-green)] opacity-0 transition-opacity group-hover:opacity-100"
+                      aria-hidden
+                    />
+                  </a>
+                );
+              }
+              return (
+                <Link key={item.label} href={item.href} onClick={closeMenus} className={cls}>
+                  <span className="truncate">{item.label}</span>
+                  <span
+                    className="pointer-events-none absolute inset-x-2 bottom-0 h-[2.5px] rounded-full bg-[var(--aloha-green)] opacity-0 transition-opacity group-hover:opacity-100"
+                    aria-hidden
+                  />
+                </Link>
+              );
+            })}
           </div>
-          <a
-            href={wholesaleZaloUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="my-2 ml-2 hidden shrink-0 items-center gap-1.5 self-center rounded-full bg-[var(--aloha-green)] px-3 py-1.5 text-sm font-bold text-white shadow-sm transition hover:bg-[var(--aloha-green-hover)] xl:inline-flex"
-          >
-            <BadgePercent size={16} strokeWidth={2.25} aria-hidden />
-            Nhận báo giá sỉ
-          </a>
         </div>
       </nav>
 
@@ -314,127 +301,20 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
             aria-label="Đóng menu"
             onClick={closeMenus}
           />
-          <div className="absolute inset-y-0 left-0 flex w-[min(88vw,360px)] flex-col bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[var(--aloha-line)] px-4 py-3">
-              <span className="text-sm font-extrabold text-[var(--aloha-ink)]">Danh mục</span>
+          <div className="absolute inset-0 flex flex-col bg-white shadow-2xl">
+            <div className="flex shrink-0 items-center justify-between border-b border-[#eee] px-4 py-3">
+              <span className="text-[15px] font-bold text-[#222]">Danh mục sản phẩm</span>
               <button
                 type="button"
-                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-slate-500 hover:bg-[var(--aloha-cream)]"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#f3f4f6] text-[#666] hover:bg-[#e8e8e8]"
                 onClick={closeMenus}
                 aria-label="Đóng"
               >
-                <X size={20} />
+                <X size={18} strokeWidth={2.25} />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto px-3 py-3">
-              {user ? (
-                <div className="mb-3 space-y-2">
-                  <Link
-                    href="/tai-khoan"
-                    onClick={closeMenus}
-                    className="flex items-center gap-3 rounded-xl bg-[var(--aloha-green-light)] px-3 py-2.5"
-                  >
-                    <AccountAvatar user={user} size={36} />
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-bold text-[var(--aloha-ink)]">
-                        {user.fullName || "Tài khoản"}
-                      </div>
-                      <div className="truncate text-xs text-slate-500">{user.email}</div>
-                    </div>
-                  </Link>
-                  <Link
-                    href="/tai-khoan?tab=don-mua"
-                    onClick={closeMenus}
-                    className="flex min-h-11 items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-[var(--aloha-cream)]"
-                  >
-                    <Receipt size={18} className="text-[var(--aloha-green)]" />
-                    Đơn mua
-                  </Link>
-                  <button
-                    type="button"
-                    disabled={logoutPending}
-                    onClick={() => {
-                      closeMenus();
-                      logout();
-                    }}
-                    className="flex min-h-11 w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-[#fff1f0] hover:text-red-600"
-                  >
-                    <LogOut size={18} />
-                    Đăng xuất
-                  </button>
-                </div>
-              ) : (
-                <Link
-                  href={loginHref}
-                  onClick={closeMenus}
-                  className="mb-3 flex min-h-11 items-center rounded-xl bg-[var(--aloha-green-light)] px-3 py-2.5 text-sm font-bold text-[var(--aloha-green)]"
-                >
-                  Đăng nhập
-                </Link>
-              )}
-              <a
-                href={wholesaleZaloUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={closeMenus}
-                className="mb-3 flex min-h-11 w-full items-center gap-2 rounded-xl bg-[var(--aloha-green)] px-3 py-2.5 text-sm font-bold text-white"
-              >
-                <BadgePercent size={18} strokeWidth={2.25} aria-hidden />
-                Nhận báo giá sỉ
-              </a>
-              {navApplied.before.length ? (
-                <div className="mb-2 space-y-0.5 border-b border-[var(--aloha-line)] pb-2">
-                  <Link
-                    href="/"
-                    onClick={closeMenus}
-                    className="flex min-h-11 items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-[var(--aloha-green)] hover:bg-[var(--aloha-cream)]"
-                  >
-                    <Home size={18} strokeWidth={2.25} aria-hidden />
-                    Trang chủ
-                  </Link>
-                  {navApplied.before.map((c) => (
-                    <a
-                      key={c.id}
-                      href={c.href}
-                      target={c.openInNewTab ? "_blank" : undefined}
-                      rel={c.openInNewTab ? "noopener noreferrer" : undefined}
-                      onClick={closeMenus}
-                      className="flex min-h-11 items-center rounded-xl px-3 py-2 text-sm font-bold text-[var(--aloha-green)] hover:bg-[var(--aloha-cream)]"
-                    >
-                      {c.label}
-                    </a>
-                  ))}
-                </div>
-              ) : (
-                <div className="mb-2 border-b border-[var(--aloha-line)] pb-2">
-                  <Link
-                    href="/"
-                    onClick={closeMenus}
-                    className="flex min-h-11 items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-[var(--aloha-green)] hover:bg-[var(--aloha-cream)]"
-                  >
-                    <Home size={18} strokeWidth={2.25} aria-hidden />
-                    Trang chủ
-                  </Link>
-                </div>
-              )}
-              <CategoryMobileNav tree={navApplied.tree} onNavigate={closeMenus} />
-              {navApplied.after.length ? (
-                <div className="mt-2 space-y-0.5 border-t border-[var(--aloha-line)] pt-2">
-                  {navApplied.after.map((c) => (
-                    <a
-                      key={c.id}
-                      href={c.href}
-                      target={c.openInNewTab ? "_blank" : undefined}
-                      rel={c.openInNewTab ? "noopener noreferrer" : undefined}
-                      onClick={closeMenus}
-                      className="flex min-h-11 items-center rounded-xl px-3 py-2 text-sm font-bold text-[var(--aloha-green)] hover:bg-[var(--aloha-cream)]"
-                    >
-                      {c.label}
-                    </a>
-                  ))}
-                </div>
-              ) : null}
-            </div>
+
+            <CategoryMobileNav tree={navApplied.tree} onNavigate={closeMenus} />
           </div>
         </div>
       ) : null}
@@ -468,7 +348,7 @@ export function SiteFooter() {
     };
   }, []);
 
-  const siteName = theme?.siteName || "ALOHA Thế Giới Chậu Cây";
+  const siteName = shopBrand(theme?.siteName) || SHOP_BRAND;
   const footer = {
     address: theme?.footer?.address?.trim() || DEFAULT_FOOTER.address,
     phone: theme?.footer?.phone?.trim() || DEFAULT_FOOTER.phone,
@@ -479,7 +359,7 @@ export function SiteFooter() {
   return (
     <footer
       id="ve-chung-toi"
-      className="mt-10 border-t border-[var(--aloha-line)] bg-[var(--aloha-cream-dark)] text-[var(--aloha-ink)] md:mt-14"
+      className="mt-10 border-t border-[var(--aloha-border-brown)]/40 bg-[#FDF6E3] text-[var(--aloha-ink)] md:mt-14"
     >
       <div className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:grid-cols-2 sm:gap-8 sm:py-10 lg:grid-cols-3">
         <div>
@@ -494,7 +374,7 @@ export function SiteFooter() {
               href={zaloHref(footer.zalo || footer.phone)}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex min-h-10 items-center font-semibold text-[var(--aloha-green)] underline-offset-2 hover:text-[var(--aloha-green-dark)] hover:underline"
+              className="inline-flex min-h-10 items-center font-semibold text-[var(--aloha-green)] underline-offset-2 hover:text-[var(--aloha-green-hover)] hover:underline"
             >
               {footer.phone || footer.zalo}
             </a>
@@ -503,7 +383,7 @@ export function SiteFooter() {
             <p className="mt-1 text-[var(--aloha-muted)]">
               <a
                 href={`mailto:${footer.email}`}
-                className="inline-flex min-h-10 items-center font-semibold text-[var(--aloha-green)] underline-offset-2 hover:text-[var(--aloha-green-dark)] hover:underline"
+                className="inline-flex min-h-10 items-center font-semibold text-[var(--aloha-green)] underline-offset-2 hover:text-[var(--aloha-green-hover)] hover:underline"
               >
                 {footer.email}
               </a>
@@ -534,7 +414,7 @@ export function SiteFooter() {
           </div>
         </div>
       </div>
-      <div className="border-t border-[var(--aloha-line)] px-4 py-3 text-center text-[11px] text-[var(--aloha-muted)]">
+      <div className="border-t border-[var(--aloha-border-brown)]/40 px-4 py-4 text-center text-[11px] text-[var(--aloha-muted)]">
         © {new Date().getFullYear()} {siteName}
       </div>
     </footer>

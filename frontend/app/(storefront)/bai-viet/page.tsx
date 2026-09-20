@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Bài viết",
-  description: "Tin tức & hướng dẫn chăm sóc cây từ ALOHA Thế Giới Chậu Cây",
+  description: "Tin tức & hướng dẫn chăm sóc cây từ ALOHA THẾ GIỚI CHẬU CÂY",
 };
 
 type Sp = { page?: string; category?: string; q?: string };

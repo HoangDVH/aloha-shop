@@ -104,7 +104,7 @@ export function ProductCard({
 
   return (
     <article
-      className={`group relative flex flex-col overflow-hidden rounded-[var(--aloha-radius)] bg-[var(--aloha-card,#fffdf8)] shadow-[var(--aloha-shadow)] ring-1 ring-black/[0.04] transition-all duration-300 ease-out md:hover:-translate-y-1 md:hover:shadow-[var(--aloha-shadow-lg)] md:hover:ring-[var(--aloha-green)]/15 animate-fade-up ${
+      className={`group relative flex flex-col overflow-hidden rounded-[var(--aloha-radius)] bg-[var(--aloha-card,#ffffff)] shadow-[var(--aloha-shadow)] ring-1 ring-[var(--aloha-line)] transition-all duration-300 ease-out md:hover:-translate-y-1 md:hover:shadow-[var(--aloha-shadow-lg)] md:hover:ring-[var(--aloha-green)]/20 animate-fade-up ${
         navPending ? "opacity-85" : ""
       }`}
     >
@@ -125,13 +125,11 @@ export function ProductCard({
               loading="lazy"
             />
           ) : (
-            <div className="flex h-full flex-col items-center justify-center gap-1 text-slate-400">
+            <div className="flex h-full flex-col items-center justify-center gap-1 text-[var(--aloha-muted)]">
               <ShoppingBag size={28} strokeWidth={1.25} className="opacity-40" />
               <span className="text-xs">Chưa có ảnh</span>
             </div>
           )}
-
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent opacity-0 transition-opacity duration-300 md:group-hover:opacity-100" />
 
           {hasVideo ? (
             <span
@@ -150,45 +148,34 @@ export function ProductCard({
 
           <div className="absolute left-2 top-2 z-10 flex flex-col gap-1">
             {preOrder || manualBadge === "dat_truoc" ? (
-              <span className="rounded-full bg-amber-600/95 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm backdrop-blur-sm">
-                Đặt trước
+              <span className="inline-flex max-w-[calc(100%-0.25rem)] items-center justify-center rounded-full bg-[var(--aloha-sale)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
+                ĐẶT TRƯỚC
               </span>
             ) : null}
             {!preOrder && manualBadge === "giam_gia" ? (
-              <span className="rounded-full bg-rose-600/95 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white shadow-sm">
-                Giảm giá
+              <span className="inline-flex items-center justify-center rounded-full bg-[var(--aloha-sale)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
+                SALE
               </span>
             ) : null}
             {!preOrder &&
             (lowStock ||
               manualBadge === "ban_chay_sap_het" ||
               manualBadge === "ban_chay") ? (
-              <span className="rounded-full bg-amber-500/95 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
-                Sắp hết
-              </span>
-            ) : null}
-            {!preOrder && manualBadge === "moi" ? (
-              <span className="rounded-full bg-sky-600/95 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
-                Mới
+              <span className="rounded-full bg-[var(--aloha-warning,#f59e0b)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
+                SẮP HẾT
               </span>
             ) : null}
           </div>
 
           <ImagePendingOverlay force={navPending} />
         </Link>
-
-        {!purchaseBlocked ? (
-          <div className="product-card__add-wrap absolute inset-x-0 bottom-0 z-20 p-2 sm:p-2.5">
-            {addBtn}
-          </div>
-        ) : null}
       </div>
 
       <div className={`flex flex-1 flex-col ${shopee ? "gap-1.5 p-2.5 sm:p-3" : "gap-2 p-3 sm:p-3.5"}`}>
         <Link
           href={product.path}
           onClick={markPending}
-          className={`line-clamp-2 font-medium leading-snug text-[var(--aloha-ink)] transition-colors group-hover:text-[var(--aloha-green)] ${
+          className={`line-clamp-2 font-semibold leading-snug text-[var(--aloha-ink)] transition-colors group-hover:text-[var(--aloha-green)] ${
             shopee
               ? "min-h-[2.35rem] text-[12px] sm:text-[13px]"
               : "min-h-[2.5rem] text-sm"
@@ -197,9 +184,9 @@ export function ProductCard({
           {product.ten}
         </Link>
 
-        <div className="mt-auto pt-0.5">
+        <div className="mt-auto flex items-end justify-between gap-2 pt-0.5">
           <div
-            className={`truncate font-extrabold tracking-tight text-[var(--aloha-price)] ${
+            className={`min-w-0 truncate font-extrabold tracking-tight text-[var(--aloha-price)] ${
               shopee ? "text-[15px] sm:text-base" : "text-base sm:text-lg"
             }`}
           >
@@ -214,6 +201,9 @@ export function ProductCard({
               </span>
             ) : null}
           </div>
+          {!purchaseBlocked ? (
+            <div className="product-card__add-wrap shrink-0">{addBtn}</div>
+          ) : null}
         </div>
       </div>
     </article>

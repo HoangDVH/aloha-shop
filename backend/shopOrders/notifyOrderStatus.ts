@@ -13,7 +13,7 @@ export type ShopNotifyEvent =
   | "huy_hoan";
 
 const COL_SENT = "aloha_shop_order_notify_sent";
-const BRAND = "ALOHA Thế giới chậu cây";
+const BRAND = "ALOHA THẾ GIỚI CHẬU CÂY";
 const SHOP_URL =
   String(process.env.SHOP_PUBLIC_URL || "").trim() ||
   "https://alohathegioichaucay.com";

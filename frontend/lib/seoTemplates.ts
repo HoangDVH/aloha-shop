@@ -41,14 +41,14 @@ export function productSeoVars(input: ProductSeoVars): Record<string, string> {
     "[Giá]": String(input.gia || ""),
     "[Mã SP]": String(input.ma || ""),
     "[Danh mục]": String(input.danhMuc || ""),
-    "[Tên cửa hàng]": String(input.tenCuaHang || "ALOHA Thế Giới Chậu Cây"),
+    "[Tên cửa hàng]": String(input.tenCuaHang || "ALOHA THẾ GIỚI CHẬU CÂY"),
   };
 }
 
 export function categorySeoVars(input: CategorySeoVars): Record<string, string> {
   return {
     "[Tên danh mục]": String(input.tenDanhMuc || ""),
-    "[Tên cửa hàng]": String(input.tenCuaHang || "ALOHA Thế Giới Chậu Cây"),
+    "[Tên cửa hàng]": String(input.tenCuaHang || "ALOHA THẾ GIỚI CHẬU CÂY"),
   };
 }
 

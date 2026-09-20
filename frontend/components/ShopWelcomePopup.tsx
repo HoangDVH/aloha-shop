@@ -13,6 +13,7 @@ const SKIP_PREFIXES = [
   "/don-hang",
   "/dang-nhap",
   "/dang-ky",
+  "/tuyen-ctv",
   "/quen-mat-khau",
   "/cho-duyet-ctv",
 ];

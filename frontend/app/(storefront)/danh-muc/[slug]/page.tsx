@@ -87,7 +87,7 @@ export async function generateMetadata({
   }
 
   const title = name;
-  const description = `Mua ${name} tại ALOHA Thế Giới Chậu Cây — chọn nhanh, giá rõ, giao TP.HCM.`;
+  const description = `Mua ${name} tại ALOHA THẾ GIỚI CHẬU CÂY — chọn nhanh, giá rõ, giao TP.HCM.`;
 
   return {
     title,

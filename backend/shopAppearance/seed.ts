@@ -12,7 +12,7 @@ export function buildDefaultAppearanceLayout(): AppearanceLayout {
     version: 1,
     updatedAt: now,
     theme: {
-      siteName: "ALOHA Thế Giới Chậu Cây",
+      siteName: "ALOHA THẾ GIỚI CHẬU CÂY",
       logoUrl: "/brand/logo-header-on-theme.png?v=1",
       primaryColor: "#16C45A",
       headerBg: "#12A34A",

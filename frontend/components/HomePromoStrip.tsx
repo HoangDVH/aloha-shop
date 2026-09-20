@@ -4,7 +4,7 @@ import { Headphones, Leaf, Sparkles } from "lucide-react";
 /** Banner phụ — nền trắng (không kem). */
 export function HomePromoStrip() {
   return (
-    <section className="bg-white py-8 sm:py-10">
+    <section className="py-8 sm:py-10">
       <div className="mx-auto max-w-7xl px-4">
         <div className="flex flex-col gap-6 overflow-hidden rounded-2xl bg-white p-5 ring-1 ring-[var(--aloha-line)] sm:flex-row sm:items-center sm:justify-between sm:gap-8 sm:p-7 sm:shadow-[var(--aloha-shadow)]">
           <div className="min-w-0 flex-1">

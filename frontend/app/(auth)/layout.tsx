@@ -34,11 +34,11 @@ function AuthBrandLogo({ className = "" }: { className?: string }) {
         </span>
         <span className="mt-1.5 flex items-center gap-2 text-[0.65rem] font-semibold tracking-[0.14em] text-[#D4B45A]/95 uppercase">
           <span className="h-px w-4 bg-[#D4B45A]/70" aria-hidden />
-          Thế giới chậu cây
+          THẾ GIỚI CHẬU CÂY
           <span className="h-px w-4 bg-[#D4B45A]/70" aria-hidden />
         </span>
       </span>
-      <span className="sr-only">ALOHA Thế Giới Chậu Cây</span>
+      <span className="sr-only">ALOHA THẾ GIỚI CHẬU CÂY</span>
     </Link>
   );
 }
@@ -73,7 +73,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
               ALOHA Garden
             </p>
             <h2 className="text-4xl font-extrabold leading-tight xl:text-5xl">
-              Thế giới chậu cây
+              THẾ GIỚI CHẬU CÂY
               <span className="mt-1 block text-emerald-100/95">xanh mát mỗi ngày</span>
             </h2>
             <p className="max-w-md text-base leading-relaxed text-white/80">
@@ -81,7 +81,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
             </p>
           </div>
 
-          <p className="text-sm text-white/50">© {new Date().getFullYear()} ALOHA Thế Giới Chậu Cây</p>
+          <p className="text-sm text-white/50">© {new Date().getFullYear()} ALOHA THẾ GIỚI CHẬU CÂY</p>
         </aside>
 
         {/* Form phải */}

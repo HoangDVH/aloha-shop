@@ -4,7 +4,6 @@ import { HomeTrustBar } from "@/components/HomeTrustBar";
 import { HomeFeaturedCategories } from "@/components/HomeFeaturedCategories";
 import { HomeFeaturedProducts } from "@/components/HomeFeaturedProducts";
 import { HomeLowStockSale } from "@/components/HomeLowStockSale";
-import { HomePromoStrip } from "@/components/HomePromoStrip";
 import { HomeArticleSection } from "@/components/HomeArticleSection";
 import { HomeProductSection } from "@/components/HomeProductSection";
 import { categoryHref, fetchArticles, fetchProducts } from "@/lib/api";
@@ -196,6 +195,7 @@ export async function renderTopBlocks(blocks: AppearanceBlock[]) {
       </div>
     );
   }
+
   const lowStock = await loadLowStockProducts();
   if (lowStock.length) {
     nodes.push(
@@ -313,7 +313,6 @@ export async function renderHomeMainSections(blocks: AppearanceBlock[] = []) {
           ctaLabel="Xem thêm sản phẩm mới →"
         />
       ) : null}
-      <HomePromoStrip />
       {articles.length ? (
         <div className="bg-[var(--aloha-surface)] py-8 sm:py-10">
           <div className="mx-auto max-w-7xl px-4">

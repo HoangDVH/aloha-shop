@@ -41,6 +41,16 @@ export function stockMax(ton: number | undefined | null): number | null {
   return Math.max(0, Math.floor(Number(ton)));
 }
 
+/**
+ * Hiển thị tồn kho (TMĐT): làm sạch lỗi float rồi làm tròn xuống số nguyên ≥ 0.
+ * VD: 61.459000000000001 → "61"
+ */
+export function formatTonDisplay(ton: number | undefined | null): string {
+  const max = stockMax(ton);
+  if (max == null) return "0";
+  return String(max);
+}
+
 /** Đặt trước khi tồn đã biết và ≤ 0. */
 export function isPreOrderTon(ton: number | undefined | null): boolean {
   const max = stockMax(ton);

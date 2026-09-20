@@ -5,16 +5,18 @@ import { ThemeCssServer } from "@/components/ThemeCssServer";
 import { OrgJsonLd } from "@/components/OrgJsonLd";
 import { fetchAppearance, fallbackAppearance } from "@/lib/appearance";
 import { SHOP_ORIGIN, absUrl } from "@/lib/seo";
+import { SHOP_BRAND, shopBrand, ensureBrandCapsInText } from "@/lib/brand";
 
 export async function generateMetadata(): Promise<Metadata> {
   const app = await fetchAppearance().catch(() => fallbackAppearance());
   const seo = app.theme?.seo;
-  const title = seo?.title?.trim() || "ALOHA Thế Giới Chậu Cây";
-  const description =
+  const title = shopBrand(seo?.title?.trim() || SHOP_BRAND);
+  const description = ensureBrandCapsInText(
     seo?.description?.trim() ||
-    "Mua chậu cây & cây cảnh tại ALOHA Thế Giới Chậu Cây — TP.HCM. Xanh mát, dễ chọn, giao nhanh.";
+      `Mua chậu cây & cây cảnh tại ${SHOP_BRAND} — TP.HCM. Xanh mát, dễ chọn, giao nhanh.`
+  );
   const favicon = app.theme?.faviconUrl?.trim() || "/brand/logo-icon.png";
-  const siteName = app.theme?.siteName?.trim() || title;
+  const siteName = shopBrand(app.theme?.siteName?.trim() || title);
   const ogImage = seo?.ogImageUrl?.trim() ? absUrl(seo.ogImageUrl) : undefined;
   const verification = seo?.googleSiteVerification?.trim();
 

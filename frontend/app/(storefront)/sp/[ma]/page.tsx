@@ -36,12 +36,12 @@ export async function generateMetadata({
     const price = formatVnd(item.gia);
     const stock =
       item.ton > 0
-        ? `Còn khoảng ${item.ton} ${item.dvt || ""}`.trim()
+        ? `Còn khoảng ${Math.max(0, Math.floor(Number(item.ton) || 0))} ${item.dvt || ""}`.trim()
         : "Đặt trước — giao khi có hàng";
     const descPlain = plainText(item.description || "");
     const description =
       descPlain.slice(0, 140) ||
-      `${item.ten} — Giá ${price}. ${stock}. Mua tại ALOHA Thế Giới Chậu Cây.`;
+      `${item.ten} — Giá ${price}. ${stock}. Mua tại ALOHA THẾ GIỚI CHẬU CÂY.`;
     const image =
       absUrl(item.anh || item.images?.[0] || "") ||
       absUrl("/brand/logo-aloha.png");
@@ -54,7 +54,7 @@ export async function generateMetadata({
       alternates: { canonical: pageUrl.split("?")[0] },
       openGraph: {
         type: "website",
-        siteName: "ALOHA Thế Giới Chậu Cây",
+        siteName: "ALOHA THẾ GIỚI CHẬU CÂY",
         locale: "vi_VN",
         url: pageUrl,
         title,

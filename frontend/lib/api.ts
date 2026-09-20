@@ -90,6 +90,8 @@ export type ShopCategoryNavNode = {
   slug: string;
   count: number;
   hasChild: boolean;
+  /** Ảnh SP đại diện từ kho (đúng categoryId lá) */
+  image?: string;
   /** Nhánh con — tên `subs` tránh xung đột với React `children` khi SSR → client */
   subs: ShopCategoryNavNode[];
 };

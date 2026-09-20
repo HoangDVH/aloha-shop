@@ -20,14 +20,15 @@ export const PRICE_PRESETS = [
   { label: "Dưới 100.000đ", min: 0, max: 100000 },
   { label: "100.000 – 300.000đ", min: 100000, max: 300000 },
   { label: "300.000 – 500.000đ", min: 300000, max: 500000 },
-  { label: "Trên 500.000đ", min: 500000, max: 0 },
+  { label: "500.000 – 2.000.000đ", min: 500000, max: 2000000 },
+  { label: "Trên 2.000.000đ", min: 2000000, max: 0 },
 ];
 
-/** Toolbar sort — đúng 4 mục (Giá toggle asc/desc). */
+/** Toolbar sort — kiểu TGDĐ (mobile full-width, chấm phân cách). */
 export const SORT_TOOLBAR = [
-  { value: "ban_chay", label: "Bán chạy" },
-  { value: "moi", label: "Mới" },
+  { value: "ban_chay", label: "Nổi bật" },
   { value: "giam_gia", label: "Giảm giá" },
+  { value: "moi", label: "Mới" },
   { value: "price", label: "Giá" },
 ] as const;
 

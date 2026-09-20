@@ -1,7 +1,8 @@
-/** Theme → CSS variables storefront — bảng màu đề xuất:
- *  Off-white #FAF9F5 · White #FFFFFF
- *  Green #5F7D4E · Dark green #3F5F35 · Terracotta #C67B5C (CTA/badge)
- *  Text #292B27 · Muted #73766F · Line #EBE8DC · Hover #EEF2EB
+/** Theme → CSS variables storefront — brand guide Aloha (đúng 100%):
+ *  Primary #2E7D32 · Hover #4CAF50 · Pastel #E8F5E9 · Soft #F1F8EF
+ *  Warm Cream #FDF6E3 · Pale Yellow #FFF8E1 · Brown border #E8DCC6
+ *  Accent #FF6800 / #FF6F61 · Text #333 / #6B7280 · Line #E5E7EB
+ *  Price/Sale #EF4444
  */
 
 export type ThemeColors = {
@@ -11,23 +12,30 @@ export type ThemeColors = {
 };
 
 export const ALOHA_PALETTE = {
-  cream: "#FAF9F5",
-  creamDark: "#FEF0D3",
+  cream: "#F1F8EF",
+  creamDark: "#FFF8E1",
   creamLight: "#FFFFFF",
-  hoverBg: "#EEF2EB",
+  warmCream: "#FDF6E3",
+  hoverBg: "#E8F5E9",
   white: "#FFFFFF",
-  surface: "#F5F5F5",
-  green: "#5F7D4E",
-  darkGreen: "#3F5F35",
-  terracotta: "#C67B5C",
-  terracottaHover: "#B0684A",
-  ink: "#292B27",
-  muted: "#73766F",
-  line: "#EBE8DC",
+  surface: "#FFFFFF",
+  green: "#2E7D32",
+  lightGreen: "#4CAF50",
+  darkGreen: "#1B5E20",
+  terracotta: "#FF6F61",
+  terracottaHover: "#E85A4F",
+  shock: "#FF6800",
+  ink: "#333333",
+  muted: "#6B7280",
+  placeholder: "#9CA3AF",
+  line: "#E5E7EB",
+  borderBrown: "#E8DCC6",
+  price: "#EF4444",
+  sale: "#EF4444",
 } as const;
 
 const DEFAULT_PRIMARY = ALOHA_PALETTE.green;
-const DEFAULT_HEADER = ALOHA_PALETTE.cream;
+const DEFAULT_HEADER = ALOHA_PALETTE.white;
 
 const LEGACY_PRIMARY = new Set(
   [
@@ -40,13 +48,26 @@ const LEGACY_PRIMARY = new Set(
     "#0D9488",
     "#3DDC84",
     "#134E2E",
+    /* palette cũ trước brand guide */
+    "#5F7D4E",
+    "#3F5F35",
+    "#7A9A68",
   ].map((c) => c.toUpperCase())
 );
 
 const LEGACY_HEADER = new Set(
-  ["#F7F4EC", "#FBFAF6", "#FFF8DC", "#FAF3E0", "#FFFDD0", "#FFFEE8"].map((c) =>
-    c.toUpperCase()
-  )
+  [
+    "#F7F4EC",
+    "#FBFAF6",
+    "#FFF8DC",
+    "#FAF3E0",
+    "#FFFDD0",
+    "#FFFEE8",
+    "#FEF0D3",
+    "#FAF9F5",
+    "#FDF6E3",
+    "#FFF8E1",
+  ].map((c) => c.toUpperCase())
 );
 
 const FONT_CSS: Record<string, string> = {
@@ -148,6 +169,8 @@ export type AlohaCssVars = {
   "--aloha-line": string;
   "--aloha-price": string;
   "--aloha-sale": string;
+  "--aloha-border-brown": string;
+  "--aloha-shock": string;
   "--aloha-font": string;
 };
 
@@ -164,20 +187,20 @@ export function buildThemeCssVars(theme?: ThemeColors | null): AlohaCssVars {
     primary === ALOHA_PALETTE.green ||
     LEGACY_PRIMARY.has(normalizeHex(theme?.primaryColor));
 
-  const dark = useBrand ? ALOHA_PALETTE.darkGreen : darkenHex(primary, 0.2);
-  const mid = dark;
-  const hover = useBrand ? ALOHA_PALETTE.darkGreen : darkenHex(primary, 0.1);
+  const dark = useBrand ? ALOHA_PALETTE.darkGreen : darkenHex(primary, 0.22);
+  const mid = useBrand ? ALOHA_PALETTE.green : darkenHex(primary, 0.12);
+  const hover = useBrand ? ALOHA_PALETTE.lightGreen : darkenHex(primary, 0.08);
   const light = useBrand ? ALOHA_PALETTE.hoverBg : lightenHex(primary, 0.92);
-  const bright = lightenHex(primary, 0.35);
+  const bright = useBrand ? ALOHA_PALETTE.lightGreen : lightenHex(primary, 0.35);
 
   return {
     "--aloha-green": primary,
     "--aloha-green-hover": hover,
     "--aloha-green-mid": mid,
     "--aloha-green-dark": dark,
-    "--aloha-green-light": useBrand ? ALOHA_PALETTE.creamLight : light,
+    "--aloha-green-light": light,
     "--aloha-green-bright": bright,
-    "--aloha-gold": ALOHA_PALETTE.terracotta,
+    "--aloha-gold": ALOHA_PALETTE.shock,
     "--aloha-terracotta": ALOHA_PALETTE.terracotta,
     "--aloha-terracotta-hover": ALOHA_PALETTE.terracottaHover,
     "--aloha-header": headerRaw,
@@ -189,8 +212,10 @@ export function buildThemeCssVars(theme?: ThemeColors | null): AlohaCssVars {
     "--aloha-ink": ALOHA_PALETTE.ink,
     "--aloha-muted": ALOHA_PALETTE.muted,
     "--aloha-line": ALOHA_PALETTE.line,
-    "--aloha-price": primary,
-    "--aloha-sale": "#D45454",
+    "--aloha-price": ALOHA_PALETTE.price,
+    "--aloha-sale": ALOHA_PALETTE.sale,
+    "--aloha-border-brown": ALOHA_PALETTE.borderBrown,
+    "--aloha-shock": ALOHA_PALETTE.shock,
     "--aloha-font": fontCssStack(theme?.fontFamily),
   };
 }

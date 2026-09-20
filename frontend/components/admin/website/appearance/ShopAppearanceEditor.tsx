@@ -59,26 +59,25 @@ const SHOP_PREVIEW_URL =
   "http://localhost:3002";
 
 const COLOR_PRESETS = [
-  "#5F7D4E",
-  "#3F5F35",
-  "#C67B5C",
-  "#B0684A",
-  "#16C45A",
-  "#12A34A",
-  "#0D9488",
-  "#4F46E5",
-  "#7C3AED",
-  "#DB2777",
-  "#DC2626",
+  "#2E7D32",
+  "#4CAF50",
+  "#1B5E20",
+  "#FF6F61",
+  "#FF6800",
+  "#EF4444",
   "#F59E0B",
-  "#CA8A04",
-  "#334155",
-  "#292B27",
-  "#FAF9F5",
+  "#3B82F6",
+  "#333333",
+  "#6B7280",
+  "#E8F5E9",
+  "#F1F8EF",
+  "#FDF6E3",
+  "#FFF8E1",
+  "#E8DCC6",
   "#FFFFFF",
 ];
 
-const HEADER_FOR_PRIMARY = "#FAF9F5";
+const HEADER_FOR_PRIMARY = "#FFFFFF";
 
 type SidePanel = "brand" | "home" | "menu" | "footer";
 

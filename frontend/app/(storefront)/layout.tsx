@@ -7,11 +7,11 @@ import { ShopMobileTabBar } from "@/components/ShopMobileTabBar";
 export default function StorefrontLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <Suspense fallback={<header className="h-[108px] bg-[var(--aloha-green)]" />}>
+      <Suspense fallback={<header className="h-[108px] bg-[var(--aloha-cream)]" />}>
         <SiteHeader />
       </Suspense>
       <div className="shop-storefront-with-tabbar">
-        <main className="min-h-[70vh]">{children}</main>
+        <main className="min-h-[70vh] bg-white">{children}</main>
         <SiteFooter />
       </div>
       <Suspense fallback={null}>

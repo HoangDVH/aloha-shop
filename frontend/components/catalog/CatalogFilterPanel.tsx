@@ -5,6 +5,7 @@ import { ShopCategorySelect } from "@/components/ShopCategorySelect";
 import { FilterChipSection } from "@/components/FilterChipSection";
 import { ShopAttributeFilter } from "@/components/ShopAttributeFilter";
 import { PriceRangeFilter } from "@/components/catalog/PriceRangeFilter";
+import { CatalogSubcatPicker } from "@/components/catalog/CatalogSubcatBar";
 
 export type CatalogFilterPanelProps = {
   selectedNhoms: string[];
@@ -22,6 +23,8 @@ export type CatalogFilterPanelProps = {
   hasCategoryScope?: boolean;
   lockCategory?: boolean;
   categoryLockLabel?: string;
+  /** categoryId đang lọc — hiện L2/L3 trong sheet (TGDĐ) */
+  categoryIds?: number[];
   minPrice: string;
   maxPrice: string;
   onPricePreset: (minPrice: string, maxPrice: string | null) => void;
@@ -51,6 +54,7 @@ export function CatalogFilterPanel({
   hasCategoryScope = false,
   lockCategory = false,
   categoryLockLabel = "",
+  categoryIds = [],
   minPrice,
   maxPrice,
   onPricePreset,
@@ -85,9 +89,11 @@ export function CatalogFilterPanel({
       ) : null}
 
       {lockCategory ? (
-        <div className="rounded-xl bg-[var(--aloha-green-light)] px-3 py-2.5 text-sm font-bold text-[var(--aloha-green)]">
-          {categoryLockLabel || "Đang lọc trong danh mục này"}
-        </div>
+        <CatalogSubcatPicker
+          categoryIds={categoryIds}
+          inFilterSheet
+          onNavigate={onClose}
+        />
       ) : (
         <div>
           <h3 className="mb-2 text-sm font-extrabold uppercase tracking-wide text-[var(--aloha-ink)]">

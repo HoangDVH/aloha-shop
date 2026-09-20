@@ -42,7 +42,7 @@ export function SeoProductPanel() {
   const save = useSaveSeoDraft();
   const publish = usePublishSeo();
   const seo = q.data?.draft?.theme?.seo;
-  const siteName = q.data?.draft?.theme?.siteName || "ALOHA Thế Giới Chậu Cây";
+  const siteName = q.data?.draft?.theme?.siteName || "ALOHA THẾ GIỚI CHẬU CÂY";
 
   /** SP dùng để xem trước (ảnh + biến) — độc lập với nội dung template. */
   const [sampleQ, setSampleQ] = useState("KCL1");

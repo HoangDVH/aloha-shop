@@ -10,12 +10,19 @@ export const WEB_BADGE_VALUES = [
 export type WebBadge = (typeof WEB_BADGE_VALUES)[number];
 
 export const WEB_BADGE_LABELS: Record<WebBadge, string> = {
-  noi_bat: "Nổi bật",
-  ban_chay_sap_het: "Bán chạy và sắp hết",
-  giam_gia: "Giảm giá",
-  dat_truoc: "Đặt trước",
-  moi: "Mới",
+  noi_bat: "NỔI BẬT",
+  ban_chay_sap_het: "BÁN CHẠY VÀ SẮP HẾT",
+  giam_gia: "GIẢM GIÁ",
+  dat_truoc: "ĐẶT TRƯỚC",
+  moi: "MỚI",
 };
+
+/** Nhãn hiển thị trên card — luôn viết hoa hết. */
+export function formatWebBadgeLabel(label: string): string {
+  return String(label || "")
+    .trim()
+    .toLocaleUpperCase("vi-VN");
+}
 
 export function normalizeWebBadge(raw: unknown): WebBadge | "" {
   const b = String(raw || "").trim();

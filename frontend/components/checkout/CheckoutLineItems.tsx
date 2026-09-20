@@ -18,7 +18,7 @@ type Props = {
 /** Khối SP + ghi chú từng dòng + thành tiền. */
 export function CheckoutLineItems({
   selected,
-  shopName = "ALOHA Thế Giới Chậu Cây",
+  shopName = "ALOHA THẾ GIỚI CHẬU CÂY",
 }: Props) {
   const setQty = useCart((s) => s.setQty);
   const setLineNote = useCart((s) => s.setLineNote);
@@ -158,7 +158,7 @@ export function CheckoutLineItems({
               </div>
 
               {/* Desktop — cột như ảnh 2 */}
-              <div className="hidden grid-cols-[minmax(0,1fr)_100px_100px_110px] items-start gap-3 lg:grid">
+              <div className="hidden grid-cols-[minmax(0,1fr)_100px_100px_110px] items-center gap-3 lg:grid">
                 <div className="flex min-w-0 gap-3">
                   <Link
                     href={l.path || `/sp/${encodeURIComponent(l.ma)}`}
@@ -183,8 +183,8 @@ export function CheckoutLineItems({
                     <p className="mt-0.5 text-xs text-[var(--aloha-muted)]">
                       {variant || l.dvt || "Cái"}
                       {preOrder ? (
-                        <span className="ml-1.5 inline-flex rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">
-                          Đặt trước
+                        <span className="ml-1.5 inline-flex rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold uppercase text-amber-800">
+                          ĐẶT TRƯỚC
                         </span>
                       ) : null}
                     </p>
@@ -205,21 +205,21 @@ export function CheckoutLineItems({
                     ) : null}
                   </div>
                 </div>
-                <p className="pt-1 text-right text-sm text-[var(--aloha-ink)]">
+                <p className="text-right text-sm leading-none text-[var(--aloha-ink)]">
                   {formatVnd(l.gia)}
                 </p>
-                <div className="flex justify-center pt-0.5">
-                  <div className="inline-flex items-center rounded-full bg-[#f3f4f6] p-0.5">
+                <div className="flex justify-center">
+                  <div className="inline-flex h-8 items-center rounded-md bg-[#f3f4f6] px-0.5">
                     <button
                       type="button"
                       aria-label="Giảm số lượng"
                       disabled={l.qty <= 1}
                       onClick={() => setQty(l.ma, l.qty - 1)}
-                      className="flex h-11 w-11 items-center justify-center rounded-full text-slate-600 disabled:opacity-30"
+                      className="flex h-7 w-7 items-center justify-center rounded text-slate-600 disabled:opacity-30"
                     >
-                      <Minus size={14} />
+                      <Minus size={13} />
                     </button>
-                    <span className="min-w-[1.75rem] text-center text-sm font-bold tabular-nums">
+                    <span className="min-w-[1.5rem] text-center text-sm font-bold leading-none tabular-nums">
                       {l.qty}
                     </span>
                     <button
@@ -227,13 +227,13 @@ export function CheckoutLineItems({
                       aria-label="Tăng số lượng"
                       disabled={atMax}
                       onClick={() => setQty(l.ma, l.qty + 1)}
-                      className="flex h-11 w-11 items-center justify-center rounded-full text-slate-600 disabled:opacity-30"
+                      className="flex h-7 w-7 items-center justify-center rounded text-slate-600 disabled:opacity-30"
                     >
-                      <Plus size={14} />
+                      <Plus size={13} />
                     </button>
                   </div>
                 </div>
-                <p className="pt-1 text-right text-sm font-black tabular-nums text-[var(--aloha-price)]">
+                <p className="text-right text-sm font-black leading-none tabular-nums text-[var(--aloha-price)]">
                   {formatVnd(lineTotal)}
                 </p>
               </div>

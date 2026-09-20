@@ -129,6 +129,7 @@ export function safeAuthNext(raw: string | null | undefined, fallback = "/") {
   if (
     pathOnly === "/dang-nhap" ||
     pathOnly === "/dang-ky" ||
+    pathOnly === "/tuyen-ctv" ||
     pathOnly === "/cho-duyet-ctv"
   ) {
     return fallback;

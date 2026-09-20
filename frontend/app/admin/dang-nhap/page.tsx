@@ -72,7 +72,7 @@ export default function AdminLoginPage() {
               Đăng nhập bằng tài khoản Quản lý app nội bộ để quản lý CTV/hoa hồng và website bán hàng.
             </p>
           </div>
-          <p className="text-sm text-white/50">© {new Date().getFullYear()} ALOHA Thế Giới Chậu Cây</p>
+          <p className="text-sm text-white/50">© {new Date().getFullYear()} ALOHA THẾ GIỚI CHẬU CÂY</p>
         </aside>
 
         <main className="flex flex-col items-center justify-center px-4 py-10 sm:px-8 lg:px-10 xl:px-16">

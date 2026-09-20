@@ -1,9 +1,10 @@
 import { SHOP_ORIGIN, absUrl } from "@/lib/seo";
 import type { AppearanceTheme } from "@/lib/appearanceTypes";
+import { SHOP_BRAND, shopBrand } from "@/lib/brand";
 
 /** Organization / LocalBusiness JSON-LD từ appearance footer. */
 export function buildLocalBusinessJsonLd(theme: AppearanceTheme) {
-  const name = theme.siteName?.trim() || "ALOHA Thế Giới Chậu Cây";
+  const name = shopBrand(theme.siteName) || SHOP_BRAND;
   const phone = theme.footer?.phone?.trim() || "";
   const email = theme.footer?.email?.trim() || "";
   const address = theme.footer?.address?.trim() || "";

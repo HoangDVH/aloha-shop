@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -16,6 +16,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { categoryHref, type ShopCategoryNavNode } from "@/lib/api";
+import { isPhongThuyL3, navIllustrationSrc } from "@/lib/navIllustrations";
 
 /** Cột flyout — cố định, mọi cấp bằng nhau */
 const FLYOUT_COL_CLASS = "flex w-[260px] shrink-0 flex-col";
@@ -145,7 +146,7 @@ function normKey(name: string): string {
     .toUpperCase();
 }
 
-function foldKey(name: string): string {
+export function foldKey(name: string): string {
   return normKey(name)
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
@@ -168,11 +169,11 @@ function lookupNav<T>(map: Record<string, T>, name: string): T | undefined {
   return undefined;
 }
 
-function navBarLabel(name: string): string {
+export function navBarLabel(name: string): string {
   return lookupNav(NAV_SHORT, name) || String(name || "").trim();
 }
 
-function navBarIcon(name: string): ReactNode {
+export function navBarIcon(name: string): ReactNode {
   return (
     lookupNav(NAV_ICONS, name) || (
       <Sprout className={ICON_CLASS} strokeWidth={1.75} />
@@ -324,7 +325,7 @@ const NAV_UI_MERGE_GROUPS = [
   },
 ] as const;
 
-function nameMatchesAny(name: string, candidates: readonly string[]): boolean {
+export function nameMatchesAny(name: string, candidates: readonly string[]): boolean {
   const folded = foldKey(name);
   return candidates.some((n) => {
     const target = foldKey(n);
@@ -438,12 +439,12 @@ function NavItemButton({
       <Link
         href={categoryHref(node)}
         onClick={onNavigate}
-        className={`group relative inline-flex h-full w-full min-w-0 items-center justify-center gap-1 px-1.5 text-[14px] font-extrabold leading-tight text-[var(--aloha-green)] transition-colors hover:text-[var(--aloha-green-dark)] sm:gap-1.5 sm:px-2 sm:text-[15px] xl:text-base ${
-          open ? "text-[var(--aloha-green-dark)]" : ""
+        className={`group relative inline-flex h-full w-full min-w-0 items-center justify-center gap-1 px-1.5 text-[14px] font-semibold leading-tight text-[var(--aloha-ink)] transition-colors hover:text-[var(--aloha-green)] sm:gap-1.5 sm:px-2 sm:text-[15px] xl:text-base ${
+          open ? "text-[var(--aloha-green)]" : ""
         }`}
         title={node.name}
       >
-        <span className="shrink-0 text-[var(--aloha-green)]">
+        <span className="shrink-0 text-[var(--aloha-muted)] group-hover:text-[var(--aloha-green)]">
           {navBarIcon(node.name)}
         </span>
         <span className="truncate">{navBarLabel(node.name)}</span>
@@ -512,12 +513,12 @@ function MergedGroupNavItem({
       <Link
         href={categoryHref(primary)}
         onClick={onNavigate}
-        className={`group relative inline-flex h-full w-full min-w-0 items-center justify-center gap-1 px-1.5 text-[14px] font-extrabold leading-tight text-[var(--aloha-green)] transition-colors hover:text-[var(--aloha-green-dark)] sm:gap-1.5 sm:px-2 sm:text-[15px] xl:text-base ${
-          open ? "text-[var(--aloha-green-dark)]" : ""
+        className={`group relative inline-flex h-full w-full min-w-0 items-center justify-center gap-1 px-1.5 text-[14px] font-semibold leading-tight text-[var(--aloha-ink)] transition-colors hover:text-[var(--aloha-green)] sm:gap-1.5 sm:px-2 sm:text-[15px] xl:text-base ${
+          open ? "text-[var(--aloha-green)]" : ""
         }`}
         title={primary.name}
       >
-        <span className="shrink-0 text-[var(--aloha-green)]">
+        <span className="shrink-0 text-[var(--aloha-muted)] group-hover:text-[var(--aloha-green)]">
           {navBarIcon(primary.name)}
         </span>
         <span className="truncate">{label}</span>
@@ -618,62 +619,131 @@ export function CategoryNavBar({
   );
 }
 
-/** Mobile — danh sách nhánh mẹ, bấm mở con (đệ quy) */
-function MobileTreeNode({
+/** Thứ tự 9 nhánh mẹ trên rail mobile (không gộp như desktop). */
+const MOBILE_ROOT_ORDER = [
+  "CÂY CẢNH ĐỦ LOẠI",
+  "CHẬU TRỒNG CÂY",
+  "BÌNH CẮM HOA",
+  "ĐẤT ĐÁ GIÁ THỂ DINH DƯỠNG TRỒNG CÂY",
+  "HẠT GIỐNG",
+  "PHỤ KIỆN TRANG TRÍ",
+  "ĐĨA LÓT CHẬU",
+  "DỤNG CỤ TRỒNG CÂY",
+  "TÚI VÀ HỘP ĐỂ SẢN PHẨM",
+] as const;
+
+const MOBILE_CAT_ACTIVE_KEY = "aloha:mobile-cat-active";
+
+function orderMobileRoots(tree: ShopCategoryNavNode[]): ShopCategoryNavNode[] {
+  const used = new Set<number>();
+  const ordered: ShopCategoryNavNode[] = [];
+  for (const name of MOBILE_ROOT_ORDER) {
+    const hit = tree.find(
+      (n) => !used.has(n.id) && nameMatchesAny(n.name, [name])
+    );
+    if (hit) {
+      used.add(hit.id);
+      ordered.push(hit);
+    }
+  }
+  for (const n of tree) {
+    if (used.has(n.id)) continue;
+    // Bỏ Khác / Vật tư / Quà khỏi rail chính
+    if (
+      nameMatchesAny(n.name, ["KHÁC", "VẬT TƯ VÀ THIẾT BỊ", "QUÀ TẶNG CÂY"])
+    ) {
+      continue;
+    }
+    ordered.push(n);
+  }
+  return ordered;
+}
+
+function mobileTileSrc(node: ShopCategoryNavNode): string {
+  if (isPhongThuyL3(node)) return navIllustrationSrc(node.name);
+  return String(node.image || "").trim();
+}
+
+function mobileTileHasImage(node: ShopCategoryNavNode): boolean {
+  return Boolean(mobileTileSrc(node));
+}
+
+/** Viết hoa chữ cái đầu mỗi từ (vd. CÂY KIM TIỀN → Cây Kim Tiền). */
+export function toTitleCaseVi(name: string): string {
+  const s = String(name || "").trim().replace(/\s+/g, " ");
+  if (!s) return s;
+  return s
+    .split(/(\s+|[-–—])/)
+    .map((part) => {
+      if (!part || /^[\s\-–—]+$/.test(part)) return part;
+      if (/^ctp$/i.test(part)) return "CTP";
+      const lower = part.toLocaleLowerCase("vi");
+      return lower.charAt(0).toLocaleUpperCase("vi") + lower.slice(1);
+    })
+    .join("");
+}
+
+/** Nhánh có giá trong tên → rút gọn (CÂY THÀNH PHẨM TRÊN 150K… → Ctp Trên 150k…). */
+function mobileCatLabel(name: string): string {
+  const s = String(name || "").trim().replace(/\s+/g, " ");
+  if (!s) return s;
+  const f = foldKey(s);
+  const hasPrice =
+    /\d\s*K\b/.test(f) ||
+    /\d\s*TR\b/.test(f) ||
+    /\d+TR/.test(f) ||
+    (/\d/.test(s) &&
+      (f.includes("DUOI") ||
+        f.includes("TREN") ||
+        f.includes("DONG GIA") ||
+        /SALE[- ]?\d/.test(f) ||
+        /SALE-\d/.test(f)));
+
+  if (!hasPrice) return toTitleCaseVi(s);
+
+  if (f.startsWith("CAY THANH PHAM")) {
+    const rest = s.replace(/^CÂY\s+THÀNH\s+PHẨM\s*/i, "").trim();
+    return toTitleCaseVi(rest ? `CTP ${rest}` : "CTP");
+  }
+  return toTitleCaseVi(s);
+}
+
+function MobileCatTile({
   node,
-  depth,
   onNavigate,
 }: {
   node: ShopCategoryNavNode;
-  depth: number;
   onNavigate?: () => void;
 }) {
-  const subs = nodeSubs(node);
-  const hasKids = subs.length > 0;
-  const [open, setOpen] = useState(false);
+  const [imgFailed, setImgFailed] = useState(false);
+  const src = mobileTileSrc(node);
+  if (!src || imgFailed) return null;
 
   return (
-    <div className={depth === 0 ? "rounded-lg border border-[var(--aloha-line)]/80" : ""}>
-      <div className="flex items-center" style={{ paddingLeft: depth > 0 ? depth * 12 : 0 }}>
-        <Link
-          href={categoryHref(node)}
-          onClick={onNavigate}
-          title={node.name}
-          className={`flex min-w-0 flex-1 items-center gap-2.5 py-2.5 text-sm leading-snug ${
-            depth === 0
-              ? "px-3 font-semibold text-[var(--aloha-ink)]"
-              : "px-4 text-slate-700"
-          }`}
-        >
-          {depth === 0 ? (
-            <span className="text-[var(--aloha-green)]">{navBarIcon(node.name)}</span>
-          ) : null}
-          <span className="line-clamp-2 break-words">
-            {depth === 0 ? navBarLabel(node.name) : node.name}
-          </span>
-        </Link>
-        {hasKids ? (
-          <button
-            type="button"
-            className="px-3 py-2.5 text-[var(--aloha-green)]"
-            onClick={() => setOpen((v) => !v)}
-            aria-label={open ? "Thu gọn" : "Mở nhóm con"}
-          >
-            <ChevronDown size={16} className={open ? "rotate-180" : ""} />
-          </button>
-        ) : null}
-      </div>
-      {hasKids && open ? (
-        <div className={depth === 0 ? "border-t border-[var(--aloha-line)] bg-[var(--aloha-cream)] py-1" : "pb-1"}>
-          {subs.map((ch) => (
-            <MobileTreeNode key={ch.id} node={ch} depth={depth + 1} onNavigate={onNavigate} />
-          ))}
-        </div>
-      ) : null}
-    </div>
+    <Link
+      href={categoryHref(node)}
+      onClick={onNavigate}
+      className="flex flex-col items-center gap-1.5 text-center"
+    >
+      {/* Ảnh nhỏ — bo góc nhẹ như TGDĐ */}
+      <span className="flex h-[3.5rem] w-[3.5rem] shrink-0 items-center justify-center overflow-hidden rounded-md">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src}
+          alt=""
+          className="max-h-full max-w-full rounded-md object-contain"
+          loading="lazy"
+          onError={() => setImgFailed(true)}
+        />
+      </span>
+      <span className="line-clamp-2 min-h-[2.5em] w-full px-0.5 text-[11px] font-normal leading-[1.25] text-[#333]">
+        {mobileCatLabel(node.name)}
+      </span>
+    </Link>
   );
 }
 
+/** Mobile — rail 9 mẹ trái + lưới ảnh/chữ phải (kiểu TGDĐ). */
 export function CategoryMobileNav({
   tree,
   onNavigate,
@@ -681,20 +751,199 @@ export function CategoryMobileNav({
   tree: ShopCategoryNavNode[];
   onNavigate?: () => void;
 }) {
-  if (!tree.length) return null;
+  const roots = useMemo(() => orderMobileRoots(tree), [tree]);
+  const [activeId, setActiveId] = useState<number | null>(null);
+  const rightRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!roots.length) return;
+    let saved: number | null = null;
+    try {
+      const raw = sessionStorage.getItem(MOBILE_CAT_ACTIVE_KEY);
+      const n = Number(raw);
+      if (Number.isFinite(n) && roots.some((r) => r.id === n)) saved = n;
+    } catch {
+      /* ignore */
+    }
+    setActiveId(saved ?? roots[0].id);
+  }, [roots]);
+
+  useEffect(() => {
+    if (activeId == null) return;
+    try {
+      sessionStorage.setItem(MOBILE_CAT_ACTIVE_KEY, String(activeId));
+    } catch {
+      /* ignore */
+    }
+    rightRef.current?.scrollTo({ top: 0 });
+  }, [activeId]);
+
+  const active = roots.find((r) => r.id === activeId) || roots[0] || null;
+  if (!roots.length || !active) return null;
+
+  const l2 = nodeSubs(active);
+  const leafOnly = l2
+    .filter((n) => !nodeSubs(n).length)
+    .filter(mobileTileHasImage)
+    .slice(0, 9);
+  const withKids = l2
+    .map((section) => ({
+      section,
+      kids: nodeSubs(section).filter(mobileTileHasImage).slice(0, 9),
+    }))
+    .filter((x) => x.kids.length > 0);
+  const rootLeafTile = !l2.length && mobileTileHasImage(active);
+  const hasGrid =
+    withKids.length > 0 || leafOnly.length > 0 || rootLeafTile;
 
   return (
-    <div className="flex flex-col gap-1">
-      <Link
-        href="/tim"
-        onClick={onNavigate}
-        className="rounded-lg px-3 py-2.5 text-sm font-semibold text-[var(--aloha-green)] hover:bg-[var(--aloha-green-light)]"
+    <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-[#F3F4F6]">
+      {/* Rail trái — ~28%, xám / trắng khi chọn (TGDĐ) */}
+      <nav
+        className="w-[28%] max-w-[6.75rem] shrink-0 overflow-y-auto overscroll-contain"
+        aria-label="Nhóm hàng"
       >
-        Tất cả sản phẩm
-      </Link>
-      {tree.map((node) => (
-        <MobileTreeNode key={node.id} node={node} depth={0} onNavigate={onNavigate} />
-      ))}
+        {roots.map((node) => {
+          const selected = node.id === active.id;
+          return (
+            <button
+              key={node.id}
+              type="button"
+              onClick={() => setActiveId(node.id)}
+              className={`relative flex min-h-[3.5rem] w-full flex-col items-center justify-center gap-1 px-1 py-2.5 text-center transition-colors ${
+                selected
+                  ? "bg-white text-[#222]"
+                  : "bg-transparent text-[#666]"
+              }`}
+              aria-current={selected ? "true" : undefined}
+            >
+              {selected ? (
+                <span
+                  className="absolute inset-y-2 left-0 w-[3px] rounded-r bg-[var(--aloha-green)]"
+                  aria-hidden
+                />
+              ) : null}
+              <span className={selected ? "text-[var(--aloha-green)]" : "text-[#888]"}>
+                {navBarIcon(node.name)}
+              </span>
+              <span
+                className={`line-clamp-2 px-0.5 text-[11px] leading-tight ${
+                  selected ? "font-bold" : "font-medium"
+                }`}
+              >
+                {navBarLabel(node.name)}
+              </span>
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* Cột phải */}
+      <div
+        ref={rightRef}
+        className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain bg-white px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3"
+      >
+        {withKids.map(({ section, kids }) => {
+          return (
+            <section key={section.id} className="mb-6">
+              <div className="mb-3 flex items-baseline justify-between gap-2">
+                <h3 className="min-w-0 truncate text-[16px] font-extrabold text-[#222]">
+                  {mobileCatLabel(section.name)}
+                </h3>
+                <Link
+                  href={categoryHref(section)}
+                  onClick={onNavigate}
+                  className="shrink-0 text-[12px] font-normal text-[#999]"
+                >
+                  Xem tất cả &gt;
+                </Link>
+              </div>
+              <div className="grid grid-cols-3 gap-x-1 gap-y-5">
+                {kids.map((leaf) => (
+                  <MobileCatTile
+                    key={leaf.id}
+                    node={leaf}
+                    onNavigate={onNavigate}
+                  />
+                ))}
+              </div>
+            </section>
+          );
+        })}
+
+        {leafOnly.length ? (
+          <section className="mb-6">
+            {withKids.length ? (
+              <div className="mb-3 flex items-baseline justify-between gap-2">
+                <h3 className="text-[15px] font-bold text-[#222]">Khác</h3>
+                <Link
+                  href={categoryHref(active)}
+                  onClick={onNavigate}
+                  className="shrink-0 text-[12px] font-normal text-[#999]"
+                >
+                  Xem tất cả &gt;
+                </Link>
+              </div>
+            ) : (
+              <div className="mb-3 flex items-baseline justify-between gap-2">
+                <h3 className="min-w-0 truncate text-[15px] font-bold text-[#222]">
+                  {mobileCatLabel(active.name)}
+                </h3>
+                <Link
+                  href={categoryHref(active)}
+                  onClick={onNavigate}
+                  className="shrink-0 text-[12px] font-normal text-[#999]"
+                >
+                  Xem tất cả &gt;
+                </Link>
+              </div>
+            )}
+            <div className="grid grid-cols-3 gap-x-1 gap-y-5">
+              {leafOnly.map((leaf) => (
+                <MobileCatTile
+                  key={leaf.id}
+                  node={leaf}
+                  onNavigate={onNavigate}
+                />
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {/* Nhóm mẹ lá (Bình hoa, Hạt giống): 1 ảnh kho + xem tất cả */}
+        {rootLeafTile ? (
+          <section className="mb-6">
+            <div className="mb-3 flex items-baseline justify-between gap-2">
+              <h3 className="min-w-0 truncate text-[15px] font-bold text-[#222]">
+                {mobileCatLabel(active.name)}
+              </h3>
+              <Link
+                href={categoryHref(active)}
+                onClick={onNavigate}
+                className="shrink-0 text-[12px] font-normal text-[#999]"
+              >
+                Xem tất cả &gt;
+              </Link>
+            </div>
+            <div className="grid grid-cols-3 gap-x-1 gap-y-5">
+              <MobileCatTile node={active} onNavigate={onNavigate} />
+            </div>
+          </section>
+        ) : null}
+
+        {!hasGrid ? (
+          <div className="flex flex-col items-center gap-3 py-10 text-center">
+            <p className="text-sm text-[#888]">Chưa có danh mục con để hiển thị.</p>
+            <Link
+              href={categoryHref(active)}
+              onClick={onNavigate}
+              className="text-sm font-semibold text-[var(--aloha-green)]"
+            >
+              Xem tất cả sản phẩm &gt;
+            </Link>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

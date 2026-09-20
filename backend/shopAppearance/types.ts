@@ -149,9 +149,9 @@ export function defaultPopup(): AppearancePopup {
 
 export function defaultSeo(): AppearanceSeo {
   return {
-    title: "ALOHA Thế Giới Chậu Cây",
+    title: "ALOHA THẾ GIỚI CHẬU CÂY",
     description:
-      "Mua chậu cây & cây cảnh tại ALOHA Thế Giới Chậu Cây — TP.HCM. Xanh mát, dễ chọn, giao nhanh.",
+      "Mua chậu cây & cây cảnh tại ALOHA THẾ GIỚI CHẬU CÂY — TP.HCM. Xanh mát, dễ chọn, giao nhanh.",
     ogImageUrl: "",
     productTitleTemplate: "[Tên sản phẩm] | [Giá] · [Tên cửa hàng]",
     productDescriptionTemplate:

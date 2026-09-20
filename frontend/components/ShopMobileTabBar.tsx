@@ -9,8 +9,8 @@ import { useCart } from "@/lib/cart";
 const OPEN_CATS = "aloha:open-mobile-cats";
 
 function shouldHideTabBar(pathname: string) {
+  // Giữ tab bar trên giỏ hàng; chỉ ẩn khi checkout / chi tiết đơn (có sticky riêng).
   return (
-    pathname.startsWith("/gio-hang") ||
     pathname.startsWith("/xac-nhan-don-hang") ||
     pathname.startsWith("/don-hang")
   );

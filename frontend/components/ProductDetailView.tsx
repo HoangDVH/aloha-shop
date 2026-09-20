@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { formatVnd, type ShopProduct } from "@/lib/api";
-import { isPreOrderTon, useCart } from "@/lib/cart";
+import { formatTonDisplay, isPreOrderTon, useCart } from "@/lib/cart";
 import { useToast } from "@/components/Toast";
 import { useShopAuth } from "@/components/ShopAuthProvider";
 import { useShopRouter } from "@/lib/useShopRouter";
@@ -453,7 +453,7 @@ export function ProductDetailView({
                         activeProduct.ma
                       );
                       const shareTitle = `${activeProduct.ten} | ${formatVnd(liveGia)}`;
-                      const shareText = `${activeProduct.ten} — ${formatVnd(liveGia)} · ALOHA Thế Giới Chậu Cây`;
+                      const shareText = `${activeProduct.ten} — ${formatVnd(liveGia)} · ALOHA THẾ GIỚI CHẬU CÂY`;
                       (async () => {
                         try {
                           if (typeof navigator.share === "function") {
@@ -588,7 +588,7 @@ export function ProductDetailView({
                   </div>
                   {!purchaseDisabled && !isPreOrder && liveTon > 0 ? (
                     <p className="mt-1 text-xs text-slate-500">
-                      Còn {liveTon} {activeProduct.dvt || ""}
+                      Còn {formatTonDisplay(liveTon)} {activeProduct.dvt || ""}
                     </p>
                   ) : null}
                 </div>

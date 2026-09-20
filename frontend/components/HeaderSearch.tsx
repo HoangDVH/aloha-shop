@@ -274,11 +274,11 @@ export function HeaderSearch({ onSubmitExtra }: { onSubmitExtra?: () => void }) 
   return (
     <div ref={wrapRef} className={`relative w-full min-w-0 ${showPanel ? "z-[100]" : ""}`}>
       <form onSubmit={onSubmit} className="flex w-full min-w-0 items-stretch" role="search">
-        <div className="relative flex w-full min-w-0 items-stretch overflow-hidden rounded-full border border-[var(--aloha-line)] bg-white shadow-sm focus-within:border-[var(--aloha-green)] lg:rounded-md">
+        <div className="relative flex w-full min-w-0 items-stretch overflow-hidden rounded-md border border-[var(--aloha-line)] bg-white shadow-sm focus-within:border-[var(--aloha-green)]">
           <div className="relative min-w-0 flex-1">
             <Search
               size={18}
-              className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-[#5A6B5E]"
+              className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-[#9CA3AF]"
               aria-hidden
             />
             {/*
@@ -355,7 +355,7 @@ export function HeaderSearch({ onSubmitExtra }: { onSubmitExtra?: () => void }) 
           <button
             type="submit"
             aria-label="Tìm kiếm"
-            className="relative z-10 inline-flex min-h-11 w-11 shrink-0 items-center justify-center bg-[var(--aloha-green)] text-sm font-bold text-white hover:bg-[var(--aloha-green-mid)] sm:w-auto sm:min-w-[5.5rem] sm:px-4"
+            className="relative z-10 inline-flex min-h-11 w-11 shrink-0 items-center justify-center bg-[var(--aloha-green)] text-sm font-bold text-white hover:bg-[var(--aloha-green-hover)] sm:w-auto sm:min-w-[5.5rem] sm:px-4"
           >
             {loading ? (
               <Loader2 size={18} className="animate-spin" />

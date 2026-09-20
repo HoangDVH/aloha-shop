@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ShopProduct } from "@/lib/api";
 import { parseNhomList } from "@/lib/parseNhom";
 import { parseAttrList, parseDvtList } from "@/lib/parseShopFilters";
+import { SHOP_BRAND } from "@/lib/brand";
 
 export const SHOP_ORIGIN = (
   process.env.NEXT_PUBLIC_SHOP_ORIGIN ||
@@ -106,7 +107,7 @@ export function buildProductJsonLd(item: ShopProduct, pageUrl: string) {
   ];
   const desc =
     plainText(item.description || "").slice(0, 500) ||
-    `${item.ten} tại ALOHA Thế Giới Chậu Cây`;
+    `${item.ten} tại ${SHOP_BRAND}`;
   const price = Math.round(Number(item.gia) || 0);
   const inStock = Number(item.ton) > 0;
 
@@ -120,7 +121,7 @@ export function buildProductJsonLd(item: ShopProduct, pageUrl: string) {
     image: images.length ? images : undefined,
     brand: {
       "@type": "Brand",
-      name: "ALOHA Thế Giới Chậu Cây",
+      name: SHOP_BRAND,
     },
     offers: {
       "@type": "Offer",

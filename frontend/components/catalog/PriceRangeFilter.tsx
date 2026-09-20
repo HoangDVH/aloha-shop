@@ -5,7 +5,7 @@ import { SlidersHorizontal } from "lucide-react";
 import { PRICE_PRESETS } from "@/components/catalog/catalogLayoutUtils";
 
 /** Trần thanh trượt — đủ cho shop cây/chậu; preset «Trên 500k» vẫn hoạt động. */
-export const PRICE_SLIDER_MAX = 2_000_000;
+export const PRICE_SLIDER_MAX = 5_000_000;
 
 function parseMoney(raw: string): number {
   const n = Number(String(raw || "").replace(/[^\d]/g, ""));
