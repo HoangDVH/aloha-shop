@@ -2,15 +2,13 @@
 
 import Link from "next/link";
 import {
-  useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
-import { useSearchParams } from "next/navigation";
-import { ChevronRight, X } from "lucide-react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { X } from "lucide-react";
 import {
   fetchCategoryTree,
   type ShopCategoryNavNode,
@@ -72,124 +70,44 @@ function findPathById(
   return null;
 }
 
-function hrefForIds(
-  slug: string,
-  ids: number[],
-  nhomPath: string | undefined,
-  sp: URLSearchParams
-): string {
-  const next = new URLSearchParams(sp.toString());
-  next.delete("categoryId");
-  next.delete("nhom");
-  next.delete("page");
-  for (const id of ids) {
-    if (id > 0) next.append("categoryId", String(id));
+function findPathBySlug(
+  nodes: ShopCategoryNavNode[],
+  slug: string
+): ShopCategoryNavNode[] | null {
+  const want = String(slug || "").trim().toLowerCase();
+  if (!want) return null;
+  for (const n of nodes) {
+    if (String(n.slug || "").toLowerCase() === want) return [n];
+    const hit = findPathBySlug(n.subs || [], want);
+    if (hit) return [n, ...hit];
   }
-  if (nhomPath) next.set("nhom", nhomPath);
-  const qs = next.toString();
-  return `/danh-muc/${encodeURIComponent(slug)}${qs ? `?${qs}` : ""}`;
+  return null;
 }
 
-/** Hàng cuộn ngang + fade mép + chevron — gợi ý còn item như sàn TMĐT. */
-function ScrollHintRow({
-  children,
-  className = "",
-  nudgeKey,
-}: {
-  children: ReactNode;
-  className?: string;
-  nudgeKey?: string;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [canLeft, setCanLeft] = useState(false);
-  const [canRight, setCanRight] = useState(false);
-
-  const update = useCallback(() => {
-    const el = ref.current;
-    if (!el) return;
-    const max = el.scrollWidth - el.clientWidth;
-    const sl = el.scrollLeft;
-    setCanLeft(sl > 4);
-    setCanRight(max > 8 && sl < max - 4);
-  }, []);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    update();
-    el.addEventListener("scroll", update, { passive: true });
-    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
-    ro?.observe(el);
-    window.addEventListener("resize", update);
-    return () => {
-      el.removeEventListener("scroll", update);
-      ro?.disconnect();
-      window.removeEventListener("resize", update);
-    };
-  }, [update, children]);
-
-  // Nudge nhẹ 1 lần / session — gợi ý kéo ngang
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const max = el.scrollWidth - el.clientWidth;
-    if (max < 24) return;
-    const storageKey = `aloha-scroll-nudge:${nudgeKey || "row"}`;
-    try {
-      if (sessionStorage.getItem(storageKey) === "1") return;
-      sessionStorage.setItem(storageKey, "1");
-    } catch {
-      /* ignore */
+function danhMucHref(
+  slug: string,
+  ids: number[],
+  sp: URLSearchParams,
+  opts?: { keepFilters?: boolean }
+): string {
+  const next = opts?.keepFilters
+    ? new URLSearchParams(sp.toString())
+    : new URLSearchParams();
+  if (opts?.keepFilters) {
+    next.delete("categoryId");
+    next.delete("nhom");
+    next.delete("page");
+  }
+  // Chỉ gắn categoryId khi multi-select L3 (nhiều id) — URL L1/L2 giữ sạch theo slug.
+  if (ids.length > 1) {
+    for (const id of ids) {
+      if (id > 0) next.append("categoryId", String(id));
     }
-    const t0 = window.setTimeout(() => {
-      el.scrollTo({ left: Math.min(40, max), behavior: "smooth" });
-    }, 400);
-    const t1 = window.setTimeout(() => {
-      el.scrollTo({ left: 0, behavior: "smooth" });
-    }, 900);
-    return () => {
-      window.clearTimeout(t0);
-      window.clearTimeout(t1);
-    };
-  }, [nudgeKey, children]);
-
-  return (
-    <div className={`relative min-w-0 flex-1 ${className}`}>
-      <div
-        ref={ref}
-        className="flex min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain pb-0.5 pr-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
-        {children}
-        <span className="w-3 shrink-0" aria-hidden />
-      </div>
-      {canLeft ? (
-        <span
-          className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-white to-transparent"
-          aria-hidden
-        />
-      ) : null}
-      {canRight ? (
-        <>
-          <span
-            className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-white via-white/90 to-transparent"
-            aria-hidden
-          />
-          <button
-            type="button"
-            aria-label="Xem thêm"
-            onClick={() => {
-              const el = ref.current;
-              if (!el) return;
-              el.scrollBy({ left: Math.min(160, el.clientWidth * 0.55), behavior: "smooth" });
-            }}
-            className="absolute inset-y-0 right-0 z-[1] my-auto mr-0.5 flex h-8 w-8 items-center justify-center rounded-full border border-[var(--aloha-line)] bg-white text-[#9CA3AF] shadow-sm transition hover:border-[var(--aloha-green)] hover:text-[var(--aloha-green)]"
-          >
-            <ChevronRight size={16} strokeWidth={2.5} aria-hidden />
-          </button>
-        </>
-      ) : null}
-    </div>
-  );
+  } else if (ids.length === 1 && ids[0] > 0) {
+    // Một id: slug đã đủ; không cần query (SEO + khớp canonical).
+  }
+  const qs = next.toString();
+  return `/danh-muc/${encodeURIComponent(slug)}${qs ? `?${qs}` : ""}`;
 }
 
 function OptionChip({
@@ -206,16 +124,18 @@ function OptionChip({
   const [imgFailed, setImgFailed] = useState(false);
   const src = String(node.image || "").trim();
   const showImg = Boolean(src) && !imgFailed;
+  const label = chipLabel(node.name);
 
   return (
     <Link
       href={href}
       scroll={false}
+      title={label}
       onClick={() => {
         markPinCatalog();
         onClick?.();
       }}
-      className={`inline-flex h-10 shrink-0 items-center gap-1.5 rounded-md border bg-white px-2.5 transition ${
+      className={`inline-flex h-10 max-w-full shrink-0 items-center gap-1.5 rounded-md border bg-white px-2.5 transition ${
         active
           ? "border-[var(--aloha-green)] ring-1 ring-[var(--aloha-green)]"
           : "border-[#e5e5e5] hover:border-[var(--aloha-green)]/40"
@@ -227,19 +147,34 @@ function OptionChip({
         <img
           src={src}
           alt=""
-          className="h-7 w-7 rounded-md object-contain"
+          className="h-7 w-7 shrink-0 rounded-md object-contain"
           loading="lazy"
           onError={() => setImgFailed(true)}
         />
       ) : null}
       <span
-        className={`max-w-[7.5rem] truncate text-[12px] leading-tight sm:max-w-[9rem] ${
+        className={`whitespace-nowrap text-[12px] leading-none ${
           active ? "font-bold text-[var(--aloha-green)]" : "font-semibold text-[#333]"
         }`}
       >
-        {chipLabel(node.name)}
+        {label}
       </span>
     </Link>
+  );
+}
+
+/** Hàng chip — hết chỗ thì xuống dòng (ô chip), chữ trong ô vẫn 1 dòng. */
+function WrapChipRow({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`flex min-w-0 flex-1 flex-wrap items-center gap-2 ${className}`}>
+      {children}
+    </div>
   );
 }
 
@@ -273,18 +208,29 @@ type PickerProps = {
   categoryIds: number[];
   onNavigate?: () => void;
   inFilterSheet?: boolean;
-  /** Nút Lọc — chỉ dùng layout toolbar */
+  /** Nút Lọc — layout toolbar */
   filterButton?: ReactNode;
+  /** Trang /tim: hiện L1 cạnh nút Lọc */
+  showRootL1?: boolean;
+  /** Chip lọc phụ (giá, ĐVT…) — cùng hàng nút Lọc */
+  filterResultChips?: ReactNode;
 };
 
-/** Chọn L2/L3 — toolbar (cạnh Lọc) hoặc trong sheet Lọc. */
+/**
+ * UX kiểu Thế Giới Di Động:
+ * - Chưa chọn: [Lọc] + chip L1 (hoặc L2 nếu đã vào danh mục L1)
+ * - Sau khi chọn: hàng Lọc chỉ còn chip kết quả (✕); hàng dưới hiện cấp con
+ */
 export function CatalogSubcatPicker({
   categoryIds,
   onNavigate,
   inFilterSheet = false,
   filterButton,
+  showRootL1 = false,
+  filterResultChips,
 }: PickerProps) {
   const sp = useSearchParams();
+  const pathname = usePathname();
   const [tree, setTree] = useState<ShopCategoryNavNode[]>([]);
 
   useEffect(() => {
@@ -305,188 +251,282 @@ export function CatalogSubcatPicker({
     onNavigate?.();
   };
 
-  const ctx = useMemo(() => {
-    if (!tree.length || !categoryIds.length) return null;
+  const pathFromUrl = useMemo(() => {
+    if (!tree.length) return null as ShopCategoryNavNode[] | null;
 
-    const paths = categoryIds
-      .map((id) => ({ id, path: findPathById(tree, id) }))
-      .filter((x): x is { id: number; path: ShopCategoryNavNode[] } => Boolean(x.path?.length));
-
-    if (!paths.length) return null;
-
-    const l1 = paths[0].path[0];
-    const allL2 = l1.subs || [];
-    if (!allL2.length) return null;
-
-    if (paths.every((p) => p.path.length === 1)) {
-      return {
-        l1,
-        allL2,
-        selectedL2: null as ShopCategoryNavNode | null,
-        selectedL3s: [] as ShopCategoryNavNode[],
-        allL3: [] as ShopCategoryNavNode[],
-      };
-    }
-
-    let selectedL2: ShopCategoryNavNode | null = null;
-    for (const p of paths) {
-      if (p.path.length >= 2) {
-        selectedL2 = p.path[1];
-        break;
+    if (categoryIds.length) {
+      const paths = categoryIds
+        .map((id) => findPathById(tree, id))
+        .filter((p): p is ShopCategoryNavNode[] => Boolean(p?.length));
+      if (paths.length) {
+        // Ưu tiên path sâu nhất
+        paths.sort((a, b) => b.length - a.length);
+        const deepest = paths[0];
+        // Multi L3 cùng L2
+        if (paths.every((p) => p.length >= 3 && p[1]?.id === deepest[1]?.id)) {
+          return deepest;
+        }
+        return deepest;
       }
     }
-    if (!selectedL2) {
-      return { l1, allL2, selectedL2: null, selectedL3s: [], allL3: [] };
+
+    const m = pathname.match(/^\/danh-muc\/([^/?#]+)/);
+    if (m) {
+      try {
+        return findPathBySlug(tree, decodeURIComponent(m[1]));
+      } catch {
+        return findPathBySlug(tree, m[1]);
+      }
     }
+    return null;
+  }, [tree, categoryIds, pathname]);
 
-    const allL3 = selectedL2.subs || [];
-    const selectedL3s = paths
-      .filter((p) => p.path.length >= 3 && p.path[1]?.id === selectedL2!.id)
-      .map((p) => p.path[p.path.length - 1])
-      .filter((n, i, arr) => arr.findIndex((x) => x.id === n.id) === i);
+  const selectedL3s = useMemo(() => {
+    if (!tree.length || !pathFromUrl || pathFromUrl.length < 2) {
+      return [] as ShopCategoryNavNode[];
+    }
+    const l2Id = pathFromUrl[1]?.id;
+    if (categoryIds.length >= 1) {
+      const fromIds = categoryIds
+        .map((id) => findPathById(tree, id))
+        .filter(
+          (p): p is ShopCategoryNavNode[] =>
+            Boolean(p && p.length >= 3 && p[1]?.id === l2Id)
+        )
+        .map((p) => p[p.length - 1])
+        .filter((n, i, arr) => arr.findIndex((x) => x.id === n.id) === i);
+      if (fromIds.length) return fromIds;
+    }
+    if (pathFromUrl.length >= 3) {
+      return [pathFromUrl[pathFromUrl.length - 1]];
+    }
+    return [];
+  }, [tree, categoryIds, pathFromUrl]);
 
-    return { l1, allL2, selectedL2, selectedL3s, allL3 };
-  }, [tree, categoryIds]);
+  const roots = tree;
+  const l1 = pathFromUrl?.[0] || null;
+  const l2 = pathFromUrl && pathFromUrl.length >= 2 ? pathFromUrl[1] : null;
+  // depth UI: L3 chọn → coi như đã khóa L2
+  const depth =
+    selectedL3s.length > 0 ? 3 : pathFromUrl?.length || 0;
+  const allL2 = l1?.subs || [];
+  const allL3 = l2?.subs || [];
+  const selectedL3Ids = new Set(selectedL3s.map((n) => n.id));
+  const prefix = inFilterSheet ? "sheet" : "bar";
 
-  if (!ctx) {
+  const clearToTim = "/tim";
+  const clearToL1 = l1 ? danhMucHref(l1.slug, [], sp) : clearToTim;
+
+  const selectL1Href = (n: ShopCategoryNavNode) => danhMucHref(n.slug, [], sp);
+  const selectL2Href = (n: ShopCategoryNavNode) => danhMucHref(n.slug, [], sp);
+
+  const toggleL3Href = (l3: ShopCategoryNavNode) => {
+    if (!l2) return "#";
+    let nextIds: number[];
+    if (selectedL3Ids.has(l3.id)) {
+      nextIds = selectedL3s.filter((n) => n.id !== l3.id).map((n) => n.id);
+    } else {
+      nextIds = [...selectedL3s.map((n) => n.id), l3.id];
+    }
+    if (!nextIds.length) return danhMucHref(l2.slug, [], sp);
+    if (nextIds.length === 1) {
+      const only =
+        selectedL3s.find((n) => n.id === nextIds[0]) ||
+        (l3.id === nextIds[0] ? l3 : null);
+      return danhMucHref(only?.slug || l2.slug, [], sp);
+    }
+    return danhMucHref(l2.slug, nextIds, sp);
+  };
+
+  const clearOneL3Href = (l3Id: number) => {
+    if (!l2) return clearToL1;
+    const next = selectedL3s.filter((n) => n.id !== l3Id);
+    if (!next.length) return danhMucHref(l2.slug, [], sp);
+    if (next.length === 1) return danhMucHref(next[0].slug || l2.slug, [], sp);
+    return danhMucHref(
+      l2.slug,
+      next.map((n) => n.id),
+      sp
+    );
+  };
+
+  // —— Chip danh mục đã chọn (chưa gồm «Xóa tất cả») ——
+  const selectedCatChips: ReactNode[] = [];
+  if (l1 && depth >= 1) {
+    selectedCatChips.push(
+      <SelectedChip
+        key={`l1-${l1.id}`}
+        label={chipLabel(l1.name)}
+        clearHref={clearToTim}
+        onClick={onChipClick}
+      />
+    );
+  }
+  if (l2 && depth >= 2) {
+    selectedCatChips.push(
+      <SelectedChip
+        key={`l2-${l2.id}`}
+        label={chipLabel(l2.name)}
+        clearHref={clearToL1}
+        onClick={onChipClick}
+      />
+    );
+  }
+  for (const n of selectedL3s) {
+    selectedCatChips.push(
+      <SelectedChip
+        key={`l3-${n.id}`}
+        label={chipLabel(n.name)}
+        clearHref={clearOneL3Href(n.id)}
+        onClick={onChipClick}
+      />
+    );
+  }
+
+  const hasCategoryNav = Boolean(pathFromUrl);
+  const hasFilterChips = Boolean(filterResultChips);
+  /** TGDĐ: chỉ browse L1 khi chưa lọc phụ và chưa vào danh mục */
+  const showL1Browse =
+    showRootL1 && !hasCategoryNav && !hasFilterChips && roots.length > 0;
+
+  const clearAllChip =
+    selectedCatChips.length > 0 ? (
+      <Link
+        key="clear-all"
+        href={clearToTim}
+        scroll={false}
+        onClick={() => {
+          markPinCatalog();
+          onChipClick();
+        }}
+        className="inline-flex h-9 shrink-0 items-center px-1 text-[12px] font-semibold text-[var(--aloha-green)] underline-offset-2 hover:underline"
+      >
+        Xóa tất cả
+      </Link>
+    ) : null;
+
+  // —— Hàng tùy chọn cấp hiện tại ——
+  // Browse L1 chỉ khi showL1Browse; đã chọn L1 → L2; đã chọn L2 → L3
+  let optionNodes: ShopCategoryNavNode[] = [];
+  let optionHref: (n: ShopCategoryNavNode) => string = () => "#";
+  let optionActive: (n: ShopCategoryNavNode) => boolean = () => false;
+  let optionsLabel = "";
+
+  if (showL1Browse) {
+    optionNodes = roots;
+    optionHref = selectL1Href;
+    optionsLabel = "Danh mục";
+  } else if (depth === 1 && allL2.length) {
+    optionNodes = allL2;
+    optionHref = selectL2Href;
+    optionsLabel = "Nhóm";
+  } else if (depth >= 2 && allL3.length) {
+    optionNodes = allL3;
+    optionHref = toggleL3Href;
+    optionActive = (n) => selectedL3Ids.has(n.id);
+    optionsLabel = "Nhóm";
+  }
+
+  const optionsRow =
+    optionNodes.length > 0 ? (
+      <WrapChipRow className={inFilterSheet ? "" : "bg-white"}>
+        {optionNodes.map((n) => (
+          <OptionChip
+            key={n.id}
+            node={n}
+            active={optionActive(n)}
+            href={optionHref(n)}
+            onClick={onChipClick}
+          />
+        ))}
+      </WrapChipRow>
+    ) : null;
+
+  // Sheet Lọc: vẫn cho chọn danh mục (L1) kể cả khi đang có lọc phụ trên URL
+  const sheetOptionsRow =
+    inFilterSheet && !pathFromUrl && showRootL1 && roots.length ? (
+      <WrapChipRow>
+        {roots.map((n) => (
+          <OptionChip
+            key={n.id}
+            node={n}
+            active={false}
+            href={selectL1Href(n)}
+            onClick={onChipClick}
+          />
+        ))}
+      </WrapChipRow>
+    ) : optionsRow;
+
+  // Chỉ nút Lọc, không danh mục / không chip
+  if (!pathFromUrl && !showRootL1 && !hasFilterChips) {
     if (filterButton) {
       return <div className="flex min-w-0 items-center gap-2">{filterButton}</div>;
     }
     return null;
   }
 
-  const { l1, allL2, selectedL2, selectedL3s, allL3 } = ctx;
-  const l2Selected = Boolean(selectedL2);
-  const selectedL3Ids = new Set(selectedL3s.map((n) => n.id));
-  const prefix = inFilterSheet ? "sheet" : "bar";
-
-  const clearAllHref = hrefForIds(l1.slug, [l1.id], l1.path, sp);
-  const clearOneL3Href = (l3Id: number) => {
-    if (!selectedL2) return clearAllHref;
-    const next = selectedL3s.filter((n) => n.id !== l3Id).map((n) => n.id);
-    if (!next.length) {
-      return hrefForIds(selectedL2.slug, [selectedL2.id], selectedL2.path, sp);
+  if (!pathFromUrl && showRootL1 && !roots.length && !hasFilterChips) {
+    if (filterButton) {
+      return <div className="flex min-w-0 items-center gap-2">{filterButton}</div>;
     }
-    return hrefForIds(selectedL2.slug, next, selectedL2.path, sp);
-  };
+    return null;
+  }
 
-  const toggleL3Href = (l3: ShopCategoryNavNode) => {
-    if (!selectedL2) return "#";
-    let next: number[];
-    if (selectedL3Ids.has(l3.id)) {
-      next = selectedL3s.filter((n) => n.id !== l3.id).map((n) => n.id);
-    } else {
-      next = [...selectedL3s.map((n) => n.id), l3.id];
-    }
-    if (!next.length) {
-      return hrefForIds(selectedL2.slug, [selectedL2.id], selectedL2.path, sp);
-    }
-    return hrefForIds(selectedL2.slug, next, selectedL2.path, sp);
-  };
-
-  const selectL2Href = (l2: ShopCategoryNavNode) =>
-    hrefForIds(l2.slug, [l2.id], l2.path, sp);
-
-  const chipsRow = !l2Selected ? (
-    allL2.map((n) => (
-      <OptionChip
-        key={n.id}
-        node={n}
-        active={false}
-        href={selectL2Href(n)}
-        onClick={onChipClick}
-      />
-    ))
-  ) : (
-    <>
-      {selectedL2 ? (
-        <SelectedChip
-          label={chipLabel(selectedL2.name)}
-          clearHref={clearAllHref}
-          onClick={onChipClick}
-        />
-      ) : null}
-      {selectedL3s.map((n) => (
-        <SelectedChip
-          key={n.id}
-          label={chipLabel(n.name)}
-          clearHref={clearOneL3Href(n.id)}
-          onClick={onChipClick}
-        />
-      ))}
-      {selectedL2 || selectedL3s.length ? (
-        <Link
-          href={clearAllHref}
-          scroll={false}
-          onClick={() => {
-            markPinCatalog();
-            onChipClick();
-          }}
-          className="inline-flex h-9 shrink-0 items-center px-1 text-[12px] font-semibold text-[var(--aloha-green)] underline-offset-2 hover:underline"
-        >
-          Xóa tất cả
-        </Link>
-      ) : null}
-    </>
-  );
-
-  const l3Row =
-    l2Selected && allL3.length ? (
-      <ScrollHintRow className="bg-white" nudgeKey={`${prefix}-l3-${selectedL2?.id}`}>
-        {allL3.map((n) => (
-          <OptionChip
-            key={n.id}
-            node={n}
-            active={selectedL3Ids.has(n.id)}
-            href={toggleL3Href(n)}
-            onClick={onChipClick}
-          />
-        ))}
-      </ScrollHintRow>
-    ) : null;
-
-  /* —— Trong sheet Lọc (giống hàng ngoài: kết quả L2 + L3 dưới) —— */
+  /* —— Trong sheet Lọc —— */
   if (inFilterSheet) {
     return (
       <div className="space-y-3 rounded-xl border border-[var(--aloha-line)] bg-white p-3">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-sm font-extrabold text-[var(--aloha-ink)]">Danh mục</h3>
-          <span className="truncate text-[11px] font-semibold text-slate-500">
-            {chipLabel(l1.name)}
-          </span>
+          {l1 ? (
+            <span className="truncate text-[11px] font-semibold text-slate-500">
+              {chipLabel(l1.name)}
+              {l2 ? ` › ${chipLabel(l2.name)}` : ""}
+            </span>
+          ) : (
+            <span className="text-[11px] font-semibold text-slate-400">Chọn danh mục</span>
+          )}
         </div>
 
-        <div className="space-y-1.5">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
-            {l2Selected ? "Đã chọn" : "Chọn nhóm (L2)"}
-          </p>
-          <ScrollHintRow nudgeKey={`${prefix}-chips-${l2Selected ? selectedL2?.id : l1.id}`}>
-            {chipsRow}
-          </ScrollHintRow>
-        </div>
-
-        {l3Row ? (
+        {sheetOptionsRow ? (
           <div className="space-y-1.5">
             <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
-              Nhóm con (L3)
+              {pathFromUrl ? optionsLabel || "Nhóm" : "Danh mục"}
             </p>
-            {l3Row}
+            {sheetOptionsRow}
           </div>
         ) : null}
       </div>
     );
   }
 
-  /* —— Toolbar cạnh nút Lọc —— */
+  /* —— Toolbar: lọc phụ trước → chỉ chip kết quả; có chọn L1/L2/L3 mới hiện nhánh —— */
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-2">
-      <div className="flex min-w-0 items-center gap-2 rounded-md bg-white">
+      <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-md bg-white">
         {filterButton}
-        <ScrollHintRow nudgeKey={`${prefix}-chips-${l2Selected ? selectedL2?.id : l1.id}`}>
-          {chipsRow}
-        </ScrollHintRow>
+        {hasCategoryNav ? (
+          <>
+            {selectedCatChips}
+            {filterResultChips}
+            {clearAllChip}
+          </>
+        ) : hasFilterChips ? (
+          <>{filterResultChips}</>
+        ) : showL1Browse ? (
+          optionNodes.map((n) => (
+            <OptionChip
+              key={n.id}
+              node={n}
+              active={optionActive(n)}
+              href={optionHref(n)}
+              onClick={onChipClick}
+            />
+          ))
+        ) : null}
       </div>
-      {l3Row}
+      {hasCategoryNav ? optionsRow : null}
     </div>
   );
 }
@@ -494,8 +534,22 @@ export function CatalogSubcatPicker({
 type BarProps = {
   categoryIds: number[];
   filterButton: ReactNode;
+  showRootL1?: boolean;
+  filterResultChips?: ReactNode;
 };
 
-export function CatalogSubcatBar({ categoryIds, filterButton }: BarProps) {
-  return <CatalogSubcatPicker categoryIds={categoryIds} filterButton={filterButton} />;
+export function CatalogSubcatBar({
+  categoryIds,
+  filterButton,
+  showRootL1 = false,
+  filterResultChips,
+}: BarProps) {
+  return (
+    <CatalogSubcatPicker
+      categoryIds={categoryIds}
+      filterButton={filterButton}
+      showRootL1={showRootL1}
+      filterResultChips={filterResultChips}
+    />
+  );
 }

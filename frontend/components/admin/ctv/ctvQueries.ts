@@ -39,13 +39,20 @@ export function useCtvCommissions(params: {
   status?: string;
   ctvCode?: string;
   q?: string;
+  period?: string;
+  from?: string;
+  to?: string;
   page?: number;
   limit?: number;
+  enabled?: boolean;
 }) {
   const sp = new URLSearchParams();
   if (params.status) sp.set("status", params.status);
   if (params.ctvCode) sp.set("ctvCode", params.ctvCode);
   if (params.q) sp.set("q", params.q);
+  if (params.period) sp.set("period", params.period);
+  if (params.from) sp.set("from", params.from);
+  if (params.to) sp.set("to", params.to);
   if (params.page) sp.set("page", String(params.page));
   if (params.limit) sp.set("limit", String(params.limit));
   const qs = sp.toString();
@@ -55,6 +62,7 @@ export function useCtvCommissions(params: {
       adminFetch<{ ok: boolean; data: any[]; total?: number }>(
         `/api/shop/admin/ctv/commissions${qs ? `?${qs}` : ""}`
       ),
+    enabled: params.enabled !== false,
   });
 }
 
@@ -63,9 +71,27 @@ export function useCtvBills(period?: string) {
   return useQuery({
     queryKey: ["admin", "ctv", "bills", period || "list"],
     queryFn: () =>
-      adminFetch<{ ok: boolean; bill?: any; data?: any[] }>(
-        `/api/shop/admin/ctv/bills${q}`
-      ),
+      adminFetch<{
+        ok: boolean;
+        bill?: any;
+        data?: any[];
+        preview?: {
+          period: string;
+          ctvLines: Array<{
+            ctvCode: string;
+            net: number;
+            orderCount: number;
+            lineCount?: number;
+            paidAt?: string;
+          }>;
+          totals: {
+            commission: number;
+            ctvCount: number;
+            orderCount: number;
+            lineCount?: number;
+          };
+        } | null;
+      }>(`/api/shop/admin/ctv/bills${q}`),
   });
 }
 
@@ -333,6 +359,74 @@ export function useExportBillExcel() {
       a.click();
       URL.revokeObjectURL(url);
       return { ok: true };
+    },
+  });
+}
+
+export type ShopAccountPublic = {
+  id: string;
+  email: string;
+  phone: string | null;
+  fullName: string;
+  avatarUrl: string | null;
+  roles: Array<"customer" | "ctv">;
+  ctvCode: string | null;
+  ctvStatus: "cho_duyet" | "active" | "khoa" | "tu_choi" | null;
+  active: boolean;
+  authProviders: string[];
+  createdAt: string | null;
+  lastLoginAt: string | null;
+  zalo?: string | null;
+  addressText?: string | null;
+  referralChannel?: string | null;
+  channelUrl?: string | null;
+  referralSource?: string | null;
+  hasBusinessExp?: boolean | null;
+  businessExpNote?: string | null;
+  businessExpYears?: number | null;
+  ctvRejectReason?: string | null;
+};
+
+export function useShopAccountQuery(id: string | null | undefined) {
+  return useQuery({
+    queryKey: ["admin", "shop", "account", id],
+    enabled: Boolean(id),
+    queryFn: () =>
+      adminFetch<{ ok: boolean; user: ShopAccountPublic }>(
+        `/api/shop/admin/accounts/${encodeURIComponent(String(id))}`
+      ),
+  });
+}
+
+export function useApproveCtvMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      adminFetch<{ ok: boolean; user: ShopAccountPublic }>(
+        `/api/shop/admin/accounts/${encodeURIComponent(id)}/approve-ctv`,
+        { method: "POST", body: "{}" }
+      ),
+    onSuccess: (_data, id) => {
+      void qc.invalidateQueries({ queryKey: ["admin", "shop", "account", id] });
+      void qc.invalidateQueries({ queryKey: ["admin", "ctv"] });
+    },
+  });
+}
+
+export function useRejectCtvMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; reason: string }) =>
+      adminFetch<{ ok: boolean; user: ShopAccountPublic }>(
+        `/api/shop/admin/accounts/${encodeURIComponent(input.id)}/reject-ctv`,
+        {
+          method: "POST",
+          body: JSON.stringify({ reason: input.reason }),
+        }
+      ),
+    onSuccess: (_data, input) => {
+      void qc.invalidateQueries({ queryKey: ["admin", "shop", "account", input.id] });
+      void qc.invalidateQueries({ queryKey: ["admin", "ctv"] });
     },
   });
 }

@@ -467,11 +467,32 @@ export async function clearSoftPhoneRepeatFlags(
 }
 
 /** Chốt bill tháng kiểu AMS. */
-export async function lockMonthlyBill(
+export type EligiblePeriodPreview = {
+  period: string;
+  ctvLines: Array<{
+    ctvCode: string;
+    gross: number;
+    adjustments: number;
+    net: number;
+    orderCount: number;
+    lineCount: number;
+  }>;
+  totals: {
+    commission: number;
+    orderCount: number;
+    ctvCount: number;
+    adjustments: number;
+    lineCount: number;
+  };
+  /** id dòng HH + adjustment sẽ bị chốt */
+  commissionIds: unknown[];
+};
+
+/** Gom HH eligible theo kỳ (không ghi DB) — dùng preview admin + lock. */
+export async function buildEligiblePeriodPreview(
   shopDb: Db,
-  period: string,
-  lockedBy: string
-): Promise<{ ok: boolean; bill?: Record<string, unknown>; error?: string }> {
+  period: string
+): Promise<{ ok: true; preview: EligiblePeriodPreview } | { ok: false; error: string }> {
   const m = /^(\d{4})-(\d{2})$/.exec(String(period || "").trim());
   if (!m) return { ok: false, error: "period_invalid" };
   const y = Number(m[1]);
@@ -480,15 +501,6 @@ export async function lockMonthlyBill(
 
   await clearHeldCommissions(shopDb);
 
-  const existing = await shopDb.collection(SHOP_COMMISSION_BILLS).findOne({ period });
-  if (existing && (existing as any).status === "locked") {
-    return { ok: false, error: "already_locked" };
-  }
-  if (existing && (existing as any).status === "paid") {
-    return { ok: false, error: "already_paid" };
-  }
-
-  // eligibleAt thuộc tháng period (hoặc eligible trước cuối tháng và chưa billed)
   const periodStart = new Date(Date.UTC(y, mo - 1, 1)).toISOString();
   const periodEnd = new Date(Date.UTC(y, mo, 1)).toISOString();
 
@@ -502,10 +514,11 @@ export async function lockMonthlyBill(
 
   const byCtv = new Map<
     string,
-    { ctvCode: string; gross: number; orderCount: number; lineCount: number; ids: string[] }
+    { ctvCode: string; gross: number; orderCount: number; lineCount: number; ids: unknown[] }
   >();
   for (const r of rows) {
     const ctv = String((r as any).ctvCode || "");
+    if (!ctv) continue;
     const amt = Number((r as any).amount) || 0;
     const cur = byCtv.get(ctv) || {
       ctvCode: ctv,
@@ -516,19 +529,19 @@ export async function lockMonthlyBill(
     };
     cur.gross += amt;
     cur.lineCount += 1;
-    cur.ids.push(String((r as any)._id));
+    cur.ids.push((r as any)._id);
     byCtv.set(ctv, cur);
   }
 
-  // order count unique per ctv
   for (const [ctv, cur] of byCtv) {
     const orders = new Set(
-      rows.filter((r) => String((r as any).ctvCode) === ctv).map((r) => String((r as any).orderCode))
+      rows
+        .filter((r) => String((r as any).ctvCode) === ctv)
+        .map((r) => String((r as any).orderCode))
     );
     cur.orderCount = orders.size;
   }
 
-  // Adjustments từ kỳ trước (âm)
   const adjDocs = await shopDb
     .collection(SHOP_COMMISSIONS)
     .find({
@@ -539,6 +552,7 @@ export async function lockMonthlyBill(
     .toArray();
   for (const a of adjDocs) {
     const ctv = String((a as any).ctvCode || "");
+    if (!ctv) continue;
     const amt = Number((a as any).amount) || 0;
     const cur = byCtv.get(ctv) || {
       ctvCode: ctv,
@@ -548,23 +562,60 @@ export async function lockMonthlyBill(
       ids: [],
     };
     cur.gross += amt;
-    cur.ids.push(String((a as any)._id));
+    cur.ids.push((a as any)._id);
     byCtv.set(ctv, cur);
   }
 
-  const ctvLines = [...byCtv.values()].map((c) => ({
-    ctvCode: c.ctvCode,
-    gross: roundVnd(c.gross),
-    adjustments: 0,
-    net: roundVnd(c.gross),
-    orderCount: c.orderCount,
-    lineCount: c.lineCount,
-  }));
+  const ctvLines = [...byCtv.values()]
+    .map((c) => ({
+      ctvCode: c.ctvCode,
+      gross: roundVnd(c.gross),
+      adjustments: 0,
+      net: roundVnd(c.gross),
+      orderCount: c.orderCount,
+      lineCount: c.lineCount,
+    }))
+    .sort((a, b) => b.net - a.net || a.ctvCode.localeCompare(b.ctvCode));
 
+  const commissionIds = [...byCtv.values()].flatMap((c) => c.ids);
+
+  return {
+    ok: true,
+    preview: {
+      period,
+      ctvLines,
+      totals: {
+        commission: roundVnd(ctvLines.reduce((s, x) => s + x.net, 0)),
+        orderCount: new Set(rows.map((r) => String((r as any).orderCode))).size,
+        ctvCount: ctvLines.length,
+        adjustments: 0,
+        lineCount: rows.length + adjDocs.length,
+      },
+      commissionIds,
+    },
+  };
+}
+
+export async function lockMonthlyBill(
+  shopDb: Db,
+  period: string,
+  lockedBy: string
+): Promise<{ ok: boolean; bill?: Record<string, unknown>; error?: string }> {
+  const built = await buildEligiblePeriodPreview(shopDb, period);
+  if (!built.ok) return { ok: false, error: built.error };
+
+  const existing = await shopDb.collection(SHOP_COMMISSION_BILLS).findOne({ period });
+  if (existing && (existing as any).status === "locked") {
+    return { ok: false, error: "already_locked" };
+  }
+  if (existing && (existing as any).status === "paid") {
+    return { ok: false, error: "already_paid" };
+  }
+
+  const { preview } = built;
   const settings = await getCtvSettings(shopDb);
   const now = new Date().toISOString();
   const billId = `BILL-${period}`;
-  const totalCommission = roundVnd(ctvLines.reduce((s, x) => s + x.net, 0));
 
   const bill = {
     id: billId,
@@ -573,14 +624,8 @@ export async function lockMonthlyBill(
     settleDay: settings.settleDay,
     lockedAt: now,
     lockedBy: lockedBy || "admin",
-    totals: {
-      commission: totalCommission,
-      orderCount: new Set(rows.map((r) => String((r as any).orderCode))).size,
-      ctvCount: ctvLines.length,
-      adjustments: 0,
-      lineCount: rows.length + adjDocs.length,
-    },
-    ctvLines,
+    totals: preview.totals,
+    ctvLines: preview.ctvLines,
     updatedAt: now,
     createdAt: (existing as any)?.createdAt || now,
   };
@@ -591,10 +636,9 @@ export async function lockMonthlyBill(
     { upsert: true }
   );
 
-  const ids = rows.map((r) => (r as any)._id).concat(adjDocs.map((a) => (a as any)._id));
-  if (ids.length) {
+  if (preview.commissionIds.length) {
     await shopDb.collection(SHOP_COMMISSIONS).updateMany(
-      { _id: { $in: ids } },
+      { _id: { $in: preview.commissionIds as any[] } },
       {
         $set: {
           status: "billed",

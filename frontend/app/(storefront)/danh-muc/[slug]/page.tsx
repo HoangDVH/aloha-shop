@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { permanentRedirect } from "next/navigation";
 import { ShopPageLoader } from "@/components/ShopPageLoader";
 import { fetchCategories, fetchCategoryTree, fetchProducts } from "@/lib/api";
 import type { ShopCategoryNavNode } from "@/lib/api";
@@ -160,25 +159,8 @@ async function CategoryBody({
     err = e?.message || "Lỗi tải danh mục";
   }
 
-  // Canonical: gắn categoryId/nhom vào URL — ngoài try/catch để permanentRedirect không bị nuốt.
-  if (
-    !err &&
-    !categoryIdList.length &&
-    !nhomList.length &&
-    (defaultCategoryId > 0 || defaultPath)
-  ) {
-    const qs = new URLSearchParams();
-    if (defaultCategoryId > 0) qs.set("categoryId", String(defaultCategoryId));
-    if (defaultPath) qs.set("nhom", defaultPath);
-    for (const [k, v] of Object.entries(sp)) {
-      if (k === "categoryId" || k === "nhom") continue;
-      if (v == null) continue;
-      if (Array.isArray(v)) v.forEach((x) => qs.append(k, String(x)));
-      else if (String(v).trim()) qs.set(k, String(v));
-    }
-    permanentRedirect(`/danh-muc/${encodeURIComponent(slug)}?${qs.toString()}`);
-  }
-
+  // Resolve categoryId/nhom từ slug — giữ URL sạch /danh-muc/{slug} (khớp canonical).
+  // Không 301 gắn ?categoryId=&nhom= (GSC: trùng lặp / xung đột canonical).
   try {
     const resolvedCategoryIds =
       categoryIdList.length > 0

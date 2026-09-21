@@ -25,8 +25,6 @@ function RegisterForm() {
   const {
     register,
     handleSubmit,
-    watch,
-    setValue,
     formState: { errors },
     setError,
   } = useForm<RegisterInput>({
@@ -36,16 +34,12 @@ function RegisterForm() {
       email: "",
       phone: "",
       password: "",
+      passwordConfirm: "",
       asCustomer: true,
       asCtv: false,
       ctvCode: "",
     },
   });
-
-  const asCtv = watch("asCtv");
-  const asCustomer = watch("asCustomer");
-  const asCtvField = register("asCtv");
-  const asCustomerField = register("asCustomer");
 
   useEffect(() => {
     if (loading || !user) return;
@@ -60,7 +54,9 @@ function RegisterForm() {
     try {
       const data = await registerMut.mutateAsync({
         ...values,
-        ctvCode: values.ctvCode ? values.ctvCode.toUpperCase() : values.ctvCode,
+        asCustomer: true,
+        asCtv: false,
+        ctvCode: "",
       });
       if (isCtvPendingBlocked(data.user)) {
         router.replace(CTV_PENDING_PATH);
@@ -78,7 +74,7 @@ function RegisterForm() {
     <div>
       <div className="text-center">
         <h1 className="text-2xl font-extrabold tracking-tight text-[var(--aloha-ink)]">Đăng ký</h1>
-        <p className="mt-1.5 text-sm text-slate-500">Tạo tài khoản khách hoặc cộng tác viên</p>
+        <p className="mt-1.5 text-sm text-slate-500">Tạo tài khoản khách hàng</p>
       </div>
 
       <div className="mt-7 space-y-3">
@@ -128,61 +124,21 @@ function RegisterForm() {
           error={errors.password?.message}
           {...register("password")}
         />
+        <PasswordField
+          id="reg-password-confirm"
+          label="Xác nhận mật khẩu"
+          autoComplete="new-password"
+          placeholder="Nhập lại mật khẩu"
+          error={errors.passwordConfirm?.message}
+          {...register("passwordConfirm")}
+        />
 
-        <div className="space-y-2.5 rounded-2xl bg-[var(--aloha-green-light)]/70 p-3.5 ring-1 ring-[#d7e3d2]">
-          <p className="text-xs font-bold tracking-wide text-[var(--aloha-green-mid)] uppercase">
-            Loại tài khoản
-          </p>
-          <label className="flex cursor-pointer items-center gap-2.5 text-sm font-medium text-[var(--aloha-ink)]">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded border-[#b7c9b4] text-[var(--aloha-green)] focus:ring-[var(--aloha-green)]"
-              {...asCustomerField}
-              onChange={(e) => {
-                asCustomerField.onChange(e);
-                if (!e.target.checked && !watch("asCtv")) {
-                  setValue("asCtv", true);
-                }
-              }}
-            />
-            Khách mua hàng
-          </label>
-          <label className="flex cursor-pointer items-center gap-2.5 text-sm font-medium text-[var(--aloha-ink)]">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded border-[#b7c9b4] text-[var(--aloha-green)] focus:ring-[var(--aloha-green)]"
-              {...asCtvField}
-              onChange={(e) => {
-                asCtvField.onChange(e);
-                // Đăng ký CTV thuần → vào trang chờ duyệt (bỏ tick khách)
-                if (e.target.checked) setValue("asCustomer", false);
-              }}
-            />
-            Cộng tác viên (CTV)
-          </label>
-          {errors.asCustomer ? (
-            <p className="text-xs font-medium text-red-600">{errors.asCustomer.message}</p>
-          ) : null}
-          {asCtv ? (
-            <div className="pt-1">
-              <input
-                placeholder="Mã CTV (vd: ALOHA01) — để trống sẽ tự tạo"
-                className="auth-field uppercase"
-                {...register("ctvCode", {
-                  setValueAs: (v) => String(v || "").toUpperCase(),
-                })}
-              />
-              {errors.ctvCode ? (
-                <p className="mt-1.5 text-xs font-medium text-red-600">{errors.ctvCode.message}</p>
-              ) : null}
-              <p className="mt-1.5 text-xs text-slate-500">
-                {asCtv && !asCustomer
-                  ? "Chỉ đăng ký CTV: sau khi gửi sẽ vào trang chờ duyệt, cửa hàng duyệt xong mới vào shop."
-                  : "Mã CTV chờ cửa hàng duyệt trước khi tính hoa hồng."}
-              </p>
-            </div>
-          ) : null}
-        </div>
+        <p className="rounded-xl bg-[var(--aloha-green-light)]/70 px-3.5 py-2.5 text-xs text-[var(--aloha-muted)] ring-1 ring-[#d7e3d2]">
+          Muốn làm cộng tác viên?{" "}
+          <Link href="/tuyen-ctv" className="font-bold text-[var(--aloha-green)] hover:underline">
+            Đăng ký CTV tại đây
+          </Link>
+        </p>
 
         {errors.root?.message ? (
           <p className="rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-700 ring-1 ring-red-100">

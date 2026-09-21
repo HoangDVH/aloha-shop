@@ -146,29 +146,29 @@ export function ProductCard({
             </span>
           ) : null}
 
-          <div className="absolute left-2 top-2 z-10 flex flex-col gap-1">
-            {preOrder || manualBadge === "dat_truoc" ? (
-              <span className="inline-flex max-w-[calc(100%-0.25rem)] items-center justify-center rounded-full bg-[var(--aloha-sale)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
-                ĐẶT TRƯỚC
-              </span>
-            ) : null}
-            {!preOrder && manualBadge === "giam_gia" ? (
-              <span className="inline-flex items-center justify-center rounded-full bg-[var(--aloha-sale)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
-                SALE
-              </span>
-            ) : null}
-            {!preOrder &&
-            (lowStock ||
-              manualBadge === "ban_chay_sap_het" ||
-              manualBadge === "ban_chay") ? (
-              <span className="rounded-full bg-[var(--aloha-warning,#f59e0b)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
-                SẮP HẾT
-              </span>
-            ) : null}
-          </div>
-
           <ImagePendingOverlay force={navPending} />
         </Link>
+
+        <div className="pointer-events-none absolute left-2 top-2 z-10 flex flex-col items-start gap-1">
+          {preOrder || manualBadge === "dat_truoc" ? (
+            <span className="product-card__badge inline-flex h-5 w-max max-w-none shrink-0 items-center justify-center rounded-full bg-[var(--aloha-sale)] px-2.5 text-[10px] font-bold leading-none tracking-normal text-white shadow-sm whitespace-nowrap [word-break:keep-all] [overflow-wrap:normal]">
+              {"ĐẶT\u00A0TRƯỚC"}
+            </span>
+          ) : null}
+          {!preOrder && manualBadge === "giam_gia" ? (
+            <span className="product-card__badge inline-flex h-5 w-max max-w-none shrink-0 items-center justify-center rounded-full bg-[var(--aloha-sale)] px-2.5 text-[10px] font-bold leading-none tracking-normal text-white shadow-sm whitespace-nowrap">
+              SALE
+            </span>
+          ) : null}
+          {!preOrder &&
+          (lowStock ||
+            manualBadge === "ban_chay_sap_het" ||
+            manualBadge === "ban_chay") ? (
+            <span className="product-card__badge inline-flex h-5 w-max max-w-none shrink-0 items-center justify-center rounded-full bg-[var(--aloha-warning,#f59e0b)] px-2.5 text-[10px] font-bold leading-none tracking-normal text-white shadow-sm whitespace-nowrap [word-break:keep-all] [overflow-wrap:normal]">
+              {"SẮP\u00A0HẾT"}
+            </span>
+          ) : null}
+        </div>
       </div>
 
       <div className={`flex flex-1 flex-col ${shopee ? "gap-1.5 p-2.5 sm:p-3" : "gap-2 p-3 sm:p-3.5"}`}>

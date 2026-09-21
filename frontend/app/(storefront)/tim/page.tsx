@@ -143,14 +143,15 @@ async function CatalogBody({
             : effectiveBadge === "dat_truoc"
               ? "Sản phẩm đặt trước"
               : effectiveBadge === "ban_chay_sap_het" ||
-                  effectiveBadge === "ban_chay" ||
-                  (!effectiveBadge && effectiveSort === "ban_chay")
+                  effectiveBadge === "ban_chay"
                 ? "Sản phẩm bán chạy và sắp hết"
-                : sort === "price_asc"
-                  ? "Giá thấp → cao"
-                  : sort === "price_desc"
-                    ? "Giá cao → thấp"
-                    : undefined;
+                : !effectiveBadge && !q
+                  ? "Tất cả sản phẩm"
+                  : sort === "price_asc"
+                    ? "Giá thấp → cao"
+                    : sort === "price_desc"
+                      ? "Giá cao → thấp"
+                      : undefined;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">

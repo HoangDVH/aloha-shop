@@ -152,9 +152,54 @@ export function CatalogLayout({
   const sort = normalizeCatalogSort(sp.get("sort") || (homeMode ? "ban_chay" : null));
   const allProductsPage = !homeMode && pathname === "/tim";
   const [categoryIdNhoms, setCategoryIdNhoms] = useState<string[]>([]);
+  /** Resolve categoryId từ /danh-muc/{slug} khi URL sạch không có ?categoryId= */
+  const [slugCategoryIds, setSlugCategoryIds] = useState<number[]>([]);
 
   useEffect(() => {
-    if (selectedNhoms.length || !selectedCategoryIds.length) {
+    if (!categoryLocked) {
+      setSlugCategoryIds([]);
+      return;
+    }
+    const m = pathname.match(/^\/danh-muc\/([^/?#]+)/);
+    if (!m) {
+      setSlugCategoryIds([]);
+      return;
+    }
+    let slug = m[1];
+    try {
+      slug = decodeURIComponent(slug);
+    } catch {
+      /* keep */
+    }
+    let cancelled = false;
+    void fetchCategoryTreeCached()
+      .then((items) => {
+        if (cancelled) return;
+        const want = slug.toLowerCase();
+        const find = (nodes: ShopCategoryNavNode[]): number | null => {
+          for (const n of nodes) {
+            if (String(n.slug || "").toLowerCase() === want) return Number(n.id) || null;
+            const hit = find(n.subs || []);
+            if (hit) return hit;
+          }
+          return null;
+        };
+        const id = find(items);
+        setSlugCategoryIds(id && id > 0 ? [id] : []);
+      })
+      .catch(() => {
+        if (!cancelled) setSlugCategoryIds([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [categoryLocked, pathname]);
+
+  const effectiveCategoryIds =
+    selectedCategoryIds.length > 0 ? selectedCategoryIds : slugCategoryIds;
+
+  useEffect(() => {
+    if (selectedNhoms.length || !effectiveCategoryIds.length) {
       setCategoryIdNhoms([]);
       return;
     }
@@ -162,7 +207,7 @@ export function CatalogLayout({
     void fetchCategoryTreeCached()
       .then((items) => {
         if (cancelled) return;
-        const want = new Set(selectedCategoryIds);
+        const want = new Set(effectiveCategoryIds);
         const paths: string[] = [];
         const walk = (nodes: ShopCategoryNavNode[]) => {
           for (const n of nodes) {
@@ -180,7 +225,7 @@ export function CatalogLayout({
     return () => {
       cancelled = true;
     };
-  }, [selectedNhoms.join("|"), selectedCategoryIds.join(",")]);
+  }, [selectedNhoms.join("|"), effectiveCategoryIds.join(",")]);
 
   const filterNhoms = selectedNhoms.length ? selectedNhoms : categoryIdNhoms;
 
@@ -197,12 +242,12 @@ export function CatalogLayout({
         const res = await fetchShopFacets({
           q: q || undefined,
           nhom: selectedNhoms.length ? selectedNhoms : undefined,
-          categoryId: selectedCategoryIds.length ? selectedCategoryIds : undefined,
+          categoryId: effectiveCategoryIds.length ? effectiveCategoryIds : undefined,
           badge: badge || undefined,
           home:
             homeMode &&
             !selectedNhoms.length &&
-            !selectedCategoryIds.length &&
+            !effectiveCategoryIds.length &&
             !q &&
             !badge &&
             !selectedAttrs.length &&
@@ -210,7 +255,7 @@ export function CatalogLayout({
           all:
             allProductsPage &&
             !selectedNhoms.length &&
-            !selectedCategoryIds.length &&
+            !effectiveCategoryIds.length &&
             !q &&
             !badge,
         });
@@ -228,7 +273,7 @@ export function CatalogLayout({
     q,
     badge,
     selectedNhoms.join("|"),
-    selectedCategoryIds.join(","),
+    effectiveCategoryIds.join(","),
     homeMode,
     allProductsPage,
     selectedAttrs.join("|"),
@@ -312,7 +357,7 @@ export function CatalogLayout({
     if (badge) next.set("badge", badge);
     if (maxTon) next.set("maxTon", maxTon);
     if (categoryLocked) {
-      for (const id of selectedCategoryIds) {
+      for (const id of effectiveCategoryIds) {
         if (![...next.getAll("categoryId")].includes(String(id))) {
           next.append("categoryId", String(id));
         }
@@ -379,7 +424,7 @@ export function CatalogLayout({
                 : draft.nhoms.length
                   ? draft.nhoms
                   : undefined,
-            categoryId: selectedCategoryIds.length ? selectedCategoryIds : undefined,
+            categoryId: effectiveCategoryIds.length ? effectiveCategoryIds : undefined,
             attr: draft.attrs.length ? draft.attrs : undefined,
             dvt: draft.dvts.length ? draft.dvts : undefined,
             minPrice: draft.minPrice ? Number(draft.minPrice) : undefined,
@@ -423,7 +468,7 @@ export function CatalogLayout({
     sort,
     categoryLocked,
     selectedNhoms.join("|"),
-    selectedCategoryIds.join(","),
+    effectiveCategoryIds.join(","),
     filterNhoms.join("|"),
   ]);
 
@@ -643,9 +688,9 @@ export function CatalogLayout({
         q={q}
         homeMode={homeMode}
         allProductsPage={allProductsPage}
-        hasCategoryScope={selectedCategoryIds.length > 0 || categoryLocked}
+        hasCategoryScope={effectiveCategoryIds.length > 0 || categoryLocked}
         lockCategory={categoryLocked}
-        categoryIds={selectedCategoryIds}
+        categoryIds={effectiveCategoryIds}
         categoryLockLabel={nhomTitle ? `Danh mục: ${nhomTitle}` : "Đang lọc trong danh mục này"}
         minPrice={activeDraft.minPrice}
         maxPrice={activeDraft.maxPrice}
@@ -688,12 +733,30 @@ export function CatalogLayout({
         </div>
       ) : null}
 
-      {/* Toolbar: Lọc + L2/L3 (TGDĐ) · Sort */}
+      {/* Toolbar: Lọc + L1/L2/L3 (TGDĐ) · Sort */}
       {!filtersOnly ? (
         <div className="flex flex-col gap-2.5">
-          {categoryLocked ? (
+          {categoryLocked || allProductsPage ? (
             <CatalogSubcatBar
-              categoryIds={selectedCategoryIds}
+              categoryIds={effectiveCategoryIds}
+              showRootL1={allProductsPage}
+              filterResultChips={
+                activeFilters.length ? (
+                  <>
+                    {activeFilters.map((t) => (
+                      <button
+                        key={t.key}
+                        type="button"
+                        onClick={t.clear}
+                        className="inline-flex h-9 max-w-[200px] shrink-0 items-center gap-1.5 truncate rounded-md border border-[var(--aloha-line)] bg-white px-2.5 text-xs font-semibold text-slate-700"
+                      >
+                        <span className="truncate">{t.label}</span>
+                        <X size={14} className="shrink-0 text-slate-400" />
+                      </button>
+                    ))}
+                  </>
+                ) : null
+              }
               filterButton={
                 <button
                   type="button"
@@ -745,63 +808,23 @@ export function CatalogLayout({
                     <X size={14} className="shrink-0 text-slate-400" />
                   </button>
                 ))}
-                {secondaryFilterCount >= 1 ? (
-                  <button
-                    type="button"
-                    className="inline-flex h-10 shrink-0 items-center text-xs font-semibold text-slate-500 underline-offset-2 hover:text-[var(--aloha-green)] hover:underline"
-                    onClick={() => navigateQs(clearSecondaryFilters())}
-                  >
-                    Xóa lọc
-                  </button>
-                ) : null}
               </div>
             </div>
           )}
 
-          {categoryLocked && activeFilters.length ? (
-            <div className="flex min-w-0 items-center gap-2 overflow-x-auto pl-[4.25rem] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {activeFilters.map((t) => (
-                <button
-                  key={t.key}
-                  type="button"
-                  onClick={t.clear}
-                  className="inline-flex h-9 max-w-[200px] shrink-0 items-center gap-1.5 truncate rounded-md border border-[var(--aloha-line)] bg-white px-2.5 text-xs font-semibold text-slate-700"
-                >
-                  <span className="truncate">{t.label}</span>
-                  <X size={14} className="shrink-0 text-slate-400" />
-                </button>
-              ))}
-              {secondaryFilterCount >= 1 ? (
-                <button
-                  type="button"
-                  className="inline-flex h-9 shrink-0 items-center text-xs font-semibold text-slate-500 underline-offset-2 hover:text-[var(--aloha-green)] hover:underline"
-                  onClick={() => navigateQs(clearSecondaryFilters())}
-                >
-                  Xóa lọc
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-
-          {/* Sort — mobile full-bleed kiểu TGDĐ; desktop giữ nhãn */}
+          {/* Sort — khoảng cách đều kiểu TGDĐ */}
           <div className="-mx-4 border-y border-[#eee] bg-white sm:mx-0 sm:border-0 sm:bg-transparent">
-            <div className="flex w-full items-center justify-around overflow-x-auto px-2 [scrollbar-width:none] sm:justify-start sm:gap-x-4 sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden">
-              <span className="mr-1 hidden shrink-0 text-sm font-semibold text-slate-500 sm:inline">
+            <div className="flex w-full items-center justify-between gap-3 overflow-x-auto px-3 [scrollbar-width:none] sm:justify-start sm:gap-8 sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden">
+              <span className="hidden shrink-0 text-sm font-semibold text-slate-500 sm:inline">
                 Sắp xếp theo:
               </span>
-              {SORT_TOOLBAR.map((o, idx) => {
+              {SORT_TOOLBAR.map((o) => {
                 const isPrice = o.value === "price";
                 const active = isPrice
                   ? sort === "price_asc" || sort === "price_desc"
                   : sort === o.value;
                 return (
-                  <span key={o.value} className="inline-flex items-center">
-                    {idx > 0 ? (
-                      <span
-                        className="mx-1 h-1 w-1 shrink-0 rounded-full bg-[#cfcfcf] sm:hidden"
-                        aria-hidden
-                      />
-                    ) : null}
+                  <span key={o.value} className="inline-flex shrink-0 items-center">
                     {isPrice ? (
                       <div className="relative shrink-0" data-price-sort-menu>
                         <button
@@ -810,7 +833,7 @@ export function CatalogLayout({
                             e.stopPropagation();
                             onSortClick("price");
                           }}
-                          className={`inline-flex h-10 items-center gap-0.5 px-1.5 text-[13px] transition sm:h-11 sm:px-0 sm:text-sm ${
+                          className={`inline-flex h-10 items-center gap-0.5 px-1 text-[13px] transition sm:h-11 sm:px-0 sm:text-sm ${
                             active || priceMenuOpen
                               ? "font-bold text-[var(--aloha-green)]"
                               : "font-medium text-[#444] hover:text-[var(--aloha-green)]"
@@ -861,7 +884,7 @@ export function CatalogLayout({
                       <button
                         type="button"
                         onClick={() => onSortClick(o.value)}
-                        className={`inline-flex h-10 shrink-0 items-center px-1.5 text-[13px] transition sm:h-11 sm:px-0 sm:text-sm ${
+                        className={`inline-flex h-10 shrink-0 items-center px-1 text-[13px] transition sm:h-11 sm:px-0 sm:text-sm ${
                           active
                             ? "font-bold text-[var(--aloha-green)]"
                             : "font-medium text-[#444] hover:text-[var(--aloha-green)]"

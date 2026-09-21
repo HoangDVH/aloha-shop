@@ -32,6 +32,13 @@ import {
 import { applyShopCors, isAllowedShopOrigin } from "../shopCors.js";
 import { syncBus } from "../syncBus.js";
 import { shopRateLimitOrReject } from "../shopRateLimit.js";
+import {
+  allocateCtvCode,
+  ctvApplicationToDoc,
+  isValidPhoneVn,
+  normalizePhoneVn,
+  parseCtvApplicationBody,
+} from "./ctvApplication.js";
 
 function publishShopAccountChange(userId: string, source: string) {
   try {
@@ -184,9 +191,9 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
       const email = normalizeEmail(req.body?.email);
       const password = String(req.body?.password || "");
       const fullName = String(req.body?.fullName || "").trim();
-      const phone = String(req.body?.phone || "").trim() || null;
+      const phoneRaw = String(req.body?.phone || "").trim();
       const roles = parseRoles(req.body?.roles);
-      let ctvCode = normalizeCtvCode(req.body?.ctvCode || "");
+      const asCtv = roles.includes("ctv");
 
       if (!email || !email.includes("@")) {
         return res.status(400).json({ error: "Email không hợp lệ" });
@@ -197,19 +204,59 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
       if (!fullName) {
         return res.status(400).json({ error: "Nhập họ tên" });
       }
-      if (roles.includes("ctv")) {
-        if (!ctvCode) ctvCode = normalizeCtvCode(email.split("@")[0] || "CTV");
-        if (!isValidCtvCode(ctvCode)) {
-          return res.status(400).json({ error: "Mã CTV 3–20 ký tự (A-Z, 0-9, _, -)" });
+
+      let phone: string | null = phoneRaw || null;
+      let ctvApp: ReturnType<typeof ctvApplicationToDoc> | null = null;
+      let ctvCode = "";
+
+      if (asCtv) {
+        if (!isValidPhoneVn(phoneRaw)) {
+          return res.status(400).json({ error: "Số điện thoại không hợp lệ" });
         }
-        const taken = await db.collection(SHOP_ACCOUNTS).findOne({ ctvCode });
-        if (taken) return res.status(409).json({ error: "Mã CTV đã được dùng" });
-      } else {
-        ctvCode = "";
+        phone = normalizePhoneVn(phoneRaw);
+        const parsed = parseCtvApplicationBody(req.body);
+        if (!parsed.ok) {
+          return res.status(400).json({ error: parsed.error });
+        }
+        ctvApp = ctvApplicationToDoc(parsed.fields);
+
+        const phoneTaken = await db.collection(SHOP_ACCOUNTS).findOne({
+          $or: [{ phone }, { phone: phoneRaw }, { phone: `+84${phone.slice(1)}` }],
+        });
+        if (phoneTaken) {
+          return res.status(409).json({ error: "Số điện thoại đã được dùng" });
+        }
+
+        const preferred = normalizeCtvCode(req.body?.ctvCode || "");
+        ctvCode =
+          (preferred && isValidCtvCode(preferred)
+            ? preferred
+            : null) ||
+          (await allocateCtvCode(db, email)) ||
+          "";
+        if (!ctvCode || !isValidCtvCode(ctvCode)) {
+          return res.status(400).json({ error: "Không tạo được mã CTV hợp lệ" });
+        }
+        const codeTaken = await db.collection(SHOP_ACCOUNTS).findOne({ ctvCode });
+        if (codeTaken) {
+          const again = await allocateCtvCode(db, email);
+          if (!again) return res.status(409).json({ error: "Mã CTV đã được dùng" });
+          ctvCode = again;
+        }
+      } else if (phoneRaw && !isValidPhoneVn(phoneRaw)) {
+        return res.status(400).json({ error: "Số điện thoại không hợp lệ" });
+      } else if (phoneRaw) {
+        phone = normalizePhoneVn(phoneRaw);
       }
 
       const exists = await db.collection(SHOP_ACCOUNTS).findOne({ email });
-      if (exists) return res.status(409).json({ error: "Email đã được đăng ký" });
+      if (exists) {
+        return res.status(409).json({
+          error: asCtv
+            ? "Email đã được đăng ký — hãy đăng nhập rồi nộp hồ sơ CTV trên tài khoản đó"
+            : "Email đã được đăng ký",
+        });
+      }
 
       const passwordHash = await bcrypt.hash(password, 10);
       const now = new Date();
@@ -220,7 +267,7 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
         passwordHash,
         avatarUrl: null,
         roles,
-        ctvStatus: roles.includes("ctv") ? "cho_duyet" : null,
+        ctvStatus: asCtv ? "cho_duyet" : null,
         commissionRate: null,
         adminNote: null,
         active: true,
@@ -229,13 +276,14 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
         createdAt: now,
         updatedAt: now,
         lastLoginAt: now,
+        ...(ctvApp || {}),
       };
       // Không ghi googleId/ctvCode = null — unique sparse index coi null là 1 giá trị
       if (ctvCode) doc.ctvCode = ctvCode;
       const ins = await db.collection(SHOP_ACCOUNTS).insertOne(doc);
       const user = { ...doc, _id: ins.insertedId };
       const body = await issueShopSession(res, db, user);
-      if (roles.includes("ctv")) {
+      if (asCtv) {
         publishShopAccountChange(String(ins.insertedId), "ctv_register");
       } else {
         publishShopAccountChange(String(ins.insertedId), "shop_register");
@@ -356,33 +404,87 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
     try {
       const db = await getShopDb();
       const fullName = String(req.body?.fullName || "").trim();
-      const phone = String(req.body?.phone || "").trim() || null;
+      const phoneRaw =
+        req.body?.phone !== undefined ? String(req.body?.phone || "").trim() : undefined;
       const becomeCtv = Boolean(req.body?.becomeCtv);
-      let ctvCode = normalizeCtvCode(req.body?.ctvCode || "");
 
       const patch: Record<string, unknown> = { updatedAt: new Date() };
       if (fullName) patch.fullName = fullName;
-      if (req.body?.phone !== undefined) patch.phone = phone;
 
       const user = await db.collection(SHOP_ACCOUNTS).findOne(shopAccountIdQuery(req.shopAuth!.userId));
       if (!user) return res.status(401).json({ error: "Không tìm thấy tài khoản" });
 
+      if (user.active === false) {
+        return res.status(403).json({ error: "Tài khoản đang bị khóa, liên hệ Aloha" });
+      }
+
+      if (phoneRaw !== undefined) {
+        if (phoneRaw && !isValidPhoneVn(phoneRaw)) {
+          return res.status(400).json({ error: "Số điện thoại không hợp lệ" });
+        }
+        patch.phone = phoneRaw ? normalizePhoneVn(phoneRaw) : null;
+      }
+
       if (becomeCtv) {
         const roles = parseRoles(user.roles);
+        const status = String(user.ctvStatus || "");
+        if (status === "active" && roles.includes("ctv")) {
+          return res.status(400).json({ error: "Tài khoản đã là CTV" });
+        }
+        if (status === "cho_duyet" && roles.includes("ctv")) {
+          return res.status(400).json({ error: "Hồ sơ CTV đang chờ duyệt" });
+        }
+        if (status === "khoa" && roles.includes("ctv")) {
+          return res.status(403).json({ error: "Tài khoản đang bị khóa, liên hệ Aloha" });
+        }
+
+        const phoneForCtv =
+          (patch.phone as string | null | undefined) ??
+          (user.phone ? String(user.phone) : "");
+        if (!isValidPhoneVn(String(phoneForCtv || ""))) {
+          return res.status(400).json({ error: "Số điện thoại không hợp lệ" });
+        }
+        const phoneNorm = normalizePhoneVn(String(phoneForCtv));
+        patch.phone = phoneNorm;
+
+        const phoneTaken = await db.collection(SHOP_ACCOUNTS).findOne({
+          _id: { $ne: user._id },
+          $or: [
+            { phone: phoneNorm },
+            { phone: `+84${phoneNorm.slice(1)}` },
+          ],
+        });
+        if (phoneTaken) {
+          return res.status(409).json({ error: "Số điện thoại đã được dùng" });
+        }
+
+        const parsed = parseCtvApplicationBody(req.body);
+        if (!parsed.ok) {
+          return res.status(400).json({ error: parsed.error });
+        }
+        Object.assign(patch, ctvApplicationToDoc(parsed.fields));
+
         if (!roles.includes("ctv")) {
-          if (!ctvCode) ctvCode = normalizeCtvCode(String(user.email).split("@")[0] || "CTV");
+          let ctvCode = normalizeCtvCode(req.body?.ctvCode || String(user.ctvCode || ""));
           if (!isValidCtvCode(ctvCode)) {
-            return res.status(400).json({ error: "Mã CTV không hợp lệ" });
+            ctvCode = (await allocateCtvCode(db, String(user.email || ""), user._id)) || "";
+          } else {
+            const taken = await db.collection(SHOP_ACCOUNTS).findOne({
+              ctvCode,
+              _id: { $ne: user._id },
+            });
+            if (taken) {
+              ctvCode = (await allocateCtvCode(db, String(user.email || ""), user._id)) || "";
+            }
           }
-          const taken = await db.collection(SHOP_ACCOUNTS).findOne({
-            ctvCode,
-            _id: { $ne: user._id },
-          });
-          if (taken) return res.status(409).json({ error: "Mã CTV đã được dùng" });
+          if (!isValidCtvCode(ctvCode)) {
+            return res.status(400).json({ error: "Không tạo được mã CTV hợp lệ" });
+          }
           patch.roles = [...roles, "ctv"];
           patch.ctvCode = ctvCode;
-          patch.ctvStatus = "cho_duyet";
         }
+        patch.ctvStatus = "cho_duyet";
+        patch.ctvRejectReason = null;
       }
 
       await db.collection(SHOP_ACCOUNTS).updateOne({ _id: user._id }, { $set: patch });
@@ -525,11 +627,18 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
 
       await issueShopSession(res, db, user!);
       const nextRaw = String(st.next || "/");
-      let next = nextRaw.startsWith("/") ? nextRaw : "/";
+      let next = nextRaw.startsWith("/") && !nextRaw.startsWith("//") ? nextRaw : "/";
       const pub = toPublicShopAccount(user!);
       const roles = Array.isArray(pub.roles) ? pub.roles : [];
+      const pathOnly = next.split("?")[0] || "/";
       if (roles.includes("ctv") && pub.ctvStatus === "cho_duyet" && !roles.includes("customer")) {
         next = "/cho-duyet-ctv";
+      } else if (
+        roles.includes("ctv") &&
+        pub.ctvStatus === "active" &&
+        (pathOnly === "/" || pathOnly === "" || pathOnly === "/tai-khoan")
+      ) {
+        next = "/cong-tac-vien";
       }
       return res.redirect(`${shopOrigin}${next}`);
     } catch (e) {

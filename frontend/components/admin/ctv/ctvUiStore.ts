@@ -12,6 +12,7 @@ export type CtvAdminSub =
   | "list"
   | "customers"
   | "commissions"
+  | "commissionConfig"
   | "orders"
   | "fraud";
 
@@ -22,10 +23,13 @@ type CtvUiState = {
   /** Khoảng lọc analytics (overview / detail / list) */
   dateRange: AdminDateRange;
   selectedCtvCode: string | null;
+  /** Modal xem hồ sơ đăng ký CTV (không persist) */
+  reviewAccountId: string | null;
   setActiveSub: (s: CtvAdminSub) => void;
   setPeriodKey: (p: string) => void;
   setDateRange: (r: AdminDateRange) => void;
   setSelectedCtvCode: (c: string | null) => void;
+  setReviewAccountId: (id: string | null) => void;
 };
 
 function currentPeriod(): string {
@@ -45,11 +49,13 @@ export const useCtvUiStore = create<CtvUiState>()(
       periodKey: currentPeriod(),
       dateRange: defaultThisMonthRange(),
       selectedCtvCode: null,
+      reviewAccountId: null,
       setActiveSub: (activeSub) => set({ activeSub }),
       setPeriodKey: (periodKey) => set({ periodKey }),
       setDateRange: (dateRange) =>
         set({ dateRange, periodKey: periodFromRange(dateRange) }),
       setSelectedCtvCode: (selectedCtvCode) => set({ selectedCtvCode }),
+      setReviewAccountId: (reviewAccountId) => set({ reviewAccountId }),
     }),
     {
       name: "aloha-admin-ctv-ui",

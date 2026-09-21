@@ -91,7 +91,9 @@ export function FilterChipSection({
                         : "border-[var(--aloha-line)] bg-white text-slate-700 hover:border-[var(--aloha-green)]"
                     }`}
                   >
-                    <span className="line-clamp-2">{shortFilterLabel(it.label)}</span>
+                    <span className="line-clamp-2 break-words whitespace-normal">
+                      {shortFilterLabel(it.label, 48)}
+                    </span>
                   </button>
                 );
               })}

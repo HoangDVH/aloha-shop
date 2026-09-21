@@ -13,7 +13,7 @@ import { loginSchema, type LoginInput } from "@/lib/authSchemas";
 import { GoogleAuthButton } from "@/components/GoogleAuthButton";
 import { ShopPageLoader } from "@/components/ShopPageLoader";
 import { PasswordField } from "@/components/PasswordField";
-import { CTV_PENDING_PATH, isCtvPendingBlocked } from "@/lib/ctvGate";
+import { resolvePostLoginPath } from "@/lib/ctvGate";
 
 function LoginForm() {
   const { user, loading } = useShopAuth();
@@ -35,11 +35,7 @@ function LoginForm() {
 
   useEffect(() => {
     if (loading || !user) return;
-    if (isCtvPendingBlocked(user)) {
-      router.replace(CTV_PENDING_PATH);
-      return;
-    }
-    router.replace(next.startsWith("/") ? next : "/");
+    router.replace(resolvePostLoginPath(user, next));
   }, [loading, user, next, router]);
 
   useEffect(() => {
@@ -53,11 +49,7 @@ function LoginForm() {
   const onSubmit = handleSubmit(async (values) => {
     try {
       const data = await loginMut.mutateAsync(values);
-      if (isCtvPendingBlocked(data.user)) {
-        router.replace(CTV_PENDING_PATH);
-      } else {
-        router.replace(next.startsWith("/") ? next : "/");
-      }
+      router.replace(resolvePostLoginPath(data.user, next));
     } catch (err) {
       setError("root", {
         message: err instanceof Error ? err.message : "Lỗi đăng nhập",

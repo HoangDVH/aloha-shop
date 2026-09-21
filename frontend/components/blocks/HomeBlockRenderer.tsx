@@ -29,6 +29,11 @@ async function loadLowStockProducts() {
     });
     return (res.items || [])
       .filter((p) => isLowStockProduct(p.ton))
+      .filter(
+        (p) =>
+          Boolean(String(p.anh || "").trim()) ||
+          (Array.isArray(p.images) && p.images.some((u) => String(u || "").trim()))
+      )
       .slice(0, LOW_STOCK_HOME_LIMIT);
   } catch {
     return [];
@@ -274,10 +279,16 @@ export async function renderHomeMainSections(blocks: AppearanceBlock[] = []) {
     try {
       const res = await fetchProducts({
         page: 1,
-        limit: moiLimit,
+        limit: Math.min(80, moiLimit * 2),
         sort: "moi",
       });
-      moi = res.items || [];
+      moi = (res.items || [])
+        .filter(
+          (p) =>
+            Boolean(String(p.anh || "").trim()) ||
+            (Array.isArray(p.images) && p.images.some((u) => String(u || "").trim()))
+        )
+        .slice(0, moiLimit);
     } catch {
       /* empty */
     }

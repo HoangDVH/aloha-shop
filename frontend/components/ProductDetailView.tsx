@@ -273,15 +273,8 @@ export function ProductDetailView({
         "";
       if (!label) return null;
       const slug = product.categorySlug || "san-pham";
-      const qs = new URLSearchParams();
-      if (product.categoryId && product.categoryId > 0) {
-        qs.set("categoryId", String(product.categoryId));
-      } else if (product.nhom) {
-        qs.set("nhom", product.nhom);
-      }
-      const q = qs.toString();
       return {
-        href: `/danh-muc/${slug}${q ? `?${q}` : ""}`,
+        href: `/danh-muc/${slug}`,
         label,
       };
     })(),

@@ -512,6 +512,21 @@ function publicImages(doc: Record<string, unknown>): string[] {
   return imgs.slice(0, 12);
 }
 
+/** SP public phải có ảnh — ẩn SKU test / thiếu media (vd. «T2»). */
+function hasPublicImage(p: {
+  anh?: string | null;
+  images?: string[] | null;
+}): boolean {
+  if (String(p.anh || "").trim()) return true;
+  return Array.isArray(p.images) && p.images.some((u) => String(u || "").trim());
+}
+
+function filterRequirePublicImage<T extends { anh?: string | null; images?: string[] | null }>(
+  items: T[]
+): T[] {
+  return items.filter(hasPublicImage);
+}
+
 function publicTon(doc: Record<string, unknown>): number {
   const ton = Number(doc.ton ?? doc.onHand ?? doc.kvTon);
   return Number.isFinite(ton) ? ton : 0;
@@ -701,6 +716,13 @@ function shopFilterBase(): Record<string, unknown> {
       // hienThiWeb: thiếu field = hiện (parity); chỉ ẩn khi false
       {
         $or: [{ hienThiWeb: { $ne: false } }, { hienThiWeb: { $exists: false } }],
+      },
+      // Bắt buộc có ảnh (anh hoặc images[]) — tránh SKU test kiểu «T2»
+      {
+        $or: [
+          { anh: { $type: "string", $regex: "\\S" } },
+          { "images.0": { $exists: true, $nin: [null, ""] } },
+        ],
       },
     ],
   };
@@ -1166,7 +1188,7 @@ export function registerShopApi(
         attrFilters.length > 0 ||
         dvtFilters.length > 0 ||
         Boolean(loai);
-      const cacheKey = `shop:products:v31:${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|maxTon=${maxTon}|${sort}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
+      const cacheKey = `shop:products:v34:${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|maxTon=${maxTon}|${sort}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
       const pinScope = resolvePinBadgeScope({ sort, badge, maxTon });
 
       const { body, cache } = await cachedJson(cacheKey, async () => {
@@ -1254,8 +1276,19 @@ export function registerShopApi(
           createdAt: 1,
         };
 
-        /** Bán chạy = xếp theo doanh thu HĐ (chỉ đọc). Không ghi aloha_products. */
-        if (sort === "ban_chay") {
+        /** Bán chạy = xếp theo doanh thu HĐ (chỉ đọc). Không ghi aloha_products.
+         *  Có lọc giá/ĐVT/attr/loại → đi path post-filter.
+         *  inStock / maxTon vẫn dùng fast path (đã lọc sau khi rank doanh thu). */
+        const banChayFastPath =
+          sort === "ban_chay" &&
+          !(
+            minPrice > 0 ||
+            maxPrice > 0 ||
+            attrFilters.length > 0 ||
+            dvtFilters.length > 0 ||
+            Boolean(loai)
+          );
+        if (banChayFastPath) {
           const rank = await loadRevenueRankMap(db);
           const rankedMas = [...rank.entries()]
             .sort((a, b) => b[1] - a[1])
@@ -1282,6 +1315,7 @@ export function registerShopApi(
             if (maxPrice > 0) sold = sold.filter((p) => p.gia <= maxPrice);
             if (inStock) sold = sold.filter((p) => p.ton > 0);
             if (maxTon > 0) sold = sold.filter((p) => p.ton > 0 && p.ton <= maxTon);
+            sold = filterRequirePublicImage(sold);
             sold = arrangeByAbsolutePin(
               sold,
               (a, b) => {
@@ -1346,6 +1380,7 @@ export function registerShopApi(
               if (maxPrice > 0) filler = filler.filter((p) => p.gia <= maxPrice);
               if (inStock) filler = filler.filter((p) => p.ton > 0);
               if (maxTon > 0) filler = filler.filter((p) => p.ton > 0 && p.ton <= maxTon);
+              filler = filterRequirePublicImage(filler);
               const merged = dedupeCanonicalPublic(
                 [...fromSold, ...filler],
                 new Map(),
@@ -1387,6 +1422,7 @@ export function registerShopApi(
             if (maxPrice > 0) filler = filler.filter((p) => p.gia <= maxPrice);
             if (inStock) filler = filler.filter((p) => p.ton > 0);
             if (maxTon > 0) filler = filler.filter((p) => p.ton > 0 && p.ton <= maxTon);
+            filler = filterRequirePublicImage(filler);
             return {
               items: filler,
               total: totalAll,
@@ -1417,14 +1453,16 @@ export function registerShopApi(
             const prev = createdMsByMa.get(ma) || 0;
             if (ms >= prev) createdMsByMa.set(ma, ms);
           }
-          const all = filterZeroPriceUnlessTestBuyer(
-            sortPublicItems(
-              dedupeListItems(mapped.docs, mapped.items),
-              sort,
-              createdMsByMa,
-              pinScope
-            ),
-            buyerEmail
+          const all = filterRequirePublicImage(
+            filterZeroPriceUnlessTestBuyer(
+              sortPublicItems(
+                dedupeListItems(mapped.docs, mapped.items),
+                sort,
+                createdMsByMa,
+                pinScope
+              ),
+              buyerEmail
+            )
           );
           const total = all.length;
           return {
@@ -1450,7 +1488,10 @@ export function registerShopApi(
         if (minPrice > 0) items = items.filter((p) => p.gia >= minPrice);
         if (maxPrice > 0) items = items.filter((p) => p.gia <= maxPrice);
         if (inStock) items = items.filter((p) => p.ton > 0);
-        if (maxTon > 0) items = items.filter((p) => p.ton > 0 && p.ton <= maxTon);
+        if (maxTon > 0) {
+          items = items.filter((p) => p.ton > 0 && p.ton <= maxTon);
+        }
+        items = filterRequirePublicImage(items);
         const createdMsByMa = new Map<string, number>();
         for (const d of mapped.docs as Record<string, unknown>[]) {
           const ma = normalizeMa(d.ma);

@@ -80,12 +80,19 @@ export function HeaderAccountMenu() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex max-w-[220px] items-center gap-1.5 rounded-md px-2 py-1.5 text-[var(--aloha-green-dark)] hover:bg-[var(--aloha-green-light)]"
+        className="inline-flex max-w-[220px] items-center gap-1.5 rounded-md px-1.5 py-1 text-[var(--aloha-green-dark)] hover:bg-[var(--aloha-green-light)]"
         aria-expanded={open}
         aria-haspopup="menu"
+        aria-label={`Tài khoản ${shortName}`}
       >
-        <UserIcon size={22} strokeWidth={1.75} aria-hidden />
-        <span className="text-sm font-semibold">Tài khoản</span>
+        <AccountAvatar user={user} size={28} />
+        <span className="min-w-0 truncate text-sm font-semibold">{shortName}</span>
+        <ChevronDown
+          size={16}
+          strokeWidth={2}
+          className={`shrink-0 opacity-70 transition ${open ? "rotate-180" : ""}`}
+          aria-hidden
+        />
       </button>
 
       {open ? (

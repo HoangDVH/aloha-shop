@@ -12,11 +12,19 @@ export const registerSchema = z
     email: z.string().trim().email("Email không hợp lệ"),
     phone: z.string().trim().optional(),
     password: z.string().min(6, "Mật khẩu tối thiểu 6 ký tự"),
+    passwordConfirm: z.string().min(1, "Xác nhận mật khẩu"),
     asCustomer: z.boolean(),
     asCtv: z.boolean(),
     ctvCode: z.string().trim().optional(),
   })
   .superRefine((v, ctx) => {
+    if (v.password !== v.passwordConfirm) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Mật khẩu xác nhận không khớp",
+        path: ["passwordConfirm"],
+      });
+    }
     if (!v.asCustomer && !v.asCtv) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

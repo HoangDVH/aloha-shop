@@ -25,7 +25,44 @@ function labelNode(name: string): string {
   return toTitleCaseVi(String(name || "").trim());
 }
 
+function foldName(name: string): string {
+  return String(name || "")
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .toUpperCase();
+}
+
+/** Ảnh tile mega menu — ưu tiên ảnh SP theo mã kho. */
+const TILE_IMAGE_BY_MA: { match: RegExp; url: string }[] = [
+  {
+    match: /^SEN\s*DA\b|^SEN\s*BAU\b/,
+    url: "https://cdn2-retail-images.kiotviet.vn/2026/05/06/alohanguyen/425912a964f342fd9748e1cdeb5fca97.jpg",
+  },
+  {
+    match: /^XUONG\s*RONG\b/,
+    url: "https://cdn2-retail-images.kiotviet.vn/2026/05/05/alohanguyen/cc48c124abeb423aa2eb4753757281b6.jpeg",
+  },
+  {
+    match: /BONSAI|CHAU\s*BONSAI/,
+    url: "https://cdn-images.kiotviet.vn/alohanguyen/85636eaaf54944daa810e6cd8b69d11e.png",
+  },
+  {
+    match: /DIA\s*DAT\s*NUNG|LOT\s*CHAU/,
+    url: "https://cdn2-retail-images.kiotviet.vn/alohanguyen/867b51f7219648f8aaff06b4575d3922.tmp",
+  },
+  {
+    match: /HOP\s*TRONG\s*SUOT|HOP\s*TRONG/,
+    url: "https://cdn2-retail-images.kiotviet.vn/2025/01/22/alohanguyen/81c3acb3184d49e59fb0a8eeca5353a6.jpg",
+  },
+];
+
 function tileSrc(node: ShopCategoryNavNode): string {
+  const f = foldName(node.name);
+  for (const row of TILE_IMAGE_BY_MA) {
+    if (row.match.test(f)) return row.url;
+  }
   if (isPhongThuyL3(node)) return navIllustrationSrc(node.name);
   return String(node.image || "").trim();
 }
@@ -169,13 +206,17 @@ export function CategoryMegaMenu({
           onMouseEnter={clearClose}
         >
           <div
-            className="flex w-[min(96vw,58rem)] overflow-hidden rounded-2xl border border-[var(--aloha-line)] bg-white shadow-[0_20px_50px_-18px_rgba(27,94,32,0.28)]"
+            className={`flex overflow-hidden rounded-2xl border border-[var(--aloha-line)] bg-white shadow-[0_20px_50px_-18px_rgba(27,94,32,0.28)] ${
+              l2.length ? "w-[min(96vw,58rem)]" : "w-[15rem]"
+            }`}
             role="menu"
             aria-label="Danh mục sản phẩm"
           >
             {/* Cột 1 — L1 nền trắng */}
             <nav
-              className="w-[15rem] shrink-0 border-r border-[var(--aloha-line)] bg-white py-2.5"
+              className={`w-[15rem] shrink-0 bg-white py-2.5 ${
+                l2.length ? "border-r border-[var(--aloha-line)]" : ""
+              }`}
               aria-label="Nhóm chính"
             >
               {roots.map((node) => {
@@ -221,7 +262,8 @@ export function CategoryMegaMenu({
               })}
             </nav>
 
-            {/* Cột 2 — L2 + L3 ảnh 4×3 */}
+            {/* Cột 2 — chỉ khi L1 có nhóm con */}
+            {l2.length ? (
             <div className="min-h-[22rem] min-w-0 flex-1 bg-white px-6 py-5">
               {active ? (
                 <>
@@ -243,7 +285,6 @@ export function CategoryMegaMenu({
                     </div>
                   </div>
 
-                  {l2.length ? (
                     <div className="max-h-[min(62vh,32rem)] space-y-6 overflow-y-auto overscroll-contain pr-1">
                       {l2.map((section) => {
                         const kids = nodeSubs(section);
@@ -252,17 +293,18 @@ export function CategoryMegaMenu({
                         )
                           .filter((n) => Boolean(tileSrc(n)))
                           .slice(0, L3_LIMIT);
+                        // pl-8 ≈ icon + gap — thẳng hàng với chữ tiêu đề cột 2
                         if (!withImg.length && !kids.length) {
                           return (
-                            <section key={section.id}>
-                              <div className="mb-2.5 flex items-center justify-between gap-3">
-                                <span className="min-w-0 truncate text-[15px] font-extrabold text-[var(--aloha-green-dark)] sm:text-base">
+                            <section key={section.id} className="pl-8">
+                              <div className="mb-2.5 flex items-baseline justify-between gap-3">
+                                <span className="min-w-0 truncate text-[15px] font-extrabold leading-none text-[var(--aloha-green-dark)] sm:text-base">
                                   {labelNode(section.name)}
                                 </span>
                                 <Link
                                   href={categoryHref(section)}
                                   onClick={handleNavigate}
-                                  className="shrink-0 text-[12px] font-semibold text-[var(--aloha-muted)] hover:text-[var(--aloha-green)]"
+                                  className="shrink-0 text-[12px] font-semibold leading-none text-[var(--aloha-muted)] hover:text-[var(--aloha-green)]"
                                 >
                                   Xem tất cả →
                                 </Link>
@@ -272,24 +314,24 @@ export function CategoryMegaMenu({
                         }
                         if (!withImg.length) return null;
                         return (
-                          <section key={section.id}>
-                            <div className="mb-3 flex items-center justify-between gap-3">
+                          <section key={section.id} className="pl-8">
+                            <div className="mb-3 flex items-baseline justify-between gap-3">
                               <Link
                                 href={categoryHref(section)}
                                 onClick={handleNavigate}
-                                className="min-w-0 truncate text-[15px] font-extrabold text-[var(--aloha-green-dark)] hover:text-[var(--aloha-green)] sm:text-base"
+                                className="min-w-0 truncate text-[15px] font-extrabold leading-none text-[var(--aloha-green-dark)] hover:text-[var(--aloha-green)] sm:text-base"
                               >
                                 {labelNode(section.name)}
                               </Link>
                               <Link
                                 href={categoryHref(section)}
                                 onClick={handleNavigate}
-                                className="shrink-0 text-[12px] font-semibold text-[var(--aloha-muted)] hover:text-[var(--aloha-green)]"
+                                className="shrink-0 text-[12px] font-semibold leading-none text-[var(--aloha-muted)] hover:text-[var(--aloha-green)]"
                               >
                                 Xem tất cả →
                               </Link>
                             </div>
-                            <div className="grid grid-cols-5 gap-x-2.5 gap-y-3 justify-items-center">
+                            <div className="grid grid-cols-5 gap-x-2.5 gap-y-3 justify-items-start">
                               {withImg.map((leaf) => (
                                 <MegaL3Tile
                                   key={leaf.id}
@@ -302,23 +344,10 @@ export function CategoryMegaMenu({
                         );
                       })}
                     </div>
-                  ) : (
-                    <div className="flex flex-col items-start gap-3 py-6">
-                      <p className="text-sm text-[var(--aloha-muted)]">
-                        Nhóm này chưa có danh mục con.
-                      </p>
-                      <Link
-                        href={categoryHref(active)}
-                        onClick={handleNavigate}
-                        className="inline-flex items-center rounded-full bg-[var(--aloha-green-dark)] px-4 py-2 text-sm font-bold text-white hover:bg-[var(--aloha-green)]"
-                      >
-                        Xem tất cả →
-                      </Link>
-                    </div>
-                  )}
                 </>
               ) : null}
             </div>
+            ) : null}
           </div>
         </div>
       ) : null}

@@ -2,23 +2,29 @@ import Link from "next/link";
 
 /**
  * Banner CTV — ảnh user, tỉ lệ 1024×256 (~2/3 cao gốc), hiện full không crop.
- * 2 vùng bấm HTML đè đúng nút trong ảnh.
+ * Cả banner dẫn tới /tuyen-ctv; giữ hotspot nút Đăng ký / tìm hiểu.
  */
 export function HomeCtvBanner() {
   return (
     <section className="bg-white py-6 sm:py-8">
       <div className="mx-auto max-w-7xl px-4">
         <div className="home-ctv-banner relative overflow-hidden rounded-[var(--aloha-radius-lg)] shadow-[var(--aloha-shadow)] ring-1 ring-[var(--aloha-line)]">
+          <Link
+            href="/tuyen-ctv"
+            className="absolute inset-0 z-[5] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--aloha-green)]"
+            aria-label="Trở thành CTV Aloha — xem trang tuyển CTV"
+          />
+
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/banners/banner-ctv-aloha.png?v=11"
             alt="Trở thành CTV Aloha — kiếm thêm thu nhập cùng Aloha"
-            className="home-ctv-banner__img block h-full w-full select-none"
+            className="home-ctv-banner__img pointer-events-none block h-full w-full select-none"
             draggable={false}
           />
 
           <Link
-            href="/dang-ky"
+            href="/tuyen-ctv"
             className="absolute z-10 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--aloha-green)]"
             style={{
               left: "9.18%",
@@ -33,7 +39,7 @@ export function HomeCtvBanner() {
           </Link>
 
           <Link
-            href="/bai-viet"
+            href="/tuyen-ctv#cach-hoat-dong"
             className="absolute z-10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--aloha-green)]"
             style={{
               left: "30.57%",

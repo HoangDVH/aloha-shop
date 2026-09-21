@@ -43,6 +43,21 @@ const nextConfig: NextConfig = {
         destination: "/tim",
         permanent: true,
       },
+      {
+        source: "/blogs",
+        destination: "/bai-viet",
+        permanent: true,
+      },
+      {
+        source: "/blogs/:path*",
+        destination: "/bai-viet",
+        permanent: true,
+      },
+      {
+        source: "/branch-deactivate",
+        destination: "/",
+        permanent: true,
+      },
     ];
   },
   async rewrites() {

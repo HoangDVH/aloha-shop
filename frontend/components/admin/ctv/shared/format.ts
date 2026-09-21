@@ -51,6 +51,28 @@ export const COMMISSION_STATUS_LABEL: Record<string, string> = {
   flagged: "Nghi ngờ gian lận",
 };
 
+/** Nhãn trạng thái bill kỳ thanh toán */
+export const BILL_STATUS_LABEL: Record<string, string> = {
+  draft: "Nháp",
+  locked: "Đã chốt kỳ",
+  paid: "Đã thanh toán xong",
+};
+
+export function billStatusLabel(status: string | null | undefined): string {
+  const s = String(status || "").trim();
+  if (!s) return "Chưa chốt";
+  return BILL_STATUS_LABEL[s] || s;
+}
+
+/** YYYY-MM từ ISO / period sẵn có */
+export function periodFromIso(iso: string | null | undefined): string {
+  const s = String(iso || "").trim();
+  if (/^\d{4}-\d{2}$/.test(s)) return s;
+  const d = new Date(s);
+  if (!Number.isFinite(d.getTime())) return "";
+  return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}`;
+}
+
 /** Mã cờ gian lận (DB) → tiếng Việt dễ hiểu trên admin */
 export const FRAUD_FLAG_LABEL: Record<string, string> = {
   self_buy_phone: "Tự mua — trùng SĐT",

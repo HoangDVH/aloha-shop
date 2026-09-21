@@ -277,7 +277,9 @@ export function registerShopAccountsAdminRoutes(
       if (req.body?.adminNote !== undefined) patch.adminNote = String(req.body.adminNote || "");
       if (req.body?.ctvStatus) {
         const st = String(req.body.ctvStatus) as CtvStatus;
-        if (st === "cho_duyet" || st === "active" || st === "khoa") patch.ctvStatus = st;
+        if (st === "cho_duyet" || st === "active" || st === "khoa" || st === "tu_choi") {
+          patch.ctvStatus = st;
+        }
       }
       if (req.body?.ctvCode !== undefined) {
         const code = normalizeCtvCode(req.body.ctvCode);
@@ -328,9 +330,13 @@ export function registerShopAccountsAdminRoutes(
         if (!roles.includes("ctv")) {
           return res.status(400).json({ error: "Tài khoản chưa đăng ký CTV" });
         }
+        if (user.ctvStatus !== "cho_duyet") {
+          return res.status(400).json({ error: "Hồ sơ không còn chờ duyệt" });
+        }
 
         const patch: Record<string, unknown> = {
           ctvStatus: "active",
+          ctvRejectReason: null,
           updatedAt: new Date(),
         };
 
@@ -385,6 +391,48 @@ export function registerShopAccountsAdminRoutes(
       } catch (e: any) {
         if (e?.code === 11000) return res.status(409).json({ error: "Trùng mã CTV" });
         return res.status(500).json({ error: e?.message || "Lỗi duyệt" });
+      }
+    }
+  );
+
+  app.post(
+    "/api/shop/admin/accounts/:id/reject-ctv",
+    ...gate,
+    async (req: AuthRequest, res: Response) => {
+      try {
+        const db = await getShopDb();
+        const q = shopAccountIdQuery(req.params.id);
+        const user = await db.collection(SHOP_ACCOUNTS).findOne(q);
+        if (!user) return res.status(404).json({ error: "Không tìm thấy" });
+        const roles = Array.isArray(user.roles) ? user.roles.map(String) : [];
+        if (!roles.includes("ctv")) {
+          return res.status(400).json({ error: "Tài khoản chưa đăng ký CTV" });
+        }
+        if (user.ctvStatus !== "cho_duyet") {
+          return res.status(400).json({ error: "Hồ sơ không còn chờ duyệt" });
+        }
+        const reason = String(req.body?.reason || "").trim();
+        if (!reason) {
+          return res.status(400).json({ error: "Nhập lý do từ chối" });
+        }
+        await db.collection(SHOP_ACCOUNTS).updateOne(q, {
+          $set: {
+            ctvStatus: "tu_choi",
+            ctvRejectReason: reason.slice(0, 500),
+            updatedAt: new Date(),
+          },
+        });
+        const updated = await db.collection(SHOP_ACCOUNTS).findOne(q);
+        try {
+          syncBus.publish(["aloha_shop_accounts"], "ctv_reject", {
+            ids: [String(user._id)],
+          });
+        } catch {
+          /* ignore */
+        }
+        return res.json({ ok: true, user: toPublicShopAccount(updated!) });
+      } catch (e: any) {
+        return res.status(500).json({ error: e?.message || "Lỗi từ chối" });
       }
     }
   );

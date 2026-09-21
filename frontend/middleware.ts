@@ -6,9 +6,11 @@ const REDIRECT_TTL_MS = 30_000;
 
 /** Fallback khi API redirects chưa deploy / Mongo trống — URL sitelink KiotViet. */
 const BUILTIN_REDIRECTS: Record<string, string> = {
-  "/page/ve-chung-toi-14387a": "/",
+  "/page/ve-chung-toi-14387a": "/ve-aloha",
   "/page/khuyen-mai-1c107c": "/",
   "/branches": "/",
+  "/branch-deactivate": "/",
+  "/[platform]/[namespace]/[branchId]/[locationId]": "/",
   "/c/cay-phong-thuy-3ac9d3": "/danh-muc/cay-phong-thuy",
   "/c/cay-binh-an-a476a9": "/danh-muc/cay-binh-an",
   "/c/chau-men-hoa-bien-406561": "/danh-muc/chau-men-hoa-bien",
@@ -37,7 +39,9 @@ const RESERVED_ROOT = new Set([
   "sp",
   "tai-khoan",
   "tim",
+  "tuyen-ctv",
   "uploads",
+  "ve-aloha",
   "xac-nhan-don-hang",
   "branches",
 ]);
@@ -88,6 +92,12 @@ function resolveKiotVietPath(path: string): string | null {
 
   // /products/... → tìm kiếm (PDP cũ KiotViet)
   if (path === "/products" || path.startsWith("/products/")) return "/tim";
+
+  // /blogs/... → blog shop mới (URL KV / soft 404 cũ)
+  if (path === "/blogs" || path.startsWith("/blogs/")) return "/bai-viet";
+
+  // /branch-deactivate → trang chủ
+  if (path === "/branch-deactivate") return "/";
 
   // /branches → trang chủ
   if (path === "/branches") return "/";

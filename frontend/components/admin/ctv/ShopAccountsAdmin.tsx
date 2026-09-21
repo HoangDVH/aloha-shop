@@ -6,7 +6,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { RefreshCw, Search, X, Check, Lock, Unlock, Trash2, Settings2, UserPlus } from "lucide-react";
+import { RefreshCw, Search, X, Lock, Unlock, Trash2, Settings2, UserPlus, Eye } from "lucide-react";
 import { toast } from "@/components/admin/toast";
 import { CtvPagination } from "./shared/CtvPagination";
 import { ThuMuaListPagination } from "@/components/admin/ui/ThuMuaListPagination";
@@ -16,13 +16,15 @@ import {
   type AdminDateRange,
 } from "@/components/admin/ui/AdminDateRangePicker";
 import { AddCtvModal, type AddCtvFormValues } from "./AddCtvModal";
+import { CtvApplicationModal } from "./CtvApplicationModal";
+import { useCtvUiStore } from "./ctvUiStore";
 import {
   AdminTableRowSkeleton,
 } from "@/components/admin/ui/AdminSkeleton";
 import { maskPhone } from "./shared/format";
 
 type ShopRole = "customer" | "ctv";
-type CtvStatus = "cho_duyet" | "active" | "khoa";
+type CtvStatus = "cho_duyet" | "active" | "khoa" | "tu_choi";
 
 type ShopAccount = {
   id: string;
@@ -39,6 +41,15 @@ type ShopAccount = {
   lastLoginAt: string | null;
   adminNote?: string | null;
   commissionRate?: number | null;
+  zalo?: string | null;
+  addressText?: string | null;
+  referralChannel?: string | null;
+  channelUrl?: string | null;
+  referralSource?: string | null;
+  hasBusinessExp?: boolean | null;
+  businessExpNote?: string | null;
+  businessExpYears?: number | null;
+  ctvRejectReason?: string | null;
 };
 
 type Stats = {
@@ -115,6 +126,9 @@ function ctvStatusChip(row: ShopAccount): {
   if (row.ctvStatus === "cho_duyet") {
     return { label: "Chờ duyệt", tone: "orange" };
   }
+  if (row.ctvStatus === "tu_choi") {
+    return { label: "Từ chối", tone: "red" };
+  }
   return { label: "Hoạt động", tone: "green" };
 }
 
@@ -155,6 +169,7 @@ export default function ShopAccountsAdmin({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [addBusy, setAddBusy] = useState(false);
+  const setReviewAccountId = useCtvUiStore((s) => s.setReviewAccountId);
 
   const apiScope =
     scope === "ctv" ? "ctv" : scope === "customers" ? "customer" : "";
@@ -407,25 +422,12 @@ export default function ShopAccountsAdmin({
       });
       toast.success("Đã cập nhật");
       setItems((prev) => prev.map((x) => (x.id === id ? r.user : x)));
+      if (expandedId === id) {
+        /* keep expanded */
+      }
       await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Lỗi cập nhật");
-    } finally {
-      setBusyId(null);
-    }
-  }
-
-  async function approveCtv(id: string) {
-    setBusyId(id);
-    try {
-      const r = await api<{ user: ShopAccount }>(`/api/shop/admin/accounts/${id}/approve-ctv`, {
-        method: "POST",
-      });
-      toast.success("Đã duyệt CTV");
-      setItems((prev) => prev.map((x) => (x.id === id ? r.user : x)));
-      await load();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Lỗi duyệt");
     } finally {
       setBusyId(null);
     }
@@ -711,11 +713,11 @@ export default function ShopAccountsAdmin({
                             <button
                               type="button"
                               disabled={busyId === row.id}
-                              title="Duyệt CTV"
-                              onClick={() => void approveCtv(row.id)}
-                              className="rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700"
+                              title="Xem hồ sơ đăng ký"
+                              onClick={() => setReviewAccountId(row.id)}
+                              className="rounded-md border border-slate-200 bg-white p-1.5 text-slate-700 hover:bg-slate-50"
                             >
-                              <Check size={14} />
+                              <Eye size={14} />
                             </button>
                           ) : null}
                           <button
@@ -812,14 +814,15 @@ export default function ShopAccountsAdmin({
                                       </strong>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
-                                      {detail.ctvStatus !== "active" ? (
+                                      {detail.ctvStatus === "cho_duyet" ? (
                                         <button
                                           type="button"
                                           disabled={busyId === detail.id}
-                                          onClick={() => void approveCtv(detail.id)}
-                                          className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white"
+                                          onClick={() => setReviewAccountId(detail.id)}
+                                          className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-bold text-white"
                                         >
-                                          Duyệt CTV
+                                          <Eye size={14} />
+                                          Xem hồ sơ / Duyệt
                                         </button>
                                       ) : null}
                                       <button
@@ -932,6 +935,13 @@ export default function ShopAccountsAdmin({
           />
         )}
       </div>
+
+      <CtvApplicationModal
+        onDone={() => {
+          toast.success("Đã cập nhật hồ sơ CTV");
+          void load();
+        }}
+      />
     </div>
   );
 }

@@ -21,12 +21,7 @@ import { AddressBookPanel } from "@/components/AddressBookPanel";
 import { OrdersPanel } from "@/components/OrdersPanel";
 import { useShopUpdateMeMutation } from "@/lib/authQueries";
 import { useShopLogoutAction, isShopLoggingOut } from "@/lib/useShopLogoutAction";
-import {
-  becomeCtvSchema,
-  profileSchema,
-  type BecomeCtvInput,
-  type ProfileInput,
-} from "@/lib/authSchemas";
+import { profileSchema, type ProfileInput } from "@/lib/authSchemas";
 import { ShopPageLoader } from "@/components/ShopPageLoader";
 
 type Tab = "tai-khoan" | "dia-chi" | "don-mua" | "thanh-toan";
@@ -65,11 +60,6 @@ function AccountPageInner() {
     defaultValues: { fullName: "", phone: "" },
   });
 
-  const ctvForm = useForm<BecomeCtvInput>({
-    resolver: zodResolver(becomeCtvSchema),
-    defaultValues: { ctvCode: "" },
-  });
-
   useEffect(() => {
     // Đăng xuất về "/" — đừng redirect sang /dang-nhap (race + overlay kép)
     if (logoutPending || isShopLoggingOut()) return;
@@ -95,7 +85,6 @@ function AccountPageInner() {
         fullName: user.fullName || "",
         phone: user.phone || "",
       });
-      ctvForm.reset({ ctvCode: user.ctvCode || "" });
     }
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -128,31 +117,16 @@ function AccountPageInner() {
     }
   });
 
-  const onBecomeCtv = ctvForm.handleSubmit(async (values) => {
-    try {
-      await updateMut.mutateAsync({
-        becomeCtv: true,
-        ctvCode: values.ctvCode || undefined,
-      });
-      ctvForm.clearErrors("root");
-      ctvForm.setError("root", {
-        type: "success",
-        message: "Đã gửi đăng ký CTV — chờ cửa hàng duyệt",
-      });
-    } catch (err) {
-      ctvForm.setError("root", {
-        message: err instanceof Error ? err.message : "Lỗi",
-      });
-    }
-  });
-
   const profileOk = profileForm.formState.errors.root?.type === "success";
-  const ctvOk = ctvForm.formState.errors.root?.type === "success";
   const hasGoogle = user.authProviders.includes("google");
   const roleLabel = user.roles.includes("ctv")
     ? user.ctvStatus === "active"
       ? "Cộng tác viên"
-      : "CTV (chờ duyệt)"
+      : user.ctvStatus === "tu_choi"
+        ? "CTV (bị từ chối)"
+        : user.ctvStatus === "cho_duyet"
+          ? "CTV (chờ duyệt)"
+          : "CTV"
     : "Khách hàng";
 
   const tabItems: { id: Tab; label: string; icon: ReactNode }[] = [
@@ -376,37 +350,24 @@ function AccountPageInner() {
                 </form>
               </section>
 
-              {!user.roles.includes("ctv") ? (
+              {!user.roles.includes("ctv") || user.ctvStatus === "tu_choi" ? (
                 <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[var(--aloha-line)]">
                   <h2 className="text-base font-extrabold text-[var(--aloha-ink)]">
-                    Đăng ký làm cộng tác viên
+                    {user.ctvStatus === "tu_choi"
+                      ? "Nộp lại hồ sơ cộng tác viên"
+                      : "Đăng ký làm cộng tác viên"}
                   </h2>
-                  <form onSubmit={onBecomeCtv} className="mt-4 space-y-3" noValidate>
-                    <input
-                      placeholder="Mã CTV mong muốn"
-                      className="w-full rounded-lg border border-[#D5E3D0] px-3 py-2.5 text-sm uppercase outline-none focus:border-[var(--aloha-green)]"
-                      {...ctvForm.register("ctvCode", {
-                        setValueAs: (v) => String(v || "").toUpperCase(),
-                      })}
-                    />
-                    {ctvForm.formState.errors.ctvCode ? (
-                      <p className="text-xs text-red-600">
-                        {ctvForm.formState.errors.ctvCode.message}
-                      </p>
-                    ) : null}
-                    {ctvForm.formState.errors.root?.message ? (
-                      <p className={`text-sm ${ctvOk ? "text-[#2E7D32]" : "text-red-600"}`}>
-                        {ctvForm.formState.errors.root.message}
-                      </p>
-                    ) : null}
-                    <button
-                      type="submit"
-                      disabled={updateMut.isPending}
-                      className="rounded-lg bg-[#E65100] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60"
-                    >
-                      Gửi đăng ký CTV
-                    </button>
-                  </form>
+                  <p className="mt-2 text-sm text-slate-600">
+                    {user.ctvStatus === "tu_choi" && user.ctvRejectReason
+                      ? `Lần trước bị từ chối: ${user.ctvRejectReason}`
+                      : "Điền hồ sơ đầy đủ trên trang tuyển CTV — nộp trên đúng tài khoản đang đăng nhập."}
+                  </p>
+                  <Link
+                    href="/tuyen-ctv"
+                    className="mt-4 inline-flex rounded-lg bg-[#E65100] px-5 py-2.5 text-sm font-bold text-white hover:opacity-90"
+                  >
+                    {user.ctvStatus === "tu_choi" ? "Nộp lại hồ sơ" : "Đăng ký CTV"}
+                  </Link>
                 </section>
               ) : null}
             </>

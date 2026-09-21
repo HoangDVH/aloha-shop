@@ -80,7 +80,13 @@ export function PriceRangeFilter({ minPrice, maxPrice, onChange }: Props) {
             <button
               key={p.label}
               type="button"
-              onClick={() => onChange(String(p.min), p.max > 0 ? String(p.max) : null)}
+              onClick={() => {
+                if (active) {
+                  onChange("", null);
+                  return;
+                }
+                onChange(String(p.min), p.max > 0 ? String(p.max) : null);
+              }}
               className={`rounded-lg border px-3 py-2 text-sm font-semibold transition ${
                 active
                   ? "border-[var(--aloha-green)] bg-white text-[var(--aloha-green)]"

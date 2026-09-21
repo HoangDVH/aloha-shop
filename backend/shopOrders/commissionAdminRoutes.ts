@@ -28,6 +28,7 @@ import {
 } from "./commissionModels.js";
 import {
   clearHeldCommissions,
+  buildEligiblePeriodPreview,
   lockMonthlyBill,
   markBillPaid,
   resolveRate,
@@ -159,6 +160,7 @@ export function registerShopCommissionAdminRoutes(
           ma: 1,
           ten: 1,
           anh: 1,
+          images: 1,
           giaWeb: 1,
           giaBan: 1,
           ctvCommissionRate: 1,
@@ -182,10 +184,15 @@ export function registerShopCommissionAdminRoutes(
                   Number.isFinite(Number((d as any).ctvCommissionRate))
                 ? Number((d as any).ctvCommissionRate)
                 : settings.defaultCommissionRate;
+          const anh =
+            String((d as any).anh || "").trim() ||
+            String(
+              (Array.isArray((d as any).images) && (d as any).images[0]) || ""
+            ).trim();
           return {
             ma: String((d as any).ma || "").toUpperCase(),
             ten: String((d as any).ten || ""),
-            anh: String((d as any).anh || ""),
+            anh,
             gia: Number((d as any).giaWeb ?? (d as any).giaBan) || 0,
             ctvCommissionRate:
               (d as any).ctvCommissionRate != null
@@ -291,11 +298,54 @@ export function registerShopCommissionAdminRoutes(
       const status = String(req.query.status || "").trim();
       const ctvCode = normalizeCtvCode(String(req.query.ctvCode || ""));
       const q = String(req.query.q || "").trim();
+      const period = String(req.query.period || "").trim();
+      const fromYmd = String(req.query.from || "").trim();
+      const toYmd = String(req.query.to || "").trim();
       const page = Math.max(1, Number(req.query.page) || 1);
       const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50));
       const filter: Record<string, unknown> = {};
       if (status) filter.status = status;
       if (ctvCode) filter.ctvCode = ctvCode;
+
+      const ymdOk = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
+      if (ymdOk(fromYmd) && ymdOk(toYmd)) {
+        const [fy, fm, fd] = fromYmd.split("-").map(Number);
+        const [ty, tm, td] = toYmd.split("-").map(Number);
+        const fromIso = new Date(fy, fm - 1, fd).toISOString();
+        const toIso = new Date(ty, tm - 1, td + 1).toISOString(); // exclusive
+        filter.$and = [
+          ...(Array.isArray(filter.$and) ? (filter.$and as unknown[]) : []),
+          {
+            $or: [
+              { eligibleAt: { $gte: fromIso, $lt: toIso } },
+              {
+                $and: [
+                  { $or: [{ eligibleAt: null }, { eligibleAt: { $exists: false } }] },
+                  { createdAt: { $gte: fromIso, $lt: toIso } },
+                ],
+              },
+            ],
+          },
+        ];
+      } else {
+        const periodMatch = /^(\d{4})-(\d{2})$/.exec(period);
+        if (periodMatch) {
+          const y = Number(periodMatch[1]);
+          const mo = Number(periodMatch[2]);
+          const periodStart = new Date(Date.UTC(y, mo - 1, 1)).toISOString();
+          const periodEnd = new Date(Date.UTC(y, mo, 1)).toISOString();
+          // Kỳ: đã vào bill kỳ này HOẶC eligibleAt thuộc tháng (preview chưa chốt)
+          filter.$and = [
+            ...(Array.isArray(filter.$and) ? (filter.$and as unknown[]) : []),
+            {
+              $or: [
+                { billingPeriod: period },
+                { eligibleAt: { $gte: periodStart, $lt: periodEnd } },
+              ],
+            },
+          ];
+        }
+      }
 
       if (q) {
         const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -405,6 +455,22 @@ export function registerShopCommissionAdminRoutes(
             .filter(Boolean)
         ),
       ];
+      const accDocs = ctvCodesOnPage.length
+        ? await shopDb
+            .collection(SHOP_ACCOUNTS)
+            .find({ ctvCode: { $in: ctvCodesOnPage } })
+            .project({ ctvCode: 1, fullName: 1, displayName: 1 })
+            .toArray()
+        : [];
+      const nameByCtv = new Map<string, string>();
+      for (const a of accDocs) {
+        const code = normalizeCtvCode(String((a as any).ctvCode || ""));
+        if (!code) continue;
+        const name =
+          String((a as any).fullName || "").trim() ||
+          String((a as any).displayName || "").trim();
+        if (name) nameByCtv.set(code, name);
+      }
       const clickDocs = ctvCodesOnPage.length
         ? await shopDb
             .collection("aloha_shop_ctv_clicks")
@@ -489,6 +555,7 @@ export function registerShopCommissionAdminRoutes(
           return {
             id: String(_id),
             ...rest,
+            ctvName: nameByCtv.get(ctvCode) || "",
             displayOrderCode: displayByShopCode.get(shopCode) || shopCode,
             purchasedAt,
             clickAt: pickClickAt(ctvCode, ma, purchasedAt),
@@ -538,6 +605,7 @@ export function registerShopCommissionAdminRoutes(
         eligibleAmount: Number(eligibleAgg[0]?.t) || 0,
         eligibleCount: Number(eligibleAgg[0]?.n) || 0,
         billedAmount: Number(billedAgg[0]?.t) || 0,
+        billedCount: Number(billedAgg[0]?.n) || 0,
         currentPeriod: period,
         currentBillStatus: (periodBill as any)?.status || null,
         hasOpenBill: Boolean(unlockedBill),
@@ -554,9 +622,56 @@ export function registerShopCommissionAdminRoutes(
       const period = String(req.query.period || "").trim();
       if (period) {
         const bill = await shopDb.collection(SHOP_COMMISSION_BILLS).findOne({ period });
-        if (!bill) return res.json({ ok: true, bill: null });
+        const built = await buildEligiblePeriodPreview(shopDb, period);
+        let preview =
+          built.ok
+            ? {
+                period: built.preview.period,
+                ctvLines: built.preview.ctvLines,
+                totals: built.preview.totals,
+              }
+            : null;
+        const enrichLines = async (lines: any[]) => {
+          const codes = [
+            ...new Set(
+              lines
+                .map((l) => normalizeCtvCode(String(l?.ctvCode || "")))
+                .filter(Boolean)
+            ),
+          ];
+          if (!codes.length) return lines;
+          const accs = await shopDb
+            .collection(SHOP_ACCOUNTS)
+            .find({ ctvCode: { $in: codes } })
+            .project({ ctvCode: 1, fullName: 1, displayName: 1 })
+            .toArray();
+          const map = new Map<string, string>();
+          for (const a of accs) {
+            const c = normalizeCtvCode(String((a as any).ctvCode || ""));
+            const n =
+              String((a as any).fullName || "").trim() ||
+              String((a as any).displayName || "").trim();
+            if (c && n) map.set(c, n);
+          }
+          return lines.map((l) => ({
+            ...l,
+            ctvName: map.get(normalizeCtvCode(String(l?.ctvCode || ""))) || "",
+          }));
+        };
+        if (preview?.ctvLines) {
+          preview = {
+            ...preview,
+            ctvLines: await enrichLines(preview.ctvLines as any[]),
+          };
+        }
+        if (!bill) {
+          return res.json({ ok: true, bill: null, preview });
+        }
         const { _id, ...rest } = bill as any;
-        return res.json({ ok: true, bill: rest });
+        if (Array.isArray(rest.ctvLines)) {
+          rest.ctvLines = await enrichLines(rest.ctvLines);
+        }
+        return res.json({ ok: true, bill: rest, preview });
       }
       const rows = await shopDb
         .collection(SHOP_COMMISSION_BILLS)

@@ -1,7 +1,7 @@
 "use client";
 
 export type ShopRole = "customer" | "ctv";
-export type CtvStatus = "cho_duyet" | "active" | "khoa";
+export type CtvStatus = "cho_duyet" | "active" | "khoa" | "tu_choi";
 
 export type ShopUser = {
   id: string;
@@ -26,6 +26,15 @@ export type ShopUser = {
     label?: string;
     isDefault: boolean;
   }[];
+  zalo?: string | null;
+  addressText?: string | null;
+  referralChannel?: string | null;
+  channelUrl?: string | null;
+  referralSource?: string | null;
+  hasBusinessExp?: boolean | null;
+  businessExpNote?: string | null;
+  businessExpYears?: number | null;
+  ctvRejectReason?: string | null;
 };
 
 async function shopAuthFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -74,6 +83,14 @@ export async function shopRegister(body: {
   phone?: string;
   roles: ShopRole[];
   ctvCode?: string;
+  zalo?: string;
+  addressText?: string;
+  referralChannel?: string;
+  channelUrl?: string;
+  referralSource?: string;
+  hasBusinessExp?: boolean;
+  businessExpNote?: string;
+  businessExpYears?: number;
 }) {
   return shopAuthFetch<{ user: ShopUser }>("/register", {
     method: "POST",
@@ -104,6 +121,14 @@ export async function shopUpdateMe(body: {
   phone?: string;
   becomeCtv?: boolean;
   ctvCode?: string;
+  zalo?: string;
+  addressText?: string;
+  referralChannel?: string;
+  channelUrl?: string;
+  referralSource?: string;
+  hasBusinessExp?: boolean;
+  businessExpNote?: string;
+  businessExpYears?: number;
 }) {
   return shopAuthFetch<{ user: ShopUser }>("/me", {
     method: "PATCH",

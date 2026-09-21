@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   ShoppingCart,
   Menu,
@@ -81,6 +82,8 @@ function AlohaLogo({
 }
 
 export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNode[] }) {
+  const pathname = usePathname() || "/";
+  const searchParams = useSearchParams();
   const count = useCart((s) => s.lines.reduce((n, l) => n + l.qty, 0));
   const [tree, setTree] = useState<ShopCategoryNavNode[]>(() =>
     categoryTree?.length ? categoryTree : []
@@ -89,6 +92,21 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
   const [theme, setTheme] = useState<AppearanceTheme | null>(null);
   const [mobileNav, setMobileNav] = useState(false);
   const chromeRef = useRef<HTMLElement | null>(null);
+
+  const navActiveKey = useMemo(() => {
+    if (pathname === "/ve-aloha" || pathname.startsWith("/ve-aloha/")) return "ve-aloha";
+    if (pathname === "/tuyen-ctv" || pathname.startsWith("/tuyen-ctv/")) return "tuyen-ctv";
+    if (pathname === "/bai-viet" || pathname.startsWith("/bai-viet/")) return "bai-viet";
+    if (pathname === "/tim") {
+      const sort = searchParams.get("sort") || "";
+      const inStock = searchParams.get("inStock") === "1";
+      if (sort === "ban_chay" && inStock) return "uu-dai";
+      return "san-pham";
+    }
+    if (pathname.startsWith("/danh-muc") || pathname.startsWith("/c/")) return "san-pham";
+    if (pathname === "/" || pathname === "") return "trang-chu";
+    return "";
+  }, [pathname, searchParams]);
 
   /** Tab bar mobile «Danh mục» → mở drawer danh mục. */
   useEffect(() => {
@@ -250,18 +268,41 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
 
           {/* Các mục nav — sát danh mục, chia đều khoảng trống còn lại */}
           <div className="flex min-w-0 flex-1 items-stretch">
-            {[
-              { href: "/", label: "Trang chủ" },
-              { href: "/tim", label: "Sản phẩm" },
-              { href: "/tim?sort=ban_chay&inStock=1", label: "Ưu đãi" },
-              { href: "/bai-viet", label: "Bài viết" },
-              { href: "/#ve-chung-toi", label: "Về Aloha" },
-              { href: wholesaleZaloUrl, label: "Báo giá sỉ", external: true },
-              { href: "/tuyen-ctv", label: "Tuyển CTV" },
-            ].map((item) => {
-              const cls =
-                "group relative inline-flex h-full min-w-0 flex-1 items-center justify-center px-1 text-[13px] font-semibold text-[var(--aloha-ink)] hover:text-[var(--aloha-green)] xl:px-1.5 xl:text-[14px]";
-              if (item.external) {
+            {(
+              [
+                { href: "/", label: "Trang chủ", key: "trang-chu" },
+                { href: "/tim", label: "Sản phẩm", key: "san-pham" },
+                {
+                  href: "/tim?sort=ban_chay&inStock=1",
+                  label: "Ưu đãi",
+                  key: "uu-dai",
+                },
+                { href: "/bai-viet", label: "Bài viết", key: "bai-viet" },
+                { href: "/ve-aloha", label: "Về Aloha", key: "ve-aloha" },
+                {
+                  href: wholesaleZaloUrl,
+                  label: "Báo giá sỉ",
+                  external: true,
+                  key: "bao-gia",
+                },
+                { href: "/tuyen-ctv", label: "Tuyển CTV", key: "tuyen-ctv" },
+              ] as const
+            ).map((item) => {
+              const active = item.key === navActiveKey;
+              const cls = `group relative inline-flex h-full min-w-0 flex-1 items-center justify-center px-1 text-[13px] xl:px-1.5 xl:text-[14px] ${
+                active
+                  ? "font-bold text-[var(--aloha-green)]"
+                  : "font-semibold text-[var(--aloha-ink)] hover:text-[var(--aloha-green)]"
+              }`;
+              const underline = (
+                <span
+                  className={`pointer-events-none absolute inset-x-2 bottom-0 h-[2.5px] rounded-full bg-[var(--aloha-green)] transition-opacity ${
+                    active ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                  }`}
+                  aria-hidden
+                />
+              );
+              if ("external" in item && item.external) {
                 return (
                   <a
                     key={item.label}
@@ -272,20 +313,20 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                     className={cls}
                   >
                     <span className="truncate">{item.label}</span>
-                    <span
-                      className="pointer-events-none absolute inset-x-2 bottom-0 h-[2.5px] rounded-full bg-[var(--aloha-green)] opacity-0 transition-opacity group-hover:opacity-100"
-                      aria-hidden
-                    />
+                    {underline}
                   </a>
                 );
               }
               return (
-                <Link key={item.label} href={item.href} onClick={closeMenus} className={cls}>
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  onClick={closeMenus}
+                  className={cls}
+                  aria-current={active ? "page" : undefined}
+                >
                   <span className="truncate">{item.label}</span>
-                  <span
-                    className="pointer-events-none absolute inset-x-2 bottom-0 h-[2.5px] rounded-full bg-[var(--aloha-green)] opacity-0 transition-opacity group-hover:opacity-100"
-                    aria-hidden
-                  />
+                  {underline}
                 </Link>
               );
             })}

@@ -11,6 +11,7 @@ import {
   Globe,
   LayoutDashboard,
   LogOut,
+  Percent,
   Search,
   Shield,
   UserRound,
@@ -23,6 +24,7 @@ const CTV_SUB = [
   { href: "/admin/ctv", label: "Tổng quan", exact: true, Icon: LayoutDashboard, badgeKey: null as null | "ctv" | "orders" | "fraud" },
   { href: "/admin/ctv/danh-sach", label: "Danh sách CTV", Icon: Users, badgeKey: "ctv" as const },
   { href: "/admin/ctv/hoa-hong", label: "Hoa hồng", Icon: Coins, badgeKey: null },
+  { href: "/admin/ctv/cau-hinh-hoa-hong", label: "Cấu hình hoa hồng", Icon: Percent, badgeKey: null },
   { href: "/admin/ctv/don-hang", label: "Đơn hàng", Icon: FileText, badgeKey: "orders" as const },
   { href: "/admin/ctv/chong-gian", label: "Chống gian lận", Icon: Shield, badgeKey: "fraud" as const },
 ];

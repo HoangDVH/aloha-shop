@@ -12,6 +12,21 @@ import {
 } from "@/lib/auth";
 import type { LoginInput, ProfileInput, RegisterInput } from "@/lib/authSchemas";
 
+export type CtvApplicationPayload = {
+  fullName?: string;
+  phone?: string;
+  zalo?: string;
+  addressText?: string;
+  referralChannel?: string;
+  channelUrl?: string;
+  referralSource?: string;
+  hasBusinessExp?: boolean;
+  businessExpNote?: string;
+  businessExpYears?: number;
+};
+
+export type RegisterMutationInput = Omit<RegisterInput, "passwordConfirm"> & CtvApplicationPayload;
+
 export const shopMeQueryKey = ["shop", "auth", "me"] as const;
 
 export function useShopMeQuery() {
@@ -36,7 +51,7 @@ export function useShopLoginMutation() {
 export function useShopRegisterMutation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: RegisterInput) => {
+    mutationFn: (input: RegisterMutationInput) => {
       const roles: ShopRole[] = [];
       if (input.asCustomer) roles.push("customer");
       if (input.asCtv) roles.push("ctv");
@@ -47,6 +62,14 @@ export function useShopRegisterMutation() {
         phone: input.phone || undefined,
         roles,
         ctvCode: input.asCtv ? input.ctvCode : undefined,
+        zalo: input.zalo,
+        addressText: input.addressText,
+        referralChannel: input.referralChannel,
+        channelUrl: input.channelUrl,
+        referralSource: input.referralSource,
+        hasBusinessExp: input.hasBusinessExp,
+        businessExpNote: input.businessExpNote,
+        businessExpYears: input.businessExpYears,
       });
     },
     onSuccess: (data) => {
@@ -60,13 +83,10 @@ export function useShopLogoutMutation() {
   return useMutation({
     mutationFn: () => shopLogout(),
     onMutate: () => {
-      // Xóa session trên UI ngay — không chờ API / không clear toàn bộ cache
-      // (qc.clear() khiến /me + trang chủ refetch → overlay vài giây).
       qc.setQueryData(shopMeQueryKey, null);
     },
     onSettled: () => {
       qc.setQueryData(shopMeQueryKey, null);
-      // Chỉ bỏ query gắn tài khoản, giữ catalog/cache trang chủ
       qc.removeQueries({ queryKey: ["shop", "orders"] });
       qc.removeQueries({ queryKey: ["shop", "ctv"] });
     },
@@ -81,7 +101,7 @@ export function useShopUpdateMeMutation() {
       phone?: string;
       becomeCtv?: boolean;
       ctvCode?: string;
-    }) => shopUpdateMe(body),
+    } & CtvApplicationPayload) => shopUpdateMe(body),
     onSuccess: (data) => {
       qc.setQueryData(shopMeQueryKey, data.user);
     },

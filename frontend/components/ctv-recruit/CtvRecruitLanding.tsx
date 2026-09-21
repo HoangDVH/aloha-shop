@@ -1,10 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useEffect, useState } from "react";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import {
   BadgePercent,
   Boxes,
@@ -15,48 +14,39 @@ import {
   Link2,
   Package,
   Percent,
-  Phone,
   Share2,
   ShieldCheck,
   Sparkles,
   Sprout,
   Users,
   Wallet,
+  X,
 } from "lucide-react";
 import { useShopAuth } from "@/components/ShopAuthProvider";
-import { useShopRegisterMutation } from "@/lib/authQueries";
+import { useShopRegisterMutation, useShopUpdateMeMutation } from "@/lib/authQueries";
 import { useShopRouter } from "@/lib/useShopRouter";
 import { CTV_PENDING_PATH, isCtvPendingBlocked } from "@/lib/ctvGate";
 import { SHOP_BRAND } from "@/lib/brand";
+import { shopLoginHref } from "@/lib/auth";
+import {
+  CTV_REFERRAL_CHANNELS,
+  CTV_REFERRAL_SOURCES,
+  ctvRecruitGuestSchema,
+  ctvRecruitLoggedInSchema,
+  toCtvApplicationPayload,
+  type CtvRecruitGuestInput,
+  type CtvRecruitLoggedInInput,
+} from "@/lib/ctvRecruitSchema";
+import { PasswordField } from "@/components/PasswordField";
+import { CtvTermsAccept, CtvTermsBody } from "@/components/ctv-recruit/CtvTermsAccept";
 
-const ctvRecruitSchema = z.object({
-  fullName: z.string().trim().min(1, "Nhập họ và tên"),
-  phone: z
-    .string()
-    .trim()
-    .min(9, "Nhập số điện thoại")
-    .regex(/^[0-9+\s()-]{9,15}$/, "Số điện thoại không hợp lệ"),
-  email: z.string().trim().email("Email không hợp lệ"),
-  password: z.string().min(8, "Mật khẩu tối thiểu 8 ký tự"),
-  source: z.string().trim().optional(),
-});
-
-type CtvRecruitInput = z.infer<typeof ctvRecruitSchema>;
-
-const SOURCES = [
-  "Facebook / Instagram",
-  "Zalo / bạn bè giới thiệu",
-  "TikTok / YouTube",
-  "Google tìm kiếm",
-  "Đã mua hàng tại Aloha",
-  "Khác",
-];
+type CtvFormValues = CtvRecruitGuestInput | CtvRecruitLoggedInInput;
 
 const QUICK_BENEFITS = [
-  { icon: Percent, label: "Hoa hồng lên đến 15%" },
-  { icon: Boxes, label: "Sản phẩm đa dạng 4.000+" },
-  { icon: Sparkles, label: "Hỗ trợ marketing & công cụ bán" },
-  { icon: Wallet, label: "Thanh toán nhanh & minh bạch" },
+  { icon: Percent, title: "Hoa hồng lên đến 15%", desc: "Minh bạch theo từng đơn thành công" },
+  { icon: Boxes, title: "Sản phẩm 4.000+", desc: "Chậu & cây dễ chia sẻ, dễ chốt" },
+  { icon: Sparkles, title: "Công cụ bán hàng", desc: "Link, ảnh mẫu, nội dung sẵn" },
+  { icon: Wallet, title: "Thanh toán nhanh", desc: "Đối soát rõ — chi đúng hạn" },
 ];
 
 const WHY_CARDS = [
@@ -92,7 +82,7 @@ const STEPS = [
     n: 1,
     icon: Users,
     title: "Đăng ký tài khoản",
-    desc: "Điền form bên trên — chờ Aloha duyệt CTV.",
+    desc: "Bấm Đăng ký ngay — điền form và chờ Aloha duyệt CTV.",
   },
   {
     n: 2,
@@ -108,62 +98,69 @@ const STEPS = [
   },
 ];
 
-const COMMUNITY = [
-  {
-    badge: "Dễ dàng",
-    title: "Chỉ cần điện thoại",
-    desc: "Chia sẻ link sản phẩm trên Zalo, Facebook, TikTok — bắt đầu ngay hôm nay.",
-    image: "/categories/cat-cay-canh.png",
-  },
-  {
-    badge: "Đa dạng",
-    title: "Kho hàng phong phú",
-    desc: "Hàng nghìn mẫu chậu & cây — luôn có gì mới để giới thiệu khách.",
-    image: "/categories/cat-chau-cay.png",
-  },
-  {
-    badge: "Hỗ trợ",
-    title: "Công cụ bán hàng",
-    desc: "Ảnh đẹp, mô tả sẵn, theo dõi đơn và hoa hồng trên cổng CTV.",
-    image: "/categories/cat-phu-kien.png",
-  },
-  {
-    badge: "Thu nhập",
-    title: "Hoa hồng rõ ràng",
-    desc: "Minh bạch từng đơn — thanh toán đúng hạn, yên tâm gắn bó lâu dài.",
-    image: "/categories/cat-gia-the.png",
-  },
-];
-
-function scrollToForm() {
-  document.getElementById("ctv-dang-ky")?.scrollIntoView({ behavior: "smooth", block: "center" });
-}
-
-function CtvRecruitForm() {
+function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
   const { user, loading } = useShopAuth();
   const registerMut = useShopRegisterMutation();
+  const updateMut = useShopUpdateMeMutation();
   const router = useShopRouter();
   const [done, setDone] = useState(false);
+  const loggedIn = Boolean(user);
+  const rejected = Boolean(
+    user?.roles.includes("ctv") && user.ctvStatus === "tu_choi"
+  );
+  const locked =
+    Boolean(user && (user.active === false || user.ctvStatus === "khoa"));
+
+  const schema = loggedIn ? ctvRecruitLoggedInSchema : ctvRecruitGuestSchema;
 
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    control,
+    watch,
+    setValue,
+    clearErrors,
+    formState: { errors, isValid },
     setError,
-  } = useForm<CtvRecruitInput>({
-    resolver: zodResolver(ctvRecruitSchema),
+  } = useForm<CtvFormValues>({
+    resolver: zodResolver(schema),
+    mode: "onChange",
     defaultValues: {
-      fullName: "",
-      phone: "",
-      email: "",
-      password: "",
-      source: "",
+      fullName: user?.fullName || "",
+      phone: user?.phone || "",
+      zalo: user?.zalo || "",
+      addressText: user?.addressText || "",
+      referralChannel: (user?.referralChannel as CtvRecruitGuestInput["referralChannel"]) || undefined,
+      channelUrl: user?.channelUrl || "",
+      referralSource: user?.referralSource || "",
+      hasBusinessExp: user?.hasBusinessExp
+        ? "co_roi"
+        : user?.hasBusinessExp === false
+          ? "chua_co"
+          : undefined,
+      businessExpNote: user?.businessExpNote || "",
+      businessExpYears:
+        user?.businessExpYears != null ? String(user.businessExpYears) : "",
+      agreeTerms: false,
+      ...(loggedIn
+        ? {}
+        : {
+            email: "",
+            password: "",
+            passwordConfirm: "",
+          }),
     },
   });
 
+
+  const hasExp = watch("hasBusinessExp");
+  const agreeTerms = watch("agreeTerms");
+  const pending = registerMut.isPending || updateMut.isPending;
+  const canSubmit = isValid && agreeTerms === true && !pending && !locked;
+
   useEffect(() => {
     if (loading || !user) return;
-    if (isCtvPendingBlocked(user)) {
+    if (isCtvPendingBlocked(user) || user.ctvStatus === "cho_duyet") {
       router.replace(CTV_PENDING_PATH);
       return;
     }
@@ -174,34 +171,47 @@ function CtvRecruitForm() {
 
   const onSubmit = handleSubmit(async (values) => {
     try {
-      if (values.source) {
+      const app = toCtvApplicationPayload(values);
+      if (values.referralSource) {
         try {
-          sessionStorage.setItem("aloha:ctv-source", values.source);
+          sessionStorage.setItem("aloha:ctv-source", values.referralSource);
         } catch {
           /* ignore */
         }
       }
-      const data = await registerMut.mutateAsync({
-        fullName: values.fullName,
-        email: values.email,
-        phone: values.phone,
-        password: values.password,
-        asCustomer: false,
-        asCtv: true,
-        ctvCode: "",
-      });
+
+      let dataUser;
+      if (loggedIn && user) {
+        const data = await updateMut.mutateAsync({
+          becomeCtv: true,
+          ...app,
+        });
+        dataUser = data.user;
+      } else {
+        const guest = values as CtvRecruitGuestInput;
+        const data = await registerMut.mutateAsync({
+          email: guest.email,
+          password: guest.password,
+          asCustomer: false,
+          asCtv: true,
+          ctvCode: "",
+          ...app,
+        });
+        dataUser = data.user;
+      }
+
       setDone(true);
-      if (isCtvPendingBlocked(data.user)) {
+      onClose?.();
+      if (isCtvPendingBlocked(dataUser) || dataUser.ctvStatus === "cho_duyet") {
         router.replace(CTV_PENDING_PATH);
-      } else if (data.user.roles.includes("ctv") && data.user.ctvStatus === "active") {
+      } else if (dataUser.roles.includes("ctv") && dataUser.ctvStatus === "active") {
         router.replace("/cong-tac-vien");
       } else {
         router.replace(CTV_PENDING_PATH);
       }
     } catch (err) {
-      setError("root", {
-        message: err instanceof Error ? err.message : "Không đăng ký được. Thử lại sau.",
-      });
+      const msg = err instanceof Error ? err.message : "Không gửi được. Thử lại sau.";
+      setError("root", { message: msg });
     }
   });
 
@@ -219,110 +229,325 @@ function CtvRecruitForm() {
     );
   }
 
+  if (locked) {
+    return (
+      <div className="relative rounded-2xl bg-white p-6 shadow-lg ring-1 ring-[var(--aloha-line)] sm:p-8">
+        {onClose ? (
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"
+            aria-label="Đóng"
+          >
+            <X size={18} />
+          </button>
+        ) : null}
+        <h3 className="pr-10 text-lg font-extrabold text-[var(--aloha-green-dark)]">
+          Tài khoản đang bị khóa
+        </h3>
+        <p className="mt-2 text-sm text-[var(--aloha-muted)]">
+          Liên hệ Aloha để được hỗ trợ trước khi nộp hồ sơ CTV.
+        </p>
+      </div>
+    );
+  }
+
+  const fieldErr = (name: keyof CtvFormValues) => {
+    const e = errors[name as keyof typeof errors];
+    return e && "message" in e ? String(e.message) : null;
+  };
+
   return (
     <div
       id="ctv-dang-ky"
-      className="rounded-2xl bg-white p-5 shadow-[0_18px_48px_-20px_rgba(27,94,32,0.35)] ring-1 ring-[var(--aloha-line)] sm:p-7"
+      className="relative rounded-2xl bg-white p-5 shadow-[0_18px_48px_-20px_rgba(27,94,32,0.35)] ring-1 ring-[var(--aloha-line)] sm:p-7"
     >
-      <h3 className="text-lg font-extrabold text-[var(--aloha-green-dark)] sm:text-xl">
-        Đăng ký trở thành CTV Aloha
+      {onClose ? (
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"
+          aria-label="Đóng"
+        >
+          <X size={18} />
+        </button>
+      ) : null}
+      <h3 className="pr-10 text-lg font-extrabold text-[var(--aloha-green-dark)] sm:text-xl">
+        {rejected ? "Nộp lại hồ sơ CTV" : "Đăng ký trở thành CTV Aloha"}
       </h3>
       <p className="mt-1 text-sm text-[var(--aloha-muted)]">
-        Điền thông tin — chúng tôi duyệt sớm nhất có thể.
+        Điền đủ thông tin — nút gửi chỉ bật khi hồ sơ hợp lệ.
       </p>
 
-      <form onSubmit={onSubmit} className="mt-5 space-y-3.5" noValidate>
-        <div>
-          <label className="mb-1.5 block text-xs font-semibold text-slate-600" htmlFor="ctv-name">
-            Họ và tên
-          </label>
-          <input
-            id="ctv-name"
-            placeholder="Nguyễn Văn A"
-            className="auth-field"
-            {...register("fullName")}
-          />
-          {errors.fullName ? (
-            <p className="mt-1 text-xs font-medium text-red-600">{errors.fullName.message}</p>
-          ) : null}
+      {rejected && user?.ctvRejectReason ? (
+        <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-100">
+          Lần trước bị từ chối: <strong>{user.ctvRejectReason}</strong>
         </div>
+      ) : null}
 
-        <div>
-          <label className="mb-1.5 block text-xs font-semibold text-slate-600" htmlFor="ctv-phone">
-            Số điện thoại
-          </label>
-          <input
-            id="ctv-phone"
-            inputMode="tel"
-            placeholder="09xx xxx xxx"
-            className="auth-field"
-            {...register("phone")}
-          />
-          {errors.phone ? (
-            <p className="mt-1 text-xs font-medium text-red-600">{errors.phone.message}</p>
-          ) : null}
-        </div>
+      <form onSubmit={onSubmit} className="mt-5 space-y-5" noValidate>
+        <fieldset className="space-y-3.5">
+          <legend className="text-[11px] font-bold tracking-wide text-slate-500 uppercase">
+            Liên hệ
+          </legend>
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-slate-600" htmlFor="ctv-name">
+              Họ và tên
+            </label>
+            <input id="ctv-name" placeholder="Nguyễn Văn A" className="auth-field" {...register("fullName")} />
+            {fieldErr("fullName") ? (
+              <p className="mt-1 text-xs font-medium text-red-600">{fieldErr("fullName")}</p>
+            ) : null}
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-slate-600" htmlFor="ctv-phone">
+              Số điện thoại
+            </label>
+            <input
+              id="ctv-phone"
+              inputMode="tel"
+              placeholder="09xx xxx xxx"
+              className="auth-field"
+              {...register("phone")}
+            />
+            {fieldErr("phone") ? (
+              <p className="mt-1 text-xs font-medium text-red-600">{fieldErr("phone")}</p>
+            ) : null}
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-slate-600" htmlFor="ctv-zalo">
+              Zalo
+            </label>
+            <input
+              id="ctv-zalo"
+              placeholder="SĐT Zalo hoặc https://zalo.me/..."
+              className="auth-field"
+              {...register("zalo")}
+            />
+            {fieldErr("zalo") ? (
+              <p className="mt-1 text-xs font-medium text-red-600">{fieldErr("zalo")}</p>
+            ) : null}
+          </div>
+          {!loggedIn ? (
+            <>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-600" htmlFor="ctv-email">
+                  Email
+                </label>
+                <input
+                  id="ctv-email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="ban@email.com"
+                  className="auth-field"
+                  {...register("email" as keyof CtvFormValues)}
+                />
+                {fieldErr("email" as keyof CtvFormValues) ? (
+                  <p className="mt-1 text-xs font-medium text-red-600">
+                    {fieldErr("email" as keyof CtvFormValues)}
+                  </p>
+                ) : null}
+              </div>
+              <PasswordField
+                id="ctv-pass"
+                label="Mật khẩu"
+                autoComplete="new-password"
+                placeholder="Ít nhất 8 ký tự"
+                error={fieldErr("password" as keyof CtvFormValues) || undefined}
+                {...register("password" as keyof CtvFormValues)}
+              />
+              <PasswordField
+                id="ctv-pass2"
+                label="Xác nhận mật khẩu"
+                autoComplete="new-password"
+                placeholder="Nhập lại mật khẩu"
+                error={fieldErr("passwordConfirm" as keyof CtvFormValues) || undefined}
+                {...register("passwordConfirm" as keyof CtvFormValues)}
+              />
+            </>
+          ) : (
+            <p className="rounded-xl bg-[var(--aloha-green-light)]/70 px-3 py-2 text-xs text-[var(--aloha-muted)]">
+              Đang nộp trên tài khoản <strong>{user?.email}</strong> — không cần nhập lại email /
+              mật khẩu.
+            </p>
+          )}
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-slate-600" htmlFor="ctv-addr">
+              Địa chỉ
+            </label>
+            <input
+              id="ctv-addr"
+              placeholder="Số nhà, đường, phường, tỉnh/thành"
+              className="auth-field"
+              {...register("addressText")}
+            />
+            {fieldErr("addressText") ? (
+              <p className="mt-1 text-xs font-medium text-red-600">{fieldErr("addressText")}</p>
+            ) : null}
+          </div>
+        </fieldset>
 
-        <div>
-          <label className="mb-1.5 block text-xs font-semibold text-slate-600" htmlFor="ctv-email">
-            Email
-          </label>
-          <input
-            id="ctv-email"
-            type="email"
-            autoComplete="email"
-            placeholder="ban@email.com"
-            className="auth-field"
-            {...register("email")}
-          />
-          {errors.email ? (
-            <p className="mt-1 text-xs font-medium text-red-600">{errors.email.message}</p>
-          ) : null}
-        </div>
+        <fieldset className="space-y-3.5">
+          <legend className="text-[11px] font-bold tracking-wide text-slate-500 uppercase">
+            Kênh bán
+          </legend>
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-slate-600" htmlFor="ctv-channel">
+              Bạn bán chủ yếu trên kênh nào?
+            </label>
+            <select id="ctv-channel" className="auth-field" {...register("referralChannel")}>
+              <option value="">— Chọn kênh —</option>
+              {CTV_REFERRAL_CHANNELS.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+            {fieldErr("referralChannel") ? (
+              <p className="mt-1 text-xs font-medium text-red-600">{fieldErr("referralChannel")}</p>
+            ) : null}
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-slate-600" htmlFor="ctv-url">
+              Link kênh / trang bán
+            </label>
+            <input
+              id="ctv-url"
+              placeholder="https://..."
+              className="auth-field"
+              {...register("channelUrl")}
+            />
+            {fieldErr("channelUrl") ? (
+              <p className="mt-1 text-xs font-medium text-red-600">{fieldErr("channelUrl")}</p>
+            ) : null}
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-slate-600" htmlFor="ctv-source">
+              Bạn biết đến Aloha qua đâu?{" "}
+              <span className="font-normal text-slate-400">(tuỳ chọn)</span>
+            </label>
+            <select id="ctv-source" className="auth-field" {...register("referralSource")}>
+              <option value="">— Chọn nguồn —</option>
+              {CTV_REFERRAL_SOURCES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+        </fieldset>
 
-        <div>
-          <label className="mb-1.5 block text-xs font-semibold text-slate-600" htmlFor="ctv-pass">
-            Mật khẩu đăng nhập
-          </label>
-          <input
-            id="ctv-pass"
-            type="password"
-            autoComplete="new-password"
-            placeholder="Ít nhất 8 ký tự"
-            className="auth-field"
-            {...register("password")}
+        <fieldset className="space-y-3">
+          <legend className="text-[11px] font-bold tracking-wide text-slate-500 uppercase">
+            Kinh nghiệm kinh doanh
+          </legend>
+          <Controller
+            name="hasBusinessExp"
+            control={control}
+            render={({ field }) => (
+              <div className="grid grid-cols-2 gap-2">
+                {(
+                  [
+                    { v: "chua_co" as const, label: "Chưa có" },
+                    { v: "co_roi" as const, label: "Có rồi" },
+                  ] as const
+                ).map((opt) => (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    onClick={() => field.onChange(opt.v)}
+                    className={`rounded-xl px-3 py-3 text-sm font-bold ring-1 transition ${
+                      field.value === opt.v
+                        ? "bg-[var(--aloha-green-light)] text-[var(--aloha-green-dark)] ring-[var(--aloha-green)]"
+                        : "bg-white text-slate-600 ring-[var(--aloha-line)] hover:bg-slate-50"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
           />
-          {errors.password ? (
-            <p className="mt-1 text-xs font-medium text-red-600">{errors.password.message}</p>
+          {fieldErr("hasBusinessExp") ? (
+            <p className="text-xs font-medium text-red-600">{fieldErr("hasBusinessExp")}</p>
           ) : null}
-        </div>
+          {hasExp === "co_roi" ? (
+            <div className="space-y-3 rounded-xl bg-[#FDF6E3]/70 p-3 ring-1 ring-[var(--aloha-border-brown)]/40">
+              <div>
+                <label
+                  className="mb-1.5 block text-xs font-semibold text-slate-600"
+                  htmlFor="ctv-exp-note"
+                >
+                  Bạn đang / đã kinh doanh gì?
+                </label>
+                <input
+                  id="ctv-exp-note"
+                  placeholder="VD: bán cây cảnh trên Facebook"
+                  className="auth-field"
+                  {...register("businessExpNote")}
+                />
+                {fieldErr("businessExpNote") ? (
+                  <p className="mt-1 text-xs font-medium text-red-600">
+                    {fieldErr("businessExpNote")}
+                  </p>
+                ) : null}
+              </div>
+              <div>
+                <label
+                  className="mb-1.5 block text-xs font-semibold text-slate-600"
+                  htmlFor="ctv-exp-years"
+                >
+                  Số năm kinh nghiệm
+                </label>
+                <input
+                  id="ctv-exp-years"
+                  type="number"
+                  min={1}
+                  max={50}
+                  inputMode="numeric"
+                  placeholder="1–50"
+                  className="auth-field"
+                  {...register("businessExpYears")}
+                />
+                {fieldErr("businessExpYears") ? (
+                  <p className="mt-1 text-xs font-medium text-red-600">
+                    {fieldErr("businessExpYears")}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+        </fieldset>
 
-        <div>
-          <label className="mb-1.5 block text-xs font-semibold text-slate-600" htmlFor="ctv-source">
-            Bạn biết đến Aloha qua đâu?
-          </label>
-          <select id="ctv-source" className="auth-field" {...register("source")}>
-            <option value="">— Chọn nguồn —</option>
-            {SOURCES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </div>
+        <CtvTermsAccept
+          agreed={agreeTerms === true}
+          error={fieldErr("agreeTerms") || undefined}
+          onAgreed={() => {
+            setValue("agreeTerms", true, { shouldValidate: true, shouldDirty: true });
+            clearErrors("agreeTerms");
+          }}
+        />
 
         {errors.root?.message ? (
-          <p className="rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-700 ring-1 ring-red-100">
-            {errors.root.message}
-          </p>
+          <div className="rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-700 ring-1 ring-red-100">
+            <p>{errors.root.message}</p>
+            {/đã được đăng ký|Email đã/i.test(errors.root.message) && !loggedIn ? (
+              <p className="mt-1 text-xs font-normal">
+                <Link href={shopLoginHref("/tuyen-ctv")} className="font-bold underline">
+                  Đăng nhập
+                </Link>{" "}
+                rồi nộp hồ sơ trên đúng tài khoản đó.
+              </p>
+            ) : null}
+          </div>
         ) : null}
 
         <button
           type="submit"
-          disabled={registerMut.isPending}
-          className="inline-flex h-12 w-full items-center justify-center rounded-full bg-[var(--aloha-green-dark)] text-[15px] font-bold text-white shadow-md transition hover:bg-[var(--aloha-green)] disabled:opacity-60"
+          disabled={!canSubmit}
+          className="inline-flex h-12 w-full items-center justify-center rounded-full bg-[var(--aloha-green-dark)] text-[15px] font-bold text-white shadow-md transition hover:bg-[var(--aloha-green)] disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {registerMut.isPending ? "Đang gửi…" : "Đăng ký ngay"}
+          {pending ? "Đang gửi…" : rejected ? "Nộp lại hồ sơ" : "Gửi đăng ký"}
         </button>
 
         <p className="flex items-center justify-center gap-1.5 text-center text-[11px] text-[var(--aloha-muted)]">
@@ -330,15 +555,17 @@ function CtvRecruitForm() {
           Thông tin của bạn được bảo mật tuyệt đối
         </p>
 
-        <p className="text-center text-xs text-[var(--aloha-muted)]">
-          Đã có tài khoản?{" "}
-          <Link
-            href={`/dang-nhap?next=${encodeURIComponent("/cong-tac-vien")}`}
-            className="font-bold text-[var(--aloha-green)] hover:underline"
-          >
-            Đăng nhập
-          </Link>
-        </p>
+        {!loggedIn ? (
+          <p className="text-center text-xs text-[var(--aloha-muted)]">
+            Đã có tài khoản?{" "}
+            <Link
+              href={shopLoginHref("/tuyen-ctv")}
+              className="font-bold text-[var(--aloha-green)] hover:underline"
+            >
+              Đăng nhập
+            </Link>
+          </p>
+        ) : null}
       </form>
     </div>
   );
@@ -346,98 +573,160 @@ function CtvRecruitForm() {
 
 /** Landing tuyển CTV — UI theo mock + đăng ký CTV thật. */
 export function CtvRecruitLanding() {
-  const formRef = useRef<HTMLDivElement>(null);
+  const { user } = useShopAuth();
+  const [formOpen, setFormOpen] = useState(false);
+
+  useEffect(() => {
+    if (!formOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFormOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [formOpen]);
+
+  const openForm = () => setFormOpen(true);
+  const closeForm = () => setFormOpen(false);
 
   return (
     <div className="bg-[#FDFBF7] text-[var(--aloha-ink)]">
-      {/* Hero */}
-      <section className="relative overflow-hidden border-b border-[var(--aloha-border-brown)]/30">
+      {/* Hero — 2 cột kiểu landing Affiliate sàn TMĐT */}
+      <section className="relative overflow-hidden border-b border-[var(--aloha-border-brown)]/30 bg-[linear-gradient(105deg,#FDFBF7_0%,#F3F8F0_48%,#EEF5EA_100%)]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/decor/leaves-tr.png"
           alt=""
           aria-hidden
-          className="pointer-events-none absolute -right-4 top-0 z-0 h-28 w-28 opacity-35 sm:h-40 sm:w-40"
+          className="pointer-events-none absolute -right-4 top-0 z-0 h-28 w-28 opacity-30 sm:h-44 sm:w-44"
         />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/decor/leaves-bl.png"
           alt=""
           aria-hidden
-          className="pointer-events-none absolute -left-2 bottom-0 z-0 h-24 w-24 opacity-30 sm:h-36 sm:w-36"
+          className="pointer-events-none absolute -left-2 bottom-0 z-0 h-24 w-24 opacity-25 sm:h-40 sm:w-40"
         />
 
-        <div className="relative z-10 mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:py-12 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-10 lg:py-14">
-          <div>
-            <p className="inline-flex items-center gap-1.5 rounded-full bg-[var(--aloha-green-light)] px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-[var(--aloha-green-dark)]">
-              <Sprout size={14} aria-hidden />
-              Chương trình Cộng tác viên
-            </p>
-            <h1 className="ctv-recruit-script mt-4 text-[2.35rem] leading-[1.15] text-[var(--aloha-green-dark)] sm:text-[2.85rem] md:text-[3.15rem]">
-              Gia nhập đội ngũ
-              <br />
-              Cộng tác viên Aloha
-            </h1>
-            <p className="mt-3 text-base font-bold text-[var(--aloha-green)] sm:text-lg">
-              Chia sẻ đam mê cây xanh – Kiếm thêm thu nhập
-            </p>
-            <p className="mt-3 max-w-xl text-sm leading-relaxed text-[var(--aloha-muted)] sm:text-[15px]">
-              Chỉ cần điện thoại là bạn có thể bắt đầu chia sẻ sản phẩm {SHOP_BRAND} và nhận hoa
-              hồng minh bạch cho mỗi đơn hàng thành công.
-            </p>
+        <div className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:py-12">
+          <div className="grid items-center gap-8 lg:grid-cols-2 lg:gap-12">
+            {/* Cột trái: copy + CTA */}
+            <div className="min-w-0 text-left">
+              <p className="inline-flex items-center gap-1.5 rounded-full bg-[var(--aloha-green-light)] px-3 py-1 text-[11px] font-bold tracking-wide text-[var(--aloha-green-dark)] uppercase">
+                <Sprout size={14} aria-hidden />
+                Chương trình Cộng tác viên
+              </p>
+              <h1 className="mt-3 text-[1.75rem] font-extrabold leading-[1.22] tracking-tight text-[var(--aloha-green-dark)] sm:text-[2.2rem] lg:text-[2.45rem]">
+                Gia nhập đội ngũ Cộng tác viên Aloha
+              </h1>
+              <p className="mt-2.5 text-[1.05rem] font-semibold leading-snug text-[var(--aloha-green)] sm:text-lg">
+                Chia sẻ đam mê cây xanh — kiếm thêm thu nhập
+              </p>
+              <p className="mt-3 max-w-xl text-[15px] leading-[1.65] text-slate-600 sm:text-base">
+                Chỉ cần điện thoại là bạn có thể bắt đầu chia sẻ sản phẩm {SHOP_BRAND} và nhận hoa
+                hồng minh bạch cho mỗi đơn hàng thành công.
+              </p>
 
-            <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4">
-              {QUICK_BENEFITS.map(({ icon: Icon, label }) => (
-                <div
-                  key={label}
-                  className="flex items-start gap-2.5 rounded-xl bg-white/80 px-3 py-2.5 ring-1 ring-[var(--aloha-line)]"
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={openForm}
+                  className="inline-flex h-11 items-center gap-1.5 rounded-full bg-[var(--aloha-green-dark)] px-6 text-[15px] font-bold text-white shadow-lg shadow-[var(--aloha-green-dark)]/25 transition hover:bg-[var(--aloha-green)]"
                 >
-                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--aloha-green-light)] text-[var(--aloha-green)]">
-                    <Icon size={16} strokeWidth={2} aria-hidden />
-                  </span>
-                  <span className="text-[12px] font-semibold leading-snug text-[var(--aloha-ink)] sm:text-[13px]">
-                    {label}
-                  </span>
-                </div>
-              ))}
+                  Đăng ký ngay
+                  <ChevronRight size={18} aria-hidden />
+                </button>
+                <a
+                  href="https://zalo.me/0794901233"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-11 items-center gap-1.5 rounded-full border-2 border-[var(--aloha-green)] bg-white/90 px-5 text-[15px] font-bold text-[var(--aloha-green-dark)] transition hover:bg-[var(--aloha-green-light)]"
+                >
+                  Liên hệ tư vấn
+                </a>
+              </div>
             </div>
 
-            <button
-              type="button"
-              onClick={scrollToForm}
-              className="mt-7 inline-flex h-12 items-center gap-1.5 rounded-full bg-[var(--aloha-green-dark)] px-7 text-[15px] font-bold text-white shadow-lg shadow-[var(--aloha-green-dark)]/25 transition hover:bg-[var(--aloha-green)]"
-            >
-              Đăng ký ngay
-              <ChevronRight size={18} aria-hidden />
-            </button>
-
-            {/* Visual phụ desktop */}
-            <div className="relative mt-8 hidden max-w-md overflow-hidden rounded-2xl bg-[var(--aloha-green-light)]/50 p-4 ring-1 ring-[var(--aloha-green)]/15 lg:block">
-              <div className="flex items-center gap-4">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/categories/cat-cay-canh.png"
-                  alt=""
-                  className="h-28 w-28 object-contain"
-                />
-                <div>
-                  <p className="rounded-2xl bg-white px-3 py-2 text-sm font-semibold text-[var(--aloha-green-dark)] shadow-sm">
-                    Kiếm thêm thu nhập cùng Aloha! ♡
-                  </p>
-                  <p className="mt-2 flex items-center gap-1.5 text-xs text-[var(--aloha-muted)]">
-                    <Phone size={12} aria-hidden />
-                    Bán online mọi lúc, mọi nơi
-                  </p>
+            {/* Cột phải: ảnh nhỏ gọn */}
+            <div className="min-w-0">
+              <div className="overflow-hidden rounded-2xl bg-white/70 ring-1 ring-[var(--aloha-line)]">
+                <div className="grid h-[148px] grid-cols-3 gap-1.5 p-2 sm:h-[168px] sm:gap-2 sm:p-2.5">
+                  <div className="flex items-end justify-center overflow-hidden rounded-lg bg-[#e8f0e4]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/categories/cat-cay-canh.png"
+                      alt=""
+                      className="h-[92%] w-auto max-w-full object-contain drop-shadow-sm"
+                    />
+                  </div>
+                  <div className="flex items-center justify-center overflow-hidden rounded-lg bg-[#f3f6f0] p-1.5">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/categories/cat-chau-cay.png"
+                      alt=""
+                      className="max-h-full max-w-full object-contain"
+                    />
+                  </div>
+                  <div className="flex items-center justify-center overflow-hidden rounded-lg bg-[#f3f6f0] p-1.5">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/categories/cat-phu-kien.png"
+                      alt=""
+                      className="max-h-full max-w-full object-contain"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div ref={formRef}>
-            <CtvRecruitForm />
-          </div>
+          {/* 4 lợi ích — 1 hàng cùng khung hình */}
+          <ul className="mt-7 grid grid-cols-2 gap-x-5 gap-y-4 border-t border-[var(--aloha-line)]/80 pt-6 lg:grid-cols-4 lg:gap-6">
+            {QUICK_BENEFITS.map(({ icon: Icon, title, desc }) => (
+              <li key={title} className="flex min-w-0 items-start gap-3">
+                <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[var(--aloha-green)] ring-1 ring-[var(--aloha-line)]">
+                  <Icon size={18} strokeWidth={2} aria-hidden />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[15px] font-bold leading-snug text-[var(--aloha-ink)] sm:text-base">
+                    {title}
+                  </span>
+                  <span className="mt-1 block text-[13px] leading-snug text-slate-500 sm:text-[14px]">
+                    {desc}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
+
+      {/* Form đăng ký — chỉ hiện khi bấm Đăng ký ngay */}
+      {formOpen ? (
+        <div
+          className="fixed inset-0 z-[80] flex items-end justify-center p-0 sm:items-center sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ctv-dang-ky"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 bg-[#0b141a]/55 backdrop-blur-[2px]"
+            aria-label="Đóng"
+            onClick={closeForm}
+          />
+          <div className="relative z-[1] max-h-[min(92svh,720px)] w-full max-w-lg overflow-y-auto rounded-t-2xl sm:rounded-2xl">
+            <CtvRecruitForm
+              key={user?.id || "guest"}
+              onClose={closeForm}
+            />
+          </div>
+        </div>
+      ) : null}
 
       {/* Vì sao */}
       <section className="mx-auto max-w-7xl px-4 py-12 sm:py-14">
@@ -495,41 +784,18 @@ export function CtvRecruitLanding() {
         </div>
       </section>
 
-      {/* Cộng đồng */}
-      <section className="mx-auto max-w-7xl px-4 py-12 sm:py-14">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="max-w-xl text-2xl font-extrabold text-[var(--aloha-green-dark)] sm:text-[1.75rem]">
-            Cộng đồng CTV Aloha — Càng chia sẻ, càng nhận nhiều
+      {/* Điều khoản CTV */}
+      <section
+        id="dieu-khoan-ctv"
+        className="scroll-mt-24 border-t border-[var(--aloha-line)] bg-white py-10 sm:py-12"
+      >
+        <div className="mx-auto max-w-3xl px-4">
+          <h2 className="text-xl font-extrabold text-[var(--aloha-green-dark)] sm:text-2xl">
+            Điều khoản cộng tác viên
           </h2>
-          <button
-            type="button"
-            onClick={scrollToForm}
-            className="inline-flex h-11 w-fit shrink-0 items-center gap-1 rounded-full bg-[var(--aloha-green-dark)] px-5 text-sm font-bold text-white hover:bg-[var(--aloha-green)]"
-          >
-            Đăng ký ngay
-            <ChevronRight size={16} aria-hidden />
-          </button>
-        </div>
-
-        <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {COMMUNITY.map((c) => (
-            <article
-              key={c.title}
-              className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[var(--aloha-line)] transition hover:-translate-y-0.5 hover:shadow-md"
-            >
-              <div className="relative flex h-40 items-center justify-center bg-[#f3f6f0]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={c.image} alt="" className="max-h-[85%] max-w-[70%] object-contain" />
-                <span className="absolute left-3 top-3 rounded-full bg-[var(--aloha-green)] px-2.5 py-0.5 text-[11px] font-bold text-white">
-                  {c.badge}
-                </span>
-              </div>
-              <div className="p-4">
-                <h3 className="text-[15px] font-extrabold text-[var(--aloha-ink)]">{c.title}</h3>
-                <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--aloha-muted)]">{c.desc}</p>
-              </div>
-            </article>
-          ))}
+          <div className="mt-4">
+            <CtvTermsBody />
+          </div>
         </div>
       </section>
 
@@ -553,8 +819,8 @@ export function CtvRecruitLanding() {
               </div>
             ))}
           </div>
-          <p className="ctv-recruit-script text-2xl text-[var(--aloha-green-dark)] sm:text-[1.75rem]">
-            Cùng Aloha lan tỏa màu xanh! ♡
+          <p className="max-w-sm text-lg font-extrabold leading-snug text-[var(--aloha-green-dark)] sm:text-xl lg:text-right">
+            Cùng Aloha lan tỏa màu xanh
           </p>
         </div>
       </section>

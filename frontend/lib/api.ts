@@ -181,16 +181,8 @@ export function categoryHref(node: {
   id?: number;
   categoryId?: number;
 }) {
-  const sp = new URLSearchParams();
-  const cid = Number(node.id) || Number(node.categoryId) || 0;
-  if (cid > 0) sp.set("categoryId", String(cid));
-  // Chỉ kèm nhom khi chưa có categoryId (link cũ / thiếu id).
-  if (!(cid > 0)) {
-    const nhom = (node.path || node.name).trim();
-    if (nhom) sp.set("nhom", nhom);
-  }
-  const qs = sp.toString();
-  return `/danh-muc/${encodeURIComponent(node.slug)}${qs ? `?${qs}` : ""}`;
+  // URL sạch khớp canonical — server resolve categoryId từ slug.
+  return `/danh-muc/${encodeURIComponent(node.slug)}`;
 }
 
 export async function fetchProducts(

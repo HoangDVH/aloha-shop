@@ -1,6 +1,12 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Be_Vietnam_Pro } from "next/font/google";
+
+/** Auth không đưa lên Google — khớp Disallow trong robots.txt. */
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 const beVietnam = Be_Vietnam_Pro({
   subsets: ["vietnamese", "latin"],

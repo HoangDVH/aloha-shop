@@ -11,6 +11,7 @@ import {
   Button,
   Card,
   Col,
+  Drawer,
   Dropdown,
   Empty,
   Input,
@@ -25,6 +26,7 @@ import {
 } from "antd";
 import {
   Coins,
+  ChevronRight,
   Filter,
   MousePointerClick,
   RefreshCw,
@@ -57,9 +59,11 @@ import {
 import { useCtvUiStore, type CtvAdminSub } from "./ctvUiStore";
 import {
   COMMISSION_STATUS_LABEL,
+  billStatusLabel,
   formatDt,
   formatFraudFlags,
   formatVnd,
+  periodFromIso,
 } from "./shared/format";
 import { CtvPagination } from "./shared/CtvPagination";
 import {
@@ -79,7 +83,8 @@ const TITLE: Record<CtvAdminSub, string> = {
   overview: "Tổng quan",
   list: "Danh sách CTV",
   customers: "Quản lý khách hàng",
-  commissions: "Quản lý hoa hồng",
+  commissions: "Hoa hồng",
+  commissionConfig: "Cấu hình hoa hồng",
   orders: "Đơn hàng CTV",
   fraud: "Chống gian lận",
 };
@@ -88,7 +93,8 @@ const SUBTITLE: Record<CtvAdminSub, string> = {
   overview: "Hiệu suất chương trình cộng tác viên theo kỳ",
   list: "Duyệt, khóa và quản lý tài khoản CTV",
   customers: "Tài khoản khách mua trên web bán",
-  commissions: "Theo dõi dòng hoa hồng và kỳ thanh toán",
+  commissions: "Đối soát dòng hoa hồng và kỳ thanh toán",
+  commissionConfig: "Đặt % hoa hồng theo SP và CTV đặc biệt",
   orders: "Đơn hàng gắn mã giới thiệu CTV",
   fraud: "Cảnh báo và xử lý hành vi bất thường",
 };
@@ -96,6 +102,7 @@ const SUBTITLE: Record<CtvAdminSub, string> = {
 function subFromPath(pathname: string): CtvAdminSub {
   if (pathname.startsWith("/admin/ctv/danh-sach")) return "list";
   if (pathname.startsWith("/admin/ctv/khach-hang")) return "customers";
+  if (pathname.startsWith("/admin/ctv/cau-hinh-hoa-hong")) return "commissionConfig";
   if (pathname.startsWith("/admin/ctv/hoa-hong")) return "commissions";
   if (pathname.startsWith("/admin/ctv/don-hang")) return "orders";
   if (pathname.startsWith("/admin/ctv/chong-gian")) return "fraud";
@@ -603,7 +610,7 @@ export default function CtvAdminShell() {
   const pathname = usePathname() || "/admin/ctv";
   const activeSub = subFromPath(pathname);
   const detailCode = detailCodeFromPath(pathname);
-  const { periodKey, setPeriodKey, dateRange, setDateRange, setActiveSub } =
+  const { periodKey, dateRange, setDateRange, setActiveSub } =
     useCtvUiStore();
   const [legacyTick, setLegacyTick] = useState(0);
 
@@ -624,24 +631,13 @@ export default function CtvAdminShell() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {activeSub === "overview" ? (
+            {activeSub === "overview" || activeSub === "commissions" ? (
               <AdminDateRangePicker
                 value={dateRange || defaultThisMonthRange()}
                 onChange={(r) => {
                   if (r) setDateRange(r);
                 }}
               />
-            ) : null}
-            {activeSub === "commissions" ? (
-              <label className="inline-flex h-9 items-center gap-2 rounded-lg border border-[#dce6da] bg-white px-3 text-[13px] font-semibold text-slate-600 shadow-sm">
-                <span className="text-slate-400">Kỳ TT</span>
-                <input
-                  type="month"
-                  className="h-full border-0 bg-transparent text-[13px] font-bold text-[#2D5A27] outline-none"
-                  value={periodKey}
-                  onChange={(e) => setPeriodKey(e.target.value)}
-                />
-              </label>
             ) : null}
             {activeSub !== "list" && activeSub !== "customers" ? (
               <button
@@ -674,9 +670,14 @@ export default function CtvAdminShell() {
       {!detailCode && activeSub === "orders" ? <OrdersPanel /> : null}
       {!detailCode && activeSub === "commissions" ? (
         <CommissionsHub
+          key={`hh-${periodKey}-${dateRange?.from}-${dateRange?.to}-${legacyTick}`}
           period={periodKey}
+          dateRange={dateRange || defaultThisMonthRange()}
           onExported={() => setLegacyTick((n) => n + 1)}
         />
+      ) : null}
+      {!detailCode && activeSub === "commissionConfig" ? (
+        <CommissionConfigHub key={`cfg-${legacyTick}`} />
       ) : null}
       {!detailCode && activeSub === "list" ? (
         <ShopCtvAffiliateAdminLegacy
@@ -1097,53 +1098,89 @@ function statusTag(s: string) {
 
 function CommissionsHub({
   period,
+  dateRange,
   onExported,
 }: {
   period: string;
+  dateRange: { from: string; to: string };
   onExported: () => void;
 }) {
-  const [seg, setSeg] = useState<"dong" | "ky" | "pct" | "dacbiet">("dong");
+  const [seg, setSeg] = useState<"dong" | "ky">("dong");
+  const [drillCtv, setDrillCtv] = useState<string | null>(null);
+  const [listSeedCtv, setListSeedCtv] = useState<string | undefined>();
+  const [listSeedPeriod, setListSeedPeriod] = useState<string | undefined>();
   const billQ = useCtvBills(period);
   const statsQ = useCtvStats();
   const lockM = useLockBill();
   const paidM = useMarkBillPaid();
   const exportM = useExportBillExcel();
   const bill = billQ.data?.bill;
+  const preview = billQ.data?.preview;
   const st = (statsQ.data || {}) as Record<string, unknown>;
+  const billLocked = bill?.status === "locked" || bill?.status === "paid";
+  const tableLines = billLocked
+    ? (Array.isArray(bill?.ctvLines) ? bill.ctvLines : [])
+    : (Array.isArray(preview?.ctvLines) ? preview!.ctvLines : []);
+  const tableTotals = billLocked ? bill?.totals : preview?.totals;
 
-  const summary = [
-    {
-      title: "Hoa hồng đang giữ",
-      value: formatVnd(Number(st.heldAmount) || 0),
-      sub: `${st.heldCount || 0} dòng`,
-      tone: "#c47a2c",
-    },
-    {
-      title: "Đủ điều kiện chi",
-      value: formatVnd(Number(st.eligibleAmount) || 0),
-      sub: `${st.eligibleCount || 0} dòng`,
-      tone: "#2D5A27",
-    },
-    {
-      title: `Kỳ ${period}`,
-      value:
-        bill?.status === "paid"
-          ? "Đã thanh toán"
-          : bill?.status === "locked"
-            ? "Đã chốt"
-            : "Chưa chốt",
-      sub: formatVnd(Number(bill?.totals?.commission) || 0),
-      tone: "#3b82f6",
-    },
-    {
-      title: "Cần thanh toán",
-      value: formatVnd(
-        (Number(st.heldAmount) || 0) + (Number(st.eligibleAmount) || 0)
-      ),
-      sub: "held + eligible",
-      tone: "#7c3aed",
-    },
-  ];
+  const summary =
+    seg === "ky"
+      ? [
+          {
+            title: "Tổng kỳ này",
+            value: formatVnd(Number(tableTotals?.commission) || 0),
+            sub: `${Number(tableTotals?.ctvCount) || 0} CTV · ${Number(tableTotals?.orderCount) || 0} đơn`,
+            tone: "#2D5A27",
+          },
+          {
+            title: "Trạng thái kỳ",
+            value: billStatusLabel(bill?.status),
+            sub: period,
+            tone: billLocked ? "#3b82f6" : "#c47a2c",
+          },
+          {
+            title: "Đủ điều kiện (shop)",
+            value: formatVnd(Number(st.eligibleAmount) || 0),
+            sub: `${st.eligibleCount || 0} dòng toàn shop`,
+            tone: "#2D5A27",
+          },
+          {
+            title: "Đã vào kỳ chưa chi",
+            value: formatVnd(Number(st.billedAmount) || 0),
+            sub: `${st.billedCount || 0} dòng billed`,
+            tone: "#7c3aed",
+          },
+        ]
+      : [
+          {
+            title: "Hoa hồng đang giữ",
+            value: formatVnd(Number(st.heldAmount) || 0),
+            sub: `${st.heldCount || 0} dòng`,
+            tone: "#c47a2c",
+          },
+          {
+            title: "Đủ điều kiện chi",
+            value: formatVnd(Number(st.eligibleAmount) || 0),
+            sub: `${st.eligibleCount || 0} dòng`,
+            tone: "#2D5A27",
+          },
+          {
+            title: `Kỳ ${period}`,
+            value: billStatusLabel(bill?.status),
+            sub: formatVnd(
+              Number(bill?.totals?.commission) ||
+                Number(preview?.totals?.commission) ||
+                0
+            ),
+            tone: "#3b82f6",
+          },
+          {
+            title: "Sẵn sàng chi",
+            value: formatVnd(Number(st.eligibleAmount) || 0),
+            sub: "Chỉ dòng đủ điều kiện (không gồm đang giữ)",
+            tone: "#7c3aed",
+          },
+        ];
 
   return (
     <div className="space-y-4">
@@ -1174,48 +1211,88 @@ function CommissionsHub({
 
       <div className="overflow-hidden rounded-xl border border-[#e4ebe3] bg-white shadow-sm">
         <div className="border-b border-[#eef2ee] bg-[#f4f6f4] px-3 py-2.5">
+          <div className="mb-1 text-[11px] font-bold tracking-wide text-slate-400 uppercase">
+            Thanh toán & đối soát
+          </div>
           <Segmented
             block
             value={seg}
-            onChange={(v) => setSeg(v as typeof seg)}
+            onChange={(v) => setSeg(v as "dong" | "ky")}
             options={[
-              { label: "Danh sách hoa hồng", value: "dong" },
-              { label: "Kỳ tháng / thanh toán", value: "ky" },
-              { label: "Đặt % hoa hồng", value: "pct" },
-              { label: "CTV đặc biệt", value: "dacbiet" },
+              { label: "Theo dòng (giao dịch)", value: "dong" },
+              { label: "Theo kỳ (thanh toán)", value: "ky" },
             ]}
           />
         </div>
 
         <div className="p-4">
           {seg === "ky" ? (
-            <Card
-              bordered={false}
-              className="!shadow-none"
-              styles={{ body: { padding: 0 } }}
-              title={`Kỳ thanh toán ${period}`}
-              extra={
-                <Space wrap>
+            <div className="space-y-4">
+              <div className="rounded-xl border border-[#d7e3d2] bg-[#f7faf6] p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                      <Tag
+                        color={
+                          bill?.status === "paid"
+                            ? "cyan"
+                            : bill?.status === "locked"
+                              ? "blue"
+                              : "orange"
+                        }
+                      >
+                        {billStatusLabel(bill?.status)}
+                      </Tag>
+                      <span className="text-[12px] text-slate-500">
+                        Statement · {period}
+                        {bill?.id ? ` · ${bill.id}` : ""}
+                      </span>
+                    </div>
+                    <h3 className="m-0 text-lg font-extrabold text-[#1a2e1a]">
+                      Kỳ thanh toán {period}
+                    </h3>
+                    <p className="mb-0 mt-1 text-sm text-slate-600">
+                      {Number(tableTotals?.ctvCount) || 0} CTV ·{" "}
+                      {Number(tableTotals?.orderCount) || 0} đơn
+                      {bill?.lockedBy ? ` · chốt bởi ${bill.lockedBy}` : ""}
+                      {bill?.paidBy ? ` · chi bởi ${bill.paidBy}` : ""}
+                    </p>
+                    {!billLocked ? (
+                      <p className="mb-0 mt-1 text-[12px] text-amber-700">
+                        Đang xem trước dòng đủ điều kiện — bấm «Chốt kỳ» để khóa sổ như sàn.
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="text-left sm:text-right">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                      Tổng hoa hồng
+                    </div>
+                    <div className="text-2xl font-black text-[#2D5A27]">
+                      {formatVnd(Number(tableTotals?.commission) || 0)}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
                   <Button
                     type="primary"
                     loading={lockM.isPending}
-                    disabled={
-                      bill?.status === "locked" || bill?.status === "paid"
-                    }
+                    disabled={bill?.status === "locked" || bill?.status === "paid"}
                     onClick={() => {
+                      const ok = window.confirm(
+                        `Chốt kỳ ${period}? Sau khi chốt, các dòng đủ điều kiện sẽ vào kỳ thanh toán.`
+                      );
+                      if (!ok) return;
                       lockM.mutate(period, {
                         onSuccess: () => toast.success("Đã chốt kỳ"),
                         onError: (e) => toast.error((e as Error).message),
                       });
                     }}
                   >
-                    Lấy danh sách CTV đủ điều kiện
+                    Chốt kỳ thanh toán
                   </Button>
                   <Button
                     loading={exportM.isPending}
-                    disabled={
-                      bill?.status !== "locked" && bill?.status !== "paid"
-                    }
+                    disabled={bill?.status !== "locked" && bill?.status !== "paid"}
                     onClick={() => {
                       exportM.mutate(period, {
                         onSuccess: () => {
@@ -1232,6 +1309,10 @@ function CommissionsHub({
                     loading={paidM.isPending}
                     disabled={bill?.status !== "locked"}
                     onClick={() => {
+                      const ok = window.confirm(
+                        `Đánh dấu đã chuyển khoản cả kỳ ${period}?`
+                      );
+                      if (!ok) return;
                       paidM.mutate(period, {
                         onSuccess: () =>
                           toast.success("Đã đánh dấu thanh toán xong"),
@@ -1241,116 +1322,145 @@ function CommissionsHub({
                   >
                     Đã chuyển khoản xong
                   </Button>
-                </Space>
-              }
-            >
+                </div>
+              </div>
+
               {billQ.isLoading ? (
                 <Spin />
-              ) : !bill ? (
-                <Empty description="Chưa có bill kỳ này — bấm «Lấy danh sách CTV đủ điều kiện» để tạo" />
+              ) : tableLines.length ? (
+                <Table
+                  size="middle"
+                  pagination={false}
+                  rowKey={(r: any) => String(r.ctvCode || "")}
+                  dataSource={tableLines}
+                  onRow={(r: any) => ({
+                    onClick: () => {
+                      const code = String(r.ctvCode || "").trim();
+                      if (code) setDrillCtv(code);
+                    },
+                    className: "cursor-pointer hover:!bg-[#f3f7f2]",
+                  })}
+                  columns={[
+                    {
+                      title: "CTV",
+                      key: "ctv",
+                      render: (_: unknown, r: any) => (
+                        <div>
+                          <div className="font-semibold text-[#2D5A27]">{r.ctvCode}</div>
+                          {r.ctvName ? (
+                            <div className="text-[12px] text-slate-500">{r.ctvName}</div>
+                          ) : null}
+                        </div>
+                      ),
+                    },
+                    {
+                      title: "Đơn",
+                      dataIndex: "orderCount",
+                      width: 72,
+                      render: (n: number) => Number(n) || 0,
+                    },
+                    {
+                      title: "Hoa hồng",
+                      dataIndex: "net",
+                      align: "right" as const,
+                      render: (n: number) => (
+                        <span className="font-bold">{formatVnd(Number(n) || 0)}</span>
+                      ),
+                    },
+                    {
+                      title: "Chi CTV",
+                      key: "paid",
+                      width: 140,
+                      render: (_: unknown, l: any) =>
+                        l.paidAt ? (
+                          <Tag color="cyan">Đã chi</Tag>
+                        ) : bill?.status === "locked" ? (
+                          <Button
+                            size="small"
+                            loading={paidM.isPending}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const ok = window.confirm(
+                                `Xác nhận đã chuyển khoản cho ${l.ctvCode}?`
+                              );
+                              if (!ok) return;
+                              paidM.mutate(
+                                { period, ctvCode: String(l.ctvCode || "") },
+                                {
+                                  onSuccess: () =>
+                                    toast.success(`Đã chi ${l.ctvCode}`),
+                                  onError: (err) =>
+                                    toast.error((err as Error).message),
+                                }
+                              );
+                            }}
+                          >
+                            Chi CTV này
+                          </Button>
+                        ) : (
+                          <Text type="secondary">Chưa chốt kỳ</Text>
+                        ),
+                    },
+                    {
+                      title: "",
+                      key: "detail",
+                      width: 128,
+                      align: "right" as const,
+                      render: () => (
+                        <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#2D5A27]">
+                          Xem chi tiết
+                          <ChevronRight size={16} aria-hidden />
+                        </span>
+                      ),
+                    },
+                  ]}
+                />
               ) : (
-                <div className="space-y-4">
-                  <Space direction="vertical" size={4}>
-                    <Text>
-                      Trạng thái:{" "}
-                      <Tag color="green">{String(bill.status)}</Tag>
-                      {bill.lockedBy ? ` · chốt bởi ${bill.lockedBy}` : ""}
-                      {bill.paidBy ? ` · chi bởi ${bill.paidBy}` : ""}
-                    </Text>
-                    <Text strong className="!text-lg">
-                      {formatVnd(Number(bill.totals?.commission) || 0)}
-                    </Text>
-                    <Text type="secondary">
-                      {Number(bill.totals?.ctvCount) || 0} CTV ·{" "}
-                      {Number(bill.totals?.orderCount) || 0} đơn
-                    </Text>
-                  </Space>
-
-                  {Array.isArray(bill.ctvLines) && bill.ctvLines.length ? (
-                    <Table
-                      size="small"
-                      pagination={false}
-                      rowKey={(r: any) => String(r.ctvCode || "")}
-                      dataSource={bill.ctvLines}
-                      columns={[
-                        {
-                          title: "CTV",
-                          dataIndex: "ctvCode",
-                          render: (code: string) => (
-                            <Link
-                              href={`/admin/ctv/danh-sach/${encodeURIComponent(code)}`}
-                              className="font-semibold text-[#2D5A27] hover:underline"
-                            >
-                              {code}
-                            </Link>
-                          ),
-                        },
-                        {
-                          title: "Đơn",
-                          dataIndex: "orderCount",
-                          width: 80,
-                          render: (n: number) => Number(n) || 0,
-                        },
-                        {
-                          title: "Hoa hồng",
-                          dataIndex: "net",
-                          align: "right" as const,
-                          render: (n: number) => (
-                            <span className="font-bold">
-                              {formatVnd(Number(n) || 0)}
-                            </span>
-                          ),
-                        },
-                        {
-                          title: "Chi CTV",
-                          key: "paid",
-                          width: 140,
-                          render: (_: unknown, l: any) =>
-                            l.paidAt ? (
-                              <Tag color="cyan">Đã chi</Tag>
-                            ) : bill.status === "locked" ? (
-                              <Button
-                                size="small"
-                                loading={paidM.isPending}
-                                onClick={() => {
-                                  paidM.mutate(
-                                    {
-                                      period,
-                                      ctvCode: String(l.ctvCode || ""),
-                                    },
-                                    {
-                                      onSuccess: () =>
-                                        toast.success(
-                                          `Đã chi ${l.ctvCode}`
-                                        ),
-                                      onError: (e) =>
-                                        toast.error((e as Error).message),
-                                    }
-                                  );
-                                }}
-                              >
-                                Chi CTV này
-                              </Button>
-                            ) : (
-                              <Text type="secondary">—</Text>
-                            ),
-                        },
-                      ]}
-                    />
-                  ) : (
-                    <Empty description="Bill chưa có dòng CTV" />
-                  )}
-                </div>
+                <Empty description="Chưa có hoa hồng đủ điều kiện trong kỳ này" />
               )}
-            </Card>
+            </div>
           ) : null}
 
-          {seg === "dong" ? <CommissionLinesTable embedded /> : null}
+          <PeriodCtvLinesDrawer
+            open={Boolean(drillCtv)}
+            ctvCode={drillCtv || ""}
+            period={period}
+            billStatus={bill?.status}
+            onClose={() => setDrillCtv(null)}
+            onOpenFullList={(code) => {
+              setListSeedCtv(code);
+              setListSeedPeriod(period);
+              setSeg("dong");
+              setDrillCtv(null);
+            }}
+            onPayCtv={
+              bill?.status === "locked"
+                ? (code) => {
+                    const ok = window.confirm(
+                      `Xác nhận đã chuyển khoản cho ${code}?`
+                    );
+                    if (!ok) return;
+                    paidM.mutate(
+                      { period, ctvCode: code },
+                      {
+                        onSuccess: () => toast.success(`Đã chi ${code}`),
+                        onError: (e) => toast.error((e as Error).message),
+                      }
+                    );
+                  }
+                : undefined
+            }
+            payPending={paidM.isPending}
+          />
 
-          {seg === "pct" || seg === "dacbiet" ? (
-            <ShopCtvAffiliateAdminLegacy
-              forcedTab={seg === "pct" ? "dat-phan-tram" : "ctv-dac-biet"}
-              hideChrome
+          {seg === "dong" ? (
+            <CommissionLinesTable
+              embedded
+              initialCtv={listSeedCtv}
+              initialPeriod={listSeedPeriod}
+              onGoPeriod={() => setSeg("ky")}
+              hubPeriod={period}
+              hubRange={dateRange}
             />
           ) : null}
         </div>
@@ -1359,15 +1469,278 @@ function CommissionsHub({
   );
 }
 
-function CommissionLinesTable({ embedded = false }: { embedded?: boolean }) {
+function CommissionConfigHub() {
+  const [tab, setTab] = useState<"pct" | "dacbiet">("pct");
+  return (
+    <div className="overflow-hidden rounded-xl border border-[#e4ebe3] bg-white shadow-sm">
+      <div className="border-b border-[#eef2ee] bg-[#faf9f6] px-3 py-2.5">
+        <div className="mb-1 text-[11px] font-bold tracking-wide text-slate-400 uppercase">
+          Chương trình CTV · cấu hình
+        </div>
+        <Segmented
+          block
+          value={tab}
+          onChange={(v) => setTab(v as "pct" | "dacbiet")}
+          options={[
+            { label: "Đặt % hoa hồng", value: "pct" },
+            { label: "CTV đặc biệt", value: "dacbiet" },
+          ]}
+        />
+      </div>
+      <div className="p-4">
+        <p className="mb-3 mt-0 text-[13px] text-slate-500">
+          Cấu hình rate tách khỏi trang thanh toán — giống Affiliate settings trên sàn
+          (Shopee / TikTok). Đối soát tiền xem tại{" "}
+          <Link href="/admin/ctv/hoa-hong" className="font-semibold text-[#2D5A27] hover:underline">
+            Hoa hồng
+          </Link>
+          .
+        </p>
+        <ShopCtvAffiliateAdminLegacy
+          forcedTab={tab === "pct" ? "dat-phan-tram" : "ctv-dac-biet"}
+          hideChrome
+        />
+      </div>
+    </div>
+  );
+}
+
+function PeriodCtvLinesDrawer({
+  open,
+  ctvCode,
+  period,
+  billStatus,
+  onClose,
+  onOpenFullList,
+  onPayCtv,
+  payPending,
+}: {
+  open: boolean;
+  ctvCode: string;
+  period: string;
+  billStatus?: string;
+  onClose: () => void;
+  onOpenFullList: (ctvCode: string) => void;
+  onPayCtv?: (ctvCode: string) => void;
+  payPending?: boolean;
+}) {
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
+  useEffect(() => {
+    if (open) setPage(1);
+  }, [open, ctvCode, period]);
+
+  const { data, isLoading, isError, error, refetch, isFetching } =
+    useCtvCommissions({
+      ctvCode: ctvCode || undefined,
+      period,
+      page,
+      limit: pageSize,
+      enabled: open && Boolean(ctvCode),
+    });
+  const rows = open && ctvCode ? data?.data || [] : [];
+  const total = Number(data?.total) || rows.length;
+  const totalHh = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  const ctvName = String(rows[0]?.ctvName || "").trim();
+
+  return (
+    <Drawer
+      title={
+        <div>
+          <div className="text-[15px] font-bold text-[#1a2e1a]">
+            Chi tiết hoa hồng ·{" "}
+            <Link
+              href={`/admin/ctv/danh-sach/${encodeURIComponent(ctvCode)}`}
+              className="text-[#2D5A27] hover:underline"
+            >
+              {ctvCode || "—"}
+            </Link>
+          </div>
+          <div className="text-[12px] font-normal text-slate-500">
+            {ctvName ? `${ctvName} · ` : ""}
+            Kỳ {period} · {total} dòng
+            {rows.length ? ` · trang này ${formatVnd(totalHh)}` : ""}
+            {billStatus ? ` · ${billStatusLabel(billStatus)}` : ""}
+          </div>
+        </div>
+      }
+      open={open}
+      onClose={onClose}
+      width={Math.min(960, typeof window !== "undefined" ? window.innerWidth - 24 : 960)}
+      destroyOnClose
+      extra={
+        <Space wrap>
+          {onPayCtv ? (
+            <Button
+              type="primary"
+              size="small"
+              loading={payPending}
+              onClick={() => onPayCtv(ctvCode)}
+            >
+              Chi CTV này
+            </Button>
+          ) : null}
+          <Button
+            size="small"
+            onClick={() => {
+              if (ctvCode) onOpenFullList(ctvCode);
+            }}
+          >
+            Mở tab Theo dòng
+          </Button>
+          <Button size="small" loading={isFetching} onClick={() => void refetch()}>
+            Làm mới
+          </Button>
+        </Space>
+      }
+    >
+      {isLoading && !data ? <Spin /> : null}
+      {isError ? (
+        <Alert
+          type="error"
+          message={(error as Error).message}
+          action={<Button onClick={() => void refetch()}>Thử lại</Button>}
+        />
+      ) : null}
+      {!isLoading && !rows.length ? (
+        <Empty description="Không có dòng hoa hồng trong kỳ này" />
+      ) : null}
+      {rows.length ? (
+        <>
+          <Table
+            size="small"
+            rowKey={(r) => String(r.id)}
+            dataSource={rows}
+            pagination={false}
+            scroll={{ x: 900 }}
+            columns={[
+              {
+                title: "Click",
+                dataIndex: "clickAt",
+                width: 132,
+                render: (v: string | null) => (
+                  <span className="whitespace-nowrap text-slate-600">{formatDt(v)}</span>
+                ),
+              },
+              {
+                title: "Mua",
+                dataIndex: "purchasedAt",
+                width: 132,
+                render: (v: string | null) => (
+                  <span className="whitespace-nowrap text-slate-600">{formatDt(v)}</span>
+                ),
+              },
+              {
+                title: "Đơn",
+                dataIndex: "displayOrderCode",
+                render: (v: string, r: any) => {
+                  const code = String(v || r.orderCode || "").trim();
+                  if (!code) return "—";
+                  return (
+                    <Link
+                      href={`/don-hang/${encodeURIComponent(r.orderCode || code)}`}
+                      className="font-bold text-[#2D5A27] hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      #{code}
+                    </Link>
+                  );
+                },
+              },
+              { title: "SP", dataIndex: "ma", width: 88 },
+              {
+                title: "DT",
+                dataIndex: "lineTotal",
+                width: 100,
+                render: (v: number) => formatVnd(Number(v) || 0),
+              },
+              {
+                title: "%",
+                width: 56,
+                render: (_: unknown, r: any) => `${r.rate ?? "—"}%`,
+              },
+              {
+                title: "HH",
+                dataIndex: "amount",
+                width: 100,
+                render: (v: number) => (
+                  <span className="font-extrabold">{formatVnd(Number(v) || 0)}</span>
+                ),
+              },
+              {
+                title: "TT",
+                dataIndex: "status",
+                width: 120,
+                render: (s: string, r: any) => (
+                  <div>
+                    {statusTag(s)}
+                    {Array.isArray(r.fraudFlags) && r.fraudFlags.length ? (
+                      <div className="mt-1 text-[11px] text-rose-600">
+                        {formatFraudFlags(r.fraudFlags)}
+                      </div>
+                    ) : null}
+                  </div>
+                ),
+              },
+            ]}
+          />
+          <div className="mt-3">
+            <CtvPagination
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              onPageChange={setPage}
+              itemLabel="dòng"
+            />
+          </div>
+        </>
+      ) : null}
+    </Drawer>
+  );
+}
+
+function CommissionLinesTable({
+  embedded = false,
+  initialCtv,
+  initialPeriod,
+  onGoPeriod,
+  hubPeriod,
+  hubRange,
+}: {
+  embedded?: boolean;
+  initialCtv?: string;
+  initialPeriod?: string;
+  onGoPeriod?: () => void;
+  hubPeriod?: string;
+  hubRange?: { from: string; to: string };
+}) {
   const [status, setStatus] = useState<string | undefined>(undefined);
   const [q, setQ] = useState("");
   const [qDebounced, setQDebounced] = useState("");
   const [filterCtv, setFilterCtv] = useState("");
   const [appliedCtv, setAppliedCtv] = useState("");
+  const [filterPeriod, setFilterPeriod] = useState("");
+  const [appliedPeriod, setAppliedPeriod] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
   const [page, setPage] = useState(1);
   const pageSize = 12;
+  useEffect(() => {
+    if (!initialCtv) return;
+    const code = String(initialCtv).trim().toUpperCase();
+    if (!code) return;
+    setFilterCtv(code);
+    setAppliedCtv(code);
+    setPage(1);
+  }, [initialCtv]);
+
+  useEffect(() => {
+    if (!initialPeriod) return;
+    const p = String(initialPeriod).trim();
+    if (!/^\d{4}-\d{2}$/.test(p)) return;
+    setFilterPeriod(p);
+    setAppliedPeriod(p);
+    setPage(1);
+  }, [initialPeriod]);
 
   useEffect(() => {
     const t = window.setTimeout(() => setQDebounced(q.trim()), 300);
@@ -1376,12 +1749,15 @@ function CommissionLinesTable({ embedded = false }: { embedded?: boolean }) {
 
   useEffect(() => {
     setPage(1);
-  }, [status, qDebounced, appliedCtv]);
+  }, [status, qDebounced, appliedCtv, appliedPeriod, hubRange?.from, hubRange?.to]);
 
   const { data, isLoading, isError, error, refetch, isFetching } = useCtvCommissions({
     status,
     q: qDebounced || undefined,
     ctvCode: appliedCtv || undefined,
+    period: appliedPeriod || undefined,
+    from: !appliedPeriod && hubRange?.from ? hubRange.from : undefined,
+    to: !appliedPeriod && hubRange?.to ? hubRange.to : undefined,
     page,
     limit: pageSize,
   });
@@ -1390,7 +1766,7 @@ function CommissionLinesTable({ embedded = false }: { embedded?: boolean }) {
   const clearSoft = useClearSoftFraudFlags();
   const rows = data?.data || [];
   const total = Number(data?.total) || rows.length;
-  const filterActive = Boolean(appliedCtv);
+  const filterActive = Boolean(appliedCtv || appliedPeriod);
 
   const headerExtra = (
     <Button
@@ -1417,7 +1793,7 @@ function CommissionLinesTable({ embedded = false }: { embedded?: boolean }) {
       <div>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h3 className="m-0 text-[15px] font-bold text-[#1a2e1a]">
-            Danh sách dòng hoa hồng
+            Theo dòng · giao dịch hoa hồng
           </h3>
           {headerExtra}
         </div>
@@ -1480,6 +1856,15 @@ function CommissionLinesTable({ embedded = false }: { embedded?: boolean }) {
                 className="mb-3"
               />
               <label className="mb-1 block text-[12px] font-semibold text-slate-600">
+                Kỳ thanh toán
+              </label>
+              <input
+                type="month"
+                value={filterPeriod}
+                onChange={(e) => setFilterPeriod(e.target.value)}
+                className="mb-3 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 outline-none"
+              />
+              <label className="mb-1 block text-[12px] font-semibold text-slate-600">
                 Trạng thái
               </label>
               <select
@@ -1503,6 +1888,8 @@ function CommissionLinesTable({ embedded = false }: { embedded?: boolean }) {
                   onClick={() => {
                     setFilterCtv("");
                     setAppliedCtv("");
+                    setFilterPeriod("");
+                    setAppliedPeriod("");
                     setStatus(undefined);
                     setFilterOpen(false);
                   }}
@@ -1514,6 +1901,7 @@ function CommissionLinesTable({ embedded = false }: { embedded?: boolean }) {
                   size="small"
                   onClick={() => {
                     setAppliedCtv(filterCtv.trim());
+                    setAppliedPeriod(filterPeriod.trim());
                     setFilterOpen(false);
                   }}
                 >
@@ -1527,7 +1915,7 @@ function CommissionLinesTable({ embedded = false }: { embedded?: boolean }) {
             icon={<Filter size={14} />}
             className={filterActive ? "!border-[#2D5A27] !text-[#2D5A27]" : undefined}
           >
-            Lọc{filterActive ? " · 1" : ""}
+            Lọc{filterActive ? ` · ${[appliedCtv && "CTV", appliedPeriod && "Kỳ"].filter(Boolean).length}` : ""}
           </Button>
         </Dropdown>
       </div>
@@ -1557,7 +1945,22 @@ function CommissionLinesTable({ embedded = false }: { embedded?: boolean }) {
         />
       ) : null}
       {!isLoading && !rows.length ? (
-        <Empty description="Chưa có dòng hoa hồng" />
+        <Empty
+          description={
+            <div className="space-y-2">
+              <p className="m-0">Chưa có dòng hoa hồng theo bộ lọc hiện tại.</p>
+              <p className="m-0 text-[12px] text-slate-500">
+                Đang giữ / chưa đủ điều kiện sẽ không nằm trong kỳ thanh toán. Xem kỳ{" "}
+                <b>{hubPeriod || appliedPeriod || "hiện tại"}</b> để chốt chi.
+              </p>
+              {onGoPeriod ? (
+                <Button type="link" onClick={onGoPeriod}>
+                  Sang tab Theo kỳ (thanh toán)
+                </Button>
+              ) : null}
+            </div>
+          }
+        />
       ) : null}
       {rows.length ? (
         <>
@@ -1569,12 +1972,13 @@ function CommissionLinesTable({ embedded = false }: { embedded?: boolean }) {
             rowKey={(r) => String(r.id)}
             dataSource={rows}
             pagination={false}
-            scroll={{ x: 1180 }}
+            scroll={{ x: 1480 }}
             columns={[
               {
                 title: "Thời gian click",
                 dataIndex: "clickAt",
                 width: 148,
+                ellipsis: false,
                 render: (v: string | null) => (
                   <span className="whitespace-nowrap text-slate-600">
                     {formatDt(v)}
@@ -1594,37 +1998,89 @@ function CommissionLinesTable({ embedded = false }: { embedded?: boolean }) {
               {
                 title: "CTV",
                 dataIndex: "ctvCode",
-                render: (v: string) => <span className="font-semibold">{v}</span>,
+                width: 140,
+                render: (v: string, r: any) => (
+                  <div>
+                    <span className="font-semibold">{v}</span>
+                    {r.ctvName ? (
+                      <div className="text-[11px] text-slate-500">{r.ctvName}</div>
+                    ) : null}
+                  </div>
+                ),
               },
               {
                 title: "Đơn hàng",
                 dataIndex: "displayOrderCode",
-                render: (v: string, r: any) => (
-                  <span className="font-bold text-[#2D5A27]">
-                    #{v || r.orderCode}
-                  </span>
+                width: 120,
+                render: (v: string, r: any) => {
+                  const code = String(v || r.orderCode || "").trim();
+                  if (!code) return "—";
+                  return (
+                    <Link
+                      href={`/don-hang/${encodeURIComponent(r.orderCode || code)}`}
+                      className="font-bold whitespace-nowrap text-[#2D5A27] hover:underline"
+                    >
+                      #{code}
+                    </Link>
+                  );
+                },
+              },
+              {
+                title: "Sản phẩm",
+                dataIndex: "ma",
+                width: 100,
+                render: (v: string) => (
+                  <span className="whitespace-nowrap font-mono text-[12px]">{v || "—"}</span>
                 ),
               },
-              { title: "Sản phẩm", dataIndex: "ma" },
+              {
+                title: "Kỳ",
+                key: "period",
+                width: 96,
+                render: (_: unknown, r: any) => {
+                  const p =
+                    String(r.billingPeriod || "").trim() ||
+                    periodFromIso(r.eligibleAt) ||
+                    "—";
+                  return <span className="font-mono text-[12px] text-slate-600">{p}</span>;
+                },
+              },
               {
                 title: "Doanh thu",
                 dataIndex: "lineTotal",
-                render: (v: number) => formatVnd(Number(v) || 0),
+                width: 112,
+                align: "right" as const,
+                onHeaderCell: () => ({ className: "whitespace-nowrap" }),
+                render: (v: number) => (
+                  <span className="whitespace-nowrap">{formatVnd(Number(v) || 0)}</span>
+                ),
               },
               {
                 title: "% HH",
-                render: (_: unknown, r: any) => `${r.rate ?? "—"}%`,
+                width: 72,
+                align: "right" as const,
+                onHeaderCell: () => ({ className: "whitespace-nowrap" }),
+                render: (_: unknown, r: any) => (
+                  <span className="whitespace-nowrap">{`${r.rate ?? "—"}%`}</span>
+                ),
               },
               {
                 title: "Hoa hồng",
                 dataIndex: "amount",
+                width: 112,
+                align: "right" as const,
+                onHeaderCell: () => ({ className: "whitespace-nowrap" }),
                 render: (v: number) => (
-                  <span className="font-extrabold">{formatVnd(Number(v) || 0)}</span>
+                  <span className="whitespace-nowrap font-extrabold">
+                    {formatVnd(Number(v) || 0)}
+                  </span>
                 ),
               },
               {
                 title: "Trạng thái",
                 dataIndex: "status",
+                width: 160,
+                onHeaderCell: () => ({ className: "whitespace-nowrap" }),
                 render: (s: string, r: any) => (
                   <div>
                     {statusTag(s)}
@@ -1644,6 +2100,7 @@ function CommissionLinesTable({ embedded = false }: { embedded?: boolean }) {
               {
                 title: "Duyệt",
                 width: 200,
+                onHeaderCell: () => ({ className: "whitespace-nowrap" }),
                 render: (_: unknown, r: any) =>
                   r.status === "flagged" ? (
                     <Space size={4} wrap>

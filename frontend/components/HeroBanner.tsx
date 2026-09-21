@@ -56,7 +56,7 @@ export const BRAND_BANNERS: HeroSlide[] = [
   {
     src: "/banners/banner-hero-04.png?v=1",
     alt: "Trở thành CTV Aloha — Kiếm thêm thu nhập cùng Aloha",
-    href: "/dang-ky",
+    href: "/tuyen-ctv",
     label: "CTV Aloha",
     eyebrow: "Trở thành CTV Aloha",
     title: "Kiếm thêm thu nhập cùng Aloha",
@@ -81,8 +81,10 @@ function pickText(override: string | undefined, fallback: string) {
 /** Hero full-bleed: cao = 1 viewport trừ header+nav, ngang 100%. */
 export function HeroBanner({ slides }: { slides?: HeroSlide[] }) {
   // Luôn dùng ảnh brand; appearance chỉ được đổi href nếu hợp lệ.
+  // Slide CTV (index 3) luôn về /tuyen-ctv — tránh admin gắn nhầm /tim.
   const items = BRAND_BANNERS.map((brand, i) => {
     const s = slides?.[i];
+    if (i === 3) return { ...brand, href: "/tuyen-ctv" };
     if (!s || isLegacyBannerSrc(String(s.src || ""))) return brand;
     const href = String(s.href || "").trim();
     return {

@@ -691,6 +691,15 @@ body {
 }
 
 /* Card SP — nút giỏ chỉ hiện khi hover (desktop); mobile luôn hiện */
+.product-card__badge {
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+  overflow-wrap: normal !important;
+  max-width: none !important;
+  width: max-content;
+  flex-shrink: 0;
+}
+
 .product-card__add-wrap {
   display: flex;
   justify-content: flex-end;

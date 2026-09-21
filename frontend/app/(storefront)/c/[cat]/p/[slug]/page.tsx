@@ -10,7 +10,7 @@ import {
   RelatedProductsSkeleton,
 } from "@/components/RelatedProductsSection";
 import { fetchAppearance, fallbackAppearance } from "@/lib/appearance";
-import { SHOP_ORIGIN, absUrl, plainText } from "@/lib/seo";
+import { NOINDEX_FOLLOW, SHOP_ORIGIN, absUrl, plainText } from "@/lib/seo";
 import { resolveProductSeo } from "@/lib/seoTemplates";
 import { buildBreadcrumbJsonLd } from "@/lib/seoSchema";
 
@@ -42,7 +42,12 @@ export async function generateMetadata({
       getProductByPath(path),
       fetchAppearance().catch(() => fallbackAppearance()),
     ]);
-    if (!item) return { title: "Sản phẩm" };
+    if (!item) {
+      return {
+        title: "Sản phẩm",
+        robots: NOINDEX_FOLLOW,
+      };
+    }
 
     const price = formatVnd(item.gia);
     const stock =
@@ -103,7 +108,7 @@ export async function generateMetadata({
       },
     };
   } catch {
-    return { title: "Sản phẩm" };
+    return { title: "Sản phẩm", robots: NOINDEX_FOLLOW };
   }
 }
 

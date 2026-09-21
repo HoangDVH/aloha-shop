@@ -710,37 +710,70 @@ function CtvDacBiet() {
   const [ma, setMa] = useState("");
   const [rate, setRate] = useState("");
   const [rows, setRows] = useState<any[]>([]);
+  const [queriedCode, setQueriedCode] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
-    if (!ctvCode.trim()) return;
+    const code = ctvCode.trim().toUpperCase();
+    if (!code) {
+      toast.error("Nhập mã CTV trước");
+      return;
+    }
+    if (code.length < 3) {
+      toast.error("Mã CTV tối thiểu 3 ký tự");
+      return;
+    }
+    setLoading(true);
     try {
       const r = await api<{ data: any[] }>(
-        `/api/shop/admin/ctv/overrides?ctvCode=${encodeURIComponent(ctvCode.trim().toUpperCase())}`
+        `/api/shop/admin/ctv/overrides?ctvCode=${encodeURIComponent(code)}`
       );
-      setRows(r.data || []);
+      const list = r.data || [];
+      setRows(list);
+      setQueriedCode(code);
+      if (!list.length) {
+        toast.success(`Đã xem ${code}: chưa có % đặc biệt`);
+      }
     } catch (e: any) {
-      toast.error(e?.message || "Lỗi");
+      setRows([]);
+      setQueriedCode("");
+      const msg = String(e?.message || "");
+      toast.error(
+        msg === "invalid_ctv"
+          ? "Mã CTV không hợp lệ (3–20 ký tự A-Z, 0-9, _, -)"
+          : msg || "Lỗi tải override"
+      );
+    } finally {
+      setLoading(false);
     }
   }, [ctvCode]);
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <p className="mb-3 text-sm text-slate-500">
-        Gán % cao hơn cho cặp CTV + sản phẩm (Target Campaign).
+        Gán % cao hơn cho cặp CTV + sản phẩm (Target Campaign). Đây là{" "}
+        <b>mã CTV</b> (vd. trên hồ sơ CTV), không phải họ tên.
       </p>
       <div className="mb-4 flex flex-wrap gap-2">
         <input
           placeholder="Mã CTV"
           value={ctvCode}
           onChange={(e) => setCtvCode(e.target.value.toUpperCase())}
-          className="w-28 rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              void load();
+            }
+          }}
+          className="min-w-[10rem] flex-1 rounded-lg border border-slate-200 px-3 py-2 font-mono text-sm uppercase"
         />
         <button
           type="button"
-          className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50"
+          disabled={loading}
+          className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50 disabled:opacity-50"
           onClick={() => void load()}
         >
-          Xem override
+          {loading ? "Đang xem…" : "Xem override"}
         </button>
         <input
           placeholder="Mã SP"
@@ -803,7 +836,11 @@ function CtvDacBiet() {
           </div>
         ))}
         {!rows.length ? (
-          <p className="text-sm text-slate-400">Chưa có override — nhập mã CTV rồi bấm Xem.</p>
+          <p className="text-sm text-slate-400">
+            {queriedCode
+              ? `CTV ${queriedCode} chưa có override. Điền Mã SP + % rồi bấm Thêm / sửa.`
+              : "Nhập mã CTV rồi bấm «Xem override» (chỉ nhập mã chưa tải được danh sách)."}
+          </p>
         ) : null}
       </div>
     </div>

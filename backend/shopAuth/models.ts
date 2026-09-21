@@ -7,7 +7,7 @@ export const SHOP_LOGIN_IP = "aloha_shop_login_ip";
 export const SHOP_OAUTH_STATE = "aloha_shop_oauth_state";
 
 export type ShopRole = "customer" | "ctv";
-export type CtvStatus = "cho_duyet" | "active" | "khoa";
+export type CtvStatus = "cho_duyet" | "active" | "khoa" | "tu_choi";
 
 export type ShopAddressPublic = {
   id: string;
@@ -45,6 +45,16 @@ export type PublicShopAccount = {
     updatedAt?: string;
   } | null;
   ctvBalanceDebt?: number | null;
+  /** Hồ sơ đăng ký CTV P0 */
+  zalo?: string | null;
+  addressText?: string | null;
+  referralChannel?: string | null;
+  channelUrl?: string | null;
+  referralSource?: string | null;
+  hasBusinessExp?: boolean | null;
+  businessExpNote?: string | null;
+  businessExpYears?: number | null;
+  ctvRejectReason?: string | null;
 };
 
 export function shopAccountIdQuery(id: string): Record<string, unknown> {
@@ -82,7 +92,10 @@ export function toPublicShopAccount(doc: Record<string, unknown>): PublicShopAcc
   if (doc.passwordHash) providers.push("email");
   if (doc.googleId) providers.push("google");
   const ctvStatus =
-    doc.ctvStatus === "cho_duyet" || doc.ctvStatus === "active" || doc.ctvStatus === "khoa"
+    doc.ctvStatus === "cho_duyet" ||
+    doc.ctvStatus === "active" ||
+    doc.ctvStatus === "khoa" ||
+    doc.ctvStatus === "tu_choi"
       ? doc.ctvStatus
       : roles.includes("ctv")
         ? "cho_duyet"
@@ -140,6 +153,23 @@ export function toPublicShopAccount(doc: Record<string, unknown>): PublicShopAcc
       doc.ctvBalanceDebt != null && Number.isFinite(Number(doc.ctvBalanceDebt))
         ? Number(doc.ctvBalanceDebt)
         : null,
+    zalo: doc.zalo != null ? String(doc.zalo).trim() || null : null,
+    addressText: doc.addressText != null ? String(doc.addressText).trim() || null : null,
+    referralChannel:
+      doc.referralChannel != null ? String(doc.referralChannel).trim() || null : null,
+    channelUrl: doc.channelUrl != null ? String(doc.channelUrl).trim() || null : null,
+    referralSource:
+      doc.referralSource != null ? String(doc.referralSource).trim() || null : null,
+    hasBusinessExp:
+      typeof doc.hasBusinessExp === "boolean" ? doc.hasBusinessExp : null,
+    businessExpNote:
+      doc.businessExpNote != null ? String(doc.businessExpNote).trim() || null : null,
+    businessExpYears:
+      doc.businessExpYears != null && Number.isFinite(Number(doc.businessExpYears))
+        ? Number(doc.businessExpYears)
+        : null,
+    ctvRejectReason:
+      doc.ctvRejectReason != null ? String(doc.ctvRejectReason).trim() || null : null,
   };
 }
 

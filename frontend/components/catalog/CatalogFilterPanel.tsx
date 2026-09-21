@@ -88,9 +88,10 @@ export function CatalogFilterPanel({
         </div>
       ) : null}
 
-      {lockCategory ? (
+      {lockCategory || allProductsPage ? (
         <CatalogSubcatPicker
           categoryIds={categoryIds}
+          showRootL1={allProductsPage && !lockCategory}
           inFilterSheet
           onNavigate={onClose}
         />
