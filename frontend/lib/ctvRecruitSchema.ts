@@ -46,14 +46,10 @@ export const ctvApplicationFieldsSchema = z
     phone: phoneVn,
     zalo: zaloField,
     addressText: z.string().trim().min(1, "Nhập địa chỉ"),
-    referralChannel: z.enum(["facebook", "tiktok", "youtube", "zalo", "website", "khac"], {
-      error: "Chọn kênh bán",
-    }),
-    channelUrl: z
-      .string()
-      .trim()
-      .url("Link kênh phải bắt đầu bằng http:// hoặc https://")
-      .refine((u) => /^https?:\/\//i.test(u), "Link kênh phải bắt đầu bằng http:// hoặc https://"),
+    referralChannel: z
+      .enum(["facebook", "tiktok", "youtube", "zalo", "website", "khac"])
+      .optional(),
+    channelUrl: z.string().trim().optional(),
     referralSource: z.string().trim().optional(),
     hasBusinessExp: z.enum(["co_roi", "chua_co"], {
       error: "Chọn đã có / chưa có kinh nghiệm",
@@ -65,22 +61,43 @@ export const ctvApplicationFieldsSchema = z
     }),
   })
   .superRefine((v, ctx) => {
-    if (v.hasBusinessExp === "co_roi") {
-      if (!String(v.businessExpNote || "").trim()) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Nhập bạn đang / đã kinh doanh gì",
-          path: ["businessExpNote"],
-        });
-      }
-      const y = Number(v.businessExpYears);
-      if (!Number.isInteger(y) || y < 1 || y > 50) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Số năm kinh nghiệm từ 1 đến 50",
-          path: ["businessExpYears"],
-        });
-      }
+    if (v.hasBusinessExp !== "co_roi") return;
+
+    if (!String(v.businessExpNote || "").trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Nhập bạn đang / đã kinh doanh gì",
+        path: ["businessExpNote"],
+      });
+    }
+    const y = Number(v.businessExpYears);
+    if (!Number.isInteger(y) || y < 1 || y > 50) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Số năm kinh nghiệm từ 1 đến 50",
+        path: ["businessExpYears"],
+      });
+    }
+    if (!v.referralChannel) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Chọn kênh bán",
+        path: ["referralChannel"],
+      });
+    }
+    const url = String(v.channelUrl || "").trim();
+    if (!url) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Nhập link kênh / trang bán",
+        path: ["channelUrl"],
+      });
+    } else if (!/^https?:\/\//i.test(url)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Link kênh phải bắt đầu bằng http:// hoặc https://",
+        path: ["channelUrl"],
+      });
     }
   });
 
@@ -117,8 +134,8 @@ export function toCtvApplicationPayload(v: CtvApplicationFieldsInput) {
     phone: v.phone.trim(),
     zalo: v.zalo.trim(),
     addressText: v.addressText.trim(),
-    referralChannel: v.referralChannel,
-    channelUrl: v.channelUrl.trim(),
+    referralChannel: has ? v.referralChannel : undefined,
+    channelUrl: has ? String(v.channelUrl || "").trim() : undefined,
     referralSource: String(v.referralSource || "").trim() || undefined,
     hasBusinessExp: has,
     businessExpNote: has ? String(v.businessExpNote || "").trim() : undefined,

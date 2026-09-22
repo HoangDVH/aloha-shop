@@ -21,6 +21,43 @@ function nodeSubs(node: ShopCategoryNavNode): ShopCategoryNavNode[] {
   return node.subs || [];
 }
 
+/** Thứ tự L1 mega menu — Phụ kiện ngay sau Bình hoa. */
+const MEGA_L1_ORDER = [
+  "CÂY CẢNH ĐỦ LOẠI",
+  "CHẬU TRỒNG CÂY",
+  "BÌNH CẮM HOA",
+  "PHỤ KIỆN TRANG TRÍ",
+  "ĐẤT ĐÁ GIÁ THỂ DINH DƯỠNG TRỒNG CÂY",
+  "HẠT GIỐNG",
+  "ĐĨA LÓT CHẬU",
+  "DỤNG CỤ TRỒNG CÂY",
+  "TÚI VÀ HỘP ĐỂ SẢN PHẨM",
+] as const;
+
+/** Trong Phụ kiện: Tiểu cảnh lên đầu. */
+const PHU_KIEN_L2_FIRST = ["PHỤ KIỆN TIỂU CẢNH"] as const;
+
+function orderNodesByPreferredNames(
+  nodes: ShopCategoryNavNode[],
+  preferred: readonly string[]
+): ShopCategoryNavNode[] {
+  const used = new Set<number>();
+  const ordered: ShopCategoryNavNode[] = [];
+  for (const name of preferred) {
+    const hit = nodes.find(
+      (n) => !used.has(n.id) && nameMatchesAny(n.name, [name])
+    );
+    if (hit) {
+      used.add(hit.id);
+      ordered.push(hit);
+    }
+  }
+  for (const n of nodes) {
+    if (!used.has(n.id)) ordered.push(n);
+  }
+  return ordered;
+}
+
 function labelNode(name: string): string {
   return toTitleCaseVi(String(name || "").trim());
 }
@@ -45,7 +82,7 @@ const TILE_IMAGE_BY_MA: { match: RegExp; url: string }[] = [
     url: "https://cdn2-retail-images.kiotviet.vn/2026/05/05/alohanguyen/cc48c124abeb423aa2eb4753757281b6.jpeg",
   },
   {
-    match: /BONSAI|CHAU\s*BONSAI/,
+    match: /^CHAU\s*BONSAI\b|CHAU\s*BONSAI/,
     url: "https://cdn-images.kiotviet.vn/alohanguyen/85636eaaf54944daa810e6cd8b69d11e.png",
   },
   {
@@ -59,11 +96,12 @@ const TILE_IMAGE_BY_MA: { match: RegExp; url: string }[] = [
 ];
 
 function tileSrc(node: ShopCategoryNavNode): string {
+  // L3 Cây phong thủy → ảnh minh họa cây (không dùng rule chậu BONSAI)
+  if (isPhongThuyL3(node)) return navIllustrationSrc(node.name);
   const f = foldName(node.name);
   for (const row of TILE_IMAGE_BY_MA) {
     if (row.match.test(f)) return row.url;
   }
-  if (isPhongThuyL3(node)) return navIllustrationSrc(node.name);
   return String(node.image || "").trim();
 }
 
@@ -110,13 +148,12 @@ export function CategoryMegaMenu({
   tree: ShopCategoryNavNode[];
   onNavigate?: () => void;
 }) {
-  const roots = useMemo(
-    () =>
-      tree.filter(
-        (n) => !nameMatchesAny(n.name, ["KHÁC", "VẬT TƯ VÀ THIẾT BỊ", "QUÀ TẶNG CÂY"])
-      ),
-    [tree]
-  );
+  const roots = useMemo(() => {
+    const visible = tree.filter(
+      (n) => !nameMatchesAny(n.name, ["KHÁC", "VẬT TƯ VÀ THIẾT BỊ", "QUÀ TẶNG CÂY"])
+    );
+    return orderNodesByPreferredNames(visible, MEGA_L1_ORDER);
+  }, [tree]);
   const [open, setOpen] = useState(false);
   const [activeId, setActiveId] = useState<number | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -168,9 +205,16 @@ export function CategoryMegaMenu({
     onNavigate?.();
   };
 
-  if (!roots.length) return null;
+  const l2 = useMemo(() => {
+    if (!active) return [];
+    const kids = nodeSubs(active);
+    if (nameMatchesAny(active.name, ["PHỤ KIỆN TRANG TRÍ"])) {
+      return orderNodesByPreferredNames(kids, PHU_KIEN_L2_FIRST);
+    }
+    return kids;
+  }, [active]);
 
-  const l2 = active ? nodeSubs(active) : [];
+  if (!roots.length) return null;
 
   return (
     <div
@@ -181,7 +225,7 @@ export function CategoryMegaMenu({
     >
       <button
         type="button"
-        className={`inline-flex items-center gap-2 px-2 py-3 text-[15px] font-bold transition-colors xl:text-base ${
+        className={`inline-flex items-center gap-1.5 whitespace-nowrap px-2 py-3 text-[15px] font-bold transition-colors xl:gap-2 xl:text-[16px] ${
           open
             ? "text-[var(--aloha-green)]"
             : "text-[var(--aloha-green-dark)] hover:text-[var(--aloha-green)]"
@@ -190,10 +234,10 @@ export function CategoryMegaMenu({
         aria-expanded={open}
         onClick={() => (open ? setOpen(false) : openMenu())}
       >
-        <Menu size={18} strokeWidth={2.25} aria-hidden />
+        <Menu size={17} strokeWidth={2.25} aria-hidden />
         Danh mục sản phẩm
         <ChevronDown
-          size={16}
+          size={15}
           strokeWidth={2.25}
           className={`opacity-70 transition-transform ${open ? "rotate-180" : ""}`}
           aria-hidden

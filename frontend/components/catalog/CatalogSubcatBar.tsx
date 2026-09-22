@@ -121,9 +121,6 @@ function OptionChip({
   href: string;
   onClick?: () => void;
 }) {
-  const [imgFailed, setImgFailed] = useState(false);
-  const src = String(node.image || "").trim();
-  const showImg = Boolean(src) && !imgFailed;
   const label = chipLabel(node.name);
 
   return (
@@ -135,23 +132,13 @@ function OptionChip({
         markPinCatalog();
         onClick?.();
       }}
-      className={`inline-flex h-10 max-w-full shrink-0 items-center gap-1.5 rounded-md border bg-white px-2.5 transition ${
+      className={`inline-flex h-10 max-w-full shrink-0 items-center rounded-md border bg-white px-3 transition ${
         active
           ? "border-[var(--aloha-green)] ring-1 ring-[var(--aloha-green)]"
           : "border-[#e5e5e5] hover:border-[var(--aloha-green)]/40"
       }`}
       aria-current={active ? "true" : undefined}
     >
-      {showImg ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={src}
-          alt=""
-          className="h-7 w-7 shrink-0 rounded-md object-contain"
-          loading="lazy"
-          onError={() => setImgFailed(true)}
-        />
-      ) : null}
       <span
         className={`whitespace-nowrap text-[12px] leading-none ${
           active ? "font-bold text-[var(--aloha-green)]" : "font-semibold text-[#333]"
@@ -175,6 +162,68 @@ function WrapChipRow({
     <div className={`flex min-w-0 flex-1 flex-wrap items-center gap-2 ${className}`}>
       {children}
     </div>
+  );
+}
+
+/** Số chip hiện trước khi «Xem thêm» — ~1 hàng desktop kiểu sàn TMĐT. */
+const CHIP_PREVIEW = 8;
+
+function CollapsibleChipRow({
+  nodes,
+  activeIds,
+  hrefFor,
+  onChipClick,
+  className = "",
+  collapse = false,
+  resetKey = "",
+}: {
+  nodes: ShopCategoryNavNode[];
+  activeIds: Set<number>;
+  hrefFor: (n: ShopCategoryNavNode) => string;
+  onChipClick?: () => void;
+  className?: string;
+  collapse?: boolean;
+  /** Đổi nhánh L2 → thu gọn lại */
+  resetKey?: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    setExpanded(false);
+  }, [resetKey]);
+
+  const ordered = useMemo(() => {
+    const selected = nodes.filter((n) => activeIds.has(n.id));
+    const rest = nodes.filter((n) => !activeIds.has(n.id));
+    return [...selected, ...rest];
+  }, [nodes, activeIds]);
+
+  const shouldCollapse = collapse && ordered.length > CHIP_PREVIEW;
+  const visible =
+    !shouldCollapse || expanded ? ordered : ordered.slice(0, CHIP_PREVIEW);
+  const hiddenCount = Math.max(0, ordered.length - visible.length);
+
+  return (
+    <WrapChipRow className={className}>
+      {visible.map((n) => (
+        <OptionChip
+          key={n.id}
+          node={n}
+          active={activeIds.has(n.id)}
+          href={hrefFor(n)}
+          onClick={onChipClick}
+        />
+      ))}
+      {shouldCollapse ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="inline-flex h-10 shrink-0 items-center gap-1 rounded-md border border-dashed border-[var(--aloha-green)]/50 bg-[#f6f8f4] px-3 text-[12px] font-bold text-[var(--aloha-green)] transition hover:border-[var(--aloha-green)] hover:bg-[var(--aloha-green-light)]"
+        >
+          {expanded ? "Thu gọn" : `Xem thêm${hiddenCount ? ` (${hiddenCount})` : ""}`}
+        </button>
+      ) : null}
+    </WrapChipRow>
   );
 }
 
@@ -429,33 +478,32 @@ export function CatalogSubcatPicker({
 
   const optionsRow =
     optionNodes.length > 0 ? (
-      <WrapChipRow className={inFilterSheet ? "" : "bg-white"}>
-        {optionNodes.map((n) => (
-          <OptionChip
-            key={n.id}
-            node={n}
-            active={optionActive(n)}
-            href={optionHref(n)}
-            onClick={onChipClick}
-          />
-        ))}
-      </WrapChipRow>
+      <CollapsibleChipRow
+        nodes={optionNodes}
+        activeIds={
+          depth >= 2
+            ? selectedL3Ids
+            : new Set(optionNodes.filter((n) => optionActive(n)).map((n) => n.id))
+        }
+        hrefFor={optionHref}
+        onChipClick={onChipClick}
+        className={inFilterSheet ? "" : "bg-white"}
+        collapse
+        resetKey={`${depth}-${l2?.id || l1?.id || "root"}`}
+      />
     ) : null;
 
   // Sheet Lọc: vẫn cho chọn danh mục (L1) kể cả khi đang có lọc phụ trên URL
   const sheetOptionsRow =
     inFilterSheet && !pathFromUrl && showRootL1 && roots.length ? (
-      <WrapChipRow>
-        {roots.map((n) => (
-          <OptionChip
-            key={n.id}
-            node={n}
-            active={false}
-            href={selectL1Href(n)}
-            onClick={onChipClick}
-          />
-        ))}
-      </WrapChipRow>
+      <CollapsibleChipRow
+        nodes={roots}
+        activeIds={new Set()}
+        hrefFor={selectL1Href}
+        onChipClick={onChipClick}
+        collapse
+        resetKey="sheet-l1"
+      />
     ) : optionsRow;
 
   // Chỉ nút Lọc, không danh mục / không chip
@@ -515,15 +563,14 @@ export function CatalogSubcatPicker({
         ) : hasFilterChips ? (
           <>{filterResultChips}</>
         ) : showL1Browse ? (
-          optionNodes.map((n) => (
-            <OptionChip
-              key={n.id}
-              node={n}
-              active={optionActive(n)}
-              href={optionHref(n)}
-              onClick={onChipClick}
-            />
-          ))
+          <CollapsibleChipRow
+            nodes={optionNodes}
+            activeIds={new Set()}
+            hrefFor={optionHref}
+            onChipClick={onChipClick}
+            collapse
+            resetKey="browse-l1"
+          />
         ) : null}
       </div>
       {hasCategoryNav ? optionsRow : null}

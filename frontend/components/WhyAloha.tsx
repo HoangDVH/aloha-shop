@@ -5,19 +5,19 @@ import { SectionTitle } from "@/components/SectionTitle";
 const FEATURE_CARDS = [
   {
     title: "Chất lượng chọn lọc",
-    src: "/banners/feature-chat-luong.png",
+    src: "/banners/feature-chat-luong.png?v=2",
     href: "/tim?q=cay",
     blurb: "Cây khỏe, chậu đẹp — kiểm tra trước khi giao.",
   },
   {
     title: "Đa dạng mẫu mã",
-    src: "/banners/feature-da-dang.png",
+    src: "/banners/feature-da-dang.png?v=2",
     href: "/tim?q=chau",
     blurb: "Nhiều mẫu chậu, cây & phụ kiện — phối theo không gian.",
   },
   {
     title: "Giá tốt · hỗ trợ nhanh",
-    src: "/banners/feature-gia-tot.png",
+    src: "/banners/feature-gia-tot.png?v=2",
     href: "https://zalo.me/0794901233",
     external: true,
     blurb: "Giá cạnh tranh · giao toàn quốc · tư vấn sau bán.",

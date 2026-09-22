@@ -43,10 +43,10 @@ import { CtvTermsAccept, CtvTermsBody } from "@/components/ctv-recruit/CtvTermsA
 type CtvFormValues = CtvRecruitGuestInput | CtvRecruitLoggedInInput;
 
 const QUICK_BENEFITS = [
-  { icon: Percent, title: "Hoa hồng lên đến 15%", desc: "Minh bạch theo từng đơn thành công" },
-  { icon: Boxes, title: "Sản phẩm 4.000+", desc: "Chậu & cây dễ chia sẻ, dễ chốt" },
-  { icon: Sparkles, title: "Công cụ bán hàng", desc: "Link, ảnh mẫu, nội dung sẵn" },
-  { icon: Wallet, title: "Thanh toán nhanh", desc: "Đối soát rõ — chi đúng hạn" },
+  { icon: Percent, title: "Hoa hồng đến 15%" },
+  { icon: Boxes, title: "4.000+ sản phẩm" },
+  { icon: Sparkles, title: "Công cụ bán sẵn" },
+  { icon: Wallet, title: "Thanh toán nhanh" },
 ];
 
 const WHY_CARDS = [
@@ -387,56 +387,6 @@ function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
           </div>
         </fieldset>
 
-        <fieldset className="space-y-3.5">
-          <legend className="text-[11px] font-bold tracking-wide text-slate-500 uppercase">
-            Kênh bán
-          </legend>
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold text-slate-600" htmlFor="ctv-channel">
-              Bạn bán chủ yếu trên kênh nào?
-            </label>
-            <select id="ctv-channel" className="auth-field" {...register("referralChannel")}>
-              <option value="">— Chọn kênh —</option>
-              {CTV_REFERRAL_CHANNELS.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-            {fieldErr("referralChannel") ? (
-              <p className="mt-1 text-xs font-medium text-red-600">{fieldErr("referralChannel")}</p>
-            ) : null}
-          </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold text-slate-600" htmlFor="ctv-url">
-              Link kênh / trang bán
-            </label>
-            <input
-              id="ctv-url"
-              placeholder="https://..."
-              className="auth-field"
-              {...register("channelUrl")}
-            />
-            {fieldErr("channelUrl") ? (
-              <p className="mt-1 text-xs font-medium text-red-600">{fieldErr("channelUrl")}</p>
-            ) : null}
-          </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold text-slate-600" htmlFor="ctv-source">
-              Bạn biết đến Aloha qua đâu?{" "}
-              <span className="font-normal text-slate-400">(tuỳ chọn)</span>
-            </label>
-            <select id="ctv-source" className="auth-field" {...register("referralSource")}>
-              <option value="">— Chọn nguồn —</option>
-              {CTV_REFERRAL_SOURCES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
-        </fieldset>
-
         <fieldset className="space-y-3">
           <legend className="text-[11px] font-bold tracking-wide text-slate-500 uppercase">
             Kinh nghiệm kinh doanh
@@ -515,8 +465,69 @@ function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
                   </p>
                 ) : null}
               </div>
+              <div>
+                <p className="mb-1.5 text-[11px] font-bold tracking-wide text-slate-500 uppercase">
+                  Kênh bán
+                </p>
+                <label
+                  className="mb-1.5 block text-xs font-semibold text-slate-600"
+                  htmlFor="ctv-channel"
+                >
+                  Bạn bán chủ yếu trên kênh nào?
+                </label>
+                <select id="ctv-channel" className="auth-field" {...register("referralChannel")}>
+                  <option value="">— Chọn kênh —</option>
+                  {CTV_REFERRAL_CHANNELS.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+                {fieldErr("referralChannel") ? (
+                  <p className="mt-1 text-xs font-medium text-red-600">
+                    {fieldErr("referralChannel")}
+                  </p>
+                ) : null}
+              </div>
+              <div>
+                <label
+                  className="mb-1.5 block text-xs font-semibold text-slate-600"
+                  htmlFor="ctv-url"
+                >
+                  Link kênh / trang bán
+                </label>
+                <input
+                  id="ctv-url"
+                  placeholder="https://..."
+                  className="auth-field"
+                  {...register("channelUrl")}
+                />
+                {fieldErr("channelUrl") ? (
+                  <p className="mt-1 text-xs font-medium text-red-600">{fieldErr("channelUrl")}</p>
+                ) : null}
+              </div>
             </div>
           ) : null}
+        </fieldset>
+
+        <fieldset className="space-y-3.5">
+          <legend className="text-[11px] font-bold tracking-wide text-slate-500 uppercase">
+            Bạn biết đến Aloha
+          </legend>
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-slate-600" htmlFor="ctv-source">
+              Bạn biết đến Aloha qua đâu?{" "}
+              <span className="font-normal text-slate-400">(tuỳ chọn)</span>
+            </label>
+            <select id="ctv-source" className="auth-field" {...register("referralSource")}>
+              <option value="">— Chọn nguồn —</option>
+              {CTV_REFERRAL_SOURCES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
         </fieldset>
 
         <CtvTermsAccept
@@ -613,92 +624,52 @@ export function CtvRecruitLanding() {
         />
 
         <div className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:py-12">
-          <div className="grid items-center gap-8 lg:grid-cols-2 lg:gap-12">
-            {/* Cột trái: copy + CTA */}
-            <div className="min-w-0 text-left">
-              <p className="inline-flex items-center gap-1.5 rounded-full bg-[var(--aloha-green-light)] px-3 py-1 text-[11px] font-bold tracking-wide text-[var(--aloha-green-dark)] uppercase">
-                <Sprout size={14} aria-hidden />
-                Chương trình Cộng tác viên
-              </p>
-              <h1 className="mt-3 text-[1.75rem] font-extrabold leading-[1.22] tracking-tight text-[var(--aloha-green-dark)] sm:text-[2.2rem] lg:text-[2.45rem]">
-                Gia nhập đội ngũ Cộng tác viên Aloha
-              </h1>
-              <p className="mt-2.5 text-[1.05rem] font-semibold leading-snug text-[var(--aloha-green)] sm:text-lg">
-                Chia sẻ đam mê cây xanh — kiếm thêm thu nhập
-              </p>
-              <p className="mt-3 max-w-xl text-[15px] leading-[1.65] text-slate-600 sm:text-base">
-                Chỉ cần điện thoại là bạn có thể bắt đầu chia sẻ sản phẩm {SHOP_BRAND} và nhận hoa
-                hồng minh bạch cho mỗi đơn hàng thành công.
-              </p>
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="inline-flex items-center gap-1.5 rounded-full bg-[var(--aloha-green-light)] px-3 py-1 text-[11px] font-bold tracking-wide text-[var(--aloha-green-dark)] uppercase">
+              <Sprout size={14} aria-hidden />
+              Cộng tác viên Aloha
+            </p>
+            <h1 className="mt-4 text-[1.85rem] font-extrabold leading-[1.2] tracking-tight text-[var(--aloha-green-dark)] sm:text-[2.35rem]">
+              Chia sẻ cây xanh — nhận hoa hồng
+            </h1>
+            <p className="mx-auto mt-3 max-w-lg text-[15px] leading-relaxed text-slate-600 sm:text-base">
+              Đăng ký miễn phí, lấy link bán, nhận hoa hồng đến 15% mỗi đơn thành công.
+            </p>
 
-              <div className="mt-6 flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={openForm}
-                  className="inline-flex h-11 items-center gap-1.5 rounded-full bg-[var(--aloha-green-dark)] px-6 text-[15px] font-bold text-white shadow-lg shadow-[var(--aloha-green-dark)]/25 transition hover:bg-[var(--aloha-green)]"
-                >
-                  Đăng ký ngay
-                  <ChevronRight size={18} aria-hidden />
-                </button>
-                <a
-                  href="https://zalo.me/0794901233"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex h-11 items-center gap-1.5 rounded-full border-2 border-[var(--aloha-green)] bg-white/90 px-5 text-[15px] font-bold text-[var(--aloha-green-dark)] transition hover:bg-[var(--aloha-green-light)]"
-                >
-                  Liên hệ tư vấn
-                </a>
-              </div>
-            </div>
-
-            {/* Cột phải: ảnh nhỏ gọn */}
-            <div className="min-w-0">
-              <div className="overflow-hidden rounded-2xl bg-white/70 ring-1 ring-[var(--aloha-line)]">
-                <div className="grid h-[148px] grid-cols-3 gap-1.5 p-2 sm:h-[168px] sm:gap-2 sm:p-2.5">
-                  <div className="flex items-end justify-center overflow-hidden rounded-lg bg-[#e8f0e4]">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src="/categories/cat-cay-canh.png"
-                      alt=""
-                      className="h-[92%] w-auto max-w-full object-contain drop-shadow-sm"
-                    />
-                  </div>
-                  <div className="flex items-center justify-center overflow-hidden rounded-lg bg-[#f3f6f0] p-1.5">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src="/categories/cat-chau-cay.png"
-                      alt=""
-                      className="max-h-full max-w-full object-contain"
-                    />
-                  </div>
-                  <div className="flex items-center justify-center overflow-hidden rounded-lg bg-[#f3f6f0] p-1.5">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src="/categories/cat-phu-kien.png"
-                      alt=""
-                      className="max-h-full max-w-full object-contain"
-                    />
-                  </div>
-                </div>
-              </div>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={openForm}
+                className="inline-flex h-11 items-center gap-1.5 rounded-full bg-[var(--aloha-green-dark)] px-6 text-[15px] font-bold text-white shadow-lg shadow-[var(--aloha-green-dark)]/25 transition hover:bg-[var(--aloha-green)]"
+              >
+                Đăng ký ngay
+                <ChevronRight size={18} aria-hidden />
+              </button>
+              <a
+                href="https://zalo.me/0794901233"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-11 items-center gap-1.5 rounded-full border-2 border-[var(--aloha-green)] bg-white/90 px-5 text-[15px] font-bold text-[var(--aloha-green-dark)] transition hover:bg-[var(--aloha-green-light)]"
+              >
+                Liên hệ tư vấn
+              </a>
             </div>
           </div>
 
-          {/* 4 lợi ích — 1 hàng cùng khung hình */}
-          <ul className="mt-7 grid grid-cols-2 gap-x-5 gap-y-4 border-t border-[var(--aloha-line)]/80 pt-6 lg:grid-cols-4 lg:gap-6">
-            {QUICK_BENEFITS.map(({ icon: Icon, title, desc }) => (
-              <li key={title} className="flex min-w-0 items-start gap-3">
-                <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[var(--aloha-green)] ring-1 ring-[var(--aloha-line)]">
-                  <Icon size={18} strokeWidth={2} aria-hidden />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-[15px] font-bold leading-snug text-[var(--aloha-ink)] sm:text-base">
-                    {title}
-                  </span>
-                  <span className="mt-1 block text-[13px] leading-snug text-slate-500 sm:text-[14px]">
-                    {desc}
-                  </span>
-                </span>
+          {/* Điểm nổi bật — chỉ tiêu đề ngắn */}
+          <ul className="mt-8 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
+            {QUICK_BENEFITS.map(({ icon: Icon, title }) => (
+              <li
+                key={title}
+                className="inline-flex items-center gap-2 rounded-full bg-white/90 px-3.5 py-2 text-[13px] font-semibold text-[var(--aloha-ink)] ring-1 ring-[var(--aloha-line)] sm:text-sm"
+              >
+                <Icon
+                  size={16}
+                  strokeWidth={2}
+                  className="shrink-0 text-[var(--aloha-green)]"
+                  aria-hidden
+                />
+                {title}
               </li>
             ))}
           </ul>

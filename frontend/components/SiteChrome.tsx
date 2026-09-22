@@ -94,16 +94,15 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
   const chromeRef = useRef<HTMLElement | null>(null);
 
   const navActiveKey = useMemo(() => {
-    if (pathname === "/ve-aloha" || pathname.startsWith("/ve-aloha/")) return "ve-aloha";
     if (pathname === "/tuyen-ctv" || pathname.startsWith("/tuyen-ctv/")) return "tuyen-ctv";
     if (pathname === "/bai-viet" || pathname.startsWith("/bai-viet/")) return "bai-viet";
     if (pathname === "/tim") {
       const sort = searchParams.get("sort") || "";
+      const badge = searchParams.get("badge") || "";
       const inStock = searchParams.get("inStock") === "1";
-      if (sort === "ban_chay" && inStock) return "uu-dai";
-      return "san-pham";
+      if (badge === "noi_bat" || (sort === "ban_chay" && inStock)) return "noi-bat-uu-dai";
+      return "";
     }
-    if (pathname.startsWith("/danh-muc") || pathname.startsWith("/c/")) return "san-pham";
     if (pathname === "/" || pathname === "") return "trang-chu";
     return "";
   }, [pathname, searchParams]);
@@ -230,7 +229,6 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
               <BadgePercent size={18} strokeWidth={2.25} aria-hidden className={iconClass} />
               <span className="hidden sm:inline">Báo giá sỉ</span>
             </a>
-            <HeaderAccountMenu />
             <Link
               href="/gio-hang"
               className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-2 text-[var(--aloha-green-dark)] ${chromeHover} sm:px-3`}
@@ -247,6 +245,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
               </span>
               <span className="hidden text-sm font-semibold sm:inline">Giỏ hàng</span>
             </Link>
+            <HeaderAccountMenu />
             <button
               type="button"
               className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl ${linkTextClass} ${chromeHover} lg:hidden`}
@@ -260,36 +259,48 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
         </div>
       </div>
 
-      {/* Hàng menu — nền trắng; nav sát Danh mục, cách đều như TMĐT */}
+      {/* Hàng menu — Trang chủ → Danh mục → Ưu đãi */}
       <nav className="hidden overflow-visible border-b border-[var(--aloha-line)] bg-white text-[var(--aloha-ink)] lg:block">
-        <div className="mx-auto flex max-w-7xl items-stretch gap-1 overflow-visible px-3 sm:gap-2 sm:px-4">
-          {/* Trái: Danh mục sản phẩm */}
-          <CategoryMegaMenu tree={navApplied.tree} onNavigate={closeMenus} />
-
-          {/* Các mục nav — sát danh mục, chia đều khoảng trống còn lại */}
-          <div className="flex min-w-0 flex-1 items-stretch">
+        <div className="mx-auto flex max-w-7xl items-stretch overflow-visible px-3 sm:px-4">
+          <div className="flex min-w-0 flex-1 items-stretch justify-between gap-0.5 xl:gap-1">
             {(
               [
-                { href: "/", label: "Trang chủ", key: "trang-chu" },
-                { href: "/tim", label: "Sản phẩm", key: "san-pham" },
+                { href: "/", label: "Trang chủ", key: "trang-chu", kind: "link" as const },
+                { kind: "mega" as const, key: "danh-muc" },
                 {
-                  href: "/tim?sort=ban_chay&inStock=1",
+                  href: "/tim?badge=noi_bat&inStock=1",
                   label: "Ưu đãi",
-                  key: "uu-dai",
+                  key: "noi-bat-uu-dai",
+                  kind: "link" as const,
                 },
-                { href: "/bai-viet", label: "Bài viết", key: "bai-viet" },
-                { href: "/ve-aloha", label: "Về Aloha", key: "ve-aloha" },
+                { href: "/bai-viet", label: "Bài viết", key: "bai-viet", kind: "link" as const },
                 {
                   href: wholesaleZaloUrl,
                   label: "Báo giá sỉ",
                   external: true,
                   key: "bao-gia",
+                  kind: "link" as const,
                 },
-                { href: "/tuyen-ctv", label: "Tuyển CTV", key: "tuyen-ctv" },
+                {
+                  href: "/tuyen-ctv",
+                  label: "Tuyển CTV",
+                  key: "tuyen-ctv",
+                  kind: "link" as const,
+                },
               ] as const
             ).map((item) => {
+              if (item.kind === "mega") {
+                return (
+                  <div
+                    key="danh-muc"
+                    className="flex shrink-0 items-stretch"
+                  >
+                    <CategoryMegaMenu tree={navApplied.tree} onNavigate={closeMenus} />
+                  </div>
+                );
+              }
               const active = item.key === navActiveKey;
-              const cls = `group relative inline-flex h-full min-w-0 flex-1 items-center justify-center px-1 text-[13px] xl:px-1.5 xl:text-[14px] ${
+              const cls = `group relative inline-flex h-full shrink-0 items-center justify-center whitespace-nowrap px-2 text-[15px] xl:px-2.5 xl:text-[16px] ${
                 active
                   ? "font-bold text-[var(--aloha-green)]"
                   : "font-semibold text-[var(--aloha-ink)] hover:text-[var(--aloha-green)]"
@@ -312,7 +323,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                     onClick={closeMenus}
                     className={cls}
                   >
-                    <span className="truncate">{item.label}</span>
+                    {item.label}
                     {underline}
                   </a>
                 );
@@ -325,7 +336,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                   className={cls}
                   aria-current={active ? "page" : undefined}
                 >
-                  <span className="truncate">{item.label}</span>
+                  {item.label}
                   {underline}
                 </Link>
               );
@@ -441,10 +452,16 @@ export function SiteFooter() {
               Tất cả sản phẩm
             </Link>
             <Link
-              href="/?sort=ban_chay"
+              href="/tim?badge=noi_bat&inStock=1"
               className="inline-flex min-h-10 items-center py-1 hover:text-[var(--aloha-green)]"
             >
-              Bán chạy
+              Ưu đãi
+            </Link>
+            <Link
+              href="/ve-aloha"
+              className="inline-flex min-h-10 items-center py-1 hover:text-[var(--aloha-green)]"
+            >
+              Về Aloha
             </Link>
             <Link
               href="/bai-viet"

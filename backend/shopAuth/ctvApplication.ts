@@ -78,16 +78,16 @@ export function parseCtvApplicationBody(
   if (!addressText) {
     return { ok: false, error: "Nhập địa chỉ" };
   }
-  if (!CHANNELS.has(referralChannel)) {
-    return { ok: false, error: "Chọn kênh bán" };
-  }
-  if (!isValidHttpUrl(channelUrl)) {
-    return { ok: false, error: "Link kênh phải bắt đầu bằng http:// hoặc https://" };
-  }
   if (typeof hasRaw === "undefined" || hasRaw === null || hasRaw === "") {
     return { ok: false, error: "Chọn đã có / chưa có kinh nghiệm kinh doanh" };
   }
   if (hasBusinessExp) {
+    if (!CHANNELS.has(referralChannel)) {
+      return { ok: false, error: "Chọn kênh bán" };
+    }
+    if (!isValidHttpUrl(channelUrl)) {
+      return { ok: false, error: "Link kênh phải bắt đầu bằng http:// hoặc https://" };
+    }
     if (!businessExpNote) {
       return { ok: false, error: "Nhập bạn đang / đã kinh doanh gì" };
     }
@@ -107,8 +107,8 @@ export function parseCtvApplicationBody(
     fields: {
       zalo,
       addressText,
-      referralChannel,
-      channelUrl,
+      referralChannel: hasBusinessExp ? referralChannel : "",
+      channelUrl: hasBusinessExp ? channelUrl : "",
       referralSource,
       hasBusinessExp,
       businessExpNote: hasBusinessExp ? businessExpNote : "",

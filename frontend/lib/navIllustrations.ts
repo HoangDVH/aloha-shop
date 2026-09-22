@@ -48,8 +48,8 @@ export function isPhongThuyL3(node: { path?: string; name?: string }): boolean {
   if (path.includes("CAY PHONG THUY >>") || /CAY PHONG THUY\s*>/.test(path)) {
     return true;
   }
-  // Fallback: path chưa có → chỉ khớp tên đã map phong thủy
-  if (!path && node.name) return Boolean(EXACT[foldName(node.name)]);
+  // Fallback: tên L3 đã map minh họa phong thủy (kể cả khi API thiếu/lệch path)
+  if (node.name && EXACT[foldName(node.name)]) return true;
   return false;
 }
 

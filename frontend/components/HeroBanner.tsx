@@ -24,7 +24,7 @@ export type HeroSlide = {
 /** 4 banner hero — chữ + CTA đã nằm trong ảnh. */
 export const BRAND_BANNERS: HeroSlide[] = [
   {
-    src: "/banners/banner-hero-01.png?v=22",
+    src: "/banners/banner-hero-01.png?v=23",
     alt: "Không gian xanh — Bắt đầu từ những chậu cây nhỏ",
     href: "/tim",
     label: "Cây cảnh",
