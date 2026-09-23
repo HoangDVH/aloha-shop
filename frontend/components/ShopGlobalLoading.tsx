@@ -10,7 +10,7 @@ const MIN_VISIBLE_MS = 280;
 const HIDE_MS = 160;
 /** Chờ ngắn trước khi hiện overlay cho fetch dữ liệu (tránh flash request nhanh). */
 const DATA_DELAY_MS = 120;
-const SAFE_MS = 12_000;
+const SAFE_MS = 6_000;
 
 function isInternalNavClick(e: MouseEvent): boolean {
   if (e.defaultPrevented) return false;
@@ -144,13 +144,25 @@ export function ShopGlobalLoading() {
       if (isInternalNavClick(e)) startNav();
     };
 
-    /** Back/Forward: không bật overlay toàn trang — để bfcache / Router Cache hiện ngay. */
-    const onPopState = () => {
+    const resetLoading = () => {
+      depthRef.current = 0;
       navPendingRef.current = false;
+      clearTimers();
+      syncVisible();
+    };
+
+    /** Back/Forward & bfcache: không bật/kẹt overlay toàn trang. */
+    const onPopState = () => {
+      resetLoading();
+    };
+
+    const onPageShow = () => {
+      resetLoading();
     };
 
     document.addEventListener("click", onClick, true);
     window.addEventListener("popstate", onPopState);
+    window.addEventListener("pageshow", onPageShow);
     window.addEventListener("shop:nav-start", startNav);
     window.addEventListener("shop:loading-start", startLoading);
     window.addEventListener("shop:loading-end", endLoading);
@@ -158,6 +170,7 @@ export function ShopGlobalLoading() {
     return () => {
       document.removeEventListener("click", onClick, true);
       window.removeEventListener("popstate", onPopState);
+      window.removeEventListener("pageshow", onPageShow);
       window.removeEventListener("shop:nav-start", startNav);
       window.removeEventListener("shop:loading-start", startLoading);
       window.removeEventListener("shop:loading-end", endLoading);

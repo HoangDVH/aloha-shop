@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { SiPriceBadge } from "@/components/si-pricing/SiPriceBadge";
-import { useLinkStatus } from "next/link";
 import { Loader2, Play, ShoppingBag } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { isPreOrderTon, useCart } from "@/lib/cart";
 import { useToast } from "@/components/Toast";
@@ -12,11 +11,10 @@ import { formatVnd, type ShopProduct } from "@/lib/api";
 import { useShopAuth } from "@/components/ShopAuthProvider";
 import { canPurchaseZeroPrice } from "@/lib/testBuyer";
 
-function ImagePendingOverlay({ force }: { force: boolean }) {
-  const { pending } = useLinkStatus();
-  if (!pending && !force) return null;
+function ImagePendingOverlay({ active }: { active: boolean }) {
+  if (!active) return null;
   return (
-    <span className="absolute inset-0 z-20 flex items-center justify-center bg-white/50 backdrop-blur-[1px]">
+    <span className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-white/50 backdrop-blur-[1px]">
       <Loader2 className="h-7 w-7 animate-spin text-[var(--aloha-green)]" aria-hidden />
     </span>
   );
@@ -47,6 +45,7 @@ export function ProductCard({
   const lowStock = !preOrder && displayTon > 0 && displayTon <= 8;
   const manualBadge = product.webBadge;
   const [navPending, setNavPending] = useState(false);
+  const navTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const displayGia = liveGia != null && liveGia >= 0 ? liveGia : product.gia;
   const priceKind = livePriceKind ?? product.priceKind;
   const allowBackorder = liveAllowBackorder ?? product.allowBackorder;
@@ -55,9 +54,31 @@ export function ProductCard({
   const zeroPriceBlocked = priceKind === "si_missing" || (!(displayGia > 0) && !canPurchaseZeroPrice(user?.email));
   const purchaseBlocked = pricePending || zeroPriceBlocked || (preOrder && allowBackorder === false);
 
+  const clearNavTimer = () => {
+    if (navTimerRef.current) {
+      clearTimeout(navTimerRef.current);
+      navTimerRef.current = null;
+    }
+  };
+
   useEffect(() => {
+    clearNavTimer();
     setNavPending(false);
   }, [pathname]);
+
+  useEffect(() => {
+    const handleReset = () => {
+      clearNavTimer();
+      setNavPending(false);
+    };
+    window.addEventListener("popstate", handleReset);
+    window.addEventListener("pageshow", handleReset);
+    return () => {
+      clearNavTimer();
+      window.removeEventListener("popstate", handleReset);
+      window.removeEventListener("pageshow", handleReset);
+    };
+  }, []);
 
   const onAdd = (e?: React.MouseEvent) => {
     e?.preventDefault();
@@ -88,7 +109,26 @@ export function ProductCard({
     );
   };
 
-  const markPending = () => setNavPending(true);
+  const markPending = (e?: React.MouseEvent) => {
+    if (e) {
+      if (
+        e.defaultPrevented ||
+        e.button !== 0 ||
+        e.metaKey ||
+        e.ctrlKey ||
+        e.shiftKey ||
+        e.altKey
+      ) {
+        return;
+      }
+    }
+    clearNavTimer();
+    setNavPending(true);
+    navTimerRef.current = setTimeout(() => {
+      setNavPending(false);
+      navTimerRef.current = null;
+    }, 3000);
+  };
   const hasVideo =
     (Array.isArray(product.videos) && product.videos.length > 0) ||
     Boolean(String(product.videoUrl || "").trim());
@@ -155,7 +195,7 @@ export function ProductCard({
             </span>
           ) : null}
 
-          <ImagePendingOverlay force={navPending} />
+          <ImagePendingOverlay active={navPending} />
         </Link>
 
         <div className="pointer-events-none absolute left-2 top-2 z-10 flex flex-col items-start gap-1">
