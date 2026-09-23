@@ -59,7 +59,9 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
   ]).catch(error => { indexes = undefined; throw error; });
 
   app.use(["/api/shop/auth/si", "/api/shop/auth/zalo"], (req, res, next) => {
+    applyShopCors(req, res);
     res.setHeader("Cache-Control", "private, no-store");
+    if (req.method === "OPTIONS") return res.status(204).end();
     if (req.method !== "GET" && req.headers.origin && !isAllowedShopOrigin(req.headers.origin)) return res.sendStatus(403);
     if (!shopRateLimitOrReject(req, res, "si_onboarding", 30, 60000)) return;
     next();

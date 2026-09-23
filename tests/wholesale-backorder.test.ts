@@ -150,3 +150,9 @@ test("SI-F: simultaneous web and si requests keep pricing contexts isolated", as
   })));
   assert.deepEqual(modes, ["si", "web", "si", "web"]);
 });
+test("SI-G: address canonicalization normalizes tone marks and casing", () => {
+  assert.equal(canonicalAddress({ province: "Hồ Chí Minh", ward: "Xã Phong Phú", detail: "Ấp 4" }),
+    canonicalAddress({ province: "ho chi minh", ward: "xa phong phu", detail: "ap 4" }));
+});
+
+
