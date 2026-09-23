@@ -8,7 +8,8 @@ import { createBackorderRequest } from "../backend/shopOrders/backorder.js";
 import { markShopOrderPaid } from "../backend/shopOrders/markPaid.js";
 import { toVariantModel } from "../backend/shopVariantGroup.js";
 import { customerRegion } from "../backend/shopWholesale/kvCustomers.js";
-import { canonicalAddress, applicationSchema } from "../backend/shopWholesale/schema.js";
+import { canonicalAddress, applicationSchema, addressSchema } from "../backend/shopWholesale/schema.js";
+import { findAddressMergerSuggestion } from "../frontend/lib/addressMerger.js";
 import { requireShopAuth } from "../backend/shopAuth/routes.js";
 import { signShopAccessToken } from "../backend/shopAuth/tokens.js";
 import { catalogPriceContext, currentPriceMode } from "../backend/shopWholesale/priceContext.js";
@@ -150,3 +151,40 @@ test("SI-F: simultaneous web and si requests keep pricing contexts isolated", as
   })));
   assert.deepEqual(modes, ["si", "web", "si", "web"]);
 });
+test("SI-G: address canonicalization normalizes tone marks and casing", () => {
+  assert.equal(canonicalAddress({ province: "Hồ Chí Minh", ward: "Xã Phong Phú", detail: "Ấp 4" }),
+    canonicalAddress({ province: "ho chi minh", ward: "xa phong phu", detail: "ap 4" }));
+});
+test("SI-H: addressSchema accepts optional district and validates phone", () => {
+  const parsed = addressSchema.parse({
+    phone: "0909609521",
+    province: "Bình Dương",
+    district: "Thành phố Thuận An",
+    ward: "Phường Lái Thiêu",
+    detail: "16/A Bình Hòa",
+  });
+  assert.equal(parsed.district, "Thành phố Thuận An");
+  assert.equal(parsed.phone, "0909609521");
+});
+test("SI-I: administrative merger detection detects old merger divisions", () => {
+  // Test Thuận An, Lái Thiêu, Bình Dương
+  const suggestion = findAddressMergerSuggestion({
+    province: "Bình Dương - Thành phố Thuận An",
+    ward: "Phường Lái Thiêu",
+    detail: "16/A Bình Hòa",
+  });
+  assert.ok(suggestion);
+  assert.equal(suggestion?.effectiveDate, "01/07/2025");
+  assert.equal(suggestion?.suggest.displayText, "Phường Lái Thiêu - Thành phố Hồ Chí Minh");
+
+  // When already updated to new address, no alert
+  const alreadyUpdated = findAddressMergerSuggestion({
+    province: "Thành phố Hồ Chí Minh",
+    ward: "Phường Lái Thiêu",
+    detail: "16/A Bình Hòa",
+  });
+  assert.equal(alreadyUpdated, null);
+});
+
+
+

@@ -2,6 +2,7 @@ import { z } from "zod";
 export const siRegisterSchema = z.object({
   phone: z.string().trim().regex(/^(0[35789]\d{8}|\+?84[35789]\d{8})$/, "Nhập SĐT Việt Nam hợp lệ"),
   province: z.string().trim().min(2, "Nhập tỉnh / thành phố").max(120),
+  district: z.string().max(120),
   ward: z.string().trim().min(2, "Nhập phường / xã").max(120),
   detail: z.string().trim().min(3, "Nhập số nhà, tên đường").max(300),
   fullName: z.string().trim().min(2, "Nhập họ tên người liên hệ").max(120),

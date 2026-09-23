@@ -59,7 +59,9 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
   ]).catch(error => { indexes = undefined; throw error; });
 
   app.use(["/api/shop/auth/si", "/api/shop/auth/zalo"], (req, res, next) => {
+    applyShopCors(req, res);
     res.setHeader("Cache-Control", "private, no-store");
+    if (req.method === "OPTIONS") return res.status(204).end();
     if (req.method !== "GET" && req.headers.origin && !isAllowedShopOrigin(req.headers.origin)) return res.sendStatus(403);
     if (!shopRateLimitOrReject(req, res, "si_onboarding", 30, 60000)) return;
     next();
@@ -152,7 +154,12 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
           // A vetted mapping row is required for old administrative names. No fuzzy ownership inference.
           const mapping = await db.collection("aloha_shop_address_map").findOne({
             kvLocation: String(candidate.locationName || ""), kvWard: String(candidate.wardName || ""), verified: true });
-          const address = mapping && { province: String(mapping.province), ward: String(mapping.ward), detail: String(candidate.address || "") };
+          const directAddress = candidate.locationName && candidate.wardName ? {
+            province: String(candidate.locationName).split(",").pop()?.trim() || String(candidate.locationName),
+            ward: String(candidate.wardName || ""),
+            detail: String(candidate.address || ""),
+          } : null;
+          const address = mapping ? { province: String(mapping.province), ward: String(mapping.ward), detail: String(candidate.address || "") } : directAddress;
           result = !await verifyCustomerRegion(await getOpsDb(), candidate) ? "existing_non_si" : address && canonicalAddress(address) === canonicalAddress(input) ? "existing_si_candidate" : "manual_review";
         }
       } catch { result = "lookup_unavailable"; }

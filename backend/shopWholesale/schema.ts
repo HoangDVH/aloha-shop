@@ -4,6 +4,7 @@ import { normalizeWholesalePhone } from "./policy.js";
 export const addressSchema = z.object({
   phone: z.string().transform(normalizeWholesalePhone).pipe(z.string().regex(/^0[35789]\d{8}$/, "Số điện thoại không hợp lệ")),
   province: z.string().trim().min(2).max(120),
+  district: z.string().trim().max(120).optional().default(""),
   ward: z.string().trim().min(2).max(120),
   detail: z.string().trim().min(3).max(300),
 });

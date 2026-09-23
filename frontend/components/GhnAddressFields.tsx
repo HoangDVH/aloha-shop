@@ -13,6 +13,8 @@ import {
 } from "@/lib/ghnLocations";
 import { VN_PROVINCES, wardsForProvince } from "@/lib/vnLocations";
 import { useShopLoadingWhile } from "@/lib/useShopLoadingWhile";
+import { AddressMergerAlert } from "./AddressMergerAlert";
+import { normalizeAddressString, type AddressMergerSuggest } from "@/lib/addressMerger";
 
 export type AddressDraft = CheckoutAddressValue & {
   fullName: string;
@@ -23,9 +25,18 @@ export type AddressDraft = CheckoutAddressValue & {
 type Props = {
   value: AddressDraft;
   onChange: (patch: Partial<AddressDraft>) => void;
+  hideContactFields?: boolean;
+  addressLabel?: string;
+  showMergerAlert?: boolean;
 };
 
-export function GhnAddressFields({ value, onChange }: Props) {
+export function GhnAddressFields({
+  value,
+  onChange,
+  hideContactFields = false,
+  addressLabel = "Địa chỉ nhận hàng",
+  showMergerAlert = true,
+}: Props) {
   const [ghnOk, setGhnOk] = useState(false);
   const [loading, setLoading] = useState(true);
   const [provinces, setProvinces] = useState<GhnProvince[]>([]);
@@ -93,33 +104,111 @@ export function GhnAddressFields({ value, onChange }: Props) {
 
   const staticWards = wardsForProvince(value.province);
 
+  const handleApplyMerger = async (suggest: AddressMergerSuggest) => {
+    if (ghnOk && provinces.length) {
+      const p =
+        provinces.find((x) =>
+          normalizeAddressString(x.name).includes(normalizeAddressString(suggest.province))
+        ) ||
+        provinces.find((x) =>
+          normalizeAddressString(suggest.province).includes(normalizeAddressString(x.name))
+        );
+
+      if (p) {
+        try {
+          const distRes = await fetchGhnDistricts(p.id);
+          const dList = distRes.ok && Array.isArray(distRes.items) ? distRes.items : [];
+          const d = suggest.district
+            ? dList.find((x) =>
+                normalizeAddressString(x.name).includes(normalizeAddressString(suggest.district!))
+              ) ||
+              dList.find((x) =>
+                normalizeAddressString(suggest.district!).includes(normalizeAddressString(x.name))
+              )
+            : null;
+
+          if (d) {
+            const wardRes = await fetchGhnWards(d.id);
+            const wList = wardRes.ok && Array.isArray(wardRes.items) ? wardRes.items : [];
+            const w = suggest.ward
+              ? wList.find((x) =>
+                  normalizeAddressString(x.name).includes(normalizeAddressString(suggest.ward!))
+                ) ||
+                wList.find((x) =>
+                  normalizeAddressString(suggest.ward!).includes(normalizeAddressString(x.name))
+                )
+              : null;
+
+            onChange({
+              province: p.name,
+              district: d.name,
+              ward: w ? w.name : (suggest.ward || ""),
+              ghnProvinceId: p.id,
+              ghnDistrictId: d.id,
+              ghnWardCode: w ? w.code : "",
+            });
+            return;
+          }
+
+          onChange({
+            province: p.name,
+            district: suggest.district || "",
+            ward: suggest.ward || "",
+            ghnProvinceId: p.id,
+            ghnDistrictId: 0,
+            ghnWardCode: "",
+          });
+          return;
+        } catch {
+          // Fallback to static below
+        }
+      }
+    }
+
+    const matchedStaticProvince =
+      VN_PROVINCES.find((x) =>
+        normalizeAddressString(x).includes(normalizeAddressString(suggest.province))
+      ) || suggest.province;
+
+    onChange({
+      province: matchedStaticProvince,
+      district: suggest.district || "",
+      ward: suggest.ward || value.ward || "",
+      ghnProvinceId: 0,
+      ghnDistrictId: 0,
+      ghnWardCode: "",
+    });
+  };
+
   return (
     <div className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block">
-          <span className="mb-1.5 block text-xs font-semibold text-slate-600">
-            Tên khách hàng <span className="text-red-500">*</span>
-          </span>
-          <input
-            className="auth-field"
-            value={value.fullName}
-            onChange={(e) => onChange({ fullName: e.target.value })}
-            placeholder="Họ và tên"
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1.5 block text-xs font-semibold text-slate-600">
-            Số điện thoại <span className="text-red-500">*</span>
-          </span>
-          <input
-            className="auth-field"
-            value={value.phone}
-            onChange={(e) => onChange({ phone: e.target.value })}
-            placeholder="09..."
-            inputMode="tel"
-          />
-        </label>
-      </div>
+      {!hideContactFields && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold text-slate-600">
+              Tên khách hàng <span className="text-red-500">*</span>
+            </span>
+            <input
+              className="auth-field"
+              value={value.fullName}
+              onChange={(e) => onChange({ fullName: e.target.value })}
+              placeholder="Họ và tên"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold text-slate-600">
+              Số điện thoại <span className="text-red-500">*</span>
+            </span>
+            <input
+              className="auth-field"
+              value={value.phone}
+              onChange={(e) => onChange({ phone: e.target.value })}
+              placeholder="09..."
+              inputMode="tel"
+            />
+          </label>
+        </div>
+      )}
 
       {loading ? null : ghnOk ? (
         <div className="grid gap-3 sm:grid-cols-3">
@@ -256,7 +345,7 @@ export function GhnAddressFields({ value, onChange }: Props) {
 
       <label className="block">
         <span className="mb-1.5 block text-xs font-semibold text-slate-600">
-          Địa chỉ nhận hàng <span className="text-red-500">*</span>
+          {addressLabel} <span className="text-red-500">*</span>
         </span>
         <input
           className="auth-field"
@@ -265,6 +354,17 @@ export function GhnAddressFields({ value, onChange }: Props) {
           placeholder="Số nhà, tên đường..."
         />
       </label>
+
+      {showMergerAlert && (
+        <AddressMergerAlert
+          province={value.province}
+          district={value.district}
+          ward={value.ward}
+          detail={value.detail}
+          onApply={handleApplyMerger}
+          className="mt-2"
+        />
+      )}
     </div>
   );
 }
