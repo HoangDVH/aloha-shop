@@ -10,10 +10,11 @@ import { siRegisterSchema, type SiRegisterInput } from "@/lib/siRegisterSchema";
 import { siRequest, useSiSession } from "@/lib/siQueries";
 import { shopMeQueryKey, useShopMeQuery } from "@/lib/authQueries";
 import { formatVnd } from "@/lib/api";
+import { GhnAddressFields } from "@/components/GhnAddressFields";
 import { useSiDraft } from "./siRegisterDraftStore";
 import type { ShopUser } from "@/lib/auth";
 
-const defaults: SiRegisterInput = { phone: "", province: "", ward: "", detail: "", fullName: "", shopName: "", businessType: "", taxCode: "", note: "", email: "", password: "", acceptedTerms: false };
+const defaults: SiRegisterInput = { phone: "", province: "", district: "", ward: "", detail: "", fullName: "", shopName: "", businessType: "", taxCode: "", note: "", email: "", password: "", acceptedTerms: false };
 const lookupMessages: Record<string, string> = {
   existing_si_candidate: "Thông tin phù hợp với hồ sơ khách sỉ. Aloha sẽ xác minh khi duyệt.",
   not_found: "Hãy giới thiệu cửa hàng của bạn để Aloha hỗ trợ chính sách mua sỉ phù hợp.",
@@ -31,6 +32,7 @@ export function SiRegisterWizard() {
   const [step, setStep] = useState(1);
   const [lookup, setLookup] = useState<{ lookupId: string; result: string } | null>(null);
   const [error, setError] = useState("");
+  const [ghnLoc, setGhnLoc] = useState({ ghnProvinceId: 0, ghnDistrictId: 0, ghnWardCode: "" });
   const form = useForm<SiRegisterInput>({ resolver: zodResolver(siRegisterSchema), defaultValues: defaults });
   const account = me.data;
   const status = account?.siStatus;
@@ -52,7 +54,7 @@ export function SiRegisterWizard() {
     if (!await form.trigger(["phone", "province", "ward", "detail"])) throw new Error("Vui lòng kiểm tra SĐT và địa chỉ");
     saveDraft();
     const v = form.getValues();
-    return siRequest<{ lookupId: string; result: string }>("/api/shop/auth/si/lookup", { phone: v.phone, province: v.province, ward: v.ward, detail: v.detail });
+    return siRequest<{ lookupId: string; result: string }>("/api/shop/auth/si/lookup", { phone: v.phone, province: v.province, district: v.district, ward: v.ward, detail: v.detail });
   }, onSuccess: data => { setLookup(data); setStep(3); setError(""); }, onError: e => setError(e.message) });
   const register = useMutation({ mutationFn: async (values: SiRegisterInput) => {
     if (!lookup) throw new Error("Vui lòng kiểm tra thông tin lại");
@@ -90,7 +92,39 @@ export function SiRegisterWizard() {
             {session.isPending?<p>Đang kiểm tra…</p>:session.data?.zaloConfigured?<a href="/api/shop/auth/zalo/start" className="flex min-h-12 items-center justify-center rounded-xl bg-[var(--aloha-green)] px-4 font-bold text-white">Tiếp tục với Zalo</a>:<p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Đăng ký qua Zalo đang được chuẩn bị. Vui lòng liên hệ Aloha để được hỗ trợ.</p>}
             <p className="text-sm">Đã có tài khoản Aloha? <Link href="/dang-nhap?next=/dang-ky-si" className="font-semibold text-[var(--aloha-green)] underline">Đăng nhập</Link></p>
           </div> : <form onSubmit={form.handleSubmit(values=>register.mutate(values))} onBlur={saveDraft} className="mt-5 space-y-5">
-            {step===2 ? <>{field("phone","Số điện thoại","tel")}<div className="grid gap-4 sm:grid-cols-2">{field("province","Tỉnh / thành phố")}{field("ward","Phường / xã")}</div>{field("detail","Số nhà, tên đường")}</> : <>
+            {step===2 ? (
+              <>
+                {field("phone","Số điện thoại","tel")}
+                <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+                  <p className="mb-3 text-sm font-semibold text-slate-700">Địa chỉ kinh doanh / kho hàng</p>
+                  <GhnAddressFields
+                    hideContactFields
+                    addressLabel="Số nhà, tên đường"
+                    value={{
+                      fullName: form.watch("fullName") || "",
+                      phone: form.watch("phone") || "",
+                      province: form.watch("province") || "",
+                      district: form.watch("district") || "",
+                      ward: form.watch("ward") || "",
+                      detail: form.watch("detail") || "",
+                      ghnProvinceId: ghnLoc.ghnProvinceId,
+                      ghnDistrictId: ghnLoc.ghnDistrictId,
+                      ghnWardCode: ghnLoc.ghnWardCode,
+                    }}
+                    onChange={(patch) => {
+                      if (patch.province !== undefined) form.setValue("province", patch.province, { shouldValidate: true });
+                      if (patch.district !== undefined) form.setValue("district", patch.district, { shouldValidate: true });
+                      if (patch.ward !== undefined) form.setValue("ward", patch.ward, { shouldValidate: true });
+                      if (patch.detail !== undefined) form.setValue("detail", patch.detail, { shouldValidate: true });
+                      setGhnLoc((prev) => ({ ...prev, ...patch }));
+                    }}
+                  />
+                  {form.formState.errors.province && <span role="alert" className="mt-1 block text-xs text-red-700">{form.formState.errors.province.message}</span>}
+                  {form.formState.errors.ward && <span role="alert" className="mt-1 block text-xs text-red-700">{form.formState.errors.ward.message}</span>}
+                  {form.formState.errors.detail && <span role="alert" className="mt-1 block text-xs text-red-700">{form.formState.errors.detail.message}</span>}
+                </div>
+              </>
+            ) : <>
               <p className="rounded-xl bg-[var(--aloha-green-light)] p-3 text-sm leading-relaxed text-[var(--aloha-green-dark)]">{lookupMessages[lookup?.result || ""]}</p>
               {field("fullName","Họ tên người liên hệ")}
               {lookup?.result!=="existing_si_candidate" && <>{field("shopName","Tên cửa hàng / công ty")}{field("businessType","Loại hình kinh doanh")}</>}

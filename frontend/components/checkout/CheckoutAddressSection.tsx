@@ -2,6 +2,7 @@
 
 import { MapPin, Store, Truck } from "lucide-react";
 import { GhnAddressFields, type AddressDraft } from "@/components/GhnAddressFields";
+import { AddressMergerAlert } from "@/components/AddressMergerAlert";
 import type { ShopAddress } from "@/lib/orders";
 import { EMPTY_DRAFT, type Delivery } from "./checkoutTypes";
 
@@ -125,6 +126,26 @@ export function CheckoutAddressSection({
                 </button>
               </div>
             </div>
+
+            <AddressMergerAlert
+              province={selectedAddr.province}
+              district={selectedAddr.district}
+              ward={selectedAddr.ward}
+              detail={selectedAddr.detail}
+              onApply={(suggest) => {
+                onDraftChange({
+                  ...EMPTY_DRAFT,
+                  fullName: selectedAddr.fullName,
+                  phone: selectedAddr.phone,
+                  province: suggest.province,
+                  district: suggest.district || "",
+                  ward: suggest.ward || selectedAddr.ward || "",
+                  detail: selectedAddr.detail,
+                });
+                onShowNewForm();
+              }}
+              className="mt-3"
+            />
           </div>
         )
       ) : (
