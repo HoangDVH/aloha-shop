@@ -18,8 +18,6 @@ type Props = {
   agree: boolean;
   onAgreeChange: (v: boolean) => void;
   onPlaceOrder: () => void;
-  hasPreOrder?: boolean;
-  payMethod?: "Cash" | "Transfer";
 };
 
 /**
@@ -39,8 +37,6 @@ export function CheckoutSummaryAside({
   agree,
   onAgreeChange,
   onPlaceOrder,
-  hasPreOrder = false,
-  payMethod = "Cash",
 }: Props) {
   const showShip = shopShowCheckoutShipping();
 
@@ -88,7 +84,7 @@ export function CheckoutSummaryAside({
           ) : null}
           <div className="border-t border-slate-200/90" />
           <div className="flex items-center justify-between gap-3">
-            <span>{hasPreOrder ? "Tiền hàng dự kiến" : "Tổng tiền thanh toán"}</span>
+            <span>Tổng tiền thanh toán</span>
             <span className="text-base font-bold tabular-nums text-[var(--aloha-price)]">
               {formatVnd(grandTotal)}
             </span>
@@ -121,14 +117,10 @@ export function CheckoutSummaryAside({
           onClick={onPlaceOrder}
           className="mt-4 w-full rounded-full bg-[var(--aloha-green)] py-3.5 text-sm font-bold text-white transition hover:bg-[var(--aloha-green-hover)] disabled:cursor-not-allowed disabled:bg-slate-300"
         >
-          {submitting ? "Đang gửi…" : hasPreOrder ? "Gửi đơn đặt trước" : "Đặt hàng"}
+          {submitting ? "Đang gửi…" : "Đặt hàng"}
         </button>
         <p className="mt-2 text-center text-[11px] leading-snug text-slate-500">
-          {hasPreOrder
-            ? "Aloha sẽ kiểm tra và liên hệ xác nhận trước khi hướng dẫn thanh toán hoặc đặt cọc."
-            : payMethod === "Transfer" || showShip
-              ? "Đặt hàng lưu đơn trên web. Hóa đơn KiotViet chỉ tạo sau khi chuyển khoản thành công hoặc nhân viên xác nhận thanh toán."
-              : "Đặt hàng COD — cửa hàng xử lý giao trên KiotViet. Bạn thanh toán khi nhận hàng."}
+          Sau khi đặt, Aloha kiểm tra và gửi hình xác nhận. Thanh toán hoặc cọc thực hiện sau khi bạn xác nhận ảnh.
         </p>
       </section>
     </aside>

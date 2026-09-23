@@ -1,6 +1,4 @@
 "use client";
-import { BackorderNotice } from "./BackorderNotice";
-
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -577,15 +575,7 @@ export function ProductDetailView({
                       </span>
                     </>
                   ) : null}
-                  {!needPick && !variantsLoading && isPreOrder ? (
-                    <>
-                      {" · "}
-                      <span className="font-semibold text-amber-700">Đặt trước</span>
-                    </>
-                  ) : null}
                 </p>
-
-                {isPreOrder && activeProduct.allowBackorder !== false ? <BackorderNotice available={liveTon} requested={qty + cartQty} unit={activeProduct.dvt} /> : null}
 
                 {variantAxes.length > 0 ? (
                   <ProductVariantPicker

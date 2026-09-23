@@ -11,11 +11,7 @@ import {
   placeShopOrder,
   type ShopAddress,
 } from "@/lib/orders";
-import {
-  shopPreOrderRequiresTransfer,
-  shopShowCheckoutShipping,
-  shopShowTransferPayment,
-} from "@/lib/checkoutFlags";
+import { shopShowCheckoutShipping } from "@/lib/checkoutFlags";
 import {
   checkoutAgreeSchema,
   checkoutReceiverSchema,
@@ -27,8 +23,7 @@ import { Modal } from "antd";
 import { usePriceSession } from "@/lib/priceSession";
 import { useCart } from "@/lib/cart";
 import { formatVnd } from "@/lib/api";
-import { isPreOrderTon } from "@/lib/cart";
-import type { Delivery, PayMethod } from "./checkoutTypes";
+import type { Delivery } from "./checkoutTypes";
 
 type CartLineLike = {
   ma: string;
@@ -64,7 +59,6 @@ type Args = {
   shippingQuote: ShippingQuote | null;
   shippingError: string;
   shippingFee: number;
-  pay: PayMethod;
   note: string;
   user: ShopUserLike;
   replace: (href: string) => void;
@@ -95,7 +89,6 @@ export function usePlaceOrder({
   shippingQuote,
   shippingError,
   shippingFee,
-  pay,
   note,
   user,
   replace,
@@ -110,7 +103,6 @@ export function usePlaceOrder({
   const attemptRef = useRef<{ fingerprint: string; key: string } | null>(null);
   const qc = useQueryClient();
   const showShip = shopShowCheckoutShipping();
-  const showTransfer = shopShowTransferPayment();
 
   const placeMut = useMutation({
     mutationFn: placeShopOrder,
@@ -119,7 +111,7 @@ export function usePlaceOrder({
     },
   });
 
-  const placeOrder = async (opts?: { preOrderCodConfirmed?: boolean }) => {
+  const placeOrder = async (opts?: { policyAccepted?: boolean; preOrderCodConfirmed?: boolean }) => {
     if (placingLockRef.current) return;
     setError("");
     if (!usePriceSession.getState().ready) { setError(usePriceSession.getState().error || "Đang cập nhật giá. Vui lòng thử lại sau ít giây."); return; }
@@ -137,33 +129,13 @@ export function usePlaceOrder({
       return;
     }
 
-    const hasPreOrder = selected.some((l) => isPreOrderTon(l.ton, l.qty));
-    const cartTotal = selected.reduce((n, l) => n + l.gia * l.qty, 0);
-    const orderTotal = cartTotal + Math.max(0, Number(shippingFee) || 0);
-    const forceTransfer = false;
-    const codConfirmed = Boolean(
-      opts?.preOrderCodConfirmed ?? preOrderCodConfirmed
-    );
-
-    if (forceTransfer && !showTransfer) {
-      setError(
-        "Đơn đặt trước vượt hạn mức COD — cần chuyển khoản nhưng shop chưa bật CK"
-      );
-      return;
-    }
-    if (forceTransfer && pay !== "Transfer") {
-      setError("Đơn đặt trước vượt hạn mức COD — vui lòng thanh toán chuyển khoản");
-      return;
-    }
-    if (hasPreOrder && !codConfirmed) {
-      setError("Vui lòng đồng ý chờ Aloha kiểm tra và liên hệ xác nhận");
+    const policyAccepted = Boolean(opts?.policyAccepted ?? preOrderCodConfirmed);
+    if (!policyAccepted) {
+      setError("Vui lòng đồng ý chính sách kiểm hàng và xác nhận ảnh trước khi đặt hàng");
       return;
     }
 
-    const method: PayMethod =
-      !hasPreOrder && (forceTransfer || (showTransfer && pay === "Transfer"))
-        ? "Transfer"
-        : "Cash";
+    const method = "Pending" as const;
 
     let customerName = "";
     let customerPhone = "";
@@ -252,7 +224,7 @@ export function usePlaceOrder({
       }
     }
 
-    if (!hasPreOrder && showShip && delivery === "giao_tan_noi") {
+    if (showShip && delivery === "giao_tan_noi") {
       if (!shippingQuote?.quoteToken || !shippingQuote.selected) {
         setError(shippingError || "Chưa có phí ship — kiểm tra địa chỉ nhận hàng");
         return;
@@ -270,7 +242,8 @@ export function usePlaceOrder({
       if (attemptRef.current?.fingerprint !== fingerprint) attemptRef.current = { fingerprint, key: nextKey };
       const idempotencyKey = attemptRef.current.key;
       const res = await placeMut.mutateAsync({
-        backorderAccepted: hasPreOrder && codConfirmed,
+        backorderAccepted: true,
+        policyAccepted: true,
         addressId,
         customerName,
         customerPhone,
@@ -282,7 +255,7 @@ export function usePlaceOrder({
         ghnWardCode: ghnWardCode || undefined,
         shippingAddress,
         method,
-        usingCod: method === "Cash",
+        usingCod: false,
         customerNote: note.trim(),
         idempotencyKey,
         quoteToken:

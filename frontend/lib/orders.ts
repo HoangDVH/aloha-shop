@@ -156,6 +156,7 @@ export async function deleteAddress(id: string) {
 
 export type PlaceOrderInput = {
   backorderAccepted?: boolean;
+  policyAccepted?: boolean;
   addressId?: string;
   customerName: string;
   customerPhone: string;
@@ -166,7 +167,7 @@ export type PlaceOrderInput = {
   ghnDistrictId?: number;
   ghnWardCode?: string;
   shippingAddress?: string;
-  method: "Cash" | "Transfer";
+  method: "Cash" | "Transfer" | "Pending";
   usingCod?: boolean;
   customerNote?: string;
   orderDetails: ShopOrderDetail[];

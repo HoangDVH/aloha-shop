@@ -6,19 +6,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useShopRouter } from "@/lib/useShopRouter";
 import { SiCartNotice, useCartQuote } from "@/components/si-pricing/SiCartNotice";
-import { isPreOrderTon, useCart } from "@/lib/cart";
+import { useCart } from "@/lib/cart";
 import { useShopAuth } from "@/components/ShopAuthProvider";
 import { ShopPageLoader } from "@/components/ShopPageLoader";
 import { useShopLoadingWhile } from "@/lib/useShopLoadingWhile";
 import { refreshCartPricesFromCatalog } from "@/lib/cartPriceRefresh";
 import { listAddresses, type ShopAddress } from "@/lib/orders";
 import type { AddressDraft } from "@/components/GhnAddressFields";
-import { fetchShopBank, type ShopBankInfo } from "@/lib/bankTransfer";
-import {
-  shopPreOrderRequiresTransfer,
-  shopShowCheckoutShipping,
-  shopShowTransferPayment,
-} from "@/lib/checkoutFlags";
+import { shopShowCheckoutShipping } from "@/lib/checkoutFlags";
 import {
   checkoutReceiverSchema,
   checkoutShipAddressSchema,
@@ -26,7 +21,6 @@ import {
 import { CheckoutAddressPickerModal } from "@/components/checkout/CheckoutAddressPickerModal";
 import { CheckoutAddressSection } from "@/components/checkout/CheckoutAddressSection";
 import { CheckoutLineItems } from "@/components/checkout/CheckoutLineItems";
-import { CheckoutPaymentSection } from "@/components/checkout/CheckoutPaymentSection";
 import { CheckoutShippingSection } from "@/components/checkout/CheckoutShippingSection";
 import { CheckoutStickyBar } from "@/components/checkout/CheckoutStickyBar";
 import { CheckoutSummaryAside } from "@/components/checkout/CheckoutSummaryAside";
@@ -34,7 +28,6 @@ import { PreOrderCodConfirmModal } from "@/components/checkout/BackorderConfirmM
 import {
   EMPTY_DRAFT,
   type Delivery,
-  type PayMethod,
 } from "@/components/checkout/checkoutTypes";
 import { usePlaceOrder } from "@/components/checkout/usePlaceOrder";
 import { useShippingQuote } from "@/components/checkout/useShippingQuote";
@@ -99,7 +92,6 @@ function CheckoutConfirm() {
   const lines = useCart((s) => s.lines);
   const removeSelected = useCart((s) => s.removeSelected);
   const showShip = shopShowCheckoutShipping();
-  const showTransfer = shopShowTransferPayment();
 
   const selected = useMemo(() => lines.filter((l) => l.selected), [lines]);
   const total = selected.reduce((n, l) => n + l.gia * l.qty, 0);
@@ -110,36 +102,19 @@ function CheckoutConfirm() {
   const [showNewForm, setShowNewForm] = useState(false);
 
   const [delivery, setDelivery] = useState<Delivery>("giao_tan_noi");
-  const [pay, setPay] = useState<PayMethod>("Cash");
   const [note, setNote] = useState("");
   const [agree, setAgree] = useState(false);
   const catalogState = usePriceSession();
   const { isSi, quote: siQuote } = useCartQuote();
-  const [preOrderCodConfirmed, setPreOrderCodConfirmed] = useState(false);
-  const [preOrderCodModalOpen, setPreOrderCodModalOpen] = useState(false);
+  const [policyModalOpen, setPolicyModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-
-  const hasPreOrder = useMemo(
-    () => selected.some((l) => isPreOrderTon(l.ton, l.qty)),
-    [selected]
-  );
 
   useShopLoadingWhile(submitting);
 
   const [draft, setDraft] = useState<AddressDraft>(EMPTY_DRAFT);
 
   const selectedAddr = addresses.find((a) => a.id === selectedAddrId);
-
-  const [bankInfo, setBankInfo] = useState<ShopBankInfo | null>(null);
-
-  useEffect(() => {
-    if (!showTransfer) {
-      setPay("Cash");
-      return;
-    }
-    void fetchShopBank().then((b) => setBankInfo(b));
-  }, [showTransfer]);
 
   const cartMasKey = useMemo(
     () =>
@@ -175,18 +150,6 @@ function CheckoutConfirm() {
 
   const effectiveShippingFee = showShip ? shippingFee : 0;
   const grandTotal = total + effectiveShippingFee;
-  const preOrderForceTransfer = false;
-
-  useEffect(() => {
-    if (preOrderForceTransfer && showTransfer) {
-      setPay("Transfer");
-    }
-  }, [preOrderForceTransfer, showTransfer]);
-
-  useEffect(() => {
-    setPreOrderCodConfirmed(false);
-    setPreOrderCodModalOpen(false);
-  }, [hasPreOrder, pay, grandTotal]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -256,7 +219,6 @@ function CheckoutConfirm() {
 
   const { placeOrder } = usePlaceOrder({
     agree,
-    preOrderCodConfirmed,
     selected,
     delivery,
     showNewForm,
@@ -269,7 +231,6 @@ function CheckoutConfirm() {
     shippingQuote,
     shippingError,
     shippingFee: effectiveShippingFee,
-    pay: showTransfer ? pay : "Cash",
     note,
     user,
     replace: (href) => router.replace(href),
@@ -279,23 +240,13 @@ function CheckoutConfirm() {
     orderPlacedRef,
   });
 
-  const needsPreOrderCodModal = hasPreOrder;
-
   const requestPlaceOrder = () => {
     setError("");
-    if (needsPreOrderCodModal && !preOrderCodConfirmed) {
-      setPreOrderCodModalOpen(true);
-      return;
-    }
-    void placeOrder(
-      preOrderCodConfirmed ? { preOrderCodConfirmed: true } : undefined
-    );
+    setPolicyModalOpen(true);
   };
 
-  const confirmPreOrderCodAndPlace = () => {
-    setPreOrderCodConfirmed(true);
-    setPreOrderCodModalOpen(false);
-    void placeOrder({ preOrderCodConfirmed: true });
+  const confirmPolicyAndPlace = () => {
+    void placeOrder({ policyAccepted: true });
   };
 
   if (authLoading || (orderPlacedRef.current && submitting)) {
@@ -333,18 +284,16 @@ function CheckoutConfirm() {
     : !catalogState.ready ? (catalogState.error || "Đang cập nhật giá giỏ hàng…") : selected.some(l => l.priceKind === "si_missing" || !(l.gia > 0)) ? "Có sản phẩm chưa có giá. Vui lòng liên hệ báo giá hoặc bỏ sản phẩm đó khỏi đơn." :
     selected.length === 0
       ? "Chưa chọn sản phẩm trong giỏ — quay lại giỏ hàng và tick sản phẩm."
-      : preOrderForceTransfer && !showTransfer
-        ? "Đơn đặt trước vượt hạn mức COD — cần CK nhưng shop chưa bật."
-        : receiverBlock
-          ? receiverBlock
-          : !hasPreOrder && showShip && delivery === "giao_tan_noi" && shippingLoading
-            ? "Đang tính phí vận chuyển…"
-            : !hasPreOrder && showShip && delivery === "giao_tan_noi" && !shippingQuote?.quoteToken
-              ? shippingError ||
-                "Chưa có phí ship. Kiểm tra địa chỉ nhận hàng (tỉnh/phường) hoặc thử lại."
-              : !agree
-                ? "Tick đồng ý Điều kiện giao dịch chung trước khi đặt hàng."
-                : "";
+      : receiverBlock
+        ? receiverBlock
+        : showShip && delivery === "giao_tan_noi" && shippingLoading
+          ? "Đang tính phí vận chuyển…"
+          : showShip && delivery === "giao_tan_noi" && !shippingQuote?.quoteToken
+            ? shippingError ||
+              "Chưa có phí ship. Kiểm tra địa chỉ nhận hàng (tỉnh/phường) hoặc thử lại."
+            : !agree
+              ? "Tick đồng ý Điều kiện giao dịch chung trước khi đặt hàng."
+              : "";
 
   const canSubmit = !submitting && !orderBlockedReason;
 
@@ -399,14 +348,6 @@ function CheckoutConfirm() {
             ) : null}
 
             <SiCartNotice />
-            <CheckoutPaymentSection
-              pay={showTransfer ? pay : "Cash"}
-              onPayChange={setPay}
-              bankInfo={bankInfo}
-              grandTotal={grandTotal}
-              hasPreOrder={hasPreOrder}
-              requireTransfer={preOrderForceTransfer}
-            />
           </div>
 
           <CheckoutSummaryAside
@@ -422,8 +363,6 @@ function CheckoutConfirm() {
             agree={agree}
             onAgreeChange={setAgree}
             onPlaceOrder={requestPlaceOrder}
-            hasPreOrder={hasPreOrder}
-            payMethod={showTransfer ? pay : "Cash"}
           />
         </div>
 
@@ -445,15 +384,20 @@ function CheckoutConfirm() {
       </div>
 
       <PreOrderCodConfirmModal
-        lines={selected}
-        open={preOrderCodModalOpen}
+        lines={selected.map((l) => ({
+          ma: l.ma,
+          ten: l.ten,
+          qty: l.qty,
+          dvt: l.dvt,
+        }))}
+        open={policyModalOpen}
         total={grandTotal}
-        productNames={selected
-          .filter((l) => isPreOrderTon(l.ton, l.qty))
-          .map((l) => l.ten)}
         submitting={submitting}
-        onClose={() => setPreOrderCodModalOpen(false)}
-        onAgree={confirmPreOrderCodAndPlace}
+        error={error}
+        onClose={() => {
+          if (!submitting) setPolicyModalOpen(false);
+        }}
+        onAgree={confirmPolicyAndPlace}
       />
 
       {/* Ngoài khối animate — portal body để fixed không bị kéo theo cuộn */}
@@ -468,7 +412,6 @@ function CheckoutConfirm() {
         agree={agree}
         onAgreeChange={setAgree}
         onPlaceOrder={requestPlaceOrder}
-        hasPreOrder={hasPreOrder}
       />
     </>
   );

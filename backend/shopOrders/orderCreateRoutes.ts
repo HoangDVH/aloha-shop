@@ -31,6 +31,7 @@ import {
   cancelInvoiceForOrder,
   ensureAwaitingInvoice,
   ensureCodKvOrder,
+  ensureReviewKvOrder,
   shopCodKvEnabled,
   shopKiotQrAwaitingEnabled,
 } from "../shopInvoices/invoiceService.js";
@@ -72,6 +73,34 @@ async function filterActiveCtvCodes(
   return new Set(rows.map((r) => normalizeCtvCode(String((r as any).ctvCode || ""))));
 }
 /** POST /api/shop/orders — tạo đơn (COD / chuyển khoản). */
+function reviewOrderKvDescription(
+  details: Array<{
+    productCode: string;
+    quantity: number;
+    availableQty?: number;
+    preOrder?: boolean;
+  }>,
+  extra: string
+): string {
+  const over = details.filter(
+    (d) =>
+      d.preOrder ||
+      (d.availableQty != null && d.quantity > Math.max(0, Number(d.availableQty) || 0))
+  );
+  const overText = over.length
+    ? "Vượt tồn: " +
+      over
+        .map(
+          (d) =>
+            `${d.productCode} đặt ${d.quantity}/có ${Math.max(0, Number(d.availableQty) || 0)}`
+        )
+        .join("; ")
+    : "";
+  const policy =
+    "Khách đã đồng ý kiểm hàng và xác nhận ảnh trước khi đóng gói. Sau khi khách xác nhận ảnh: thanh toán trước toàn bộ đơn hoặc đặt cọc tối thiểu bằng phí ship.";
+  return [policy, overText, extra].filter(Boolean).join(" | ").slice(0, 500);
+}
+
 export function registerShopOrderCreateRoutes(
   app: Express,
   getShopDb: GetShopDb,
@@ -181,11 +210,19 @@ export function registerShopOrderCreateRoutes(
           orderDetails = annotated.details;
         }
         const hasPreOrder = orderDetails.some((d) => Boolean(d.preOrder));
+        const policyAccepted = body.policyAccepted === true;
 
         const needsCustomerLink = userEarly?.siStatus === "active" && userEarly?.roles?.includes("si") && !userEarly.kvCustomerId;
-        if (hasPreOrder || needsCustomerLink) {
+        // Sỉ chưa gắn khách KV vẫn lưu yêu cầu trên web. Đơn còn lại, sau khi đồng ý chính sách, đi tạo đơn đặt hàng KV.
+        if (needsCustomerLink || (hasPreOrder && !policyAccepted)) {
           const result = await createBackorderRequest(shopDb, { userId: req.shopAuth!.userId, account: userEarly, body, details: orderDetails });
           return res.status(result.status).json(result.body);
+        }
+        if (!policyAccepted) {
+          return res.status(409).json({
+            code: "policy_confirmation_required",
+            error: "Vui lòng đồng ý chính sách kiểm hàng và xác nhận ảnh trước khi đặt hàng",
+          });
         }
         const subtotal = orderDetails.reduce((n, d) => n + d.price * d.quantity, 0);
         let shippingFee = 0;
@@ -269,8 +306,10 @@ export function registerShopOrderCreateRoutes(
           ...new Set(orderDetails.map((d) => d.ctvCode).filter(Boolean) as string[]),
         ];
 
+        // Đơn đã đồng ý chính sách: chưa thu tiền, chưa lập hóa đơn.
+        const reviewFirst = policyAccepted;
         // Pre-order COD: cho phép dưới ngưỡng; vượt ngưỡng → bắt CK (kiểu sàn)
-        if (hasPreOrder && method !== "Transfer") {
+        if (!reviewFirst && hasPreOrder && method !== "Transfer") {
           if (!shopAllowPreOrderCod(total)) {
             const max = shopPreOrderCodMaxVnd();
             return res.status(400).json({
@@ -281,7 +320,7 @@ export function registerShopOrderCreateRoutes(
           }
         }
 
-        const isTransfer = method === "Transfer";
+        const isTransfer = !reviewFirst && method === "Transfer";
         const mainDb = mainDbEarly;
 
         // Chỉ assert dòng không preOrder. Soft-hold sau insert cũng skip preOrder.
@@ -313,6 +352,13 @@ export function registerShopOrderCreateRoutes(
         const kvPreOrderHint = hasPreOrder
           ? "ĐẶT TRƯỚC — SP hết hàng, cần nhập hàng ngay"
           : "";
+        const reviewKvDescription = reviewOrderKvDescription(orderDetails, [
+          ctvNote,
+          isTest ? "[TEST-WEB]" : "",
+          customerNote,
+        ]
+          .filter(Boolean)
+          .join(" | "));
 
         const idempotencyKey = String(
           body.idempotencyKey || req.headers["idempotency-key"] || ""
@@ -409,19 +455,30 @@ export function registerShopOrderCreateRoutes(
           total,
           totalPayment: total,
           discount: 0,
-          method,
-          usingCod: isTransfer ? false : usingCod,
+          method: reviewFirst ? "Pending" : method,
+          usingCod: reviewFirst || isTransfer ? false : usingCod,
           hasPreOrder,
           customerNote: customerNoteStored,
-          paymentStatus: isTransfer ? "unpaid" : "cod",
-          orderStatus: isTransfer ? "cho_thanh_toan" : "cho_xu_ly",
+          paymentStatus: reviewFirst || isTransfer ? "unpaid" : "cod",
+          orderStatus: reviewFirst
+            ? "cho_xac_nhan"
+            : isTransfer
+              ? "cho_thanh_toan"
+              : "cho_xu_ly",
+          ...(reviewFirst
+            ? { policyAcceptedAt: now, reviewNote: reviewKvDescription }
+            : {}),
           ...(paymentCode ? { paymentCode } : {}),
           ...(idempotencyKey ? { idempotencyKey } : {}),
           expiresAt: expiresAt || null,
           stockApplied: false,
           stockHeld: false,
-          status: isTransfer ? "cho_thanh_toan" : "cho",
-          statusValue: isTransfer ? "Chờ thanh toán" : "Đặt hàng",
+          status: reviewFirst ? "cho_xac_nhan" : isTransfer ? "cho_thanh_toan" : "cho",
+          statusValue: reviewFirst
+            ? "Chờ Aloha gửi ảnh"
+            : isTransfer
+              ? "Chờ thanh toán"
+              : "Đặt hàng",
           done: false,
           purchaseDate: now,
           source: "shop_web",
@@ -432,10 +489,10 @@ export function registerShopOrderCreateRoutes(
         const insertRes = await shopDb.collection(SHOP_ORDERS).insertOne(doc);
         const mongoId = insertRes.insertedId;
 
-        // COD → Đặt hàng KV; mã shop đổi theo mã DH khi có
-        if (!isTransfer && shopCodKvEnabled()) {
+        // Đồng ý chính sách → Đặt hàng KV, chưa hóa đơn. COD cũ giữ nhánh dưới.
+        if ((reviewFirst || !isTransfer) && shopCodKvEnabled()) {
           try {
-            const ord = await ensureCodKvOrder({
+            const ord = await (reviewFirst ? ensureReviewKvOrder : ensureCodKvOrder)({
               mainDb: mainDbEarly,
               customerName,
               customerId: user?.kvCustomerId ? Number(user.kvCustomerId) : undefined,
@@ -448,11 +505,12 @@ export function registerShopOrderCreateRoutes(
                 province,
               }),
               orderDetails,
-              description:
-                `Shop COD | ${ctvNote} | ${kvPreOrderHint ? kvPreOrderHint + " | " : ""}${isTest ? "[TEST-WEB] " : ""}${customerNote || "Shop COD"}`.slice(
-                  0,
-                  500
-                ),
+              description: reviewFirst
+                ? reviewKvDescription
+                : `Shop COD | ${ctvNote} | ${kvPreOrderHint ? kvPreOrderHint + " | " : ""}${isTest ? "[TEST-WEB] " : ""}${customerNote || "Shop COD"}`.slice(
+                    0,
+                    500
+                  ),
               totalPayment: total,
               shippingFee,
             });
@@ -473,7 +531,7 @@ export function registerShopOrderCreateRoutes(
             Object.assign(doc, patch);
           } catch (e: any) {
             const msg = String(
-              e?.message || e || "Không tạo được đặt hàng COD trên KiotViet"
+              e?.message || e || "Không tạo được đơn đặt hàng trên KiotViet"
             );
             if (hasPreOrder) {
               console.warn("[shop-order] kv COD soft-fail (preOrder)", code, msg);

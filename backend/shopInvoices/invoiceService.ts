@@ -183,6 +183,31 @@ export type EnsureCodKvOrderResult = {
   kvOrderCode: string;
 };
 
+/**
+ * Mọi đơn web sau khi khách đồng ý chính sách: tạo Đặt hàng KV, chưa lập hóa đơn.
+ * Chưa thu tiền — thanh toán hoặc cọc sau khi khách xác nhận ảnh.
+ */
+export async function ensureReviewKvOrder(
+  opts: EnsureCodKvOrderInput
+): Promise<EnsureCodKvOrderResult> {
+  const ord = await createKvOrder(opts.mainDb, {
+    customerName: opts.customerName,
+    customerId: opts.customerId,
+    customerPhone: opts.customerPhone,
+    address: opts.address,
+    orderDetails: opts.orderDetails,
+    usingCod: false,
+    method: "Cash",
+    description: opts.description.slice(0, 500),
+    totalPayment: 0,
+    shippingFee: opts.shippingFee,
+  });
+  return {
+    kvOrderId: ord.kvOrderId,
+    kvOrderCode: ord.kvOrderCode,
+  };
+}
+
 /** COD lúc đặt: tạo Đặt hàng KV (usingCod, chưa thu — totalPayment=0). */
 export async function ensureCodKvOrder(
   opts: EnsureCodKvOrderInput

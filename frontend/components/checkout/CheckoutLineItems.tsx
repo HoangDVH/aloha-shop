@@ -1,12 +1,11 @@
 "use client";
 
-import { BackorderNotice } from "../BackorderNotice";
 import { useState } from "react";
 import Link from "next/link";
 import { Minus, Plus, SquarePen, Store } from "lucide-react";
 import { formatVnd } from "@/lib/api";
 import type { CartLine } from "@/lib/cart";
-import { isPreOrderTon, stockMax, useCart } from "@/lib/cart";
+import { stockMax, useCart } from "@/lib/cart";
 import { formatVariantLabel } from "@/lib/cartVariant";
 
 type Props = {
@@ -24,7 +23,6 @@ export function CheckoutLineItems({
   const setQty = useCart((s) => s.setQty);
   const setLineNote = useCart((s) => s.setLineNote);
   const [editingMa, setEditingMa] = useState<string | null>(null);
-  const hasPreOrder = selected.some((l) => isPreOrderTon(l.ton, l.qty));
 
   return (
     <section className="overflow-hidden rounded-[var(--aloha-radius-lg)] bg-white shadow-[var(--aloha-shadow)] ring-1 ring-black/[0.04]">
@@ -40,13 +38,7 @@ export function CheckoutLineItems({
         </div>
       </div>
 
-      {hasPreOrder ? (
-        <p className="border-b border-amber-200/80 bg-amber-50 px-3.5 py-2.5 text-xs font-medium text-amber-900 sm:px-4">
-          Đơn có sản phẩm đặt trước — Aloha sẽ kiểm tra và liên hệ xác nhận trước khi hướng dẫn thanh toán hoặc đặt cọc.
-        </p>
-      ) : null}
-
-      {/* Desktop header — giống bảng ảnh 2 */}
+      {/* Desktop header */}
       <div className="hidden grid-cols-[minmax(0,1fr)_100px_100px_110px] gap-3 border-b border-[var(--aloha-line)] bg-[#f8f7f4] px-4 py-2.5 text-xs font-semibold text-slate-500 lg:grid">
         <span>Sản phẩm</span>
         <span className="text-right">Đơn giá</span>
@@ -58,7 +50,6 @@ export function CheckoutLineItems({
         {selected.map((l) => {
           const variant = formatVariantLabel(l);
           const max = stockMax(l.ton);
-          const preOrder = isPreOrderTon(l.ton, l.qty);
           const atMax = l.qty >= 10000 || (l.allowBackorder === false && max != null && l.qty >= max);
           const lineTotal = l.gia * l.qty;
           const editing = editingMa === l.ma;
@@ -66,7 +57,6 @@ export function CheckoutLineItems({
 
           return (
             <li key={l.ma} className="px-3.5 py-3.5 sm:px-4">
-              {preOrder && <div className="mb-3"><BackorderNotice available={l.ton || 0} requested={l.qty} unit={l.dvt} compact /></div>}
               {/* Mobile */}
               <div className="flex gap-3 lg:hidden">
                 <Link
@@ -89,11 +79,6 @@ export function CheckoutLineItems({
                   >
                     {l.ten}
                   </Link>
-                  {preOrder ? (
-                    <span className="mt-1 w-fit rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">
-                      Đặt trước
-                    </span>
-                  ) : null}
                   {variant ? (
                     <p className="mt-0.5 text-xs text-[var(--aloha-muted)]">
                       {variant}
@@ -183,11 +168,6 @@ export function CheckoutLineItems({
                     </Link>
                     <p className="mt-0.5 text-xs text-[var(--aloha-muted)]">
                       {variant || l.dvt || "Cái"}
-                      {preOrder ? (
-                        <span className="ml-1.5 inline-flex rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold uppercase text-amber-800">
-                          ĐẶT TRƯỚC
-                        </span>
-                      ) : null}
                     </p>
                     <button
                       type="button"

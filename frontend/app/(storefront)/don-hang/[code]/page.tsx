@@ -52,8 +52,8 @@ function heroFor(o: ShopOrder): {
 } {
   const ps = o.paymentStatus || "";
   if (o.orderStatus === "cho_xac_nhan") return {
-    Icon: Clock, title: "Aloha đã nhận yêu cầu đặt trước",
-    subtitle: "Aloha sẽ kiểm tra tình trạng hàng và liên hệ xác nhận trước khi hướng dẫn thanh toán trước hoặc đặt cọc.", tone: "wait",
+    Icon: Clock, title: "Aloha đã nhận đơn",
+    subtitle: "Aloha đã nhận đơn và sẽ gửi hình xác nhận trước khi đóng gói. Sau khi bạn xác nhận ảnh, Aloha gửi hướng dẫn thanh toán trước toàn bộ đơn hoặc đặt cọc tối thiểu bằng phí ship.", tone: "wait",
   };
   if (ps === "paid") {
     return {
@@ -302,7 +302,7 @@ export default function DonHangStatusPage() {
     order.deliveryMethod === "nhan_cua_hang"
       ? "Nhận tại cửa hàng ALOHA"
       : [order.shippingAddress, order.ward, order.province].filter(Boolean).join(", ");
-  const payLabel = order.method === "Pending" ? "Chờ Aloha xác nhận trước thanh toán / đặt cọc" :
+  const payLabel = order.method === "Pending" || order.orderStatus === "cho_xac_nhan" ? "Thanh toán sau khi xác nhận ảnh (trả trước hoặc cọc tối thiểu phí ship)" :
     order.method === "Transfer" || order.method === "Card"
       ? "Chuyển khoản"
       : "Thanh toán khi nhận hàng (COD)";

@@ -14,7 +14,7 @@ type Step = {
 function buildSteps(o: ShopOrder): Step[] {
   if (o.orderStatus === "cho_xac_nhan") return [
     { id: "request", label: "Đã gửi yêu cầu", done: true, active: false },
-    { id: "review", label: "Chờ Aloha xác nhận", done: false, active: true },
+    { id: "review", label: "Chờ Aloha gửi ảnh", done: false, active: true },
     { id: "payment", label: "Thanh toán / cọc", done: false, active: false },
     { id: "delivery", label: "Sắp xếp giao hàng", done: false, active: false },
   ];
