@@ -275,7 +275,6 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                 {
                   href: "/dang-ky-si",
                   label: "Đăng ký sỉ",
-                  external: true,
                   key: "bao-gia",
                   kind: "link" as const,
                 },

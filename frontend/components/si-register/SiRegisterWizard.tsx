@@ -67,7 +67,7 @@ export function SiRegisterWizard() {
   </label>;
   const busy = lookupMutation.isPending || register.isPending;
 
-  return <main className="min-h-[75vh] bg-[var(--aloha-cream)] px-4 py-8 sm:py-14">
+  return <div className="min-h-[75vh] bg-[var(--aloha-cream)] px-4 py-8 sm:py-14">
     <div className="mx-auto grid max-w-[1120px] gap-8 lg:grid-cols-[.8fr_1.2fr] lg:gap-14">
       <section className="lg:pt-8">
         <Link href="/" className="text-sm font-semibold text-[var(--aloha-green)]">← Về cửa hàng Aloha</Link>
@@ -106,5 +106,5 @@ export function SiRegisterWizard() {
         </>}
       </section>
     </div>
-  </main>;
+  </div>;
 }
