@@ -1,5 +1,6 @@
 "use client";
 
+import { BackorderNotice } from "../BackorderNotice";
 import { useState } from "react";
 import Link from "next/link";
 import { Minus, Plus, SquarePen, Store } from "lucide-react";
@@ -23,7 +24,7 @@ export function CheckoutLineItems({
   const setQty = useCart((s) => s.setQty);
   const setLineNote = useCart((s) => s.setLineNote);
   const [editingMa, setEditingMa] = useState<string | null>(null);
-  const hasPreOrder = selected.some((l) => isPreOrderTon(l.ton));
+  const hasPreOrder = selected.some((l) => isPreOrderTon(l.ton, l.qty));
 
   return (
     <section className="overflow-hidden rounded-[var(--aloha-radius-lg)] bg-white shadow-[var(--aloha-shadow)] ring-1 ring-black/[0.04]">
@@ -41,8 +42,7 @@ export function CheckoutLineItems({
 
       {hasPreOrder ? (
         <p className="border-b border-amber-200/80 bg-amber-50 px-3.5 py-2.5 text-xs font-medium text-amber-900 sm:px-4">
-          Đơn có sản phẩm đặt trước — giao khi shop có hàng. Có thể COD (dưới hạn
-          mức) hoặc chuyển khoản.
+          Đơn có sản phẩm đặt trước — Aloha sẽ kiểm tra và liên hệ xác nhận trước khi hướng dẫn thanh toán hoặc đặt cọc.
         </p>
       ) : null}
 
@@ -58,14 +58,15 @@ export function CheckoutLineItems({
         {selected.map((l) => {
           const variant = formatVariantLabel(l);
           const max = stockMax(l.ton);
-          const preOrder = isPreOrderTon(l.ton);
-          const atMax = !preOrder && max != null && l.qty >= max;
+          const preOrder = isPreOrderTon(l.ton, l.qty);
+          const atMax = l.qty >= 10000 || (l.allowBackorder === false && max != null && l.qty >= max);
           const lineTotal = l.gia * l.qty;
           const editing = editingMa === l.ma;
           const hasLineNote = Boolean(l.lineNote?.trim());
 
           return (
             <li key={l.ma} className="px-3.5 py-3.5 sm:px-4">
+              {preOrder && <div className="mb-3"><BackorderNotice available={l.ton || 0} requested={l.qty} unit={l.dvt} compact /></div>}
               {/* Mobile */}
               <div className="flex gap-3 lg:hidden">
                 <Link

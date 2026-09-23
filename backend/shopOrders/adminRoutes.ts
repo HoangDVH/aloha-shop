@@ -28,6 +28,8 @@ import { completeShopOrderReturned } from "./completeReturned.js";
 import { shopOrderLookupFilter } from "./findShopOrder.js";
 import { migrateWebOrderCodes } from "./migrateWebCodes.js";
 import { syncShopOrderMoneyFromKv } from "./kvOrderMoneySync.js";
+import { voidCommissionsForOrder } from "./commission.js";
+import { releaseShopStockHolds } from "./stockHold.js";
 
 export function registerShopOrdersAdminRoutes(
   app: Express,
@@ -226,6 +228,9 @@ export function registerShopOrdersAdminRoutes(
         if (doc.deliveryMethod !== "giao_tan_noi") {
           return res.status(400).json({ error: "Đơn nhận tại cửa hàng — không tạo vận đơn" });
         }
+        if (doc.backorderStatus && doc.backorderStatus !== "ready") {
+          return res.status(409).json({ error: "Đơn đặt trước cần hoàn tất xác nhận, thu tiền và chuẩn bị hàng trước khi tạo vận đơn." });
+        }
         if (doc.shipment?.status === "created" && doc.shipment?.trackingCode) {
           return res.status(400).json({
             error: "Đơn đã có vận đơn",
@@ -316,6 +321,7 @@ export function registerShopOrdersAdminRoutes(
           {
             $or: [{ id }, { code: id }],
             orderStatus: { $nin: ["hoan_thanh", "huy"] },
+            $and: [{ $or: [{ backorderStatus: { $exists: false } }, { backorderStatus: "ready" }] }],
           },
           {
             $set: {
@@ -532,6 +538,7 @@ export function registerShopOrdersAdminRoutes(
         try {
           const ord = await ensureCodKvOrder({
             mainDb,
+            customerId: doc.kvCustomerId ? Number(doc.kvCustomerId) : undefined,
             customerName: String((doc as any).customerName || ""),
             customerPhone: String((doc as any).customerPhone || ""),
             address: fullAddressForKv(doc as any),
@@ -589,7 +596,7 @@ export function registerShopOrdersAdminRoutes(
         const shopDb = await getShopDb();
         const mainDb = await getDb();
         await ensureIdx(shopDb);
-        const rawCodes = Array.isArray(req.body?.codes) ? req.body.codes : [];
+        const rawCodes: unknown[] = Array.isArray(req.body?.codes) ? req.body.codes : [];
         const codes = [
           ...new Set(
             rawCodes

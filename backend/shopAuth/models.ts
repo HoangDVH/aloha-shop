@@ -6,7 +6,7 @@ export const SHOP_REFRESH = "aloha_shop_refresh_tokens";
 export const SHOP_LOGIN_IP = "aloha_shop_login_ip";
 export const SHOP_OAUTH_STATE = "aloha_shop_oauth_state";
 
-export type ShopRole = "customer" | "ctv";
+export type ShopRole = "customer" | "ctv" | "si";
 export type CtvStatus = "cho_duyet" | "active" | "khoa" | "tu_choi";
 
 export type ShopAddressPublic = {
@@ -29,6 +29,10 @@ export type PublicShopAccount = {
   roles: ShopRole[];
   ctvCode: string | null;
   ctvStatus: CtvStatus | null;
+  siStatus?: CtvStatus | null;
+  siRegion?: "HCM" | "TINH" | null;
+  siProfile?: Record<string, unknown> | null;
+  zaloVerified?: boolean;
   active: boolean;
   authProviders: string[];
   createdAt: string | null;
@@ -86,7 +90,7 @@ export function isValidCtvCode(code: string): boolean {
 
 export function toPublicShopAccount(doc: Record<string, unknown>): PublicShopAccount {
   const roles = Array.isArray(doc.roles)
-    ? (doc.roles.map(String).filter((r) => r === "customer" || r === "ctv") as ShopRole[])
+    ? (doc.roles.map(String).filter((r) => r === "customer" || r === "ctv" || r === "si") as ShopRole[])
     : (["customer"] as ShopRole[]);
   const providers: string[] = [];
   if (doc.passwordHash) providers.push("email");
@@ -124,6 +128,10 @@ export function toPublicShopAccount(doc: Record<string, unknown>): PublicShopAcc
     roles,
     ctvCode: doc.ctvCode ? String(doc.ctvCode) : null,
     ctvStatus,
+    siStatus: (["cho_duyet", "active", "khoa", "tu_choi"].includes(String(doc.siStatus)) ? doc.siStatus : null) as CtvStatus | null,
+    siRegion: doc.siRegion === "HCM" || doc.siRegion === "TINH" ? doc.siRegion : null,
+    siProfile: (doc.siProfile as Record<string, unknown>) || null,
+    zaloVerified: Boolean(doc.zaloId && doc.zaloVerifiedAt),
     active: doc.active !== false,
     authProviders: providers,
     createdAt: doc.createdAt ? new Date(doc.createdAt as string | Date).toISOString() : null,

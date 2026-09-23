@@ -1,5 +1,6 @@
 "use client";
 
+import { priceSessionGeneration } from "./priceSession";
 import type { CartLine } from "./cart";
 import { useCart } from "./cart";
 import { fetchServerCart, mergeServerCart, saveServerCart } from "./cartApi";
@@ -88,12 +89,15 @@ export function hydrateCartFromServer(lines: CartLine[], userId?: string, update
 
 /** Đồng bộ lần đầu sau đăng nhập / mở app đã đăng nhập. */
 async function pullOrMergeCart(userId: string): Promise<void> {
+  const generation = priceSessionGeneration();
+  const valid = () => generation === priceSessionGeneration();
   const local = normalizeLines(useCart.getState().lines);
   const meta = readMeta();
   syncPaused = true;
 
   try {
     const serverRes = await fetchServerCart();
+    if (!valid()) return;
 
     // Đổi tài khoản (meta còn userId khác) → lấy đúng giỏ cloud, KHÔNG gộp giỏ tài khoản cũ
     if (meta && meta.userId !== userId) {
@@ -105,6 +109,7 @@ async function pullOrMergeCart(userId: string): Promise<void> {
     if (!meta) {
       if (local.length) {
         const merged = await mergeServerCart(local);
+        if (!valid()) return;
         hydrateCartFromServer(merged.lines, userId, merged.updatedAt);
       } else {
         hydrateCartFromServer(serverRes.lines, userId, serverRes.updatedAt);
@@ -120,6 +125,7 @@ async function pullOrMergeCart(userId: string): Promise<void> {
       hydrateCartFromServer(serverRes.lines, userId, serverRes.updatedAt);
     } else if (localDiffers && local.length) {
       const saved = await saveServerCart(local);
+      if (!valid()) return;
       writeMeta({ userId, serverUpdatedAt: saved.updatedAt });
     }
   } catch {
@@ -132,10 +138,10 @@ async function pullOrMergeCart(userId: string): Promise<void> {
 }
 
 export async function syncCartForUser(userId: string): Promise<void> {
-  if (syncInFlight) return syncInFlight;
+  const generation = priceSessionGeneration();
   syncInFlight = (async () => {
     await pullOrMergeCart(userId);
-    syncedUserId = userId;
+    if (generation === priceSessionGeneration()) syncedUserId = userId;
     syncInFlight = null;
   })();
   return syncInFlight;
@@ -152,10 +158,12 @@ export function scheduleCartPushToServer(userId: string) {
 }
 
 export async function pushCartToServerNow(userId: string): Promise<void> {
-  if (syncPaused) return;
+  if (syncPaused || syncedUserId !== userId) return;
+  const generation = priceSessionGeneration();
   const lines = normalizeLines(useCart.getState().lines);
   try {
     const saved = await saveServerCart(lines);
+    if (generation !== priceSessionGeneration()) return;
     writeMeta({ userId, serverUpdatedAt: saved.updatedAt });
   } catch {
     /* không chặn UI */
@@ -165,7 +173,9 @@ export async function pushCartToServerNow(userId: string): Promise<void> {
 /** Gọi khi trạng thái đăng nhập thay đổi. */
 export async function onShopUserChanged(userId: string | null): Promise<void> {
   if (!userId) {
+    const wasAccountCart = Boolean(syncedUserId || readMeta());
     syncedUserId = null;
+    if (!wasAccountCart) return;
     clearMeta();
     // Đăng xuất: xóa giỏ trên máy — tránh tài khoản sau bị gộp/nhìn thấy giỏ người trước
     if (pushTimer) {

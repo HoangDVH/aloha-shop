@@ -37,6 +37,9 @@ export type ShopBankInfo = {
 };
 
 export type ShopOrder = {
+  backorderStatus?: string;
+  paidAmount?: number;
+  proposal?: { version: string; subtotal: number; total: number; shippingFee: number; depositDue: number; deliveryNote: string };
   id: string;
   code: string;
   kvOrderId?: number | string | null;
@@ -120,7 +123,7 @@ async function shopFetch<T>(path: string, init?: RequestInit): Promise<T> {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error((data as { error?: string }).error || `HTTP ${res.status}`);
+    throw Object.assign(new Error((data as { error?: string }).error || `HTTP ${res.status}`), { code: data.code, details: data.details });
   }
   return data as T;
 }
@@ -152,6 +155,7 @@ export async function deleteAddress(id: string) {
 }
 
 export type PlaceOrderInput = {
+  backorderAccepted?: boolean;
   addressId?: string;
   customerName: string;
   customerPhone: string;

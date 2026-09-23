@@ -1,6 +1,6 @@
 "use client";
 
-export type ShopRole = "customer" | "ctv";
+export type ShopRole = "customer" | "ctv" | "si";
 export type CtvStatus = "cho_duyet" | "active" | "khoa" | "tu_choi";
 
 export type ShopUser = {
@@ -10,6 +10,10 @@ export type ShopUser = {
   fullName: string;
   avatarUrl: string | null;
   roles: ShopRole[];
+  siStatus?: "cho_duyet" | "active" | "khoa" | "tu_choi" | null;
+  siRegion?: "HCM" | "TINH" | null;
+  siProfile?: Record<string, unknown> | null;
+  zaloVerified?: boolean;
   ctvCode: string | null;
   ctvStatus: CtvStatus | null;
   active: boolean;

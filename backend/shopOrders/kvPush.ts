@@ -188,6 +188,7 @@ export async function resolveShopKvShipProductCode(
 }
 
 export type PushShopOrderKvInput = {
+  customerId?: number | null;
   customerName: string;
   customerPhone: string;
   address?: string;
@@ -255,12 +256,11 @@ export async function pushShopOrderToKiotViet(
   const shipAddr = input.address || "Nhận tại cửa hàng ALOHA";
 
   const payload: Record<string, unknown> = {
+    ...(input.customerId ? { customerId: input.customerId } : {}),
     branchId,
     soldById,
     saleChannelId,
-    customerName: receiver,
-    contactNumber: phone || undefined,
-    address: shipAddr,
+    ...(!input.customerId ? { customerName: receiver, contactNumber: phone || undefined, address: shipAddr } : {}),
     orderDetails,
     usingCod: input.usingCod,
     method: input.method || (input.usingCod ? "Cash" : "Transfer"),
@@ -360,12 +360,11 @@ export async function pushShopInvoiceToKiotViet(
   const surchargeId = Number(process.env.SHOP_KV_SURCHARGE_ID || 0);
 
   const payload: Record<string, unknown> = {
+    ...(input.customerId ? { customerId: input.customerId } : {}),
     branchId,
     soldById,
     saleChannelId,
-    customerName: receiver,
-    contactNumber: phone || undefined,
-    address: input.address || "Nhận tại cửa hàng ALOHA",
+    ...(!input.customerId ? { customerName: receiver, contactNumber: phone || undefined, address: input.address || "Nhận tại cửa hàng ALOHA" } : {}),
     invoiceDetails,
     usingCod: !!input.usingCod,
     method: input.method || (input.usingCod ? "Cash" : "Transfer"),
@@ -413,6 +412,9 @@ export async function pushShopInvoiceToKiotViet(
       address: input.address || "Nhận tại cửa hàng ALOHA",
       price: shipFee,
     };
+  }
+  if (input.customerId && !payload.invoiceDelivery) {
+    payload.invoiceDelivery = { receiver, contactNumber: phone || undefined, address: input.address || "Nhận tại cửa hàng ALOHA" };
   }
 
   const api = kvApiBase();

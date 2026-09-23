@@ -15,6 +15,11 @@ dotenv.config();
 
 import { registerShopApi } from './shopCatalog/register.js';
 import { registerShopAuthRoutes } from './shopAuth/routes.js';
+import { registerWholesaleRoutes } from './shopWholesale/routes.js';
+import { registerBackorderAdminRoutes } from './shopOrders/backorderAdmin.js';
+import { startWholesaleProvisionWorker } from './shopWholesale/provision.js';
+import { registerShopCartQuote } from './shopWholesale/quote.js';
+import { registerWholesalePasswordRoutes } from './shopWholesale/passwordRoutes.js';
 import { registerShopAddressRoutes } from './shopOrders/addressRoutes.js';
 import { registerShopCartRoutes } from './shopCart/routes.js';
 import { registerShopOrderRoutes } from './shopOrders/routes.js';
@@ -201,6 +206,10 @@ if (uploadsFallbackOrigin) {
 registerAuthRoutes(app, getOpsDb);
 registerShopApi(app, getDb, getDb, getCatalogSourceDb);
 registerShopAuthRoutes(app, getDb);
+registerWholesaleRoutes(app, getDb, getOpsDb);
+registerWholesalePasswordRoutes(app, getDb, getOpsDb);
+registerBackorderAdminRoutes(app, getDb, getOpsDb);
+registerShopCartQuote(app, getDb, getDb);
 registerShopAddressRoutes(app, getDb);
 registerShopCartRoutes(app, getDb);
 registerShopOrderRoutes(app, getDb, getOpsDb);
@@ -298,5 +307,6 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`   - Health: http://localhost:${PORT}/api/health\n`);
   startShopKvStockPoller(getDb);
   startKvPaymentReconcile(getDb, getOpsDb);
+  startWholesaleProvisionWorker(getDb, getOpsDb);
   startKvDeliveryReconcile(getDb, getOpsDb);
 });

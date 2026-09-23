@@ -58,7 +58,7 @@ export function registerShopOrderMeRoutes(
           .limit(100)
           .toArray();
         const mainDb = await getMainDb();
-        const data = [];
+        const data: Record<string, unknown>[] = [];
         for (const d of docs) {
           const { _id, ...rest } = d as any;
           const details = Array.isArray(rest.orderDetails) ? rest.orderDetails : [];

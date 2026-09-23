@@ -76,6 +76,9 @@ export async function completeShopOrderDelivered(
     .collection(SHOP_ORDERS)
     .findOne(shopOrderLookupFilter(ref));
   if (!existing) return { ok: false, error: "not_found" };
+  if (existing.backorderStatus && existing.backorderStatus !== "ready") {
+    return { ok: false, error: "Đơn đặt trước chưa hoàn tất xác nhận / thanh toán / chuẩn bị hàng" };
+  }
 
   const orderStatus = String((existing as any).orderStatus || "");
   if (orderStatus === "huy") {
@@ -137,7 +140,8 @@ export async function completeShopOrderDelivered(
       if (kvOrderId == null || kvOrderId === "") {
         const ord = await ensureCodKvOrder({
           mainDb,
-          customerName: String((existing as any).customerName || ""),
+          customerId: existing.kvCustomerId ? Number(existing.kvCustomerId) : undefined,
+        customerName: String((existing as any).customerName || ""),
           customerPhone: String((existing as any).customerPhone || ""),
           address: addr,
           orderDetails: details,
@@ -150,6 +154,7 @@ export async function completeShopOrderDelivered(
       }
       const inv = await ensureCodDeliveredInvoice({
         mainDb,
+        customerId: existing.kvCustomerId ? Number(existing.kvCustomerId) : undefined,
         customerName: String((existing as any).customerName || ""),
         customerPhone: String((existing as any).customerPhone || ""),
         address: addr,

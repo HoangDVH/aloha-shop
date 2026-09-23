@@ -14,6 +14,7 @@ export type PaymentStatus =
   | "cod";
 
 export type OrderStatus =
+  | "cho_xac_nhan"
   | "cho_thanh_toan"
   | "cho_xu_ly"
   | "dang_giao"
@@ -49,6 +50,9 @@ export type ShopOrderDetail = {
   ctvCode?: string;
   /** Hết tồn lúc tạo đơn — không assert/hold kho; đơn bắt CK */
   preOrder?: boolean;
+  availableQty?: number;
+  pendingQty?: number;
+  priceKind?: "web" | "si" | "si_missing";
 };
 
 export function newAddressId(): string {

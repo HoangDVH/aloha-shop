@@ -1,4 +1,5 @@
 "use client";
+import { BackorderProposal } from "@/components/BackorderProposal";
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
@@ -50,6 +51,10 @@ function heroFor(o: ShopOrder): {
   tone: HeroTone;
 } {
   const ps = o.paymentStatus || "";
+  if (o.orderStatus === "cho_xac_nhan") return {
+    Icon: Clock, title: "Aloha đã nhận yêu cầu đặt trước",
+    subtitle: "Aloha sẽ kiểm tra tình trạng hàng và liên hệ xác nhận trước khi hướng dẫn thanh toán trước hoặc đặt cọc.", tone: "wait",
+  };
   if (ps === "paid") {
     return {
       Icon: CheckCircle2,
@@ -287,7 +292,7 @@ export default function DonHangStatusPage() {
   const isCod = order.paymentStatus === "cod";
   const isSuccessView = isPaid || isCod;
   const isExpiredCk = order.paymentStatus === "expired" && order.method !== "Cash";
-  const isUnpaidCk = order.paymentStatus === "unpaid" && order.method !== "Cash";
+  const isUnpaidCk = order.paymentStatus === "unpaid" && order.method === "Transfer";
   const qrExpired =
     isUnpaidCk &&
     Boolean(order.expiresAt) &&
@@ -297,7 +302,7 @@ export default function DonHangStatusPage() {
     order.deliveryMethod === "nhan_cua_hang"
       ? "Nhận tại cửa hàng ALOHA"
       : [order.shippingAddress, order.ward, order.province].filter(Boolean).join(", ");
-  const payLabel =
+  const payLabel = order.method === "Pending" ? "Chờ Aloha xác nhận trước thanh toán / đặt cọc" :
     order.method === "Transfer" || order.method === "Card"
       ? "Chuyển khoản"
       : "Thanh toán khi nhận hàng (COD)";
@@ -415,6 +420,7 @@ export default function DonHangStatusPage() {
               </div>
             </div>
             <div className="border-t border-[var(--aloha-line)] px-3 py-5 sm:px-8">
+              <BackorderProposal key={order.proposal?.version || order.code} order={order} onAccepted={() => void reload(true)} />
               <OrderStatusTimeline order={order} />
             </div>
           </section>
@@ -616,7 +622,8 @@ export default function DonHangStatusPage() {
           </div>
 
           <div className="mb-3 rounded-xl bg-white px-3 py-4 shadow-sm ring-1 ring-[#E8E2D6] sm:px-5">
-            <OrderStatusTimeline order={order} />
+            <BackorderProposal key={order.proposal?.version || order.code} order={order} onAccepted={() => void reload(true)} />
+              <OrderStatusTimeline order={order} />
           </div>
 
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)] lg:items-start lg:gap-4">

@@ -1,5 +1,7 @@
 "use client";
 
+import { advancePriceSession } from "./priceSession";
+import { refreshCartPricesFromCatalog } from "./cartPriceRefresh";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   fetchShopMe,
@@ -33,7 +35,8 @@ export function useShopMeQuery() {
   return useQuery({
     queryKey: shopMeQueryKey,
     queryFn: fetchShopMe,
-    staleTime: 60_000,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
     retry: false,
   });
 }
@@ -89,6 +92,11 @@ export function useShopLogoutMutation() {
       qc.setQueryData(shopMeQueryKey, null);
       qc.removeQueries({ queryKey: ["shop", "orders"] });
       qc.removeQueries({ queryKey: ["shop", "ctv"] });
+      qc.removeQueries({ queryKey: ["shop", "si"] });
+      qc.removeQueries({ queryKey: ["shop", "cart", "quote"] });
+      advancePriceSession();
+      window.dispatchEvent(new Event("aloha-price-session"));
+      void refreshCartPricesFromCatalog().catch(() => {});
     },
   });
 }

@@ -12,6 +12,8 @@ export type ShopProduct = {
   categoryId?: number;
   categoryName?: string;
   gia: number;
+  priceKind?: "web" | "si" | "si_missing";
+  allowBackorder?: boolean;
   ton: number;
   /** Gram — từ Mongo/KV, dùng tính phí ship server-side */
   trongLuong?: number;
@@ -49,6 +51,8 @@ export type ShopVariantModel = {
   ten: string;
   dvt: string;
   gia: number;
+  priceKind?: "web" | "si" | "si_missing";
+  allowBackorder?: boolean;
   ton: number;
   anh: string;
   images: string[];
@@ -210,7 +214,7 @@ export async function fetchProducts(
     badge?: "ban_chay_sap_het" | "giam_gia" | "dat_truoc" | "moi" | "ban_chay" | "noi_bat";
   },
   /** Mặc định no-store (danh sách cần tồn mới). SP liên quan trên PDP: truyền revalidate. */
-  cacheOpts?: { revalidate?: number; cache?: RequestCache }
+  cacheOpts?: { revalidate?: number; cache?: RequestCache; headers?: Record<string,string> }
 ) {
   const sp = new URLSearchParams();
   if (opts.q) sp.set("q", opts.q);
@@ -260,7 +264,7 @@ export async function fetchProducts(
     page: number;
     limit: number;
     pages: number;
-  }>(`/api/shop/products${qs ? `?${qs}` : ""}`, fetchInit);
+  }>(`/api/shop/products${qs ? `?${qs}` : ""}`, { ...fetchInit, headers: cacheOpts?.headers });
 }
 
 export async function fetchShopFacets(opts: {

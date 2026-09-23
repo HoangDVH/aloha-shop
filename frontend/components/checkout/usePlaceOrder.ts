@@ -23,6 +23,10 @@ import {
 } from "@/lib/checkoutSchemas";
 import type { ShippingQuote } from "@/lib/shipping";
 import { formatVariantLabel } from "@/lib/cartVariant";
+import { Modal } from "antd";
+import { usePriceSession } from "@/lib/priceSession";
+import { useCart } from "@/lib/cart";
+import { formatVnd } from "@/lib/api";
 import { isPreOrderTon } from "@/lib/cart";
 import type { Delivery, PayMethod } from "./checkoutTypes";
 
@@ -103,6 +107,7 @@ export function usePlaceOrder({
   const internalRef = useRef(false);
   const orderPlacedRef = orderPlacedRefProp ?? internalRef;
   const placingLockRef = useRef(false);
+  const attemptRef = useRef<{ fingerprint: string; key: string } | null>(null);
   const qc = useQueryClient();
   const showShip = shopShowCheckoutShipping();
   const showTransfer = shopShowTransferPayment();
@@ -117,6 +122,7 @@ export function usePlaceOrder({
   const placeOrder = async (opts?: { preOrderCodConfirmed?: boolean }) => {
     if (placingLockRef.current) return;
     setError("");
+    if (!usePriceSession.getState().ready) { setError(usePriceSession.getState().error || "Đang cập nhật giá. Vui lòng thử lại sau ít giây."); return; }
 
     const agreeParsed = checkoutAgreeSchema.safeParse({
       agree,
@@ -131,11 +137,10 @@ export function usePlaceOrder({
       return;
     }
 
-    const hasPreOrder = selected.some((l) => isPreOrderTon(l.ton));
+    const hasPreOrder = selected.some((l) => isPreOrderTon(l.ton, l.qty));
     const cartTotal = selected.reduce((n, l) => n + l.gia * l.qty, 0);
     const orderTotal = cartTotal + Math.max(0, Number(shippingFee) || 0);
-    const forceTransfer =
-      hasPreOrder && shopPreOrderRequiresTransfer(orderTotal);
+    const forceTransfer = false;
     const codConfirmed = Boolean(
       opts?.preOrderCodConfirmed ?? preOrderCodConfirmed
     );
@@ -150,13 +155,13 @@ export function usePlaceOrder({
       setError("Đơn đặt trước vượt hạn mức COD — vui lòng thanh toán chuyển khoản");
       return;
     }
-    if (hasPreOrder && !forceTransfer && pay === "Cash" && !codConfirmed) {
-      setError("Vui lòng xác nhận điều kiện đặt trước COD trên form");
+    if (hasPreOrder && !codConfirmed) {
+      setError("Vui lòng đồng ý chờ Aloha kiểm tra và liên hệ xác nhận");
       return;
     }
 
     const method: PayMethod =
-      forceTransfer || (showTransfer && pay === "Transfer")
+      !hasPreOrder && (forceTransfer || (showTransfer && pay === "Transfer"))
         ? "Transfer"
         : "Cash";
 
@@ -247,7 +252,7 @@ export function usePlaceOrder({
       }
     }
 
-    if (showShip && delivery === "giao_tan_noi") {
+    if (!hasPreOrder && showShip && delivery === "giao_tan_noi") {
       if (!shippingQuote?.quoteToken || !shippingQuote.selected) {
         setError(shippingError || "Chưa có phí ship — kiểm tra địa chỉ nhận hàng");
         return;
@@ -257,11 +262,15 @@ export function usePlaceOrder({
     placingLockRef.current = true;
     setSubmitting(true);
     try {
-      const idempotencyKey =
+      const fingerprint = JSON.stringify({ selected, delivery, customerName, customerPhone, shippingAddress, province, ward, note, method });
+      const nextKey =
         typeof crypto !== "undefined" && "randomUUID" in crypto
           ? crypto.randomUUID()
           : `ord-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      if (attemptRef.current?.fingerprint !== fingerprint) attemptRef.current = { fingerprint, key: nextKey };
+      const idempotencyKey = attemptRef.current.key;
       const res = await placeMut.mutateAsync({
+        backorderAccepted: hasPreOrder && codConfirmed,
         addressId,
         customerName,
         customerPhone,
@@ -321,6 +330,12 @@ export function usePlaceOrder({
         replace("/tai-khoan?tab=don-mua");
       }
     } catch (e: any) {
+      if (e.code === "backorder_confirmation_required" && Array.isArray(e.details)) {
+        useCart.getState().patchCatalog(e.details.map((d: any) => ({ ma: d.productCode, ton: d.availableQty, gia: d.price, priceKind: d.priceKind })));
+      }
+      if (e.code === "price_changed" && Array.isArray(e.details)) {
+        Modal.confirm({ title: "Giá đã cập nhật", content: e.details.map((d: any) => `${d.productName}: ${formatVnd(d.price)}`).join(" · "), okText: "Xác nhận giá mới", cancelText: "Quay lại giỏ", onOk: () => { useCart.getState().patchCatalog(e.details.map((d: any) => ({ ma: d.productCode, gia: d.price, priceKind: d.priceKind }))); setError("Đã cập nhật giá. Vui lòng kiểm tra tổng tiền và bấm đặt hàng lại."); } });
+      }
       setError(e?.message || "Đặt hàng thất bại");
     } finally {
       placingLockRef.current = false;

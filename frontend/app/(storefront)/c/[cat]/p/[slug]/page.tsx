@@ -1,3 +1,4 @@
+import { getSessionProductByPath } from "@/lib/shopCatalogSessionServer";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
@@ -123,7 +124,7 @@ export default async function ProductDetailPage({
   let app = fallbackAppearance();
   try {
     const [prod, appearance] = await Promise.all([
-      getProductByPath(path),
+      getSessionProductByPath(path),
       fetchAppearance().catch(() => fallbackAppearance()),
     ]);
     item = prod.item;
@@ -133,6 +134,7 @@ export default async function ProductDetailPage({
   }
   if (!item) notFound();
 
+  const publicProduct = await getProductByPath(path).then(r => r.item).catch(() => null);
   const pageUrl = `${SHOP_ORIGIN}${item.path || path}`;
   const showProductJsonLd = app.theme?.seo?.enableProductJsonLd !== false;
   const crumbs = [
@@ -146,7 +148,7 @@ export default async function ProductDetailPage({
 
   return (
     <>
-      {showProductJsonLd ? <ProductJsonLd product={item} pageUrl={pageUrl} /> : null}
+      {showProductJsonLd && publicProduct ? <ProductJsonLd product={publicProduct} pageUrl={pageUrl} /> : null}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{

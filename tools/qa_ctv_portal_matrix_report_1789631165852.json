@@ -1,0 +1,318 @@
+{
+  "pass": 62,
+  "fail": 0,
+  "skip": 0,
+  "total": 62,
+  "core": [
+    {
+      "id": "TC-PORT-A01",
+      "status": "PASS",
+      "note": "FE 200"
+    },
+    {
+      "id": "TC-PORT-A02",
+      "status": "PASS",
+      "note": "stats 401"
+    },
+    {
+      "id": "TC-PORT-A03",
+      "status": "PASS",
+      "note": "pending blocked 403 ctv_not_active"
+    },
+    {
+      "id": "TC-PORT-A04",
+      "status": "PASS",
+      "note": "khoa blocked 403 ctv_not_active"
+    },
+    {
+      "id": "TC-PORT-A05",
+      "status": "PASS",
+      "note": "customer blocked 403 not_ctv"
+    },
+    {
+      "id": "TC-PORT-A06",
+      "status": "PASS",
+      "note": "menu → /cong-tac-vien"
+    },
+    {
+      "id": "TC-PORT-A07",
+      "status": "PASS",
+      "note": "redirect hoa-hong"
+    },
+    {
+      "id": "TC-PORT-A08",
+      "status": "PASS",
+      "note": "logout in shell"
+    },
+    {
+      "id": "TC-PORT-A09",
+      "status": "PASS",
+      "note": "back to shop"
+    },
+    {
+      "id": "TC-PORT-B01",
+      "status": "PASS",
+      "note": "metrics ok"
+    },
+    {
+      "id": "TC-PORT-B02",
+      "status": "PASS",
+      "note": "range 2026-08-01"
+    },
+    {
+      "id": "TC-PORT-B03",
+      "status": "PASS",
+      "note": "DailySpark wired"
+    },
+    {
+      "id": "TC-PORT-B04",
+      "status": "PASS",
+      "note": "ConversionCard wired"
+    },
+    {
+      "id": "TC-PORT-B05",
+      "status": "PASS",
+      "note": "stats buckets"
+    },
+    {
+      "id": "TC-PORT-B06",
+      "status": "PASS",
+      "note": "empty period zeros"
+    },
+    {
+      "id": "TC-PORT-B07",
+      "status": "PASS",
+      "note": "error Alert present"
+    },
+    {
+      "id": "TC-PORT-C01",
+      "status": "PASS",
+      "note": "rows=1"
+    },
+    {
+      "id": "TC-PORT-C02",
+      "status": "PASS",
+      "note": "filter empty range"
+    },
+    {
+      "id": "TC-PORT-C03",
+      "status": "PASS",
+      "note": "pagination"
+    },
+    {
+      "id": "TC-PORT-C04",
+      "status": "PASS",
+      "note": "CSV export"
+    },
+    {
+      "id": "TC-PORT-C05",
+      "status": "PASS",
+      "note": "empty handled by table"
+    },
+    {
+      "id": "TC-PORT-D01",
+      "status": "PASS",
+      "note": "bills=0"
+    },
+    {
+      "id": "TC-PORT-D02",
+      "status": "PASS",
+      "note": "payout-bank get"
+    },
+    {
+      "id": "TC-PORT-D03",
+      "status": "PASS",
+      "note": "save 200"
+    },
+    {
+      "id": "TC-PORT-D04",
+      "status": "PASS",
+      "note": "zod rejects bad STK"
+    },
+    {
+      "id": "TC-PORT-D05",
+      "status": "PASS",
+      "note": "customer 403"
+    },
+    {
+      "id": "TC-PORT-E01",
+      "status": "PASS",
+      "note": "products UI"
+    },
+    {
+      "id": "TC-PORT-E02",
+      "status": "PASS",
+      "note": "search"
+    },
+    {
+      "id": "TC-PORT-E03",
+      "status": "PASS",
+      "note": "copy link"
+    },
+    {
+      "id": "TC-PORT-E04",
+      "status": "PASS",
+      "note": "share url builder"
+    },
+    {
+      "id": "TC-PORT-E05",
+      "status": "PASS",
+      "note": "pagination"
+    },
+    {
+      "id": "TC-PORT-E06",
+      "status": "PASS",
+      "note": "no add/stock/category"
+    },
+    {
+      "id": "TC-PORT-E07",
+      "status": "PASS",
+      "note": "empty via antd Table empty"
+    },
+    {
+      "id": "TC-PORT-F01",
+      "status": "PASS",
+      "note": "account UI"
+    },
+    {
+      "id": "TC-PORT-F02",
+      "status": "PASS",
+      "note": "patch 200"
+    },
+    {
+      "id": "TC-PORT-F03",
+      "status": "PASS",
+      "note": "bank card"
+    },
+    {
+      "id": "TC-PORT-F04",
+      "status": "PASS",
+      "note": "no pwd/dob/kyc"
+    },
+    {
+      "id": "TC-PORT-F05",
+      "status": "PASS",
+      "note": "no personal orders/address"
+    },
+    {
+      "id": "TC-PORT-G01",
+      "status": "PASS",
+      "note": "loading spin"
+    },
+    {
+      "id": "TC-PORT-G02",
+      "status": "PASS",
+      "note": "auth gate"
+    },
+    {
+      "id": "TC-PORT-G03",
+      "status": "PASS",
+      "note": "mobile drawer"
+    },
+    {
+      "id": "TC-PORT-G04",
+      "status": "PASS",
+      "note": "active nav"
+    },
+    {
+      "id": "TC-PORT-G05",
+      "status": "PASS",
+      "note": "theme"
+    },
+    {
+      "id": "TC-PORT-H01",
+      "status": "PASS",
+      "note": "admin ctv page exists"
+    },
+    {
+      "id": "TC-PORT-H02",
+      "status": "PASS",
+      "note": "ctv cannot admin 401"
+    },
+    {
+      "id": "TC-PORT-H03",
+      "status": "PASS",
+      "note": "PDP share intact"
+    },
+    {
+      "id": "TC-PORT-H04",
+      "status": "PASS",
+      "note": "tai-khoan no hoa-hong tab"
+    },
+    {
+      "id": "TC-PORT-H05",
+      "status": "PASS",
+      "note": "ctv checkout helpers exist"
+    },
+    {
+      "id": "TC-PORT-I01",
+      "status": "PASS",
+      "note": "RQ hooks"
+    },
+    {
+      "id": "TC-PORT-I02",
+      "status": "PASS",
+      "note": "zod schema"
+    },
+    {
+      "id": "TC-PORT-I03",
+      "status": "PASS",
+      "note": "zustand range"
+    },
+    {
+      "id": "TC-PORT-K01",
+      "status": "PASS",
+      "note": "no hoa-hong tab"
+    },
+    {
+      "id": "TC-PORT-K02",
+      "status": "PASS",
+      "note": "redirect"
+    },
+    {
+      "id": "TC-PORT-K03",
+      "status": "PASS",
+      "note": "header link"
+    },
+    {
+      "id": "TC-PORT-K04",
+      "status": "PASS",
+      "note": "earningsHits=0"
+    },
+    {
+      "id": "TC-PORT-K05",
+      "status": "PASS",
+      "note": "deadLinks=0"
+    },
+    {
+      "id": "TC-PORT-M01",
+      "status": "PASS",
+      "note": "KPI fields"
+    },
+    {
+      "id": "TC-PORT-M02",
+      "status": "PASS",
+      "note": "stats parity source"
+    },
+    {
+      "id": "TC-PORT-M03",
+      "status": "PASS",
+      "note": "conversions API"
+    },
+    {
+      "id": "TC-PORT-M04",
+      "status": "PASS",
+      "note": "bills API"
+    },
+    {
+      "id": "TC-PORT-M05",
+      "status": "PASS",
+      "note": "poll 15s"
+    },
+    {
+      "id": "TC-PORT-M06",
+      "status": "PASS",
+      "note": "all panels/charts present"
+    }
+  ]
+}

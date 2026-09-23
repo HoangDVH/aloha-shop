@@ -1,7 +1,7 @@
 import { Suspense, type ReactNode } from "react";
 import { ShopPageLoader } from "@/components/ShopPageLoader";
 import type { Metadata } from "next";
-import { fetchProducts } from "@/lib/api";
+import { fetchSessionProducts } from "@/lib/shopCatalogSessionServer";
 import { parseNhomList } from "@/lib/parseNhom";
 import { parseAttrList, parseDvtList } from "@/lib/parseShopFilters";
 import { ProductGrid } from "@/components/ProductCard";
@@ -136,13 +136,13 @@ async function HomeCatalog({
             ? "Dịch vụ"
             : "";
 
-  let items: Awaited<ReturnType<typeof fetchProducts>>["items"] = [];
+  let items: Awaited<ReturnType<typeof fetchSessionProducts>>["items"] = [];
   let total = 0;
   let pages = 1;
   let err = "";
 
   try {
-    const prod = await fetchProducts({
+    const prod = await fetchSessionProducts({
       q: q || undefined,
       nhom: nhomList.length ? nhomList : undefined,
       home: useHomeScope,

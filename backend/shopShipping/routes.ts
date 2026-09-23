@@ -1,3 +1,5 @@
+import { applyCatalogPrices } from "../shopOrders/orderRouteShared.js";
+import { SHOP_ACCOUNTS, shopAccountIdQuery } from "../shopAuth/models.js";
 import type { Express, Request, Response } from "express";
 import { applyShopCors } from "../shopCors.js";
 import { requireShopAuth, type GetShopDb, type ShopAuthRequest } from "../shopAuth/routes.js";
@@ -101,7 +103,11 @@ export function registerShopShippingRoutes(
           return;
         }
         const body = req.body || {};
-        const items = parseQuoteItems(body.items || body.orderDetails);
+        let items = parseQuoteItems(body.items || body.orderDetails);
+        const buyer = await (await _getShopDb()).collection(SHOP_ACCOUNTS).findOne(shopAccountIdQuery(req.shopAuth!.userId));
+        const priced = await applyCatalogPrices(await _getShopDb(), items, { account: buyer });
+        if (!priced.ok) return res.status(400).json({ error: priced.error });
+        items = items.map((item, i) => ({ ...item, price: priced.details[i].price }));
         const province = String(body.province || "").trim();
         const district = String(body.district || "").trim();
         const ward = String(body.ward || "").trim();

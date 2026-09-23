@@ -60,7 +60,7 @@ export function CheckoutStickyBar({
           ) : null}
           <div className="border-t border-slate-200/90" />
           <div className="flex items-center justify-between gap-3">
-            <span>Tổng tiền thanh toán</span>
+            <span>{hasPreOrder ? "Tiền hàng dự kiến" : "Tổng tiền thanh toán"}</span>
             <span className="text-[15px] font-bold tabular-nums text-[var(--aloha-price)]">
               {formatVnd(grandTotal)}
             </span>
@@ -87,13 +87,13 @@ export function CheckoutStickyBar({
           className="flex w-full flex-col items-center justify-center rounded-full bg-[var(--aloha-green)] px-4 py-3 text-white shadow-sm transition hover:bg-[var(--aloha-green-hover)] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
         >
           <span className="text-[15px] font-extrabold leading-none">
-            {submitting ? "Đang đặt…" : "Đặt hàng"}
+            {submitting ? "Đang gửi…" : hasPreOrder ? "Gửi đơn đặt trước" : "Đặt hàng"}
           </span>
           <span className="mt-1 text-[11px] font-medium leading-none opacity-90">
             {submitting
               ? "Vui lòng chờ trong giây lát"
               : hasPreOrder
-                ? "Đặt trước — COD hoặc chuyển khoản"
+                ? "Chờ Aloha kiểm tra và liên hệ xác nhận"
                 : "Thanh toán khi nhận hàng hoặc theo hướng dẫn"}
           </span>
         </button>

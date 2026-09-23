@@ -13,6 +13,7 @@ const REFRESH_TTL_SEC = Number(
 );
 
 export type ShopAccessPayload = {
+  iat?: number;
   sub: string;
   email: string;
   roles: string[];

@@ -1,4 +1,5 @@
 "use client";
+import { SiCartNotice } from "@/components/si-pricing/SiCartNotice";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -78,6 +79,7 @@ export default function CartPage() {
     <div className="shop-pb-sticky mx-auto max-w-7xl space-y-4 px-4 py-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-extrabold text-[var(--aloha-ink)]">Giỏ hàng</h1>
+        <SiCartNotice />
         {lines.length > 0 ? (
           <Link
             href="/tim"
@@ -219,7 +221,7 @@ export default function CartPage() {
                           <span className="inline-flex rounded border border-[var(--aloha-line)] px-2 py-0.5 text-[11px] font-semibold text-slate-600">
                             {formatVariantLabel(l) || l.dvt || "Cái"}
                           </span>
-                          {isPreOrderTon(l.ton) ? (
+                          {isPreOrderTon(l.ton, l.qty) ? (
                             <span className="inline-flex rounded border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-800">
                               Đặt trước
                             </span>
@@ -231,7 +233,7 @@ export default function CartPage() {
                           <QtyCtrl
                             qty={l.qty}
                             plusDisabled={
-                              !isPreOrderTon(l.ton) &&
+                              l.allowBackorder === false &&
                               stockMax(l.ton) != null &&
                               l.qty >= (stockMax(l.ton) || 0)
                             }
@@ -259,14 +261,14 @@ export default function CartPage() {
                       <QtyCtrl
                         qty={l.qty}
                         plusDisabled={
-                          !isPreOrderTon(l.ton) &&
+                          l.allowBackorder === false &&
                           stockMax(l.ton) != null &&
                           l.qty >= (stockMax(l.ton) || 0)
                         }
                         onMinus={() => setQty(l.ma, l.qty - 1)}
                         onPlus={() => setQty(l.ma, l.qty + 1)}
                       />
-                      {isPreOrderTon(l.ton) ? (
+                      {isPreOrderTon(l.ton, l.qty) ? (
                         <span className="mt-1 text-[10px] font-semibold text-amber-700">
                           Đặt trước
                         </span>

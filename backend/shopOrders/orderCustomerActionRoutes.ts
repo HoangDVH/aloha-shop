@@ -120,6 +120,7 @@ export function registerShopOrderCustomerActionRoutes(
           try {
             const inv = await ensureAwaitingInvoice({
               mainDb,
+              customerId: existing.kvCustomerId ? Number(existing.kvCustomerId) : undefined,
               customerName: String((existing as any).customerName || "Khách web"),
               customerPhone: String((existing as any).customerPhone || ""),
               address: fullAddressForKv(existing as any),

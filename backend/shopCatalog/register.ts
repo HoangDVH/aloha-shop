@@ -1,3 +1,4 @@
+import { catalogPriceContext, currentPriceMode } from "../shopWholesale/priceContext.js";
 /**
  * Catalog API shop — đăng ký route + helper (tách từ shopApi.ts, hành vi giữ nguyên).
  * Entry public vẫn là server/shopApi.ts (re-export).
@@ -38,6 +39,7 @@ import {
   loadPriceBooksByMa,
   overlayDocsWithPriceBooks,
   publicPrice,
+  resolveShopPrice,
 } from "./priceOverlay.js";
 import { isShopTestBuyerEmail } from "../shopOrders/checkoutFlags.js";
 import {
@@ -580,7 +582,7 @@ function toPublicProduct(doc: Record<string, unknown>) {
   const ten = String(doc.ten || "").trim();
   const images = publicImages(doc);
   const videos = publicProductVideos(doc);
-  const gia = publicPrice(doc);
+  const { gia, priceKind } = resolveShopPrice(doc, currentPriceMode());
   const ton = publicTon(doc);
   const trongLuongRaw = normalizeTrongLuongGram(Number(doc.trongLuong) || 0);
   const trongLuong = trongLuongRaw > 0 ? trongLuongRaw : 0;
@@ -600,6 +602,8 @@ function toPublicProduct(doc: Record<string, unknown>) {
     categoryId: categoryId > 0 ? categoryId : undefined,
     categoryName: categoryName || nhom || undefined,
     gia,
+    priceKind,
+    allowBackorder: doc.allowBackorder !== false,
     ton,
     trongLuong: trongLuong > 0 ? trongLuong : undefined,
     anh: images[0] || "",
@@ -739,12 +743,12 @@ function requestShopBuyerEmail(req: Request): string {
   }
 }
 
-function filterZeroPriceUnlessTestBuyer<T extends { gia: number }>(
+function filterZeroPriceUnlessTestBuyer<T extends { gia: number; priceKind?: string }>(
   items: T[],
   buyerEmail: string
 ): T[] {
   if (isShopTestBuyerEmail(buyerEmail)) return items;
-  return items.filter((p) => Number(p.gia) > 0);
+  return items.filter((p) => Number(p.gia) > 0 || p.priceKind === "si_missing");
 }
 
 async function cachedJson(
@@ -752,6 +756,7 @@ async function cachedJson(
   producer: () => Promise<unknown>,
   ttlSec: number = TTL_SEC
 ): Promise<{ body: unknown; cache: "HIT" | "MISS" | "SKIP" | "BYPASS" }> {
+  key += `|pm=${currentPriceMode()}`;
   if (ttlSec <= 0) {
     return { body: await producer(), cache: "BYPASS" };
   }
@@ -1049,7 +1054,7 @@ async function findByProductSlug(db: Db, slug: string) {
       categoryId: 1,
       categoryName: 1,
       ancestor: 1,
-      giaWeb: 1,
+      giaWeb: 1, giaSi: 1, allowBackorder: 1,
       giaBan: 1,
       giaChung: 1,
       basePrice: 1,
@@ -1085,6 +1090,7 @@ export function registerShopApi(
 ) {
   /** Catalog/SP shop ưu tiên shop DB khi có getShopDb. */
   const catalogDb = getShopDb || getDb;
+  app.use(["/api/shop/products", "/api/shop/facets", "/api/shop/resolve"], catalogPriceContext(catalogDb));
   app.options("/api/shop/*", (req, res) => {
     setCors(req, res);
     res.status(204).end();
@@ -1118,7 +1124,7 @@ export function registerShopApi(
               name,
               path,
               slug: slugify(leaf) || "khac",
-              count: Number(n.productCount ?? n.count ?? 0) || 0,
+              count: Number((n as typeof n & { productCount?: number }).productCount ?? n.count ?? 0) || 0,
             });
             if (n.children?.length) walk(n.children, pathSegs);
           }
@@ -1253,7 +1259,7 @@ export function registerShopApi(
           categoryName: 1,
           ancestor: 1,
           attributes: 1,
-          giaWeb: 1,
+          giaWeb: 1, giaSi: 1, allowBackorder: 1,
           giaBan: 1,
           giaChung: 1,
           basePrice: 1,
@@ -1536,7 +1542,7 @@ export function registerShopApi(
   app.post("/api/shop/products/prices", async (req, res) => {
     setCors(req, res);
     try {
-      const raw = Array.isArray(req.body?.mas) ? req.body.mas : [];
+      const raw: unknown[] = Array.isArray(req.body?.mas) ? req.body.mas : [];
       const mas = [
         ...new Set(
           raw
@@ -1571,7 +1577,7 @@ export function registerShopApi(
           images: 1,
           videos: 1,
           videoUrl: 1,
-          giaWeb: 1,
+          giaWeb: 1, giaSi: 1, allowBackorder: 1,
           giaBan: 1,
           giaChung: 1,
           basePrice: 1,
@@ -1602,7 +1608,7 @@ export function registerShopApi(
 
       const pbByMa = await loadPriceBooksByMa(db, mas);
       const metaById = await loadCategoryMetaById(db);
-      const items = [];
+      const items: Array<ReturnType<typeof toPublicProduct>> = [];
       for (const ma of mas) {
         const raw = byMa.get(ma);
         if (!raw) continue;
@@ -1616,8 +1622,11 @@ export function registerShopApi(
           ton = await resolveShopDisplayTon(db, COL, doc);
         }
         items.push({
+          ...p,
           ma: p.ma,
           gia: p.gia,
+          priceKind: p.priceKind,
+          allowBackorder: p.allowBackorder,
           ton,
           ten: p.ten,
           anh: p.anh,
@@ -1808,7 +1817,7 @@ export function registerShopApi(
       }
       const packed = buildAxesAndModels(docs, toPublicProduct as any, String((seed as any).ma || ma));
       // Chỉ combo/công thức (ton=0): gắn tồn hiển thị — không đụng mã thường hết hàng.
-      const models = [];
+      const models: typeof packed.models = [];
       for (const m of packed.models) {
         const src = byMa.get(m.ma.toUpperCase());
         if (!src || !isComboOrFormulaProduct(src) || m.ton > 0) {
@@ -1880,7 +1889,7 @@ export function registerShopApi(
       );
       const item = toPublicProduct(overlaid);
       if (
-        !(Number(item.gia) > 0) &&
+        !(Number(item.gia) > 0) && item.priceKind !== "si_missing" &&
         !isShopTestBuyerEmail(requestShopBuyerEmail(req))
       ) {
         res.status(404).json({ error: "not_found" });
@@ -1929,7 +1938,7 @@ export function registerShopApi(
       );
       const item = toPublicProduct(overlaid);
       if (
-        !(Number(item.gia) > 0) &&
+        !(Number(item.gia) > 0) && item.priceKind !== "si_missing" &&
         !isShopTestBuyerEmail(requestShopBuyerEmail(req))
       ) {
         res.status(404).json({ error: "not_found" });

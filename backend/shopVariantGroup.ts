@@ -6,6 +6,8 @@ import type { Db, Document } from "mongodb";
 export type ShopAttr = { attributeName: string; attributeValue: string };
 
 export type VariantModel = {
+  priceKind?: "web" | "si" | "si_missing";
+  allowBackorder?: boolean;
   ma: string;
   ten: string;
   dvt: string;
@@ -354,6 +356,8 @@ export function scoreCanonical(doc: {
 }
 
 type Publicizer = (doc: Record<string, unknown>) => {
+  priceKind?: "web" | "si" | "si_missing";
+  allowBackorder?: boolean;
   ma: string;
   ten: string;
   dvt: string;
@@ -375,6 +379,8 @@ export function toVariantModel(
     ten: p.ten,
     dvt: p.dvt,
     gia: p.gia,
+    priceKind: p.priceKind,
+    allowBackorder: p.allowBackorder,
     ton: p.ton,
     anh: p.anh,
     images: p.images,
@@ -396,6 +402,8 @@ const SIBLING_PROJ = {
   masterProductId: 1,
   conversionValue: 1,
   giaWeb: 1,
+  giaSi: 1,
+  allowBackorder: 1,
   giaBan: 1,
   giaChung: 1,
   basePrice: 1,

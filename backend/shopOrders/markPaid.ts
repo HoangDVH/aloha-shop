@@ -65,6 +65,9 @@ export async function markShopOrderPaid(opts: {
   if (!existing) return { ok: false, error: "Không tìm thấy đơn", code: "not_found" };
 
   const { _id, ...restExisting } = existing as any;
+  if ((restExisting.backorderStatus && restExisting.backorderStatus !== "confirmed_paid") || restExisting.method === "Pending") {
+    return { ok: false, error: "Đơn đặt trước phải xác nhận và đối soát tiền qua luồng đặt trước", code: "backorder_manual_review" };
+  }
 
   if (restExisting.paymentStatus === "paid") {
     if (
@@ -189,7 +192,8 @@ export async function markShopOrderPaid(opts: {
       const paymentCode = String(claimed.paymentCode || "").trim();
       const inv = await ensurePaidInvoice({
         mainDb: opts.mainDb,
-        customerName: String(claimed.customerName || "Khách web"),
+        customerId: claimed.kvCustomerId ? Number(claimed.kvCustomerId) : undefined,
+      customerName: String(claimed.customerName || "Khách web"),
         customerPhone: String(claimed.customerPhone || ""),
         address: fullAddressOf(claimed),
         orderDetails: details,
@@ -199,7 +203,7 @@ export async function markShopOrderPaid(opts: {
         ),
         totalPayment: total,
         shippingFee,
-        existingInvoiceId: kvInvoiceId,
+        existingInvoiceId: typeof kvInvoiceId === "number" || typeof kvInvoiceId === "string" ? kvInvoiceId : null,
         existingInvoiceCode: kvInvoiceCode != null ? String(kvInvoiceCode) : null,
         invoiceMode: (claimed.kvInvoiceMode as "awaiting" | "paid" | null) || null,
         replaceExistingIfPresent,

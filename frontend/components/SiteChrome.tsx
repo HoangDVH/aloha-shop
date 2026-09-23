@@ -193,7 +193,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
   const iconClass = "text-[var(--aloha-muted)]";
   const linkTextClass = "text-[var(--aloha-ink)]";
 
-  /** Cùng URL Zalo với nút «Báo giá sỉ · Zalo» trên banner. */
+  /** Cùng URL Zalo với nút «Đăng ký sỉ · Zalo» trên banner. */
   const wholesaleZaloUrl = zaloHref(
     theme?.footer?.zalo || theme?.footer?.phone || DEFAULT_FOOTER.zalo
   );
@@ -220,14 +220,12 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
 
           <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-2" style={{ color: chromeInk }}>
             <a
-              href={wholesaleZaloUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/dang-ky-si"
               className={`hidden min-h-11 items-center gap-1 rounded-xl px-2 text-sm font-bold sm:inline-flex ${linkTextClass} ${chromeHover} lg:hidden`}
               aria-label="Nhận báo giá sỉ"
             >
               <BadgePercent size={18} strokeWidth={2.25} aria-hidden className={iconClass} />
-              <span className="hidden sm:inline">Báo giá sỉ</span>
+              <span className="hidden sm:inline">Đăng ký sỉ</span>
             </a>
             <Link
               href="/gio-hang"
@@ -275,8 +273,8 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                 },
                 { href: "/bai-viet", label: "Bài viết", key: "bai-viet", kind: "link" as const },
                 {
-                  href: wholesaleZaloUrl,
-                  label: "Báo giá sỉ",
+                  href: "/dang-ky-si",
+                  label: "Đăng ký sỉ",
                   external: true,
                   key: "bao-gia",
                   kind: "link" as const,

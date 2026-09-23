@@ -81,7 +81,7 @@ function parseRoles(raw: unknown): ShopRole[] {
   return [...new Set(roles)];
 }
 
-async function issueShopSession(res: Response, db: Db, user: Record<string, unknown>) {
+export async function issueShopSession(res: Response, db: Db, user: Record<string, unknown>) {
   const roles = parseRoles(user.roles);
   const payload: ShopAccessPayload = {
     sub: String(user._id),
@@ -117,7 +117,7 @@ export function requireShopAuth(getShopDb: GetShopDb) {
       const payload = verifyShopAccessToken(token);
       const db = await getShopDb();
       const user = await db.collection(SHOP_ACCOUNTS).findOne(shopAccountIdQuery(payload.sub));
-      if (!user || user.active === false) {
+      if (!user || user.active === false || Number(payload.iat || 0) < Number(user.authInvalidBefore || 0)) {
         return res.status(401).json({ error: "Tài khoản không hợp lệ hoặc đã bị khóa" });
       }
       req.shopAuth = {
@@ -357,7 +357,7 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
         return res.status(401).json({ error: "Refresh không hợp lệ" });
       }
       const user = await db.collection(SHOP_ACCOUNTS).findOne(shopAccountIdQuery(payload.sub));
-      if (!user || user.active === false) {
+      if (!user || user.active === false || Number(payload.iat || 0) < Number(user.authInvalidBefore || 0)) {
         clearShopAuthCookies(res);
         return res.status(401).json({ error: "Tài khoản không hợp lệ" });
       }
@@ -370,6 +370,7 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
   });
 
   app.post("/api/shop/auth/logout", async (req, res) => {
+    res.clearCookie("shop_si_onboarding", { path: "/" });
     try {
       const token = req.cookies?.[REFRESH_COOKIE] as string | undefined;
       if (token) {
@@ -418,6 +419,9 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
         return res.status(403).json({ error: "Tài khoản đang bị khóa, liên hệ Aloha" });
       }
 
+      if (phoneRaw !== undefined && user.roles?.includes("si") && normalizePhoneVn(phoneRaw) !== normalizePhoneVn(String(user.phone || ""))) {
+        return res.status(403).json({ error: "Vui lòng liên hệ Aloha để đổi SĐT tài khoản sỉ" });
+      }
       if (phoneRaw !== undefined) {
         if (phoneRaw && !isValidPhoneVn(phoneRaw)) {
           return res.status(400).json({ error: "Số điện thoại không hợp lệ" });

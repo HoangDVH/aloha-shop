@@ -1,6 +1,7 @@
 {
-  "/(storefront)/don-hang/[code]/page": "app/(storefront)/don-hang/[code]/page.js",
+  "/(storefront)/page": "app/(storefront)/page.js",
   "/(storefront)/c/[cat]/p/[slug]/page": "app/(storefront)/c/[cat]/p/[slug]/page.js",
   "/(storefront)/xac-nhan-don-hang/page": "app/(storefront)/xac-nhan-don-hang/page.js",
-  "/(storefront)/tim/page": "app/(storefront)/tim/page.js"
+  "/(storefront)/gio-hang/page": "app/(storefront)/gio-hang/page.js",
+  "/(auth)/dang-ky-si/page": "app/(auth)/dang-ky-si/page.js"
 }

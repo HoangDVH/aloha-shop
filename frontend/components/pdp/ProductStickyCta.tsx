@@ -4,6 +4,7 @@ import { formatVnd } from "@/lib/api";
 
 type Props = {
   price: number;
+  pricePending?: boolean;
   needPick: boolean;
   preOrder?: boolean;
   purchaseDisabled: boolean;
@@ -14,6 +15,7 @@ type Props = {
 /** Thanh CTA cố định đáy màn hình (mobile) trên trang chi tiết SP. */
 export function ProductStickyCta({
   price,
+  pricePending = false,
   needPick,
   preOrder = false,
   purchaseDisabled,
@@ -25,12 +27,12 @@ export function ProductStickyCta({
       <div className="mx-auto flex max-w-6xl items-center gap-3">
         <div className="min-w-0 flex-1">
           <p className="truncate text-base font-black text-[var(--aloha-price)]">
-            {formatVnd(price)}
+            {pricePending ? "Đang cập nhật…" : price > 0 ? formatVnd(price) : "Liên hệ báo giá"}
           </p>
           {needPick ? (
             <p className="truncate text-[11px] text-amber-700">Chọn thuộc tính</p>
           ) : preOrder ? (
-            <p className="truncate text-[11px] text-amber-700">Đặt trước — giao khi có hàng</p>
+            <p className="truncate text-[11px] text-amber-700">Đặt trước — chờ Aloha xác nhận</p>
           ) : null}
         </div>
         {/* gap rõ + không dính cạnh — tránh bị gộp thành 1 khối trên mobile */}

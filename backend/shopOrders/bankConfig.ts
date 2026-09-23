@@ -143,7 +143,7 @@ export function getKvPaymentId(): string {
         const match = content.match(/^KV_PAYMENT_ID\s*=\s*(.+)$/m);
         if (match && match[1]) {
           cachedKvPaymentId = match[1].trim();
-          return cachedKvPaymentId;
+          return String(cachedKvPaymentId);
         }
       }
     }
@@ -339,7 +339,7 @@ export async function resolveShopPaymentQrForOrder(
         path.resolve(__dirname, "../../getPrivateTokenKV"),
         path.resolve(__dirname, "../getPrivateTokenKV"),
       ];
-      let kvModule = null;
+      let kvModule: any = null;
       for (const p of candidates) {
         try {
           if (fs.existsSync(p)) {

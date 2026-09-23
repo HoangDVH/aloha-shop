@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { ShopPageLoader } from "@/components/ShopPageLoader";
-import { fetchProducts } from "@/lib/api";
+import { fetchSessionProducts } from "@/lib/shopCatalogSessionServer";
 import { parseNhomList } from "@/lib/parseNhom";
 import { parseAttrList, parseDvtList } from "@/lib/parseShopFilters";
 import { ProductGrid } from "@/components/ProductCard";
@@ -77,7 +77,7 @@ async function CatalogBody({
           | "ban_chay")
       : undefined;
 
-  let items: Awaited<ReturnType<typeof fetchProducts>>["items"] = [];
+  let items: Awaited<ReturnType<typeof fetchSessionProducts>>["items"] = [];
   let total = 0;
   let pages = 1;
   let err = "";
@@ -85,7 +85,7 @@ async function CatalogBody({
   let effectiveBadge = badge;
 
   try {
-    let prod = await fetchProducts({
+    let prod = await fetchSessionProducts({
       q: q || undefined,
       nhom: nhomList.length ? nhomList : undefined,
       attr: attrList.length ? attrList : undefined,
@@ -115,7 +115,7 @@ async function CatalogBody({
       !inStock &&
       !(maxTon > 0)
     ) {
-      prod = await fetchProducts({
+      prod = await fetchSessionProducts({
         page,
         limit: 25,
         sort: "ban_chay",

@@ -1,3 +1,4 @@
+import { createBackorderRequest, serializeShopCheckout } from "./backorder.js";
 import type { Express } from "express";
 import type { Db } from "mongodb";
 import {
@@ -84,6 +85,7 @@ export function registerShopOrderCreateRoutes(
       next();
     },
     requireShopAuth(getShopDb),
+    serializeShopCheckout(getShopDb),
     async (req: ShopAuthRequest, res) => {
       try {
         if (
@@ -116,7 +118,11 @@ export function registerShopOrderCreateRoutes(
         const shippingAddress = String(body.shippingAddress || body.detail || "").trim();
         const addressId = body.addressId ? String(body.addressId).trim() : "";
 
-        let orderDetails = parseOrderDetails(body.orderDetails || body.items);
+        const rawDetails = body.orderDetails || body.items;
+        if (!Array.isArray(rawDetails) || rawDetails.length > 100 || rawDetails.some((d: any) => !Number.isSafeInteger(Number(d.quantity ?? d.qty)) || Number(d.quantity ?? d.qty) < 1 || Number(d.quantity ?? d.qty) > 10000)) {
+          return res.status(400).json({ error: "Số lượng không hợp lệ (1–10.000), tối đa 100 dòng" });
+        }
+        let orderDetails = parseOrderDetails(rawDetails);
         if (!orderDetails.length) {
           return res.status(400).json({ error: "Giỏ hàng trống hoặc thiếu sản phẩm" });
         }
@@ -135,11 +141,14 @@ export function registerShopOrderCreateRoutes(
         const buyerEmail = userEarly?.email ? String(userEarly.email) : "";
 
         const mainDbEarly = await getMainDb();
-        const priced = await applyCatalogPrices(mainDbEarly, orderDetails, {
-          buyerEmail,
+        const priced = await applyCatalogPrices(shopDb, orderDetails, {
+          buyerEmail, account: userEarly,
         });
         if (!priced.ok) {
           return res.status(400).json({ error: priced.error });
+        }
+        if (orderDetails.some((d, i) => d.price !== priced.details[i].price)) {
+          return res.status(409).json({ code: "price_changed", error: "Giá đã cập nhật. Vui lòng kiểm tra và xác nhận giá mới.", details: priced.details });
         }
         orderDetails = priced.details;
 
@@ -173,6 +182,11 @@ export function registerShopOrderCreateRoutes(
         }
         const hasPreOrder = orderDetails.some((d) => Boolean(d.preOrder));
 
+        const needsCustomerLink = userEarly?.siStatus === "active" && userEarly?.roles?.includes("si") && !userEarly.kvCustomerId;
+        if (hasPreOrder || needsCustomerLink) {
+          const result = await createBackorderRequest(shopDb, { userId: req.shopAuth!.userId, account: userEarly, body, details: orderDetails });
+          return res.status(result.status).json(result.body);
+        }
         const subtotal = orderDetails.reduce((n, d) => n + d.price * d.quantity, 0);
         let shippingFee = 0;
         let shippingCarrier: string | undefined;
@@ -366,6 +380,9 @@ export function registerShopOrderCreateRoutes(
           kvPushError: null,
           isTest,
           shopAccountId: req.shopAuth!.userId,
+          kvCustomerId: user?.kvCustomerId || null,
+          priceMode: user?.siStatus === "active" && user?.roles?.includes("si") ? "si" : "web",
+          siRegion: user?.siRegion || null,
           addressId: addressId || null,
           customerName,
           customerPhone,
@@ -421,6 +438,7 @@ export function registerShopOrderCreateRoutes(
             const ord = await ensureCodKvOrder({
               mainDb: mainDbEarly,
               customerName,
+              customerId: user?.kvCustomerId ? Number(user.kvCustomerId) : undefined,
               customerPhone,
               address: fullAddressForKv({
                 deliveryMethod,

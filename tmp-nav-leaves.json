@@ -1,0 +1,674 @@
+[
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY PHONG THỦY",
+    "name": "CÂY BÌNH AN",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY PHONG THỦY",
+    "name": "CÂY BONSAI",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY PHONG THỦY",
+    "name": "CÂY CẢNH TREO",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY PHONG THỦY",
+    "name": "CÂY CAU TIỂU TRÂM",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY PHONG THỦY",
+    "name": "CÂY DƯƠNG XỈ",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY PHONG THỦY",
+    "name": "CÂY ĐUÔI CÔNG",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY PHONG THỦY",
+    "name": "CÂY HẠNH PHÚC",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY PHONG THỦY",
+    "name": "CÂY HỌ TÙNG",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY PHONG THỦY",
+    "name": "CÂY HỒNG MÔN",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY PHONG THỦY",
+    "name": "CÂY KIM GIAO",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY PHONG THỦY",
+    "name": "CÂY KIM NGÂN",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY PHONG THỦY",
+    "name": "CÂY KIM NGÂN LƯỢNG",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY PHONG THỦY",
+    "name": "CÂY KIM TIỀN",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY PHONG THỦY",
+    "name": "CÂY LAN Ý",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY PHONG THỦY",
+    "name": "CÂY LƯỠI HỔ",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY PHONG THỦY",
+    "name": "CÂY NGỌC NGÂN",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY PHONG THỦY",
+    "name": "CÂY NGŨ GIA BÌ",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY PHONG THỦY",
+    "name": "CÂY PHONG THỦY NHIỀU LOẠI",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY PHONG THỦY",
+    "name": "CÂY TRẦU BÀ",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY PHONG THỦY",
+    "name": "CÂY TRÚC PHÁT TÀI",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY PHONG THỦY",
+    "name": "CÂY TRƯỜNG SINH",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY PHONG THỦY",
+    "name": "CÂY VẠN LỘC",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY PHONG THỦY",
+    "name": "ĐẾ VƯƠNG KIM CƯƠNG",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY PHONG THỦY",
+    "name": "LAN HỒ ĐIỆP",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY THÀNH PHẨM SALE",
+    "name": "CÂY THÀNH PHẨM SALE DƯỚI 100K",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY THÀNH PHẨM SALE",
+    "name": "CÂY THÀNH PHẨM SALE ĐỒNG GIÁ 170K",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY THÀNH PHẨM SALE",
+    "name": "CÂY THÀNH PHẨM SALE ĐỒNG GIÁ 330K",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY THÀNH PHẨM SALE",
+    "name": "CÂY THÀNH PHẨM SALE ĐỒNG GIÁ 450K MUA LỚN TẶNG NHỎ",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY THÀNH PHẨM SALE",
+    "name": "CÂY THÀNH PHẨM SALE TRÊN 500K",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY THÀNH PHẨM SALE",
+    "name": "CÂY THÀNH PHẨM SALE-2TR>",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY THÀNH PHẨM SALE",
+    "name": "CÂY THÀNH PHẨM SALE-60K>150K-",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY THÀNH PHẨM SALE",
+    "name": "CÂY THÀNH PHẨM SALE-800K-1TR2-",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY THÀNH PHẨM TRỒNG SẴN",
+    "name": "CÂY THÀNH PHẨM CHO NỮ",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY THÀNH PHẨM TRỒNG SẴN",
+    "name": "CÂY THÀNH PHẨM TRÊN 500K - 800K",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY THÀNH PHẨM TRỒNG SẴN",
+    "name": "CÂY TRỒNG THỦY SINH",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY THÀNH PHẨM TRỒNG SẴN",
+    "name": "THÀNH PHẨM TERRARIUM",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY THÀNH PHẨM TRỒNG SẴN",
+    "name": "THÀNH PHẨM GIÁNG SINH",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY THÀNH PHẨM TRỒNG SẴN",
+    "name": "CÂY THÀNH PHẨM DƯỚI 150K",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY THÀNH PHẨM TRỒNG SẴN",
+    "name": "CÂY THÀNH PHẨM TRÊN 150K - DƯỚI 300K",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY THÀNH PHẨM TRỒNG SẴN",
+    "name": "CÂY THÀNH PHẨM TRÊN 300K - DƯỚI 500K",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "CÂY THÀNH PHẨM TRỒNG SẴN",
+    "name": "CÂY THÀNH PHẨM TRÊN 800K - DƯỚI 2000K",
+    "kind": "L3"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "SEN ĐÁ",
+    "name": "SEN ĐÁ",
+    "kind": "L2"
+  },
+  {
+    "root": "CÂY CẢNH ĐỦ LOẠI",
+    "l2": "XƯƠNG RỒNG",
+    "name": "XƯƠNG RỒNG",
+    "kind": "L2"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "CHẬU BONSAI",
+    "name": "CHẬU BONSAI",
+    "kind": "L2"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "CHẬU CÓ ĐĨA",
+    "name": "CHẬU CÓ ĐĨA",
+    "kind": "L2"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "CHẬU THỦY SINH",
+    "name": "CHẬU NHỰA THỦY SINH",
+    "kind": "L3"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "CHẬU THỦY SINH",
+    "name": "CHẬU THỦY TINH",
+    "kind": "L3"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "CHẬU COMBO THEO BỘ",
+    "name": "CHẬU COMBO BÁT TRÀNG TRƠN",
+    "kind": "L3"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "CHẬU COMBO THEO BỘ",
+    "name": "CHẬU COMBO CÓ HÌNH",
+    "kind": "L3"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "CHẬU COMBO THEO BỘ",
+    "name": "CHẬU COMBO DECAL",
+    "kind": "L3"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "CHẬU COMBO THEO BỘ",
+    "name": "CHẬU COMBO THEO BỘ CÓ ĐĨA",
+    "kind": "L3"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "CHẬU COMBO THEO BỘ",
+    "name": "CHẬU COMBO THEO BỘ MEN",
+    "kind": "L3"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "CHẬU COMBO THEO BỘ",
+    "name": "CHẬU COMBO THEO SET",
+    "kind": "L3"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "CHẬU COMBO THEO BỘ",
+    "name": "CHẬU ĐẤT NUNG COMBO BỘ",
+    "kind": "L3"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "CHẬU NHẬP",
+    "name": "CHẬU GỐM HOA NỔI 3D.",
+    "kind": "L3"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "CHẬU NHẬP",
+    "name": "CHẬU GỐM",
+    "kind": "L3"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "CHẬU NHẬP",
+    "name": "CHẬU GỐM THÚ",
+    "kind": "L3"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "CHẬU BÁT TRÀNG",
+    "name": "CHẬU CÓ HÌNH",
+    "kind": "L3"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "CHẬU BÁT TRÀNG",
+    "name": "CHẬU DECAL",
+    "kind": "L3"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "CHẬU BÁT TRÀNG",
+    "name": "CHẬU MINI TRƠN",
+    "kind": "L3"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "CHẬU BÁT TRÀNG",
+    "name": "MEN BÓNG",
+    "kind": "L3"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "CHẬU BÁT TRÀNG",
+    "name": "CHẬU MEN HỎA BIẾN",
+    "kind": "L3"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "CHẬU BÁT TRÀNG",
+    "name": "CHẬU TRƠN BÁT TRÀNG",
+    "kind": "L3"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "CHẬU MEN",
+    "name": "CHẬU MEN",
+    "kind": "L2"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "SẢN PHẨM ĐẤT NUNG ĐỦ LOẠI",
+    "name": "ĐẤT NUNG 2 MÀU",
+    "kind": "L3"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "SẢN PHẨM ĐẤT NUNG ĐỦ LOẠI",
+    "name": "ĐẤT NUNG ĐỎ",
+    "kind": "L3"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "SẢN PHẨM ĐẤT NUNG ĐỦ LOẠI",
+    "name": "ĐẤT NUNG TRẮNG",
+    "kind": "L3"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "CHẬU COMPOSITE CAO CẤP",
+    "name": "CHẬU NGƯỜI COMPOSIT SIZE NHỎ",
+    "kind": "L3"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "CHẬU COMPOSITE CAO CẤP",
+    "name": "CHẬU THÚ COMPOSIT SIZE TRUNG",
+    "kind": "L3"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "CHẬU COMPOSITE CAO CẤP",
+    "name": "CHẬU NGƯỜI COMPOSITE SIZE LỚN",
+    "kind": "L3"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "CHẬU COMPOSITE CAO CẤP",
+    "name": "CHÂU THÚ COMPOSIT SIZE LỚN",
+    "kind": "L3"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "CHẬU COMPOSITE CAO CẤP",
+    "name": "CHẬU THÚ COMPOSIT SIZE NHỎ",
+    "kind": "L3"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "CHẬU COMPOSITE CAO CẤP",
+    "name": "CHẬU TIỂU CẢNH COMPOSITE",
+    "kind": "L3"
+  },
+  {
+    "root": "CHẬU TRỒNG CÂY",
+    "l2": "CHẬU NHỰA",
+    "name": "KHAY",
+    "kind": "L3"
+  },
+  {
+    "root": "ĐẤT ĐÁ GIÁ THỂ DINH DƯỠNG TRỒNG CÂY",
+    "l2": "ĐẤT TRỒNG CÂY CÁC LOẠI",
+    "name": "ĐẤT TRỒNG CÂY",
+    "kind": "L3"
+  },
+  {
+    "root": "ĐẤT ĐÁ GIÁ THỂ DINH DƯỠNG TRỒNG CÂY",
+    "l2": "ĐẤT TRỒNG CÂY CÁC LOẠI",
+    "name": "ĐẤT TRỒNG CÂY BONSAI",
+    "kind": "L3"
+  },
+  {
+    "root": "ĐẤT ĐÁ GIÁ THỂ DINH DƯỠNG TRỒNG CÂY",
+    "l2": "ĐẤT TRỒNG CÂY CÁC LOẠI",
+    "name": "ĐẤT TRỒNG CÂY CẢNH",
+    "kind": "L3"
+  },
+  {
+    "root": "ĐẤT ĐÁ GIÁ THỂ DINH DƯỠNG TRỒNG CÂY",
+    "l2": "ĐẤT TRỒNG CÂY CÁC LOẠI",
+    "name": "ĐẤT TRỒNG CÂY CẢNH. (XÓA)",
+    "kind": "L3"
+  },
+  {
+    "root": "ĐẤT ĐÁ GIÁ THỂ DINH DƯỠNG TRỒNG CÂY",
+    "l2": "ĐẤT TRỒNG CÂY CÁC LOẠI",
+    "name": "ĐẤT TRỒNG SEN ĐÁ XƯƠNG RỒNG",
+    "kind": "L3"
+  },
+  {
+    "root": "ĐẤT ĐÁ GIÁ THỂ DINH DƯỠNG TRỒNG CÂY",
+    "l2": "GIÁ THỂ TRỒNG CÂY",
+    "name": "ĐÁ MASATO LÊN MÀU SEN ĐÁ",
+    "kind": "L3"
+  },
+  {
+    "root": "ĐẤT ĐÁ GIÁ THỂ DINH DƯỠNG TRỒNG CÂY",
+    "l2": "GIÁ THỂ TRỒNG CÂY",
+    "name": "ĐÁ NHAM THẠCH ĐEN",
+    "kind": "L3"
+  },
+  {
+    "root": "ĐẤT ĐÁ GIÁ THỂ DINH DƯỠNG TRỒNG CÂY",
+    "l2": "GIÁ THỂ TRỒNG CÂY",
+    "name": "ĐÁ NHẠM THẠCH ĐỎ",
+    "kind": "L3"
+  },
+  {
+    "root": "ĐẤT ĐÁ GIÁ THỂ DINH DƯỠNG TRỒNG CÂY",
+    "l2": "GIÁ THỂ TRỒNG CÂY",
+    "name": "ĐÁ ZEOLITE",
+    "kind": "L3"
+  },
+  {
+    "root": "ĐẤT ĐÁ GIÁ THỂ DINH DƯỠNG TRỒNG CÂY",
+    "l2": "HẠT ĐẤT NUNG TRỒNG CÂY",
+    "name": "HẠT ĐẤT NUNG TRỒNG CÂY",
+    "kind": "L2"
+  },
+  {
+    "root": "ĐẤT ĐÁ GIÁ THỂ DINH DƯỠNG TRỒNG CÂY",
+    "l2": "SỎI ĐÁ TRANG TRÍ",
+    "name": "ĐÁ TRANG TRÍ",
+    "kind": "L3"
+  },
+  {
+    "root": "ĐẤT ĐÁ GIÁ THỂ DINH DƯỠNG TRỒNG CÂY",
+    "l2": "SỎI ĐÁ TRANG TRÍ",
+    "name": "SỎI MÀU HỒNG",
+    "kind": "L3"
+  },
+  {
+    "root": "ĐẤT ĐÁ GIÁ THỂ DINH DƯỠNG TRỒNG CÂY",
+    "l2": "SỎI ĐÁ TRANG TRÍ",
+    "name": "SỎI MÀU TRẮNG",
+    "kind": "L3"
+  },
+  {
+    "root": "ĐẤT ĐÁ GIÁ THỂ DINH DƯỠNG TRỒNG CÂY",
+    "l2": "SỎI ĐÁ TRANG TRÍ",
+    "name": "SỎI MÀU VÀNG",
+    "kind": "L3"
+  },
+  {
+    "root": "ĐẤT ĐÁ GIÁ THỂ DINH DƯỠNG TRỒNG CÂY",
+    "l2": "SỎI ĐÁ TRANG TRÍ",
+    "name": "SỎI MIX 4 MÀU",
+    "kind": "L3"
+  },
+  {
+    "root": "ĐẤT ĐÁ GIÁ THỂ DINH DƯỠNG TRỒNG CÂY",
+    "l2": "THUỐC VÀ DINH DƯỠNG CHO CÂY",
+    "name": "THUỐC VÀ DINH DƯỠNG CHO CÂY",
+    "kind": "L2"
+  },
+  {
+    "root": "PHỤ KIỆN TRANG TRÍ",
+    "l2": "PHỤ KIỆN BANNER CHỮ TRANG TRÍ",
+    "name": "PHỤ KIỆN BANNER CHỮ TRANG TRÍ",
+    "kind": "L2"
+  },
+  {
+    "root": "PHỤ KIỆN TRANG TRÍ",
+    "l2": "TÚI NHỰA TRONG SUỐT",
+    "name": "TÚI NHỰA TRONG SUỐT",
+    "kind": "L2"
+  },
+  {
+    "root": "PHỤ KIỆN TRANG TRÍ",
+    "l2": "PHỤ KIỆN TIỂU CẢNH",
+    "name": "CẢNH VẬT TRANG TRÍ",
+    "kind": "L3"
+  },
+  {
+    "root": "PHỤ KIỆN TRANG TRÍ",
+    "l2": "PHỤ KIỆN TIỂU CẢNH",
+    "name": "HÌNH NGƯỜI TRANG TRÍ",
+    "kind": "L3"
+  },
+  {
+    "root": "PHỤ KIỆN TRANG TRÍ",
+    "l2": "PHỤ KIỆN TIỂU CẢNH",
+    "name": "HÌNH THÚ TRANG TRÍ",
+    "kind": "L3"
+  },
+  {
+    "root": "PHỤ KIỆN TRANG TRÍ",
+    "l2": "PHỤ KIỆN TIỂU CẢNH",
+    "name": "TƯỢNG CHÚ TIỂU TRANG TRÍ",
+    "kind": "L3"
+  },
+  {
+    "root": "PHỤ KIỆN TRANG TRÍ",
+    "l2": "PHỤ KIỆN TIỂU CẢNH",
+    "name": "TƯỢNG PHẬT TRANG TRÍ",
+    "kind": "L3"
+  },
+  {
+    "root": "ĐĨA LÓT CHẬU",
+    "l2": "ĐĨA ĐẤT NUNG LÓT CHẬU",
+    "name": "ĐĨA ĐẤT NUNG ĐỎ",
+    "kind": "L3"
+  },
+  {
+    "root": "ĐĨA LÓT CHẬU",
+    "l2": "ĐĨA ĐẤT NUNG LÓT CHẬU",
+    "name": "ĐĨA ĐẤT NUNG TRẮNG",
+    "kind": "L3"
+  },
+  {
+    "root": "ĐĨA LÓT CHẬU",
+    "l2": "ĐĨA MEN LÓT CHẬU",
+    "name": "ĐĨA MEN LÓT CHẬU",
+    "kind": "L2"
+  },
+  {
+    "root": "ĐĨA LÓT CHẬU",
+    "l2": "ĐĨA NHỰA LÓT CHẬU",
+    "name": "ĐĨA NHỰA LÓT CHẬU",
+    "kind": "L2"
+  },
+  {
+    "root": "DỤNG CỤ TRỒNG CÂY",
+    "l2": "BÌNH TƯỚI CÂY",
+    "name": "BÌNH TƯỚI CÂY",
+    "kind": "L2"
+  },
+  {
+    "root": "TÚI VÀ HỘP ĐỂ SẢN PHẨM",
+    "l2": "HÔP TRONG SUỐT",
+    "name": "HÔP TRONG SUỐT",
+    "kind": "L2"
+  },
+  {
+    "root": "TÚI VÀ HỘP ĐỂ SẢN PHẨM",
+    "l2": "TÚI GIẤY CỬA KÍNH",
+    "name": "TÚI GIẤY CỬA KÍNH",
+    "kind": "L2"
+  },
+  {
+    "root": "VẬT TƯ VÀ THIẾT BỊ",
+    "l2": "HỘP GIẤY",
+    "name": "HỘP GIẤY",
+    "kind": "L2"
+  },
+  {
+    "root": "VẬT TƯ VÀ THIẾT BỊ",
+    "l2": "THIẾT BỊ VẬT DỤNG",
+    "name": "THIẾT BỊ VẬT DỤNG",
+    "kind": "L2"
+  },
+  {
+    "root": "VẬT TƯ VÀ THIẾT BỊ",
+    "l2": "THIẾT BỊ VP",
+    "name": "THIẾT BỊ VP",
+    "kind": "L2"
+  },
+  {
+    "root": "VẬT TƯ VÀ THIẾT BỊ",
+    "l2": "TEM IN HÌNH LÊN CHẬU",
+    "name": "TEM IN HÌNH LÊN CHẬU",
+    "kind": "L2"
+  },
+  {
+    "root": "VẬT TƯ VÀ THIẾT BỊ",
+    "l2": "SP ĐANG CẬP NHẬT.",
+    "name": "COMBO LIÊN KẾT SHOPPE",
+    "kind": "L3"
+  },
+  {
+    "root": "VẬT TƯ VÀ THIẾT BỊ",
+    "l2": "SP ĐANG CẬP NHẬT.",
+    "name": "CÂY VÔ CHẬU SẴN XÓA",
+    "kind": "L3"
+  },
+  {
+    "root": "VẬT TƯ VÀ THIẾT BỊ",
+    "l2": "PHÍ DỊCH VỤ",
+    "name": "SHOPPE",
+    "kind": "L3"
+  },
+  {
+    "root": "VẬT TƯ VÀ THIẾT BỊ",
+    "l2": "SP BỎ - TK GIÁ XÓA",
+    "name": "SP BỎ - TK GIÁ XÓA",
+    "kind": "L2"
+  }
+]

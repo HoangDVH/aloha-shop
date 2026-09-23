@@ -101,6 +101,7 @@ function LoginForm() {
             {errors.root.message}
           </p>
         ) : null}
+        <Link href="/quen-mat-khau" className="block text-right text-sm font-semibold text-[var(--aloha-green)]">Quên mật khẩu?</Link>
         <button type="submit" disabled={loginMut.isPending} className="auth-submit">
           Đăng nhập
         </button>

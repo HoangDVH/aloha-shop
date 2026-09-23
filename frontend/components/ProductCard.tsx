@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { SiPriceBadge } from "@/components/si-pricing/SiPriceBadge";
 import { useLinkStatus } from "next/link";
 import { Loader2, Play, ShoppingBag } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -26,12 +27,16 @@ export function ProductCard({
   shopee = false,
   liveGia,
   liveTon,
+  livePriceKind,
+  liveAllowBackorder,
 }: {
   product: ShopProduct;
   shopee?: boolean;
   /** Giá mới từ API prices — nếu có thì hiện thay product.gia */
   liveGia?: number;
   liveTon?: number;
+  livePriceKind?: ShopProduct["priceKind"];
+  liveAllowBackorder?: boolean;
 }) {
   const add = useCart((s) => s.add);
   const toast = useToast();
@@ -43,8 +48,12 @@ export function ProductCard({
   const manualBadge = product.webBadge;
   const [navPending, setNavPending] = useState(false);
   const displayGia = liveGia != null && liveGia >= 0 ? liveGia : product.gia;
-  const zeroPriceBlocked = !(displayGia > 0) && !canPurchaseZeroPrice(user?.email);
-  const purchaseBlocked = zeroPriceBlocked;
+  const priceKind = livePriceKind ?? product.priceKind;
+  const allowBackorder = liveAllowBackorder ?? product.allowBackorder;
+  const expectsSi = user?.siStatus === "active" && user.roles.includes("si");
+  const pricePending = Boolean(expectsSi) !== (priceKind === "si" || priceKind === "si_missing");
+  const zeroPriceBlocked = priceKind === "si_missing" || (!(displayGia > 0) && !canPurchaseZeroPrice(user?.email));
+  const purchaseBlocked = pricePending || zeroPriceBlocked || (preOrder && allowBackorder === false);
 
   useEffect(() => {
     setNavPending(false);
@@ -53,11 +62,11 @@ export function ProductCard({
   const onAdd = (e?: React.MouseEvent) => {
     e?.preventDefault();
     e?.stopPropagation();
-    if (zeroPriceBlocked) {
+    if (purchaseBlocked) {
       toast.push("Sản phẩm này chưa mở bán");
       return;
     }
-    const r = add({ ...product, gia: displayGia, ton: displayTon }, 1);
+    const r = add({ ...product, gia: displayGia, ton: displayTon, priceKind, allowBackorder }, 1);
     if (!r.ok) {
       toast.push(
         r.max === 0 && !r.preOrder
@@ -68,7 +77,7 @@ export function ProductCard({
     }
     toast.push(
       r.preOrder
-        ? "Đã thêm đặt trước — giao khi shop có hàng"
+        ? "Đã thêm yêu cầu đặt trước — chờ Aloha xác nhận"
         : r.capped
           ? `Đã thêm tối đa ${r.qty} ${product.dvt || ""} (hết tồn kho)`
           : `Đã thêm “${product.ten}” vào giỏ`,
@@ -184,13 +193,14 @@ export function ProductCard({
           {product.ten}
         </Link>
 
+        <SiPriceBadge kind={priceKind} />
         <div className="mt-auto flex items-end justify-between gap-2 pt-0.5">
           <div
             className={`min-w-0 truncate font-extrabold tracking-tight text-[var(--aloha-price)] ${
               shopee ? "text-[15px] sm:text-base" : "text-base sm:text-lg"
             }`}
           >
-            {formatVnd(displayGia)}
+            {pricePending ? "Đang cập nhật…" : priceKind === "si_missing" ? "Liên hệ" : formatVnd(displayGia)}
             {product.dvt ? (
               <span
                 className={`ml-1 font-semibold text-[var(--aloha-muted)] ${
@@ -220,7 +230,7 @@ export function ProductGrid({
   shopee?: boolean;
   homeRow6?: boolean;
 }) {
-  const [liveMap, setLiveMap] = useState<Record<string, { gia: number; ton: number }>>({});
+  const [liveMap, setLiveMap] = useState<Record<string, { gia: number; ton: number; priceKind?: ShopProduct["priceKind"]; allowBackorder?: boolean }>>({});
   const masKey = products.map((p) => p.ma).join("|");
 
   useEffect(() => {
@@ -236,13 +246,14 @@ export function ProductGrid({
         const { fetchLivePrices } = await import("@/lib/livePrices");
         const rows = await fetchLivePrices(mas);
         if (cancelled) return;
-        const next: Record<string, { gia: number; ton: number }> = {};
+        const next: Record<string, { gia: number; ton: number; priceKind?: ShopProduct["priceKind"]; allowBackorder?: boolean }> = {};
         for (const r of rows) {
           const ma = String(r.ma || "").trim().toUpperCase();
           if (!ma) continue;
           next[ma] = {
             gia: Number(r.gia) || 0,
             ton: Number(r.ton) || 0,
+            priceKind: r.priceKind, allowBackorder: r.allowBackorder,
           };
         }
         setLiveMap(next);
@@ -252,6 +263,8 @@ export function ProductGrid({
     };
 
     void load();
+    const onSession = () => { setLiveMap({}); void load(); };
+    window.addEventListener("aloha-price-session", onSession);
 
     let onCatalog: (() => void) | undefined;
     void import("@/lib/catalogSync").then(({ onShopCatalogChanged }) => {
@@ -271,6 +284,7 @@ export function ProductGrid({
     return () => {
       cancelled = true;
       onCatalog?.();
+      window.removeEventListener("aloha-price-session", onSession);
     };
   }, [masKey]);
 
@@ -298,6 +312,8 @@ export function ProductGrid({
             key={p.ma}
             product={p}
             shopee={shopee || homeRow6}
+            livePriceKind={live?.priceKind}
+            liveAllowBackorder={live?.allowBackorder}
             liveGia={live != null ? live.gia : undefined}
             liveTon={live != null ? live.ton : undefined}
           />

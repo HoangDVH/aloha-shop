@@ -30,6 +30,7 @@ export function shopCodKvEnabled(): boolean {
 export type EnsurePaidInvoiceInput = {
   mainDb: Db;
   customerName: string;
+  customerId?: number | null;
   customerPhone: string;
   address: string;
   orderDetails: ShopOrderDetail[];
@@ -57,6 +58,7 @@ export type EnsurePaidInvoiceResult = {
 export type EnsureAwaitingInvoiceInput = {
   mainDb: Db;
   customerName: string;
+  customerId?: number | null;
   customerPhone: string;
   address: string;
   orderDetails: ShopOrderDetail[];
@@ -71,6 +73,7 @@ export async function ensureAwaitingInvoice(
 ): Promise<EnsurePaidInvoiceResult> {
   const inv = await createKvInvoice(opts.mainDb, {
     customerName: opts.customerName,
+    customerId: opts.customerId,
     customerPhone: opts.customerPhone,
     address: opts.address,
     orderDetails: opts.orderDetails,
@@ -137,6 +140,7 @@ export async function ensurePaidInvoice(
 
   const inv = await createKvInvoice(opts.mainDb, {
     customerName: opts.customerName,
+    customerId: opts.customerId,
     customerPhone: opts.customerPhone,
     address: opts.address,
     orderDetails: opts.orderDetails,
@@ -165,6 +169,7 @@ export async function cancelInvoiceForOrder(
 export type EnsureCodKvOrderInput = {
   mainDb: Db;
   customerName: string;
+  customerId?: number | null;
   customerPhone: string;
   address: string;
   orderDetails: ShopOrderDetail[];
@@ -184,6 +189,7 @@ export async function ensureCodKvOrder(
 ): Promise<EnsureCodKvOrderResult> {
   const ord = await createKvOrder(opts.mainDb, {
     customerName: opts.customerName,
+    customerId: opts.customerId,
     customerPhone: opts.customerPhone,
     address: opts.address,
     orderDetails: opts.orderDetails,
@@ -203,6 +209,7 @@ export async function ensureCodKvOrder(
 export type EnsureCodDeliveredInvoiceInput = {
   mainDb: Db;
   customerName: string;
+  customerId?: number | null;
   customerPhone: string;
   address: string;
   orderDetails: ShopOrderDetail[];
@@ -230,6 +237,7 @@ export async function ensureCodDeliveredInvoice(
   const amount = Math.max(0, Math.round(Number(opts.totalPayment) || 0));
   const base = {
     customerName: opts.customerName,
+    customerId: opts.customerId,
     customerPhone: opts.customerPhone,
     address: opts.address,
     orderDetails: opts.orderDetails,

@@ -3,6 +3,7 @@
  * Assert dùng displayTon (combo) − soft-hold — không ghi reserved lên SP.
  */
 import type { Db } from "mongodb";
+import { stockAllocation } from "../shopWholesale/policy.js";
 import type { ShopOrderDetail } from "./models.js";
 import {
   isComboOrFormulaProduct,
@@ -100,10 +101,16 @@ export async function annotatePreOrderDetails(
     if (!tonRes.ok) return tonRes;
     const held = heldByMa.get(ma) || 0;
     const available = Math.max(0, tonRes.displayTon - held);
-    // Chỉ đặt trước khi hết tồn (available ≤ 0). Còn hàng nhưng thiếu SL → assertStock xử lý.
-    const preOrder = available <= 0;
+    const allocation = stockAllocation(d.quantity, available);
+    const preOrder = allocation.preOrder;
+    const product = await mainDb.collection(PRODUCTS_COL).findOne(productQuery(ma), { projection: { allowBackorder: 1, isActive: 1 } });
+    if (product?.isActive === false || (preOrder && product?.allowBackorder === false)) {
+      return { ok: false, error: `${ma} chỉ còn ${available} — không nhận đặt trước` };
+    }
+    // Account for repeated SKU lines in the same request.
+    heldByMa.set(ma, held + allocation.availableQty);
     const note = String(d.note || "").trim();
-    const stockHint = "Sản phẩm đã hết hàng, cần nhập hàng ngay";
+    const stockHint = available > 0 ? "Sản phẩm còn số lượng ít — chờ Aloha xác nhận" : "Sản phẩm tạm hết hàng — chờ Aloha xác nhận";
     let nextNote = note || undefined;
     if (preOrder) {
       const hasHint =
@@ -115,6 +122,8 @@ export async function annotatePreOrderDetails(
     }
     out.push({
       ...d,
+      availableQty: allocation.availableQty,
+      pendingQty: allocation.pendingQty,
       preOrder: preOrder || undefined,
       note: nextNote,
     });
@@ -167,6 +176,7 @@ export async function assertStockAvailable(
         error: `${ma} chỉ còn ${available} — không đủ ${qty}`,
       };
     }
+    heldByMa.set(ma, held + qty);
   }
   return { ok: true };
 }

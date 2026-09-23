@@ -103,7 +103,7 @@ export function estimateDeliveryEta(
   };
 }
 
-export function attachEta<T extends { eta?: string }>(
+export function attachEta<T extends object>(
   result: T,
   province: string,
   speed: CarrierSpeed = "standard"

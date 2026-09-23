@@ -1,10 +1,13 @@
 "use client";
 
+import { priceSessionGeneration } from "./priceSession";
 import { shopApiBase } from "./api";
 
 export type LivePriceRow = {
   ma: string;
   gia: number;
+  priceKind?: "web" | "si" | "si_missing";
+  allowBackorder?: boolean;
   ton?: number;
   ten?: string;
   anh?: string;
@@ -40,8 +43,10 @@ async function flushPending() {
 
   try {
     const base = shopApiBase();
-    const res = await fetch(`${base}/api/shop/products/prices`, {
+    const generation = priceSessionGeneration();
+  const res = await fetch(`${base}/api/shop/products/prices`, {
       method: "POST",
+      credentials: "include",
       headers: { Accept: "application/json", "Content-Type": "application/json" },
       cache: "no-store",
       body: JSON.stringify({ mas: uniq }),
@@ -51,6 +56,7 @@ async function flushPending() {
       return;
     }
     const data = (await res.json().catch(() => ({}))) as { items?: LivePriceRow[] };
+    if (generation !== priceSessionGeneration()) { for (const w of batch.waiters) w.resolve([]); return; }
     const items = Array.isArray(data.items) ? data.items : [];
     const byMa = new Map(
       items.map((r) => [String(r.ma || "").trim().toUpperCase(), r] as const)

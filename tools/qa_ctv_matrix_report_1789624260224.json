@@ -1,0 +1,276 @@
+{
+  "when": "2026-09-17T05:51:00.224Z",
+  "counts": {
+    "PASS": 50,
+    "FAIL": 0,
+    "SKIP": 0,
+    "DEFER": 3
+  },
+  "results": [
+    {
+      "id": "TC-KV-02",
+      "status": "PASS",
+      "note": "delivery 2 → shipping"
+    },
+    {
+      "id": "TC-KV-01.map",
+      "status": "PASS",
+      "note": "delivery 3 → complete"
+    },
+    {
+      "id": "TC-KV-03.map",
+      "status": "PASS",
+      "note": "delivery 5 → return"
+    },
+    {
+      "id": "TC-KV-05",
+      "status": "PASS",
+      "note": "HĐ 3 không phiếu giao → complete"
+    },
+    {
+      "id": "TC-KV-09",
+      "status": "PASS",
+      "note": "delivery 4 → wait (chưa void)"
+    },
+    {
+      "id": "TC-KV-10.health",
+      "status": "PASS",
+      "note": "API health ok"
+    },
+    {
+      "id": "TC-KV-10.webhook",
+      "status": "PASS",
+      "note": "webhook route status=200"
+    },
+    {
+      "id": "TC-KV-07",
+      "status": "PASS",
+      "note": "webhook lạ không 500 (status=200 note={\"ok\":true,\"processed\":0,\"notes\":[\"no_order:HD-QA-NOORDER:body=0\",\"delivery:get_fail\"],\"sigOk\":false})"
+    },
+    {
+      "id": "TC-UI-01",
+      "status": "PASS",
+      "note": "sidebar IA đủ 5 mục CTV"
+    },
+    {
+      "id": "TC-UI-02",
+      "status": "PASS",
+      "note": "Empty states; không số demo cứng"
+    },
+    {
+      "id": "TC-UI-03.code",
+      "status": "PASS",
+      "note": "overview có nhánh error/Alert"
+    },
+    {
+      "id": "TC-UI-04",
+      "status": "PASS",
+      "note": "routes HH / fraud / list tồn tại"
+    },
+    {
+      "id": "TC-UI-07",
+      "status": "PASS",
+      "note": "maskPhone được dùng trên UI"
+    },
+    {
+      "id": "AUTH",
+      "status": "PASS",
+      "note": "manager cookie ok (user=aloha)"
+    },
+    {
+      "id": "TC-UI-06",
+      "status": "PASS",
+      "note": "staff overview → 403"
+    },
+    {
+      "id": "TC-UI-06.mutate",
+      "status": "PASS",
+      "note": "staff lock → 403"
+    },
+    {
+      "id": "TC-CTV-01",
+      "status": "PASS",
+      "note": "list chờ duyệt thấy CTV QA"
+    },
+    {
+      "id": "TC-CTV-02",
+      "status": "PASS",
+      "note": "duyệt → active code=QA17CTV"
+    },
+    {
+      "id": "TC-CTV-03.status",
+      "status": "PASS",
+      "note": "khóa CTV"
+    },
+    {
+      "id": "TC-CTV-04.status",
+      "status": "PASS",
+      "note": "mở khóa CTV"
+    },
+    {
+      "id": "TC-REG-02.settings",
+      "status": "PASS",
+      "note": "get settings"
+    },
+    {
+      "id": "TC-REG-02.patch",
+      "status": "PASS",
+      "note": "patch settings 200"
+    },
+    {
+      "id": "TC-KV-01",
+      "status": "PASS",
+      "note": "mark-delivered status=200 order=hoan_thanh hh=held"
+    },
+    {
+      "id": "TC-KV-06",
+      "status": "PASS",
+      "note": "HH tạo qua complete path (không phụ thuộc poll COD)"
+    },
+    {
+      "id": "TC-KV-08",
+      "status": "PASS",
+      "note": "không nhân đôi HH (n=1→1)"
+    },
+    {
+      "id": "TC-CTV-05",
+      "status": "PASS",
+      "note": "rate=7 source=sp"
+    },
+    {
+      "id": "TC-CTV-07",
+      "status": "PASS",
+      "note": "amount giữ nguyên sau đổi % SP"
+    },
+    {
+      "id": "TC-CTV-06",
+      "status": "PASS",
+      "note": "ctvExcluded → HH count=0"
+    },
+    {
+      "id": "TC-CTV-03.noHH",
+      "status": "PASS",
+      "note": "CTV khoa → HH=0"
+    },
+    {
+      "id": "TC-HH-01",
+      "status": "PASS",
+      "note": "filter held ok (0 rows)"
+    },
+    {
+      "id": "TC-HH-02",
+      "status": "PASS",
+      "note": "đưa HH → eligible"
+    },
+    {
+      "id": "TC-HH-08",
+      "status": "PASS",
+      "note": "self-buy → status=flagged flags=[\"self_buy_phone\"]"
+    },
+    {
+      "id": "TC-HH-03",
+      "status": "PASS",
+      "note": "lock1 status=200 bill=locked lockedBy=aloha"
+    },
+    {
+      "id": "TC-HH-04",
+      "status": "PASS",
+      "note": "chốt lần 2 reject/ok-idempotent status=400"
+    },
+    {
+      "id": "TC-PAY-01.zod",
+      "status": "PASS",
+      "note": "STK hợp lệ Zod"
+    },
+    {
+      "id": "TC-PAY-02.zod",
+      "status": "PASS",
+      "note": "STK sai bị Zod chặn"
+    },
+    {
+      "id": "TC-PAY-01",
+      "status": "PASS",
+      "note": "payoutBank ghi DB"
+    },
+    {
+      "id": "TC-PAY-03",
+      "status": "PASS",
+      "note": "excel bytes=7556"
+    },
+    {
+      "id": "TC-PAY-05",
+      "status": "PASS",
+      "note": "re-export không đổi bill status"
+    },
+    {
+      "id": "TC-PAY-04",
+      "status": "PASS",
+      "note": "export thiếu STK vẫn 200 (bytes=7581)"
+    },
+    {
+      "id": "TC-HH-05",
+      "status": "PASS",
+      "note": "mark-paid → paid paidBy=aloha"
+    },
+    {
+      "id": "TC-HH-06",
+      "status": "PASS",
+      "note": "mark-paid lần 2 status=400"
+    },
+    {
+      "id": "TC-REG-03",
+      "status": "PASS",
+      "note": "lock+mark-paid regression"
+    },
+    {
+      "id": "TC-HH-07",
+      "status": "PASS",
+      "note": "HH → cancelled via API"
+    },
+    {
+      "id": "TC-KV-04",
+      "status": "PASS",
+      "note": "clawback debt 0→5000 ledger=1"
+    },
+    {
+      "id": "TC-UI-05",
+      "status": "PASS",
+      "note": "overview filter from/to 200"
+    },
+    {
+      "id": "TC-REG-04",
+      "status": "PASS",
+      "note": "ban status=200 ctvStatus=khoa"
+    },
+    {
+      "id": "TC-PAY-06",
+      "status": "PASS",
+      "note": "no auth → 401"
+    },
+    {
+      "id": "TC-REG-05",
+      "status": "PASS",
+      "note": "storefront products vẫn 200"
+    },
+    {
+      "id": "TC-REG-01",
+      "status": "PASS",
+      "note": "approve/lock/unlock đã chạy ở TC-CTV"
+    },
+    {
+      "id": "TC-KV-01.liveKV",
+      "status": "DEFER",
+      "note": "đã test shop complete path; chưa đổi vận đơn trên KV thật"
+    },
+    {
+      "id": "TC-KV-03.liveKV",
+      "status": "DEFER",
+      "note": "map return OK; chưa webhook KV status 5/6 trên HĐ thật"
+    },
+    {
+      "id": "TC-KV-06.liveKV",
+      "status": "DEFER",
+      "note": "complete path OK; chưa webhook CK/QR HĐ thật"
+    }
+  ]
+}

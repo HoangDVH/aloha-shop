@@ -1,7 +1,8 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { ShopPageLoader } from "@/components/ShopPageLoader";
-import { fetchCategories, fetchCategoryTree, fetchProducts } from "@/lib/api";
+import { fetchSessionProducts } from "@/lib/shopCatalogSessionServer";
+import { fetchCategories, fetchCategoryTree } from "@/lib/api";
 import type { ShopCategoryNavNode } from "@/lib/api";
 import { parseNhomList } from "@/lib/parseNhom";
 import { parseAttrList, parseDvtList } from "@/lib/parseShopFilters";
@@ -122,7 +123,7 @@ async function CategoryBody({
   const inStock = String(sp.inStock || "") === "1";
   const sort = String(sp.sort || "ban_chay");
 
-  let items: Awaited<ReturnType<typeof fetchProducts>>["items"] = [];
+  let items: Awaited<ReturnType<typeof fetchSessionProducts>>["items"] = [];
   let total = 0;
   let pages = 1;
   let err = "";
@@ -190,7 +191,7 @@ async function CategoryBody({
       total = 0;
       pages = 1;
     } else {
-      const prod = await fetchProducts({
+      const prod = await fetchSessionProducts({
         categoryId: resolvedCategoryIds.length ? resolvedCategoryIds : undefined,
         nhom: !resolvedCategoryIds.length && filterNhoms.length ? filterNhoms : undefined,
         ...listOpts,

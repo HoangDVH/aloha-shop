@@ -1,6 +1,7 @@
 import type { DeliveryEta } from "./etaService.js";
 
 export type ShippingCarrierId = "ghtk" | "ghn" | "spx";
+export type ShippingCarrier = ShippingCarrierId;
 
 export type CarrierQuoteInput = {
   weightGram: number;

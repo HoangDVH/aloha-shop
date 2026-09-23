@@ -3,6 +3,7 @@
  * Dùng bởi catalog API và tạo đơn shop.
  */
 import type { Db } from "mongodb";
+import type { PriceMode } from "../shopWholesale/policy.js";
 
 const PRICE_BOOKS_COL = "aloha_price_books";
 const OVERRIDES_COL = "noibo_products_overrides";
@@ -55,6 +56,18 @@ export function publicPrice(doc: Record<string, unknown>): number {
   const chungBook = priceFromEmbeddedBooks(doc, "chung");
   if (chungBook > 0) return chungBook;
   return Number(doc.basePrice) || 0;
+}
+
+export function wholesalePrice(doc: Record<string, unknown>): number {
+  const direct = Number(doc.giaSi);
+  if (Number.isFinite(direct) && direct > 0) return Math.round(direct);
+  return Math.max(0, Math.round(priceFromEmbeddedBooks(doc, "si")));
+}
+
+export function resolveShopPrice(doc: Record<string, unknown>, mode: PriceMode) {
+  if (mode === "web") return { gia: publicPrice(doc), priceKind: "web" as const };
+  const gia = wholesalePrice(doc);
+  return { gia, priceKind: gia > 0 ? "si" as const : "si_missing" as const };
 }
 
 /**

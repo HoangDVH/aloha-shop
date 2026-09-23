@@ -1,6 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { advancePriceSession } from "@/lib/priceSession";
+import { refreshCartPricesFromCatalog } from "@/lib/cartPriceRefresh";
+import { useSiDraft } from "@/components/si-register/siRegisterDraftStore";
 import { useShopAuth } from "@/components/ShopAuthProvider";
 import { useCart } from "@/lib/cart";
 import {
@@ -18,11 +22,20 @@ import {
 export function CartSync() {
   const { user, loading } = useShopAuth();
   const lines = useCart((s) => s.lines);
-
+  const router = useRouter();
+  const previous = useRef<string | null>(null);
   useEffect(() => {
     if (loading) return;
-    void onShopUserChanged(user?.id ?? null);
-  }, [loading, user?.id]);
+    const key = `${user?.id || "guest"}:${user?.siStatus || "web"}:${user?.siRegion || ""}`;
+    if (previous.current === key) return;
+    const changed = previous.current !== null;
+    previous.current = key;
+    advancePriceSession();
+    if (!user) useSiDraft.getState().clear();
+    void onShopUserChanged(user?.id ?? null).then(() => refreshCartPricesFromCatalog()).catch(() => {});
+    if (changed) { router.refresh(); window.dispatchEvent(new Event("aloha-price-session")); }
+  }, [loading, user?.id, user?.siStatus, user?.siRegion, router]);
+
 
   useEffect(() => {
     if (loading || !user?.id) return;

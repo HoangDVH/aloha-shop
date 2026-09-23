@@ -1,9 +1,11 @@
 "use client";
+import { BackorderNotice } from "./BackorderNotice";
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ChevronRight } from "lucide-react";
+import { SiPriceBadge } from "@/components/si-pricing/SiPriceBadge";
 import { formatVnd, type ShopProduct } from "@/lib/api";
 import { formatTonDisplay, isPreOrderTon, useCart } from "@/lib/cart";
 import { useToast } from "@/components/Toast";
@@ -132,6 +134,8 @@ export function ProductDetailView({
       ten: selectedModel.ten || product.ten,
       dvt: selectedModel.dvt || product.dvt,
       gia: selectedModel.gia,
+      priceKind: selectedModel.priceKind,
+      allowBackorder: selectedModel.allowBackorder,
       ton: selectedModel.ton,
       anh: galleryAnh,
       images: variantGallery.length
@@ -164,20 +168,24 @@ export function ProductDetailView({
   }, [activeProduct.videos, activeProduct.videoUrl]);
 
   const [qty, setQty] = useState(1);
+  const cartQty = useCart(s => s.lines.find(l => l.ma === activeProduct.ma)?.qty || 0);
   const [affiliateCtv, setAffiliateCtv] = useState(() => getAffiliateCtvCode());
   const reportedKeyRef = useRef<string>("");
   const [liveGia, setLiveGia] = useState(product.gia);
   const [liveTon, setLiveTon] = useState(product.ton);
+  const [livePriceKind, setLivePriceKind] = useState(product.priceKind);
   const [ctvRate, setCtvRate] = useState<number | null>(null);
   const variantsLoading = selection.loading;
   const needPick =
     variantAxes.length > 0 && !selection.loading && !selectedModel;
   const isPreOrder =
-    !needPick && !variantsLoading && isPreOrderTon(liveTon);
+    !needPick && !variantsLoading && isPreOrderTon(liveTon, qty + cartQty);
+  const expectsSi = user?.siStatus === "active" && user.roles.includes("si");
+  const pricePending = Boolean(expectsSi) !== (livePriceKind === "si" || livePriceKind === "si_missing");
   const zeroPriceBlocked =
-    !(Number(liveGia) > 0) && !canPurchaseZeroPrice(user?.email);
+    livePriceKind === "si_missing" || (!(Number(liveGia) > 0) && !canPurchaseZeroPrice(user?.email));
   const purchaseDisabled =
-    needPick || variantsLoading || zeroPriceBlocked;
+    needPick || variantsLoading || zeroPriceBlocked || pricePending || (activeProduct.allowBackorder === false && liveTon < 1);
   const desc = useMemo(
     () => plainDescription(product.description || ""),
     [product.description]
@@ -197,8 +205,9 @@ export function ProductDetailView({
 
   useEffect(() => {
     setLiveGia(activeProduct.gia);
+    setLivePriceKind(activeProduct.priceKind);
     setLiveTon(activeProduct.ton);
-  }, [activeProduct.ma, activeProduct.gia, activeProduct.ton]);
+  }, [activeProduct.ma, activeProduct.gia, activeProduct.ton, activeProduct.priceKind]);
 
   // Đổi biến thể → cập nhật URL (giữ ?ctv=), không remount trang.
   useEffect(() => {
@@ -223,10 +232,10 @@ export function ProductDetailView({
         );
         if (cancelled || !hit) return;
         if (Number(hit.gia) >= 0) setLiveGia(Number(hit.gia) || 0);
+        setLivePriceKind(hit.priceKind);
         if (hit.ton != null && Number.isFinite(Number(hit.ton))) {
           const next = Number(hit.ton) || 0;
-          // Không ghi đè tồn đã gắn từ /variants (combo tổng nhóm) bằng ton thô = 0.
-          setLiveTon((prev) => (next <= 0 && prev > 0 ? prev : next));
+          setLiveTon(next);
         }
       } catch {
         /* giữ giá SSR */
@@ -250,7 +259,7 @@ export function ProductDetailView({
       cancelled = true;
       off?.();
     };
-  }, [activeProduct.ma]);
+  }, [activeProduct.ma, user?.id, user?.siStatus, user?.siRegion]);
   // CTV đã đăng nhập (có mã) → tự điền mã khi copy/chia sẻ link SP
   useEffect(() => {
     const code = normalizeCtvCode(user?.ctvCode || "");
@@ -344,7 +353,7 @@ export function ProductDetailView({
   ].filter(Boolean) as { href: string; label: string }[];
 
   useEffect(() => {
-    if (purchaseDisabled || isPreOrder) return;
+    if (purchaseDisabled || activeProduct.allowBackorder !== false) return;
     const max = Math.max(1, Math.floor(liveTon) || 1);
     setQty((q) => Math.min(Math.max(1, q), max));
   }, [liveTon, purchaseDisabled, isPreOrder]);
@@ -357,7 +366,7 @@ export function ProductDetailView({
     }
     const codeFromLink = normalizeCtvCode(ctvFromLink);
     const ctvCode = isValidCtvCode(codeFromLink) ? codeFromLink : getGuestCtvCode();
-    const line = { ...activeProduct, gia: liveGia, ton: liveTon };
+    const line = { ...activeProduct, gia: liveGia, ton: liveTon, priceKind: livePriceKind };
     const r = add(line, qty, ctvCode);
 
     if (!r.ok) {
@@ -453,7 +462,8 @@ export function ProductDetailView({
 
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="flex flex-wrap items-baseline gap-x-2 text-2xl font-bold text-[var(--aloha-price)] sm:text-[1.75rem]">
-                    <span>{formatVnd(liveGia)}</span>
+                    <span>{pricePending ? "Đang cập nhật…" : livePriceKind === "si_missing" ? "Liên hệ báo giá" : formatVnd(liveGia)}</span>
+                    <SiPriceBadge kind={livePriceKind} />
                     {activeProduct.dvt ? (
                       <span className="text-base font-semibold text-[var(--aloha-muted)] sm:text-lg">
                         / {activeProduct.dvt}
@@ -575,12 +585,7 @@ export function ProductDetailView({
                   ) : null}
                 </p>
 
-                {isPreOrder ? (
-                  <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900 ring-1 ring-amber-200/80">
-                    Hết hàng — bạn có thể đặt trước. Đơn sẽ giao khi shop có hàng
-                    (không giao ngay).
-                  </p>
-                ) : null}
+                {isPreOrder && activeProduct.allowBackorder !== false ? <BackorderNotice available={liveTon} requested={qty + cartQty} unit={activeProduct.dvt} /> : null}
 
                 {variantAxes.length > 0 ? (
                   <ProductVariantPicker
@@ -605,8 +610,8 @@ export function ProductDetailView({
                       type="number"
                       min={1}
                       max={
-                        purchaseDisabled || isPreOrder
-                          ? undefined
+                        purchaseDisabled || activeProduct.allowBackorder !== false
+                          ? 10000
                           : Math.max(1, liveTon)
                       }
                       value={qty}
@@ -616,8 +621,8 @@ export function ProductDetailView({
                           setQty(1);
                           return;
                         }
-                        if (isPreOrder) {
-                          setQty(n);
+                        if (activeProduct.allowBackorder !== false) {
+                          setQty(Math.min(10000, Math.floor(n)));
                           return;
                         }
                         setQty(Math.min(n, Math.max(1, liveTon)));
@@ -628,12 +633,12 @@ export function ProductDetailView({
                       type="button"
                       className="h-11 w-11 text-lg text-slate-600 hover:bg-[#f5f5f5] disabled:opacity-40"
                       disabled={
-                        purchaseDisabled || (!isPreOrder && qty >= liveTon)
+                        purchaseDisabled || qty >= 10000 || (activeProduct.allowBackorder === false && qty >= liveTon)
                       }
                       onClick={() =>
                         setQty((q) =>
-                          isPreOrder
-                            ? q + 1
+                          activeProduct.allowBackorder !== false
+                            ? Math.min(10000, q + 1)
                             : Math.min(Math.max(1, liveTon), q + 1)
                         )
                       }
@@ -676,6 +681,7 @@ export function ProductDetailView({
 
       <ProductStickyCta
         price={liveGia}
+        pricePending={pricePending}
         needPick={needPick}
         preOrder={isPreOrder}
         purchaseDisabled={purchaseDisabled}

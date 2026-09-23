@@ -1,0 +1,136 @@
+{
+  "at": "2026-09-18T10:12:51.429Z",
+  "origin": "https://alohathegioichaucay.com",
+  "results": [
+    {
+      "id": "SEED",
+      "status": "PASS",
+      "note": "aloha_shop_db accounts=3"
+    },
+    {
+      "id": "ADMIN_LOGIN",
+      "status": "PASS",
+      "note": "ok"
+    },
+    {
+      "id": "TC-CAT-01",
+      "status": "PASS",
+      "note": "catalog SSE live; idle 3s extra events=0 (guest prices đo kèm measure)"
+    },
+    {
+      "id": "TC-CAT-02a",
+      "status": "PASS",
+      "note": "patch 200"
+    },
+    {
+      "id": "TC-CAT-02",
+      "status": "PASS",
+      "note": "SSE+price 99044 in 118ms"
+    },
+    {
+      "id": "TC-CAT-04",
+      "status": "PASS",
+      "note": "empty ids status=200"
+    },
+    {
+      "id": "TC-CAT-03",
+      "status": "SKIP",
+      "note": "UI giỏ — xác nhận tay hoặc Puppeteer; API prices ok khi có id ở TC-CAT-02"
+    },
+    {
+      "id": "TC-CAT-07",
+      "status": "PASS",
+      "note": "appearance path exists in FE (chrome refresh — manual soft)"
+    },
+    {
+      "id": "TC-CAT-07",
+      "status": "SKIP",
+      "note": "đổi appearance chrome refresh — manual UI"
+    },
+    {
+      "id": "TC-CAT-08",
+      "status": "PASS",
+      "note": "ShopCatalogSync không trong AdminShell"
+    },
+    {
+      "id": "TC-AUTH-01a",
+      "status": "PASS",
+      "note": "login 200"
+    },
+    {
+      "id": "TC-AUTH-01b",
+      "status": "PASS",
+      "note": "approve 200"
+    },
+    {
+      "id": "TC-AUTH-01",
+      "status": "PASS",
+      "note": "SSE+status active in 116ms"
+    },
+    {
+      "id": "TC-ADM-06",
+      "status": "PASS",
+      "note": "ctvPending 1→0"
+    },
+    {
+      "id": "TC-AUTH-02",
+      "status": "PASS",
+      "note": "authStream SSE-first, không boot poll 12s cứng"
+    },
+    {
+      "id": "TC-ORD-01a",
+      "status": "PASS",
+      "note": "buyer login 200"
+    },
+    {
+      "id": "TC-ORD-01b",
+      "status": "PASS",
+      "note": "confirm 200"
+    },
+    {
+      "id": "TC-ORD-01",
+      "status": "PASS",
+      "note": "SSE+paid in 1593ms"
+    },
+    {
+      "id": "TC-ORD-02",
+      "status": "PASS",
+      "note": "orders.ts SSE-first"
+    },
+    {
+      "id": "TC-CTV-01a",
+      "status": "PASS",
+      "note": "ctvB login 200"
+    },
+    {
+      "id": "TC-CTV-01",
+      "status": "PASS",
+      "note": "B clearHeld→eligible status=eligible elig=4950 held=0"
+    },
+    {
+      "id": "TC-CTV-03",
+      "status": "PASS",
+      "note": "event/clearHeld CTV-B không đụng HH CTV-A"
+    },
+    {
+      "id": "TC-CTV-05",
+      "status": "PASS",
+      "note": "6 nhãn UX VI"
+    },
+    {
+      "id": "TC-ADM-01",
+      "status": "PASS",
+      "note": "ops SSE event=ops counts ok ship=200"
+    },
+    {
+      "id": "TC-ADM-03",
+      "status": "SKIP",
+      "note": "toast khi tab ẩn — manual UI"
+    }
+  ],
+  "summary": {
+    "pass": 22,
+    "fail": 0,
+    "skip": 3
+  }
+}

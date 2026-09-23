@@ -1,3 +1,4 @@
+import { isActiveWholesale, wholesaleMinimum } from "../shopWholesale/policy.js";
 import type { Response } from "express";
 import type { Db } from "mongodb";
 import type { ShopOrderDetail } from "./models.js";
@@ -5,6 +6,7 @@ import {
   applyPriceBookOverlay,
   loadPriceBooksByMa,
   publicPrice,
+  resolveShopPrice,
 } from "../shopCatalog/priceOverlay.js";
 import { applyShopCors } from "../shopCors.js";
 import { isShopTestBuyerEmail } from "./checkoutFlags.js";
@@ -70,7 +72,7 @@ export function parseOrderDetails(raw: unknown): ShopOrderDetail[] {
 export async function applyCatalogPrices(
   mainDb: Db,
   details: ShopOrderDetail[],
-  opts?: { buyerEmail?: string | null }
+  opts?: { buyerEmail?: string | null; account?: Record<string, unknown> | null; quoteOnly?: boolean }
 ): Promise<
   | { ok: true; details: ShopOrderDetail[] }
   | { ok: false; error: string }
@@ -90,7 +92,7 @@ export async function applyCatalogPrices(
     .project({
       ma: 1,
       ten: 1,
-      giaWeb: 1,
+      giaWeb: 1, giaSi: 1,
       giaBan: 1,
       giaChung: 1,
       basePrice: 1,
@@ -111,8 +113,9 @@ export async function applyCatalogPrices(
       return { ok: false, error: `Không tìm thấy sản phẩm ${d.productCode}` };
     }
     const doc = applyPriceBookOverlay(raw, pbByMa.get(d.productCode));
-    const gia = publicPrice(doc);
-    if (!(gia > 0) && !allowZeroPrice) {
+    const { gia, priceKind } = resolveShopPrice(doc, isActiveWholesale(opts?.account) ? "si" : "web");
+    if (priceKind === "si_missing" && !opts?.quoteOnly) return { ok: false, error: `${d.productCode} chưa có giá sỉ — vui lòng liên hệ báo giá` };
+    if (!(gia > 0) && !allowZeroPrice && !opts?.quoteOnly) {
       return {
         ok: false,
         error: `${d.productCode} chưa có giá bán web — không thể đặt hàng`,
@@ -127,10 +130,18 @@ export async function applyCatalogPrices(
           ? `${baseName} (${variant})`
           : baseName,
       price: gia,
+      priceKind,
+      discount: 0,
       imageUrl: d.imageUrl || (doc.anh ? String(doc.anh) : undefined),
       note: d.note ? String(d.note).slice(0, 200) : undefined,
       variantLabel: variant || undefined,
     });
+  }
+  if (isActiveWholesale(opts?.account)) {
+    if (!["HCM", "TINH"].includes(String(opts?.account?.siRegion))) return { ok: false, error: "Tài khoản sỉ cần được xác nhận khu vực" };
+    const minimum = wholesaleMinimum(opts?.account?.siRegion);
+    const total = out.reduce((n, d) => n + d.price * d.quantity, 0);
+    if (total < minimum && !opts?.quoteOnly) return { ok: false, error: `Đơn sỉ tỉnh cần thêm ${(minimum-total).toLocaleString("vi-VN")}đ tiền hàng để đủ ${minimum.toLocaleString("vi-VN")}đ` };
   }
   return { ok: true, details: out };
 }

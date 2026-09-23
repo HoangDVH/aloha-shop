@@ -80,7 +80,7 @@ function zaloWholesale() {
   return "https://zalo.me/0794901233";
 }
 
-/** Lưới danh mục tròn — map category-tree thật; ô Báo giá sỉ. */
+/** Lưới danh mục tròn — map category-tree thật; ô Đăng ký sỉ. */
 export function HomeCategoryCircles() {
   const [tree, setTree] = useState<ShopCategoryNavNode[]>([]);
 
@@ -138,19 +138,17 @@ export function HomeCategoryCircles() {
           })}
           <li className="min-w-0">
             <a
-              href={zaloWholesale()}
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/dang-ky-si"
               className="group flex flex-col items-center gap-2 text-center"
             >
               <span className="flex h-[4.5rem] w-[4.5rem] flex-col items-center justify-center gap-1 rounded-full bg-[var(--aloha-green)] text-white shadow-sm transition group-hover:bg-[var(--aloha-green-hover)] sm:h-[5.25rem] sm:w-[5.25rem]">
                 <BadgePercent size={22} aria-hidden />
                 <span className="text-[10px] font-bold leading-tight sm:text-[11px]">
-                  Báo giá sỉ
+                  Đăng ký sỉ
                 </span>
               </span>
               <span className="line-clamp-2 text-xs font-semibold text-[var(--aloha-ink)] sm:text-sm">
-                Báo giá sỉ
+                Đăng ký sỉ
               </span>
             </a>
           </li>

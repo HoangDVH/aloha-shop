@@ -10,6 +10,8 @@ export type CartLine = {
   ma: string;
   ten: string;
   gia: number;
+  priceKind?: "web" | "si" | "si_missing";
+  allowBackorder?: boolean;
   anh: string;
   path: string;
   qty: number;
@@ -52,21 +54,21 @@ export function formatTonDisplay(ton: number | undefined | null): string {
 }
 
 /** Đặt trước khi tồn đã biết và ≤ 0. */
-export function isPreOrderTon(ton: number | undefined | null): boolean {
+export function isPreOrderTon(ton: number | undefined | null, quantity = 1): boolean {
   const max = stockMax(ton);
-  return max != null && max <= 0;
+  return max != null && quantity > max;
 }
 
 /** Giới hạn qty theo tồn; qty ≤ 0 → 0 (xóa dòng). Đặt trước: không cap theo ton=0. */
 export function clampQtyToStock(
   qty: number,
-  ton: number | undefined | null
+  ton: number | undefined | null,
+  allowBackorder = true
 ): number {
-  const q = Math.floor(qty);
+  const q = Number.isFinite(qty) ? Math.min(10000, Math.floor(qty)) : 0;
   if (q <= 0) return 0;
   const max = stockMax(ton);
-  if (max == null) return q;
-  if (max <= 0) return q; // pre-order
+  if (max == null || allowBackorder) return q;
   return Math.min(q, max);
 }
 
@@ -87,6 +89,8 @@ type CartState = {
     updates: Array<{
       ma: string;
       gia?: number;
+      priceKind?: "web" | "si" | "si_missing";
+      allowBackorder?: boolean;
       ton?: number;
       ten?: string;
       anh?: string;
@@ -107,6 +111,7 @@ export const useCart = create<CartState>()(
     (set, get) => ({
       lines: [],
       add: (p, qty = 1, ctvCode = "") => {
+        if (p.priceKind === "si_missing" || !(p.gia > 0)) return { ok: false, qty: 0, max: 0, capped: false };
         const want = Math.max(1, Math.floor(qty));
         const ctv = normalizeCtvCode(ctvCode || getGuestCtvCode());
         const max = stockMax(p.ton);
@@ -122,7 +127,7 @@ export const useCart = create<CartState>()(
         set((s) => {
           const i = s.lines.findIndex((l) => l.ma === p.ma);
           const existing = i >= 0 ? s.lines[i].qty : 0;
-          const nextQty = clampQtyToStock(existing + want, p.ton);
+          const nextQty = clampQtyToStock(existing + want, p.ton, p.allowBackorder !== false);
 
           if (nextQty <= 0) {
             result = { ok: false, qty: 0, max, capped: true, preOrder };
@@ -133,8 +138,8 @@ export const useCart = create<CartState>()(
             ok: nextQty > existing,
             qty: nextQty,
             max,
-            capped: !preOrder && max != null && existing + want > max,
-            preOrder,
+            capped: nextQty < existing + want,
+            preOrder: isPreOrderTon(p.ton, nextQty),
           };
 
           if (i >= 0) {
@@ -145,7 +150,9 @@ export const useCart = create<CartState>()(
               selected: true,
               ton: max ?? next[i].ton,
               ctv: next[i].ctv || ctv || undefined,
-              gia: Number(p.gia) || next[i].gia,
+              gia: Number(p.gia),
+              priceKind: p.priceKind,
+              allowBackorder: p.allowBackorder,
               ten: p.ten || next[i].ten,
               anh: p.anh || next[i].anh,
               path: p.path || next[i].path,
@@ -164,6 +171,8 @@ export const useCart = create<CartState>()(
                 ma: p.ma,
                 ten: p.ten,
                 gia: p.gia,
+                priceKind: p.priceKind,
+                allowBackorder: p.allowBackorder,
                 anh: p.anh,
                 path: p.path,
                 qty: nextQty,
@@ -194,9 +203,11 @@ export const useCart = create<CartState>()(
                 u.ton != null && Number.isFinite(Number(u.ton))
                   ? Number(u.ton)
                   : l.ton;
-              const qty = clampQtyToStock(l.qty, ton);
+              const qty = clampQtyToStock(l.qty, ton, (u.allowBackorder ?? l.allowBackorder) !== false);
               return {
                 ...l,
+                priceKind: u.priceKind ?? l.priceKind,
+                allowBackorder: u.allowBackorder ?? l.allowBackorder,
                 gia:
                   u.gia != null && Number.isFinite(Number(u.gia))
                     ? Number(u.gia)
@@ -220,7 +231,7 @@ export const useCart = create<CartState>()(
           lines: s.lines
             .map((l) => {
               if (l.ma !== ma) return l;
-              return { ...l, qty: clampQtyToStock(qty, l.ton) };
+              return { ...l, qty: clampQtyToStock(qty, l.ton, l.allowBackorder !== false) };
             })
             .filter((l) => l.qty > 0),
         }));
@@ -255,7 +266,7 @@ export const useCart = create<CartState>()(
               dvt: l.dvt || "Cái",
               attributes: normalizeCartAttributes(l.attributes),
               lineNote: String(l.lineNote || "").trim().slice(0, 200) || undefined,
-              qty: clampQtyToStock(l.qty, l.ton),
+              qty: clampQtyToStock(l.qty, l.ton, l.allowBackorder !== false),
               selected: l.selected !== false,
               ctv: normalizeCtvCode(l.ctv || "") || undefined,
             }))
@@ -282,7 +293,7 @@ export const useCart = create<CartState>()(
             lineNote:
               String((l as CartLine).lineNote || "").trim().slice(0, 200) ||
               undefined,
-            qty: clampQtyToStock(l.qty, l.ton),
+            qty: clampQtyToStock(l.qty, l.ton, l.allowBackorder !== false),
             selected: l.selected !== false,
             ctv: normalizeCtvCode((l as CartLine).ctv || "") || undefined,
           }))

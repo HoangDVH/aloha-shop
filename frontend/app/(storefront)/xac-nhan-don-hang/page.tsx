@@ -1,8 +1,11 @@
 "use client";
+import { usePriceSession } from "@/lib/priceSession";
+import { formatVnd } from "@/lib/api";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useShopRouter } from "@/lib/useShopRouter";
+import { SiCartNotice, useCartQuote } from "@/components/si-pricing/SiCartNotice";
 import { isPreOrderTon, useCart } from "@/lib/cart";
 import { useShopAuth } from "@/components/ShopAuthProvider";
 import { ShopPageLoader } from "@/components/ShopPageLoader";
@@ -27,7 +30,7 @@ import { CheckoutPaymentSection } from "@/components/checkout/CheckoutPaymentSec
 import { CheckoutShippingSection } from "@/components/checkout/CheckoutShippingSection";
 import { CheckoutStickyBar } from "@/components/checkout/CheckoutStickyBar";
 import { CheckoutSummaryAside } from "@/components/checkout/CheckoutSummaryAside";
-import { PreOrderCodConfirmModal } from "@/components/checkout/PreOrderCodConfirmModal";
+import { PreOrderCodConfirmModal } from "@/components/checkout/BackorderConfirmModal";
 import {
   EMPTY_DRAFT,
   type Delivery,
@@ -110,13 +113,15 @@ function CheckoutConfirm() {
   const [pay, setPay] = useState<PayMethod>("Cash");
   const [note, setNote] = useState("");
   const [agree, setAgree] = useState(false);
+  const catalogState = usePriceSession();
+  const { isSi, quote: siQuote } = useCartQuote();
   const [preOrderCodConfirmed, setPreOrderCodConfirmed] = useState(false);
   const [preOrderCodModalOpen, setPreOrderCodModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   const hasPreOrder = useMemo(
-    () => selected.some((l) => isPreOrderTon(l.ton)),
+    () => selected.some((l) => isPreOrderTon(l.ton, l.qty)),
     [selected]
   );
 
@@ -170,8 +175,7 @@ function CheckoutConfirm() {
 
   const effectiveShippingFee = showShip ? shippingFee : 0;
   const grandTotal = total + effectiveShippingFee;
-  const preOrderForceTransfer =
-    hasPreOrder && shopPreOrderRequiresTransfer(grandTotal);
+  const preOrderForceTransfer = false;
 
   useEffect(() => {
     if (preOrderForceTransfer && showTransfer) {
@@ -275,10 +279,7 @@ function CheckoutConfirm() {
     orderPlacedRef,
   });
 
-  const needsPreOrderCodModal =
-    hasPreOrder &&
-    !preOrderForceTransfer &&
-    (showTransfer ? pay : "Cash") === "Cash";
+  const needsPreOrderCodModal = hasPreOrder;
 
   const requestPlaceOrder = () => {
     setError("");
@@ -327,16 +328,18 @@ function CheckoutConfirm() {
     userPhone: user.phone,
   });
 
-  const orderBlockedReason =
+  const orderBlockedReason = isSi && (!siQuote.data?.canCheckout || siQuote.isPending || siQuote.isError)
+    ? siQuote.error?.message || (siQuote.data?.remaining ? `Cần thêm ${formatVnd(siQuote.data.remaining)} tiền hàng để đủ điều kiện mua sỉ.` : "Đang kiểm tra giá và điều kiện mua sỉ. Sản phẩm thiếu giá cần được Aloha báo giá trước.")
+    : !catalogState.ready ? (catalogState.error || "Đang cập nhật giá giỏ hàng…") : selected.some(l => l.priceKind === "si_missing" || !(l.gia > 0)) ? "Có sản phẩm chưa có giá. Vui lòng liên hệ báo giá hoặc bỏ sản phẩm đó khỏi đơn." :
     selected.length === 0
       ? "Chưa chọn sản phẩm trong giỏ — quay lại giỏ hàng và tick sản phẩm."
       : preOrderForceTransfer && !showTransfer
         ? "Đơn đặt trước vượt hạn mức COD — cần CK nhưng shop chưa bật."
         : receiverBlock
           ? receiverBlock
-          : showShip && delivery === "giao_tan_noi" && shippingLoading
+          : !hasPreOrder && showShip && delivery === "giao_tan_noi" && shippingLoading
             ? "Đang tính phí vận chuyển…"
-            : showShip && delivery === "giao_tan_noi" && !shippingQuote?.quoteToken
+            : !hasPreOrder && showShip && delivery === "giao_tan_noi" && !shippingQuote?.quoteToken
               ? shippingError ||
                 "Chưa có phí ship. Kiểm tra địa chỉ nhận hàng (tỉnh/phường) hoặc thử lại."
               : !agree
@@ -395,6 +398,7 @@ function CheckoutConfirm() {
               />
             ) : null}
 
+            <SiCartNotice />
             <CheckoutPaymentSection
               pay={showTransfer ? pay : "Cash"}
               onPayChange={setPay}
@@ -441,10 +445,11 @@ function CheckoutConfirm() {
       </div>
 
       <PreOrderCodConfirmModal
+        lines={selected}
         open={preOrderCodModalOpen}
         total={grandTotal}
         productNames={selected
-          .filter((l) => isPreOrderTon(l.ton))
+          .filter((l) => isPreOrderTon(l.ton, l.qty))
           .map((l) => l.ten)}
         submitting={submitting}
         onClose={() => setPreOrderCodModalOpen(false)}
