@@ -103,7 +103,6 @@ function CheckoutConfirm() {
 
   const [delivery, setDelivery] = useState<Delivery>("giao_tan_noi");
   const [note, setNote] = useState("");
-  const [agree, setAgree] = useState(false);
   const catalogState = usePriceSession();
   const { isSi, quote: siQuote } = useCartQuote();
   const [policyModalOpen, setPolicyModalOpen] = useState(false);
@@ -218,7 +217,6 @@ function CheckoutConfirm() {
   }, [authLoading, user, selected.length, router, submitting]);
 
   const { placeOrder } = usePlaceOrder({
-    agree,
     selected,
     delivery,
     showNewForm,
@@ -291,9 +289,7 @@ function CheckoutConfirm() {
           : showShip && delivery === "giao_tan_noi" && !shippingQuote?.quoteToken
             ? shippingError ||
               "Chưa có phí ship. Kiểm tra địa chỉ nhận hàng (tỉnh/phường) hoặc thử lại."
-            : !agree
-              ? "Tick đồng ý Điều kiện giao dịch chung trước khi đặt hàng."
-              : "";
+            : "";
 
   const canSubmit = !submitting && !orderBlockedReason;
 
@@ -360,8 +356,6 @@ function CheckoutConfirm() {
             orderBlockedReason={orderBlockedReason}
             canSubmit={canSubmit}
             submitting={submitting}
-            agree={agree}
-            onAgreeChange={setAgree}
             onPlaceOrder={requestPlaceOrder}
           />
         </div>
@@ -409,8 +403,6 @@ function CheckoutConfirm() {
         canSubmit={canSubmit}
         submitting={submitting}
         orderBlockedReason={orderBlockedReason}
-        agree={agree}
-        onAgreeChange={setAgree}
         onPlaceOrder={requestPlaceOrder}
       />
     </>

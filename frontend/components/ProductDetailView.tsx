@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { SiPriceBadge } from "@/components/si-pricing/SiPriceBadge";
 import { formatVnd, type ShopProduct } from "@/lib/api";
-import { formatTonDisplay, isPreOrderTon, useCart } from "@/lib/cart";
+import { formatTonDisplay, isPreOrderTon, stockMax, useCart } from "@/lib/cart";
 import { useToast } from "@/components/Toast";
 import { useShopAuth } from "@/components/ShopAuthProvider";
 import { useShopRouter } from "@/lib/useShopRouter";
@@ -636,6 +636,11 @@ export function ProductDetailView({
                       +
                     </button>
                   </div>
+                  {stockMax(liveTon) === 0 ? (
+                    <p className="mt-2 text-sm font-medium text-amber-800">
+                      Sản phẩm đã hết hàng, cần đặt trước.
+                    </p>
+                  ) : null}
                   {!purchaseDisabled && !isPreOrder && liveTon > 0 ? (
                     <p className="mt-1 text-xs text-slate-500">
                       Còn {formatTonDisplay(liveTon)} {activeProduct.dvt || ""}

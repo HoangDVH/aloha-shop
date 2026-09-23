@@ -15,14 +15,12 @@ type Props = {
   orderBlockedReason: string;
   canSubmit: boolean;
   submitting: boolean;
-  agree: boolean;
-  onAgreeChange: (v: boolean) => void;
   onPlaceOrder: () => void;
 };
 
 /**
  * Cột phải desktop: ưu đãi + chi tiết TT + Đặt hàng.
- * Mobile: ưu đãi (+ lỗi nếu có); tick đồng ý nằm ở sticky dưới tổng thanh toán.
+ * Mobile: ưu đãi (+ lỗi nếu có).
  */
 export function CheckoutSummaryAside({
   delivery,
@@ -34,8 +32,6 @@ export function CheckoutSummaryAside({
   orderBlockedReason,
   canSubmit,
   submitting,
-  agree,
-  onAgreeChange,
   onPlaceOrder,
 }: Props) {
   const showShip = shopShowCheckoutShipping();
@@ -90,16 +86,6 @@ export function CheckoutSummaryAside({
             </span>
           </div>
         </div>
-
-        <label className="mt-3 flex cursor-pointer items-start gap-2 text-xs text-slate-600">
-          <input
-            type="checkbox"
-            checked={agree}
-            onChange={(e) => onAgreeChange(e.target.checked)}
-            className="mt-0.5 accent-[var(--aloha-green)]"
-          />
-          <span>Tôi đồng ý với các Điều kiện giao dịch chung của website</span>
-        </label>
 
         {error ? (
           <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>

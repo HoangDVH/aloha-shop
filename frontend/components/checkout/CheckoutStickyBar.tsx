@@ -12,8 +12,6 @@ type Props = {
   canSubmit: boolean;
   submitting: boolean;
   orderBlockedReason?: string;
-  agree: boolean;
-  onAgreeChange: (v: boolean) => void;
   onPlaceOrder: () => void;
 };
 
@@ -30,8 +28,6 @@ export function CheckoutStickyBar({
   canSubmit,
   submitting,
   orderBlockedReason,
-  agree,
-  onAgreeChange,
   onPlaceOrder,
 }: Props) {
   const [mounted, setMounted] = useState(false);
@@ -64,15 +60,6 @@ export function CheckoutStickyBar({
             </span>
           </div>
         </div>
-        <label className="flex cursor-pointer items-start gap-2 text-[11px] leading-snug text-slate-600">
-          <input
-            type="checkbox"
-            checked={agree}
-            onChange={(e) => onAgreeChange(e.target.checked)}
-            className="mt-0.5 shrink-0 accent-[var(--aloha-green)]"
-          />
-          <span>Tôi đồng ý với các Điều kiện giao dịch chung của website</span>
-        </label>
         {!canSubmit && orderBlockedReason ? (
           <p className="line-clamp-2 text-[11px] leading-snug text-amber-800">
             {orderBlockedReason}

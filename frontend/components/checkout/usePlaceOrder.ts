@@ -13,7 +13,6 @@ import {
 } from "@/lib/orders";
 import { shopShowCheckoutShipping } from "@/lib/checkoutFlags";
 import {
-  checkoutAgreeSchema,
   checkoutReceiverSchema,
   checkoutShipAddressSchema,
 } from "@/lib/checkoutSchemas";
@@ -44,7 +43,6 @@ type ShopUserLike = {
 } | null;
 
 type Args = {
-  agree: boolean;
   /** Đã xác nhận modal COD đặt trước (bắt buộc khi COD + pre-order) */
   preOrderCodConfirmed?: boolean;
   selected: CartLineLike[];
@@ -75,7 +73,6 @@ function profilePhoneEmpty(phone?: string | null) {
 
 /** Validate + tạo địa chỉ (nếu cần) + placeShopOrder — Zod + React Query mutation. */
 export function usePlaceOrder({
-  agree,
   preOrderCodConfirmed = false,
   selected,
   delivery,
@@ -116,12 +113,8 @@ export function usePlaceOrder({
     setError("");
     if (!usePriceSession.getState().ready) { setError(usePriceSession.getState().error || "Đang cập nhật giá. Vui lòng thử lại sau ít giây."); return; }
 
-    const agreeParsed = checkoutAgreeSchema.safeParse({
-      agree,
-      customerNote: note,
-    });
-    if (!agreeParsed.success) {
-      setError(agreeParsed.error.issues[0]?.message || "Chưa đồng ý điều kiện");
+    if (note.trim().length > 255) {
+      setError("Ghi chú tối đa 255 ký tự");
       return;
     }
     if (!selected.length) {
