@@ -78,11 +78,21 @@ export function NavigationProgress() {
     };
 
     const onNavStart = () => start();
+    const onHistoryReset = () => {
+      clearTimers();
+      activeRef.current = false;
+      setActive(false);
+      setDone(false);
+    };
 
     document.addEventListener("click", onClick, true);
+    window.addEventListener("popstate", onHistoryReset);
+    window.addEventListener("pageshow", onHistoryReset);
     window.addEventListener("shop:nav-start", onNavStart);
     return () => {
       document.removeEventListener("click", onClick, true);
+      window.removeEventListener("popstate", onHistoryReset);
+      window.removeEventListener("pageshow", onHistoryReset);
       window.removeEventListener("shop:nav-start", onNavStart);
       clearTimers();
     };

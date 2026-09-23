@@ -32,7 +32,12 @@ export async function generateMetadata(): Promise<Metadata> {
       apple: [{ url: favicon, type: "image/png" }],
       shortcut: favicon,
     },
-    verification: verification ? { google: verification } : undefined,
+    verification: {
+      ...(verification ? { google: verification } : {}),
+      other: {
+        "zalo-platform-site-verification": "NVwcADVw3G4ms8TNplWF2XFmWZN_XbXkDZCt",
+      },
+    },
     openGraph: {
       type: "website",
       siteName,
