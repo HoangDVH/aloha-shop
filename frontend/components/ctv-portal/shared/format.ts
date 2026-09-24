@@ -104,8 +104,11 @@ export function ctvCommissionHint(
     return `Còn chờ hết ${opts.holdDays} ngày đổi/trả`;
   }
   if (key === "billed" && opts?.period) {
-    const m = /^(\d{4})-(\d{2})$/.exec(opts.period);
-    if (m) return `Thuộc đợt chi tháng ${Number(m[2])}/${m[1]}`;
+    const m = /^(\d{4})-(\d{2})(?:-(K[12]))?$/.exec(opts.period);
+    if (m) {
+      const cycleText = m[3] === "K1" ? " · Đợt 1" : m[3] === "K2" ? " · Đợt 2" : "";
+      return `Thuộc đợt chi tháng ${Number(m[2])}/${m[1]}${cycleText}`;
+    }
   }
   if (key === "paid_out" && opts?.paidAt) {
     const d = new Date(opts.paidAt);
@@ -169,15 +172,28 @@ export function formatDt(v: string | null | undefined) {
 }
 
 export function formatPeriodLabel(period: string) {
-  const m = /^(\d{4})-(\d{2})$/.exec(period);
+  const m = /^(\d{4})-(\d{2})(?:-(K[12]))?$/.exec(period);
   if (!m) return { title: period, range: period };
   const y = Number(m[1]);
   const mo = Number(m[2]);
-  const start = new Date(y, mo - 1, 1);
+  const cycle = m[3] as "K1" | "K2" | undefined;
+  if (cycle === "K1") {
+    return {
+      title: `Tháng ${mo}/${y} · Đợt 1`,
+      range: `01/${pad2(mo)}/${y} – 15/${pad2(mo)}/${y}`,
+    };
+  }
+  if (cycle === "K2") {
+    const end = new Date(y, mo, 0);
+    return {
+      title: `Tháng ${mo}/${y} · Đợt 2`,
+      range: `16/${pad2(mo)}/${y} – ${pad2(end.getDate())}/${pad2(mo)}/${y}`,
+    };
+  }
   const end = new Date(y, mo, 0);
   return {
-    title: `Tháng ${mo} ${y}`,
-    range: `${pad2(start.getDate())}/${pad2(mo)}/${y} – ${pad2(end.getDate())}/${pad2(mo)}/${y}`,
+    title: `Tháng ${mo}/${y}`,
+    range: `01/${pad2(mo)}/${y} – ${pad2(end.getDate())}/${pad2(mo)}/${y}`,
   };
 }
 

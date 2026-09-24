@@ -488,27 +488,45 @@ export type EligiblePeriodPreview = {
   commissionIds: unknown[];
 };
 
-/** Gom HH eligible theo kỳ (không ghi DB) — dùng preview admin + lock. */
+/** Gom HH eligible theo kỳ (không ghi DB) — dùng preview admin + lock.
+ * Hỗ trợ kỳ tháng YYYY-MM (cả tháng) và các đợt bi-weekly:
+ * - YYYY-MM-K1 (Đợt 1): eligibleAt từ 01 đến hết ngày 15.
+ * - YYYY-MM-K2 (Đợt 2): eligibleAt từ ngày 16 đến hết tháng (kèm đón các đơn eligible sót lại trước ngày 16 chưa chốt).
+ */
 export async function buildEligiblePeriodPreview(
   shopDb: Db,
   period: string
 ): Promise<{ ok: true; preview: EligiblePeriodPreview } | { ok: false; error: string }> {
-  const m = /^(\d{4})-(\d{2})$/.exec(String(period || "").trim());
+  const m = /^(\d{4})-(\d{2})(?:-(K[12]))?$/.exec(String(period || "").trim());
   if (!m) return { ok: false, error: "period_invalid" };
   const y = Number(m[1]);
   const mo = Number(m[2]);
+  const cycle = m[3] as "K1" | "K2" | undefined;
   if (!(mo >= 1 && mo <= 12)) return { ok: false, error: "period_invalid" };
 
   await clearHeldCommissions(shopDb);
 
-  const periodStart = new Date(Date.UTC(y, mo - 1, 1)).toISOString();
-  const periodEnd = new Date(Date.UTC(y, mo, 1)).toISOString();
+  let eligibleAtFilter: Record<string, unknown>;
+  if (cycle === "K1") {
+    const periodStart = new Date(Date.UTC(y, mo - 1, 1)).toISOString();
+    const periodEnd = new Date(Date.UTC(y, mo - 1, 16)).toISOString(); // exclusive -> hết ngày 15
+    eligibleAtFilter = { $gte: periodStart, $lt: periodEnd };
+  } else if (cycle === "K2") {
+    // Đợt 2: gom từ ngày 16 đến hết tháng, đồng thời đón cả những đơn eligible cũ trước ngày 16 chưa vào bill nào
+    const periodEnd = new Date(Date.UTC(y, mo, 1)).toISOString();
+    eligibleAtFilter = { $lt: periodEnd };
+  } else {
+    // Cả tháng (legacy / full month)
+    const periodStart = new Date(Date.UTC(y, mo - 1, 1)).toISOString();
+    const periodEnd = new Date(Date.UTC(y, mo, 1)).toISOString();
+    eligibleAtFilter = { $gte: periodStart, $lt: periodEnd };
+  }
 
   const rows = await shopDb
     .collection(SHOP_COMMISSIONS)
     .find({
       status: "eligible",
-      eligibleAt: { $gte: periodStart, $lt: periodEnd },
+      eligibleAt: eligibleAtFilter,
     })
     .toArray();
 
@@ -547,7 +565,10 @@ export async function buildEligiblePeriodPreview(
     .find({
       status: "eligible",
       isAdjustment: true,
-      billingPeriodTarget: period,
+      $or: [
+        { billingPeriodTarget: period },
+        ...(cycle === "K1" || cycle === "K2" ? [{ billingPeriodTarget: `${y}-${String(mo).padStart(2, "0")}` }] : []),
+      ],
     })
     .toArray();
   for (const a of adjDocs) {

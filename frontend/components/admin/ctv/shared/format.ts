@@ -64,13 +64,24 @@ export function billStatusLabel(status: string | null | undefined): string {
   return BILL_STATUS_LABEL[s] || s;
 }
 
-/** YYYY-MM từ ISO / period sẵn có */
+/** YYYY-MM hoặc YYYY-MM-K1/K2 từ ISO / period sẵn có */
 export function periodFromIso(iso: string | null | undefined): string {
   const s = String(iso || "").trim();
-  if (/^\d{4}-\d{2}$/.test(s)) return s;
+  if (/^\d{4}-\d{2}(-K[12])?$/.test(s)) return s;
   const d = new Date(s);
   if (!Number.isFinite(d.getTime())) return "";
   return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}`;
+}
+
+/** Format nhãn hiển thị kỳ thanh toán: 2026-09 -> Tháng 09/2026 (Cả tháng), 2026-09-K1 -> Tháng 09/2026 · Đợt 1 (01-15) */
+export function formatPeriodLabel(period: string | null | undefined): string {
+  const s = String(period || "").trim();
+  const m = /^(\d{4})-(\d{2})(?:-(K[12]))?$/.exec(s);
+  if (!m) return s || "—";
+  const [, y, mo, k] = m;
+  if (k === "K1") return `Tháng ${mo}/${y} · Đợt 1 (01–15)`;
+  if (k === "K2") return `Tháng ${mo}/${y} · Đợt 2 (16–hết tháng)`;
+  return `Tháng ${mo}/${y} (Cả tháng)`;
 }
 
 /** Mã cờ gian lận (DB) → tiếng Việt dễ hiểu trên admin */

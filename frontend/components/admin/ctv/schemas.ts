@@ -21,7 +21,7 @@ export type CtvListFilter = z.infer<typeof ctvListFilterSchema>;
 export const commissionFilterSchema = z.object({
   status: commissionStatusSchema.optional(),
   ctvCode: z.string().optional(),
-  period: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+  period: z.string().regex(/^\d{4}-\d{2}(-K[12])?$/).optional(),
 });
 
 export type CommissionFilter = z.infer<typeof commissionFilterSchema>;
@@ -41,5 +41,5 @@ export const payoutBankSchema = z.object({
 export type PayoutBankInput = z.infer<typeof payoutBankSchema>;
 
 export const periodSchema = z.object({
-  period: z.string().regex(/^\d{4}-\d{2}$/, "Kỳ dạng YYYY-MM"),
+  period: z.string().regex(/^\d{4}-\d{2}(-K[12])?$/, "Kỳ dạng YYYY-MM hoặc YYYY-MM-K1/K2"),
 });

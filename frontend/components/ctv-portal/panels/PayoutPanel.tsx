@@ -366,7 +366,7 @@ export function PayoutPanel() {
         footer={null}
         title={
           billDetail
-            ? `Chi tiết kỳ ${billDetail.period}`
+            ? `Chi tiết ${formatPeriodLabel(billDetail.period).title} (${billDetail.period})`
             : "Chi tiết"
         }
       >

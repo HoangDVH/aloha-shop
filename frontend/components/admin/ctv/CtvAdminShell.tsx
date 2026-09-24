@@ -17,6 +17,7 @@ import {
   Input,
   Row,
   Segmented,
+  Select,
   Space,
   Spin,
   Table,
@@ -62,6 +63,7 @@ import {
   billStatusLabel,
   formatDt,
   formatFraudFlags,
+  formatPeriodLabel,
   formatVnd,
   periodFromIso,
 } from "./shared/format";
@@ -1097,7 +1099,7 @@ function statusTag(s: string) {
 }
 
 function CommissionsHub({
-  period,
+  period: initialPeriod,
   dateRange,
   onExported,
 }: {
@@ -1106,6 +1108,24 @@ function CommissionsHub({
   onExported: () => void;
 }) {
   const [seg, setSeg] = useState<"dong" | "ky">("dong");
+  const [selectedPeriod, setSelectedPeriod] = useState<string>(initialPeriod);
+
+  // Cập nhật selectedPeriod khi initialPeriod đổi (từ range)
+  useEffect(() => {
+    if (initialPeriod) {
+      setSelectedPeriod((prev) => {
+        // Nếu prev đang có hậu tố K1/K2 của cùng tháng thì giữ nguyên cycle
+        const baseM = /^(\d{4}-\d{2})/.exec(initialPeriod);
+        const prevM = /^(\d{4}-\d{2})(-K[12])?/.exec(prev);
+        if (baseM && prevM && baseM[1] === prevM[1] && prevM[2]) {
+          return `${baseM[1]}${prevM[2]}`;
+        }
+        return initialPeriod;
+      });
+    }
+  }, [initialPeriod]);
+
+  const period = selectedPeriod;
   const [drillCtv, setDrillCtv] = useState<string | null>(null);
   const [listSeedCtv, setListSeedCtv] = useState<string | undefined>();
   const [listSeedPeriod, setListSeedPeriod] = useState<string | undefined>();
@@ -1122,6 +1142,9 @@ function CommissionsHub({
     ? (Array.isArray(bill?.ctvLines) ? bill.ctvLines : [])
     : (Array.isArray(preview?.ctvLines) ? preview!.ctvLines : []);
   const tableTotals = billLocked ? bill?.totals : preview?.totals;
+
+  // Lấy gốc tháng YYYY-MM
+  const monthBase = /^(\d{4}-\d{2})/.exec(period)?.[1] || period;
 
   const summary =
     seg === "ky"
@@ -1228,6 +1251,41 @@ function CommissionsHub({
         <div className="p-4">
           {seg === "ky" ? (
             <div className="space-y-4">
+              {/* Chọn đợt thanh toán (Bi-weekly) hoặc cả tháng */}
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#e4ebe3] bg-[#fafcfa] px-3.5 py-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[12px] font-bold text-slate-500 uppercase tracking-wide">
+                    Đợt thanh toán:
+                  </span>
+                  <Select
+                    value={period}
+                    onChange={(val) => setSelectedPeriod(val)}
+                    style={{ minWidth: 260 }}
+                    options={[
+                      {
+                        value: `${monthBase}-K1`,
+                        label: `Đợt 1 (01–15) · ${monthBase}-K1`,
+                      },
+                      {
+                        value: `${monthBase}-K2`,
+                        label: `Đợt 2 (16–hết tháng) · ${monthBase}-K2`,
+                      },
+                      {
+                        value: monthBase,
+                        label: `Cả tháng (Gộp) · ${monthBase}`,
+                      },
+                    ]}
+                  />
+                </div>
+                <div className="text-[12px] text-slate-500">
+                  {period.endsWith("-K1")
+                    ? "Chốt các đơn đủ điều kiện từ ngày 01 đến ngày 15"
+                    : period.endsWith("-K2")
+                    ? "Chốt từ ngày 16 đến cuối tháng (kèm đơn sót đợt 1)"
+                    : "Chốt toàn bộ đơn đủ điều kiện trong cả tháng"}
+                </div>
+              </div>
+
               <div className="rounded-xl border border-[#d7e3d2] bg-[#f7faf6] p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
@@ -1249,7 +1307,7 @@ function CommissionsHub({
                       </span>
                     </div>
                     <h3 className="m-0 text-lg font-extrabold text-[#1a2e1a]">
-                      Kỳ thanh toán {period}
+                      Kỳ thanh toán {formatPeriodLabel(period)}
                     </h3>
                     <p className="mb-0 mt-1 text-sm text-slate-600">
                       {Number(tableTotals?.ctvCount) || 0} CTV ·{" "}
@@ -1665,7 +1723,7 @@ function PeriodCtvLinesDrawer({
           </div>
           <div className="text-[12px] font-normal text-slate-500">
             {ctvName ? `${ctvName} · ` : ""}
-            Kỳ {period} · {total} dòng
+            Kỳ {formatPeriodLabel(period)} ({period}) · {total} dòng
             {rows.length ? ` · trang này ${formatVnd(totalHh)}` : ""}
             {billStatus ? ` · ${billStatusLabel(billStatus)}` : ""}
           </div>
@@ -1899,7 +1957,7 @@ function CommissionLinesTable({
   useEffect(() => {
     if (!initialPeriod) return;
     const p = String(initialPeriod).trim();
-    if (!/^\d{4}-\d{2}$/.test(p)) return;
+    if (!/^\d{4}-\d{2}(-K[12])?$/.test(p)) return;
     setFilterPeriod(p);
     setAppliedPeriod(p);
     setPage(1);
@@ -2021,11 +2079,12 @@ function CommissionLinesTable({
               <label className="mb-1 block text-[12px] font-semibold text-slate-600">
                 Kỳ thanh toán
               </label>
-              <input
-                type="month"
+              <Input
+                allowClear
                 value={filterPeriod}
-                onChange={(e) => setFilterPeriod(e.target.value)}
-                className="mb-3 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 outline-none"
+                onChange={(e) => setFilterPeriod(e.target.value.trim())}
+                placeholder="VD: 2026-09, 2026-09-K1..."
+                className="mb-3"
               />
               <label className="mb-1 block text-[12px] font-semibold text-slate-600">
                 Trạng thái

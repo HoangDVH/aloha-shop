@@ -335,22 +335,34 @@ export function registerShopCommissionAdminRoutes(
           },
         ];
       } else {
-        const periodMatch = /^(\d{4})-(\d{2})$/.exec(period);
+        const periodMatch = /^(\d{4})-(\d{2})(?:-(K[12]))?$/.exec(period);
         if (periodMatch) {
           const y = Number(periodMatch[1]);
           const mo = Number(periodMatch[2]);
-          const periodStart = new Date(Date.UTC(y, mo - 1, 1)).toISOString();
-          const periodEnd = new Date(Date.UTC(y, mo, 1)).toISOString();
+          const cycle = periodMatch[3] as "K1" | "K2" | undefined;
+          let pStart: string;
+          let pEnd: string;
+          if (cycle === "K1") {
+            pStart = new Date(Date.UTC(y, mo - 1, 1)).toISOString();
+            pEnd = new Date(Date.UTC(y, mo - 1, 16)).toISOString();
+          } else if (cycle === "K2") {
+            pStart = new Date(Date.UTC(y, mo - 1, 16)).toISOString();
+            pEnd = new Date(Date.UTC(y, mo, 1)).toISOString();
+          } else {
+            pStart = new Date(Date.UTC(y, mo - 1, 1)).toISOString();
+            pEnd = new Date(Date.UTC(y, mo, 1)).toISOString();
+          }
           if (inBill) {
             filter.billingPeriod = period;
           } else {
-            // Kỳ: đã vào bill kỳ này HOẶC eligibleAt thuộc tháng (preview chưa chốt)
+            // Kỳ: đã vào bill kỳ này HOẶC eligibleAt thuộc phạm vi đợt (K2 đón thêm đơn eligible cũ chưa vào bill)
             filter.$and = [
               ...(Array.isArray(filter.$and) ? (filter.$and as unknown[]) : []),
               {
                 $or: [
                   { billingPeriod: period },
-                  { eligibleAt: { $gte: periodStart, $lt: periodEnd } },
+                  { eligibleAt: { $gte: pStart, $lt: pEnd } },
+                  ...(cycle === "K2" ? [{ status: "eligible", eligibleAt: { $lt: pEnd } }] : []),
                 ],
               },
             ];
@@ -556,12 +568,28 @@ export function registerShopCommissionAdminRoutes(
         | undefined;
 
       if (ctvCode && period) {
-        const periodMatch = /^(\d{4})-(\d{2})$/.exec(period);
+        const periodMatch = /^(\d{4})-(\d{2})(?:-(K[12]))?$/.exec(period);
         if (periodMatch) {
           const y = Number(periodMatch[1]);
           const mo = Number(periodMatch[2]);
-          const pStart = new Date(Date.UTC(y, mo - 1, 1)).toISOString();
-          const pEnd = new Date(Date.UTC(y, mo, 1)).toISOString();
+          const cycle = periodMatch[3] as "K1" | "K2" | undefined;
+          let pStart: string;
+          let pEnd: string;
+          let eligibleQuery: Record<string, unknown>;
+          if (cycle === "K1") {
+            pStart = new Date(Date.UTC(y, mo - 1, 1)).toISOString();
+            pEnd = new Date(Date.UTC(y, mo - 1, 16)).toISOString();
+            eligibleQuery = { eligibleAt: { $gte: pStart, $lt: pEnd } };
+          } else if (cycle === "K2") {
+            pStart = new Date(Date.UTC(y, mo - 1, 16)).toISOString();
+            pEnd = new Date(Date.UTC(y, mo, 1)).toISOString();
+            // Đợt 2: gom cả đơn trước 16 còn sót
+            eligibleQuery = { eligibleAt: { $lt: pEnd } };
+          } else {
+            pStart = new Date(Date.UTC(y, mo - 1, 1)).toISOString();
+            pEnd = new Date(Date.UTC(y, mo, 1)).toISOString();
+            eligibleQuery = { eligibleAt: { $gte: pStart, $lt: pEnd } };
+          }
 
           const [inBillAgg, eligibleAgg, allAgg] = await Promise.all([
             col
@@ -571,7 +599,7 @@ export function registerShopCommissionAdminRoutes(
                     ctvCode,
                     $or: [
                       { billingPeriod: period },
-                      { status: "billed", eligibleAt: { $gte: pStart, $lt: pEnd } },
+                      { status: { $in: ["billed", "paid_out"] }, billingPeriod: period },
                     ],
                   },
                 },
@@ -584,7 +612,7 @@ export function registerShopCommissionAdminRoutes(
                   $match: {
                     ctvCode,
                     status: "eligible",
-                    eligibleAt: { $gte: pStart, $lt: pEnd },
+                    ...eligibleQuery,
                   },
                 },
                 { $group: { _id: null, count: { $sum: 1 }, sum: { $sum: "$amount" } } },
@@ -598,6 +626,7 @@ export function registerShopCommissionAdminRoutes(
                     $or: [
                       { billingPeriod: period },
                       { eligibleAt: { $gte: pStart, $lt: pEnd } },
+                      ...(cycle === "K2" ? [{ status: "eligible", eligibleAt: { $lt: pEnd } }] : []),
                     ],
                   },
                 },
@@ -1077,12 +1106,28 @@ export function registerShopCommissionAdminRoutes(
         to = new Date(ty, tm - 1, td + 1);
         periodKey = `${ty}-${String(tm).padStart(2, "0")}`;
       } else {
-        periodKey = /^\d{4}-\d{2}$/.test(period)
-          ? period
-          : `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-        const [y, m] = periodKey.split("-").map(Number);
-        from = new Date(y, m - 1, 1);
-        to = new Date(y, m, 1);
+        const m = /^(\d{4})-(\d{2})(?:-(K[12]))?$/.exec(period);
+        if (m) {
+          periodKey = period;
+          const y = Number(m[1]);
+          const mo = Number(m[2]);
+          const cycle = m[3] as "K1" | "K2" | undefined;
+          if (cycle === "K1") {
+            from = new Date(y, mo - 1, 1);
+            to = new Date(y, mo - 1, 16);
+          } else if (cycle === "K2") {
+            from = new Date(y, mo - 1, 16);
+            to = new Date(y, mo, 1);
+          } else {
+            from = new Date(y, mo - 1, 1);
+            to = new Date(y, mo, 1);
+          }
+        } else {
+          periodKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+          const [y, mNum] = periodKey.split("-").map(Number);
+          from = new Date(y, mNum - 1, 1);
+          to = new Date(y, mNum, 1);
+        }
       }
       const fromIso = from.toISOString();
       const toIso = to.toISOString();
@@ -1507,12 +1552,28 @@ export function registerShopCommissionAdminRoutes(
         to = new Date(ty, tm - 1, td + 1); // exclusive
         periodKey = `${ty}-${String(tm).padStart(2, "0")}`;
       } else {
-        periodKey = /^\d{4}-\d{2}$/.test(period)
-          ? period
-          : `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-        const [y, m] = periodKey.split("-").map(Number);
-        from = new Date(y, m - 1, 1);
-        to = new Date(y, m, 1);
+        const m = /^(\d{4})-(\d{2})(?:-(K[12]))?$/.exec(period);
+        if (m) {
+          periodKey = period;
+          const y = Number(m[1]);
+          const mo = Number(m[2]);
+          const cycle = m[3] as "K1" | "K2" | undefined;
+          if (cycle === "K1") {
+            from = new Date(y, mo - 1, 1);
+            to = new Date(y, mo - 1, 16);
+          } else if (cycle === "K2") {
+            from = new Date(y, mo - 1, 16);
+            to = new Date(y, mo, 1);
+          } else {
+            from = new Date(y, mo - 1, 1);
+            to = new Date(y, mo, 1);
+          }
+        } else {
+          periodKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+          const [y, mNum] = periodKey.split("-").map(Number);
+          from = new Date(y, mNum - 1, 1);
+          to = new Date(y, mNum, 1);
+        }
       }
       const fromIso = from.toISOString();
       const toIso = to.toISOString();
@@ -1747,7 +1808,7 @@ export function registerShopCommissionAdminRoutes(
         const shopDb = await getShopDb();
         await ensure(shopDb);
         const period = String(req.params.period || "").trim();
-        if (!/^\d{4}-\d{2}$/.test(period)) {
+        if (!/^\d{4}-\d{2}(-K[12])?$/.test(period)) {
           return res.status(400).json({ error: "invalid_period" });
         }
         const bill = await shopDb.collection(SHOP_COMMISSION_BILLS).findOne({

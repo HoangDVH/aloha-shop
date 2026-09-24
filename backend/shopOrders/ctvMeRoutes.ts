@@ -82,8 +82,11 @@ function summarizeCtvCommissionStatus(
     const period = String(
       comms.find((c) => String(c?.status) === "billed")?.billingPeriod || ""
     ).trim();
-    const m = /^(\d{4})-(\d{2})$/.exec(period);
-    if (m) hint = `Thuộc đợt chi tháng ${Number(m[2])}/${m[1]}`;
+    const m = /^(\d{4})-(\d{2})(?:-(K[12]))?$/.exec(period);
+    if (m) {
+      const cycleText = m[3] === "K1" ? " · Đợt 1" : m[3] === "K2" ? " · Đợt 2" : "";
+      hint = `Thuộc đợt chi tháng ${Number(m[2])}/${m[1]}${cycleText}`;
+    }
   } else if (key === "paid_out") {
     const paidAt = comms.find((c) => c?.paidAt)?.paidAt;
     if (paidAt) {

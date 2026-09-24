@@ -18,6 +18,7 @@ import { useCtvUiStore } from "./ctvUiStore";
 import {
   COMMISSION_STATUS_LABEL,
   CTV_STATUS_LABEL,
+  formatPeriodLabel,
   formatVnd,
   maskPhone,
 } from "./shared/format";
@@ -530,7 +531,9 @@ export default function CtvDetailPanel({
               <tbody>
                 {data.payouts.map((p) => (
                   <tr key={p.period} className="border-t border-[#f0f3ef]">
-                    <td className="px-4 py-3 font-semibold text-[#1a2e1a]">{p.period}</td>
+                    <td className="px-4 py-3 font-semibold text-[#1a2e1a]">
+                      {formatPeriodLabel(p.period)} ({p.period})
+                    </td>
                     <td className="px-3 py-3 text-slate-600">{p.status}</td>
                     <td className="px-3 py-3 text-slate-500">{p.orderCount}</td>
                     <td className="px-3 py-3 text-right font-bold text-[#2D5A27]">

@@ -869,15 +869,20 @@ function KyThang({ onDone }: { onDone: () => void }) {
     void load();
   }, [load]);
 
+  const monthBase = /^(\d{4}-\d{2})/.exec(period)?.[1] || period;
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <input
-          type="month"
+        <select
           value={period}
           onChange={(e) => setPeriod(e.target.value)}
-          className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-        />
+          className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold"
+        >
+          <option value={`${monthBase}-K1`}>Đợt 1 (01–15) · {monthBase}-K1</option>
+          <option value={`${monthBase}-K2`}>Đợt 2 (16–hết) · {monthBase}-K2</option>
+          <option value={monthBase}>Cả tháng · {monthBase}</option>
+        </select>
         <button
           type="button"
           className="rounded-lg bg-emerald-700 px-3 py-2 text-sm font-bold text-white"
@@ -898,7 +903,7 @@ function KyThang({ onDone }: { onDone: () => void }) {
             }
           }}
         >
-          Chốt kỳ tháng
+          Chốt kỳ ({period})
         </button>
         {bill?.status === "locked" ? (
           <button
