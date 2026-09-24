@@ -1547,8 +1547,8 @@ function CommissionConfigHub() {
       </div>
       <div className="p-4">
         <p className="mb-3 mt-0 text-[13px] text-slate-500">
-          Cấu hình rate tách khỏi trang thanh toán — giống Affiliate settings trên sàn
-          (Shopee / TikTok). Đối soát tiền xem tại{" "}
+          Cấu hình hoa hồng toàn shop (Shop-wide Default Rate) & cho từng sản phẩm theo chuẩn sàn TMĐT (Shopee / TikTok Shop).
+          Đối soát tiền và chốt kỳ xem tại{" "}
           <Link href="/admin/ctv/hoa-hong" className="font-semibold text-[#2D5A27] hover:underline">
             Hoa hồng
           </Link>

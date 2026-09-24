@@ -444,3 +444,38 @@ export function useRejectCtvMutation() {
     },
   });
 }
+
+export type ProductRatesStats = {
+  ok: boolean;
+  defaultRate: number;
+  totalProducts: number;
+  defaultRateProducts: number;
+  customRateProducts: number;
+  excludedProducts: number;
+};
+
+export function useCtvProductRatesStats() {
+  return useQuery({
+    queryKey: ["admin", "ctv", "product-rates-stats"],
+    queryFn: () => adminFetch<ProductRatesStats>("/api/shop/admin/ctv/product-rates-stats"),
+  });
+}
+
+export function useBulkProductRatesMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Record<string, unknown>) =>
+      adminFetch<{ ok: boolean; message?: string; defaultRate?: number; modifiedProducts?: number }>(
+        "/api/shop/admin/ctv/product-rates/bulk",
+        {
+          method: "POST",
+          body: JSON.stringify(body),
+        }
+      ),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["admin", "ctv", "product-rates-stats"] });
+      void qc.invalidateQueries({ queryKey: ["admin", "ctv", "settings"] });
+    },
+  });
+}
+

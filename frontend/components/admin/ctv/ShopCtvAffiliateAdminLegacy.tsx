@@ -14,6 +14,10 @@ import {
   Sparkles,
   Users,
   X,
+  Layers,
+  RotateCcw,
+  CheckCircle2,
+  Sliders,
 } from "lucide-react";
 import { toast } from "@/components/admin/toast";
 import ShopAccountsAdmin from "./ShopAccountsAdmin";
@@ -424,14 +428,54 @@ function DatPhanTram({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [batchRate, setBatchRate] = useState("");
   const [liveDefault, setLiveDefault] = useState(defaultRate);
+  const [rateFilterTab, setRateFilterTab] = useState<"all" | "default" | "custom" | "excluded">("all");
+  const [stats, setStats] = useState<{
+    totalProducts: number;
+    defaultRateProducts: number;
+    customRateProducts: number;
+    excludedProducts: number;
+  } | null>(null);
+
+  // Modal / action states for bulk operations
+  const [showShopDefaultModal, setShowShopDefaultModal] = useState(false);
+  const [newShopRate, setNewShopRate] = useState<string>("");
+  const [shopRateApplyMode, setShopRateApplyMode] = useState<"unconfigured_only" | "overwrite_all">("unconfigured_only");
+  const [showApplyAllModal, setShowApplyAllModal] = useState(false);
+  const [allProductsRate, setAllProductsRate] = useState<string>("");
+  const [submittingBulk, setSubmittingBulk] = useState(false);
+
   const searchWrapRef = useRef<HTMLDivElement>(null);
   const suggestTimer = useRef<number | null>(null);
+
+  const loadStats = useCallback(async () => {
+    try {
+      const s = await api<{
+        ok: boolean;
+        defaultRate: number;
+        totalProducts: number;
+        defaultRateProducts: number;
+        customRateProducts: number;
+        excludedProducts: number;
+      }>("/api/shop/admin/ctv/product-rates-stats");
+      if (s.ok) {
+        setStats({
+          totalProducts: s.totalProducts,
+          defaultRateProducts: s.defaultRateProducts,
+          customRateProducts: s.customRateProducts,
+          excludedProducts: s.excludedProducts,
+        });
+        if (s.defaultRate != null) setLiveDefault(s.defaultRate);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const r = await api<{ data: ProductRateRow[]; total: number; defaultRate?: number }>(
-        `/api/shop/admin/ctv/product-rates?q=${encodeURIComponent(q)}&page=${page}&limit=${pageSize}`
+        `/api/shop/admin/ctv/product-rates?q=${encodeURIComponent(q)}&rateType=${rateFilterTab}&page=${page}&limit=${pageSize}`
       );
       setRows(r.data || []);
       setTotal(r.total || 0);
@@ -441,11 +485,15 @@ function DatPhanTram({
     } finally {
       setLoading(false);
     }
-  }, [q, page, pageSize]);
+  }, [q, rateFilterTab, page, pageSize]);
 
   useEffect(() => {
     void load();
   }, [load, settingsTick]);
+
+  useEffect(() => {
+    void loadStats();
+  }, [loadStats, settingsTick]);
 
   useEffect(() => {
     if (defaultRate != null) setLiveDefault(defaultRate);
@@ -498,30 +546,270 @@ function DatPhanTram({
       });
       toast.success(`Đã cập nhật ${ma}`);
       void load();
+      void loadStats();
     } catch (e: any) {
       toast.error(e?.message || "Lỗi");
     }
   };
 
+  // 1. Áp dụng tỷ lệ mặc định toàn shop (Shop-wide Default Rate)
+  const handleSaveShopDefault = async () => {
+    const rate = Number(newShopRate);
+    if (!Number.isFinite(rate) || rate < 0) {
+      toast.error("Vui lòng nhập tỷ lệ % hợp lệ (≥ 0)");
+      return;
+    }
+    setSubmittingBulk(true);
+    try {
+      const res = await api<{ ok: boolean; message: string; defaultRate: number }>(
+        "/api/shop/admin/ctv/product-rates/bulk",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            action: "set_shop_default",
+            rate,
+            applyMode: shopRateApplyMode,
+          }),
+        }
+      );
+      toast.success(res.message || "Đã lưu tỷ lệ toàn shop");
+      setLiveDefault(res.defaultRate);
+      setShowShopDefaultModal(false);
+      void load();
+      void loadStats();
+    } catch (e: any) {
+      toast.error(e?.message || "Lỗi lưu tỷ lệ toàn shop");
+    } finally {
+      setSubmittingBulk(false);
+    }
+  };
+
+  // 2. Gán cứng % hoa hồng cho toàn bộ sản phẩm trong shop
+  const handleApplyAllProducts = async () => {
+    const rate = Number(allProductsRate);
+    if (!Number.isFinite(rate) || rate < 0) {
+      toast.error("Vui lòng nhập tỷ lệ % hợp lệ (≥ 0)");
+      return;
+    }
+    setSubmittingBulk(true);
+    try {
+      const res = await api<{ ok: boolean; message: string }>(
+        "/api/shop/admin/ctv/product-rates/bulk",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            action: "apply_all_products",
+            rate,
+          }),
+        }
+      );
+      toast.success(res.message || "Đã áp dụng cho toàn bộ sản phẩm");
+      setShowApplyAllModal(false);
+      void load();
+      void loadStats();
+    } catch (e: any) {
+      toast.error(e?.message || "Lỗi áp dụng cho toàn bộ SP");
+    } finally {
+      setSubmittingBulk(false);
+    }
+  };
+
+  // 3. Khôi phục toàn bộ sản phẩm về tỷ lệ mặc định shop
+  const handleResetAllToDefault = async () => {
+    const ok = window.confirm(
+      `Xác nhận xóa bỏ toàn bộ cài đặt riêng của các sản phẩm và đưa tất cả về mức mặc định ${liveDefault ?? 0}%?`
+    );
+    if (!ok) return;
+    setSubmittingBulk(true);
+    try {
+      const res = await api<{ ok: boolean; message: string }>(
+        "/api/shop/admin/ctv/product-rates/bulk",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            action: "reset_all_to_default",
+          }),
+        }
+      );
+      toast.success(res.message || "Đã khôi phục toàn bộ về mặc định");
+      void load();
+      void loadStats();
+    } catch (e: any) {
+      toast.error(e?.message || "Lỗi khôi phục mặc định");
+    } finally {
+      setSubmittingBulk(false);
+    }
+  };
+
   return (
     <div className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-4 py-3">
-        <div className="text-sm text-slate-600">
-          % mặc định shop:{" "}
-          <span className="font-bold text-emerald-800">{liveDefault ?? "—"}%</span>
-          <span className="text-slate-400"> · SP chưa set riêng dùng mức này</span>
+      {/* Thanh Banner Tỷ lệ hoa hồng toàn shop (Chuẩn Shopee / TikTok Shop Affiliate) */}
+      <div className="border-b border-slate-200 bg-gradient-to-r from-emerald-50 via-teal-50 to-white px-5 py-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
+              <Percent size={20} strokeWidth={2.4} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-slate-500 uppercase tracking-wide">
+                  Tỷ lệ hoa hồng toàn shop (Shop-wide Default)
+                </span>
+                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">
+                  Chuẩn sàn TMĐT
+                </span>
+              </div>
+              <div className="mt-0.5 flex flex-wrap items-baseline gap-2">
+                <span className="text-2xl font-black tracking-tight text-emerald-800">
+                  {liveDefault ?? "—"}%
+                </span>
+                <span className="text-xs text-slate-500">
+                  áp dụng tự động cho mọi sản phẩm không cài đặt hoa hồng riêng lẻ
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 pt-1 lg:pt-0">
+            <button
+              type="button"
+              onClick={() => {
+                setNewShopRate(String(liveDefault ?? 5));
+                setShopRateApplyMode("unconfigured_only");
+                setShowShopDefaultModal(true);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-white px-3.5 py-2 text-xs font-bold text-emerald-800 shadow-sm transition hover:bg-emerald-50 hover:border-emerald-400"
+            >
+              <Sliders size={14} />
+              Đổi % toàn shop
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAllProductsRate(String(liveDefault ?? 10));
+                setShowApplyAllModal(true);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-800"
+            >
+              <Layers size={14} />
+              Gán % cho TẤT CẢ sản phẩm
+            </button>
+            <button
+              type="button"
+              disabled={submittingBulk}
+              onClick={() => void handleResetAllToDefault()}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+              title="Đưa toàn bộ sản phẩm về tỷ lệ mặc định shop"
+            >
+              <RotateCcw size={13} />
+              Về mặc định toàn bộ
+            </button>
+          </div>
         </div>
+
+        {/* Thống kê phân bổ sản phẩm */}
+        {stats ? (
+          <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-emerald-100/70 pt-3 text-xs">
+            <span className="font-semibold text-slate-600">Phân bổ danh mục:</span>
+            <button
+              type="button"
+              onClick={() => {
+                setRateFilterTab("all");
+                setPage(1);
+              }}
+              className={`rounded-md px-2 py-0.5 font-medium transition ${
+                rateFilterTab === "all"
+                  ? "bg-emerald-700 text-white font-bold"
+                  : "bg-white text-slate-700 hover:bg-emerald-100/60"
+              }`}
+            >
+              Tất cả: <b>{stats.totalProducts}</b> SP
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setRateFilterTab("default");
+                setPage(1);
+              }}
+              className={`rounded-md px-2 py-0.5 font-medium transition ${
+                rateFilterTab === "default"
+                  ? "bg-emerald-700 text-white font-bold"
+                  : "bg-white text-slate-700 hover:bg-emerald-100/60"
+              }`}
+            >
+              Theo % mặc định ({liveDefault}%): <b>{stats.defaultRateProducts}</b> SP
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setRateFilterTab("custom");
+                setPage(1);
+              }}
+              className={`rounded-md px-2 py-0.5 font-medium transition ${
+                rateFilterTab === "custom"
+                  ? "bg-emerald-700 text-white font-bold"
+                  : "bg-white text-slate-700 hover:bg-emerald-100/60"
+              }`}
+            >
+              Có % riêng: <b>{stats.customRateProducts}</b> SP
+            </button>
+            {stats.excludedProducts > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setRateFilterTab("excluded");
+                  setPage(1);
+                }}
+                className={`rounded-md px-2 py-0.5 font-medium transition ${
+                  rateFilterTab === "excluded"
+                    ? "bg-rose-700 text-white font-bold"
+                    : "bg-white text-slate-700 hover:bg-rose-50"
+                }`}
+              >
+                Loại trừ (0%): <b>{stats.excludedProducts}</b> SP
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
+      {/* Thao tác chọn theo nhóm SP */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={rows.length > 0 && rows.every((r) => selected.has(r.ma))}
+            onChange={(e) => {
+              const n = new Set(selected);
+              if (e.target.checked) {
+                rows.forEach((r) => n.add(r.ma));
+              } else {
+                rows.forEach((r) => n.delete(r.ma));
+              }
+              setSelected(n);
+            }}
+            className="h-4 w-4 cursor-pointer rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+          />
+          <span className="text-xs font-semibold text-slate-600">
+            {selected.size > 0 ? (
+              <span className="text-emerald-800">Đã chọn {selected.size} sản phẩm</span>
+            ) : (
+              "Chọn tất cả trên trang này"
+            )}
+          </span>
+        </div>
+
         {selected.size > 0 ? (
-          <div className="ml-auto flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <input
               value={batchRate}
               onChange={(e) => setBatchRate(e.target.value)}
-              placeholder="% hàng loạt"
-              className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+              placeholder="% áp dụng"
+              className="w-24 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-medium outline-none focus:border-emerald-500"
             />
             <button
               type="button"
-              className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white"
+              className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-800"
               onClick={async () => {
                 const rate = Number(batchRate);
                 if (!Number.isFinite(rate) || rate < 0) {
@@ -529,26 +817,62 @@ function DatPhanTram({
                   return;
                 }
                 try {
-                  await api("/api/shop/admin/ctv/product-rates", {
+                  await api("/api/shop/admin/ctv/product-rates/bulk", {
                     method: "POST",
                     body: JSON.stringify({
-                      items: [...selected].map((ma) => ({ ma, ctvCommissionRate: rate })),
+                      action: "bulk_set_selected",
+                      maList: [...selected],
+                      rate,
                     }),
                   });
-                  toast.success(`Đã sửa ${selected.size} SP`);
+                  toast.success(`Đã cập nhật ${selected.size} SP thành ${rate}%`);
+                  setSelected(new Set());
+                  setBatchRate("");
+                  void load();
+                  void loadStats();
+                } catch (e: any) {
+                  toast.error(e?.message || "Lỗi cập nhật");
+                }
+              }}
+            >
+              Áp dụng {selected.size} SP
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              onClick={async () => {
+                try {
+                  await api("/api/shop/admin/ctv/product-rates/bulk", {
+                    method: "POST",
+                    body: JSON.stringify({
+                      action: "bulk_set_selected",
+                      maList: [...selected],
+                      clearRate: true,
+                    }),
+                  });
+                  toast.success(`Đã đưa ${selected.size} SP về mặc định`);
                   setSelected(new Set());
                   void load();
+                  void loadStats();
                 } catch (e: any) {
                   toast.error(e?.message || "Lỗi");
                 }
               }}
             >
-              Sửa {selected.size} SP
+              Về mặc định ({selected.size})
+            </button>
+            <button
+              type="button"
+              className="text-xs text-slate-400 hover:text-slate-600"
+              onClick={() => setSelected(new Set())}
+            >
+              Bỏ chọn
             </button>
           </div>
         ) : null}
       </div>
 
+      {/* Ô tìm kiếm */}
       <div className="border-b border-slate-100 px-4 py-3">
         <div ref={searchWrapRef} className="relative max-w-xl">
           <Search
@@ -701,6 +1025,186 @@ function DatPhanTram({
         onPageChange={setPage}
         itemLabel="SP"
       />
+
+      {/* MODAL 1: Cấu hình tỷ lệ hoa hồng toàn shop (Shop-wide Default Rate) */}
+      {showShopDefaultModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800">
+                  <Sliders size={18} />
+                </div>
+                <div className="font-bold text-slate-800">Đổi tỷ lệ hoa hồng toàn shop</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowShopDefaultModal(false)}
+                className="rounded-full p-1 text-slate-400 hover:bg-slate-100"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600">
+                  Tỷ lệ hoa hồng toàn shop mới (%)
+                </label>
+                <div className="relative mt-1">
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.5}
+                    value={newShopRate}
+                    onChange={(e) => setNewShopRate(e.target.value)}
+                    placeholder="VD: 5"
+                    className="w-full rounded-xl border border-slate-300 py-2.5 pl-3 pr-8 text-base font-bold text-emerald-800 outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
+                  />
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 font-bold text-slate-400">
+                    %
+                  </span>
+                </div>
+                <p className="mt-1 text-[11px] text-slate-500">
+                  Mức % này sẽ là tỷ lệ hoa hồng cơ bản cho tất cả đơn hàng CTV khi mua các sản phẩm thông thường.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-2">
+                  Phạm vi áp dụng (Chuẩn sàn Shopee / TikTok Shop):
+                </label>
+                <div className="space-y-2">
+                  <label className="flex items-start gap-2.5 rounded-xl border border-slate-200 p-3 hover:bg-slate-50 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="shopRateApplyMode"
+                      value="unconfigured_only"
+                      checked={shopRateApplyMode === "unconfigured_only"}
+                      onChange={() => setShopRateApplyMode("unconfigured_only")}
+                      className="mt-0.5 text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-slate-800">
+                        Chỉ áp dụng cho các sản phẩm chưa cài % riêng (Khuyên dùng)
+                      </div>
+                      <div className="text-[11px] text-slate-500">
+                        Giữ nguyên các sản phẩm đã được ưu đãi hoặc điều chỉnh hoa hồng đặc biệt trước đây.
+                      </div>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/40 p-3 hover:bg-amber-50 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="shopRateApplyMode"
+                      value="overwrite_all"
+                      checked={shopRateApplyMode === "overwrite_all"}
+                      onChange={() => setShopRateApplyMode("overwrite_all")}
+                      className="mt-0.5 text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-amber-900">
+                        Đồng bộ toàn bộ sản phẩm về mức mới này
+                      </div>
+                      <div className="text-[11px] text-amber-700">
+                        Xóa tất cả % riêng lẻ của từng sản phẩm, đưa 100% sản phẩm trong shop về đúng mức % này.
+                      </div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center justify-end gap-2 border-t border-slate-100 pt-3">
+              <button
+                type="button"
+                onClick={() => setShowShopDefaultModal(false)}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                disabled={submittingBulk}
+                onClick={() => void handleSaveShopDefault()}
+                className="rounded-xl bg-emerald-700 px-4 py-2 text-xs font-bold text-white shadow hover:bg-emerald-800 disabled:opacity-50"
+              >
+                {submittingBulk ? "Đang áp dụng…" : "Lưu & Áp dụng"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* MODAL 2: Gán cứng % cho TẤT CẢ sản phẩm trong shop */}
+      {showApplyAllModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-100 text-teal-800">
+                  <Layers size={18} />
+                </div>
+                <div className="font-bold text-slate-800">Gán % cho toàn bộ sản phẩm</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowApplyAllModal(false)}
+                className="rounded-full p-1 text-slate-400 hover:bg-slate-100"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-4">
+              <div className="rounded-xl bg-teal-50 border border-teal-200 p-3 text-xs text-teal-900 leading-relaxed">
+                Thao tác này sẽ đặt <b>cố định</b> % hoa hồng cho <b>toàn bộ sản phẩm</b> hiện có trong shop.
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600">
+                  Tỷ lệ hoa hồng áp dụng (%)
+                </label>
+                <div className="relative mt-1">
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.5}
+                    value={allProductsRate}
+                    onChange={(e) => setAllProductsRate(e.target.value)}
+                    placeholder="VD: 10"
+                    className="w-full rounded-xl border border-slate-300 py-2.5 pl-3 pr-8 text-base font-bold text-teal-800 outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600"
+                  />
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 font-bold text-slate-400">
+                    %
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center justify-end gap-2 border-t border-slate-100 pt-3">
+              <button
+                type="button"
+                onClick={() => setShowApplyAllModal(false)}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                disabled={submittingBulk}
+                onClick={() => void handleApplyAllProducts()}
+                className="rounded-xl bg-teal-700 px-4 py-2 text-xs font-bold text-white shadow hover:bg-teal-800 disabled:opacity-50"
+              >
+                {submittingBulk ? "Đang gán…" : "Xác nhận gán toàn bộ"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
