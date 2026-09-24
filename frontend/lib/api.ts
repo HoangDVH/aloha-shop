@@ -155,21 +155,41 @@ export async function fetchCategoryTree() {
   });
 }
 
+const CATEGORY_TREE_CLIENT_TTL_MS = 5 * 60 * 1000; // 5 phút TTL cho client memory cache
 let categoryTreeClientCache: ShopCategoryNavNode[] | null = null;
+let categoryTreeClientTimestamp = 0;
 let categoryTreeClientInflight: Promise<ShopCategoryNavNode[]> | null = null;
 
-/** Cache phía trình duyệt — menu không gọi API lại mỗi lần mount. */
-export function fetchCategoryTreeCached(): Promise<ShopCategoryNavNode[]> {
-  if (categoryTreeClientCache?.length) {
+export function invalidateCategoryTreeClientCache() {
+  categoryTreeClientCache = null;
+  categoryTreeClientTimestamp = 0;
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("aloha-category-tree-invalidated", () => {
+    invalidateCategoryTreeClientCache();
+  });
+}
+
+/** Cache phía trình duyệt có TTL & Invalidation — menu không gọi API lại mỗi lần mount nhưng tự động làm mới sau TTL hoặc khi bị invalidate */
+export function fetchCategoryTreeCached(forceRefresh = false): Promise<ShopCategoryNavNode[]> {
+  const isFresh =
+    !forceRefresh &&
+    categoryTreeClientCache !== null &&
+    categoryTreeClientCache.length > 0 &&
+    Date.now() - categoryTreeClientTimestamp < CATEGORY_TREE_CLIENT_TTL_MS;
+
+  if (isFresh && categoryTreeClientCache) {
     return Promise.resolve(categoryTreeClientCache);
   }
   if (!categoryTreeClientInflight) {
     categoryTreeClientInflight = fetchCategoryTree()
       .then((res) => {
         categoryTreeClientCache = res.items || [];
+        categoryTreeClientTimestamp = Date.now();
         return categoryTreeClientCache;
       })
-      .catch(() => [] as ShopCategoryNavNode[])
+      .catch(() => (categoryTreeClientCache || []) as ShopCategoryNavNode[])
       .finally(() => {
         categoryTreeClientInflight = null;
       });

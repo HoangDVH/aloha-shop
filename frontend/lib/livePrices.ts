@@ -29,35 +29,51 @@ type Pending = {
 
 let pending: Pending | null = null;
 
+async function fetchPriceChunk(mas: string[], generation: number): Promise<LivePriceRow[]> {
+  const base = shopApiBase();
+  const res = await fetch(`${base}/api/shop/products/prices`, {
+    method: "POST",
+    credentials: "include",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    cache: "no-store",
+    body: JSON.stringify({ mas }),
+  });
+  if (!res.ok) return [];
+  const data = (await res.json().catch(() => ({}))) as { items?: LivePriceRow[] };
+  if (generation !== priceSessionGeneration()) return [];
+  return Array.isArray(data.items) ? data.items : [];
+}
+
 async function flushPending() {
   const batch = pending;
   pending = null;
   if (!batch) return;
   if (batch.timer) clearTimeout(batch.timer);
 
-  const uniq = [...batch.mas].slice(0, 80);
-  if (!uniq.length) {
+  const allMas = [...batch.mas];
+  if (!allMas.length) {
     for (const w of batch.waiters) w.resolve([]);
     return;
   }
 
   try {
-    const base = shopApiBase();
     const generation = priceSessionGeneration();
-  const res = await fetch(`${base}/api/shop/products/prices`, {
-      method: "POST",
-      credentials: "include",
-      headers: { Accept: "application/json", "Content-Type": "application/json" },
-      cache: "no-store",
-      body: JSON.stringify({ mas: uniq }),
-    });
-    if (!res.ok) {
+    const CHUNK_SIZE = 80;
+    const chunks: string[][] = [];
+    for (let i = 0; i < allMas.length; i += CHUNK_SIZE) {
+      chunks.push(allMas.slice(i, i + CHUNK_SIZE));
+    }
+
+    const chunkResults = await Promise.all(
+      chunks.map((chunk) => fetchPriceChunk(chunk, generation))
+    );
+
+    if (generation !== priceSessionGeneration()) {
       for (const w of batch.waiters) w.resolve([]);
       return;
     }
-    const data = (await res.json().catch(() => ({}))) as { items?: LivePriceRow[] };
-    if (generation !== priceSessionGeneration()) { for (const w of batch.waiters) w.resolve([]); return; }
-    const items = Array.isArray(data.items) ? data.items : [];
+
+    const items = chunkResults.flat();
     const byMa = new Map(
       items.map((r) => [String(r.ma || "").trim().toUpperCase(), r] as const)
     );
@@ -83,7 +99,7 @@ export async function fetchLivePrices(mas: string[]): Promise<LivePriceRow[]> {
         .map((m) => String(m || "").trim().toUpperCase())
         .filter(Boolean)
     ),
-  ].slice(0, 80);
+  ];
   if (!want.length) return [];
 
   return new Promise<LivePriceRow[]>((resolve, reject) => {

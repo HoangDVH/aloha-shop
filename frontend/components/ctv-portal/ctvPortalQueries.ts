@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchProducts } from "@/lib/api";
+import { useShopMeQuery } from "@/lib/authQueries";
 import { ctvPortalFetch } from "./ctvPortalFetch";
 import type {
   BillRow,
@@ -15,9 +16,12 @@ import type { PayoutBankInput } from "./schemas";
 export function useCtvMeStats(opts?: {
   refetchInterval?: number | false | (() => number | false);
 }) {
+  const { data: me } = useShopMeQuery();
+  const userId = me?.id || me?.email || "anonymous";
   return useQuery({
-    queryKey: ["ctv-portal", "stats"],
+    queryKey: ["ctv-portal", userId, "stats"],
     queryFn: () => ctvPortalFetch<CtvStats>("/api/shop/ctv/me/stats"),
+    enabled: Boolean(me?.id || me?.email),
     refetchInterval: opts?.refetchInterval ?? false,
   });
 }
@@ -27,13 +31,15 @@ export function useCtvMeOverview(
   to: string,
   opts?: { refetchInterval?: number | false | (() => number | false) }
 ) {
+  const { data: me } = useShopMeQuery();
+  const userId = me?.id || me?.email || "anonymous";
   return useQuery({
-    queryKey: ["ctv-portal", "overview", from, to],
+    queryKey: ["ctv-portal", userId, "overview", from, to],
     queryFn: () =>
       ctvPortalFetch<CtvOverview>(
         `/api/shop/ctv/me/overview?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
       ),
-    enabled: Boolean(from && to),
+    enabled: Boolean(me?.id || me?.email) && Boolean(from && to),
     refetchInterval: opts?.refetchInterval ?? false,
   });
 }
@@ -41,12 +47,15 @@ export function useCtvMeOverview(
 export function useCtvMeBills(opts?: {
   refetchInterval?: number | false | (() => number | false);
 }) {
+  const { data: me } = useShopMeQuery();
+  const userId = me?.id || me?.email || "anonymous";
   return useQuery({
-    queryKey: ["ctv-portal", "bills"],
+    queryKey: ["ctv-portal", userId, "bills"],
     queryFn: () =>
       ctvPortalFetch<{ data: BillRow[] }>("/api/shop/ctv/me/bills").then(
         (r) => r.data || []
       ),
+    enabled: Boolean(me?.id || me?.email),
     refetchInterval: opts?.refetchInterval ?? false,
   });
 }
@@ -64,6 +73,8 @@ export function useCtvMeConversions(
     refetchInterval?: number | false | (() => number | false);
   }
 ) {
+  const { data: me } = useShopMeQuery();
+  const userId = me?.id || me?.email || "anonymous";
   const qs = new URLSearchParams({ from: params.from, to: params.to });
   if (params.orderCode?.trim()) qs.set("orderCode", params.orderCode.trim());
   if (params.orderStatus && params.orderStatus !== "all") {
@@ -73,28 +84,36 @@ export function useCtvMeConversions(
     qs.set("paymentStatus", params.paymentStatus);
   }
   return useQuery({
-    queryKey: ["ctv-portal", "conversions", params],
+    queryKey: ["ctv-portal", userId, "conversions", params],
     queryFn: () =>
       ctvPortalFetch<{ data: ConversionRow[] }>(
         `/api/shop/ctv/me/conversions?${qs.toString()}`
       ).then((r) => r.data || []),
-    enabled: opts?.enabled !== false && Boolean(params.from && params.to),
+    enabled:
+      Boolean(me?.id || me?.email) &&
+      opts?.enabled !== false &&
+      Boolean(params.from && params.to),
     refetchInterval: opts?.refetchInterval ?? false,
   });
 }
 
 export function useCtvMePayoutBank() {
+  const { data: me } = useShopMeQuery();
+  const userId = me?.id || me?.email || "anonymous";
   return useQuery({
-    queryKey: ["ctv-portal", "payout-bank"],
+    queryKey: ["ctv-portal", userId, "payout-bank"],
     queryFn: () =>
       ctvPortalFetch<{ payoutBank: PayoutBank | null }>(
         "/api/shop/ctv/me/payout-bank"
       ).then((r) => r.payoutBank),
+    enabled: Boolean(me?.id || me?.email),
   });
 }
 
 export function useSaveCtvPayoutBank() {
   const qc = useQueryClient();
+  const { data: me } = useShopMeQuery();
+  const userId = me?.id || me?.email || "anonymous";
   return useMutation({
     mutationFn: (body: PayoutBankInput) =>
       ctvPortalFetch<{ ok: boolean; payoutBank: PayoutBank }>(
@@ -102,7 +121,7 @@ export function useSaveCtvPayoutBank() {
         { method: "PUT", body: JSON.stringify(body) }
       ),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["ctv-portal", "payout-bank"] });
+      void qc.invalidateQueries({ queryKey: ["ctv-portal", userId, "payout-bank"] });
     },
   });
 }

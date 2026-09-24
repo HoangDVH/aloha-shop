@@ -52,8 +52,11 @@ export function useAdminSession(opts?: { requireManager?: boolean }) {
   const logout = useMutation({
     mutationFn: () =>
       adminFetch("/api/auth/logout", { method: "POST", body: "{}" }).catch(() => null),
+    onMutate: () => {
+      qc.removeQueries({ queryKey: ["admin"] });
+    },
     onSettled: () => {
-      qc.removeQueries({ queryKey: adminKeys.me });
+      qc.removeQueries({ queryKey: ["admin"] });
       router.replace("/admin/dang-nhap");
     },
   });

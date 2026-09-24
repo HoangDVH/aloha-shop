@@ -69,7 +69,7 @@ type GetDb = () => Promise<Db>;
 const COL = "aloha_products";
 const INVOICES_COL = "aloha_sales_invoices";
 const CTV_CLICKS_COL = "aloha_shop_ctv_clicks";
-const TTL_SEC = Number(process.env.SHOP_CATALOG_TTL_SEC || 86400); // 24 giờ (xóa theo sự kiện)
+const TTL_SEC = Number(process.env.SHOP_CATALOG_TTL_SEC || 300); // 5 phút (fallback tự hết hạn kể cả khi lỡ event)
 /** Cache xếp hạng bán chạy (chỉ key shop:* — không ghi aloha_products). */
 const BESTSELLER_TTL_SEC = 60;
 /** Cửa sổ doanh thu gần đây (ngày) — fallback toàn bộ nếu trống. */
@@ -755,6 +755,9 @@ function filterZeroPriceUnlessTestBuyer<T extends { gia: number; priceKind?: str
   return items.filter((p) => Number(p.gia) > 0 || p.priceKind === "si_missing");
 }
 
+/** Singleflight / Request coalescing cho cachedJson để triệt tiêu cache stampede khi cache miss */
+const inflightProducers = new Map<string, Promise<unknown>>();
+
 async function cachedJson(
   key: string,
   producer: () => Promise<unknown>,
@@ -785,13 +788,28 @@ async function cachedJson(
       }
     }
   }
-  const body = await producer();
-  const strVal = JSON.stringify(body);
-  if (ok) {
-    await redisSet(key, strVal, ttlSec);
-  } else {
-    memoryCacheSet(key, strVal, ttlSec);
+
+  // Request coalescing: Nếu đang có request cùng key chạy producer, các request đến sau chờ chung 1 Promise
+  let p = inflightProducers.get(key);
+  if (!p) {
+    p = (async () => {
+      try {
+        const res = await producer();
+        const strVal = JSON.stringify(res);
+        if (ok) {
+          await redisSet(key, strVal, ttlSec);
+        } else {
+          memoryCacheSet(key, strVal, ttlSec);
+        }
+        return res;
+      } finally {
+        inflightProducers.delete(key);
+      }
+    })();
+    inflightProducers.set(key, p);
   }
+
+  const body = await p;
   return { body, cache: "MISS" };
 }
 
@@ -1528,7 +1546,7 @@ export function registerShopApi(
       } else {
         res.setHeader(
           "Cache-Control",
-          `public, max-age=3600, s-maxage=${TTL_SEC}, stale-while-revalidate=86400`
+          `public, max-age=0, s-maxage=${TTL_SEC}, stale-while-revalidate=60, must-revalidate`
         );
       }
       res.setHeader("X-Shop-Cache", cache);

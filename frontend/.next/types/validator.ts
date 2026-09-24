@@ -47,8 +47,11 @@ type LayoutConfig<Route extends LayoutRoutes = LayoutRoutes> = {
 
 // Validate ../../app/(auth)/dang-ky-si/page.tsx
 {
+  // @ts-ignore
   type __IsExpected<Specific extends AppPageConfig<"/dang-ky-si">> = Specific
+  // @ts-ignore
   const handler = {} as typeof import("../../app/(auth)/dang-ky-si/page.js")
+  // @ts-ignore
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check

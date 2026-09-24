@@ -47,6 +47,12 @@ export function useShopLoginMutation() {
     mutationFn: (input: LoginInput) => shopLogin(input.email, input.password),
     onSuccess: (data) => {
       qc.setQueryData(shopMeQueryKey, data.user);
+      // Xóa cache các query riêng tư của phiên trước tránh rò rỉ dữ liệu
+      qc.removeQueries({ queryKey: ["ctv-portal"] });
+      qc.removeQueries({ queryKey: ["shop", "orders"] });
+      qc.removeQueries({ queryKey: ["shop", "ctv"] });
+      qc.removeQueries({ queryKey: ["shop", "si"] });
+      qc.removeQueries({ queryKey: ["shop", "cart", "quote"] });
     },
   });
 }
@@ -87,9 +93,15 @@ export function useShopLogoutMutation() {
     mutationFn: () => shopLogout(),
     onMutate: () => {
       qc.setQueryData(shopMeQueryKey, null);
+      qc.removeQueries({ queryKey: ["ctv-portal"] });
+      qc.removeQueries({ queryKey: ["shop", "orders"] });
+      qc.removeQueries({ queryKey: ["shop", "ctv"] });
+      qc.removeQueries({ queryKey: ["shop", "si"] });
+      qc.removeQueries({ queryKey: ["shop", "cart", "quote"] });
     },
     onSettled: () => {
       qc.setQueryData(shopMeQueryKey, null);
+      qc.removeQueries({ queryKey: ["ctv-portal"] });
       qc.removeQueries({ queryKey: ["shop", "orders"] });
       qc.removeQueries({ queryKey: ["shop", "ctv"] });
       qc.removeQueries({ queryKey: ["shop", "si"] });
