@@ -66,6 +66,7 @@ export function resolvePinBadgeScope(opts: {
   }
   if (sort === "ban_chay") return "ban_chay_sap_het";
   if (sort === "giam_gia") return "giam_gia";
-  // sort=moi / giá / tên: không ghim theo nhãn
+  if (sort === "moi" || sort === "newest") return "moi";
+  // giá / tên: không ghim theo nhãn
   return "";
 }

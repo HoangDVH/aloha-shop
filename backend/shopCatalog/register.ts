@@ -667,18 +667,22 @@ function sortPublicItems(
       scope || "giam_gia"
     );
   } else if (sort === "moi" || sort === "newest") {
-    // «Mới» theo ngày — không ghim theo nhãn
+    // «Mới» theo ngày, ưu tiên ghim nhãn moi lên các vị trí đầu
     const ts = (p: { ma?: string }) =>
       createdMsByMa?.get(normalizeMa(p.ma)) || 0;
-    return [...next].sort((a, b) => {
-      const hb = ts(b) > 0 ? 1 : 0;
-      const ha = ts(a) > 0 ? 1 : 0;
-      if (hb !== ha) return hb - ha;
-      const tb = ts(b);
-      const ta = ts(a);
-      if (tb !== ta) return tb - ta;
-      return a.ten.localeCompare(b.ten, "vi");
-    });
+    return arrangeByAbsolutePin(
+      next,
+      (a, b) => {
+        const hb = ts(b) > 0 ? 1 : 0;
+        const ha = ts(a) > 0 ? 1 : 0;
+        if (hb !== ha) return hb - ha;
+        const tb = ts(b);
+        const ta = ts(a);
+        if (tb !== ta) return tb - ta;
+        return a.ten.localeCompare(b.ten, "vi");
+      },
+      scope || "moi"
+    );
   }
   return arrangeByAbsolutePin(
     next,
@@ -1194,7 +1198,7 @@ export function registerShopApi(
         attrFilters.length > 0 ||
         dvtFilters.length > 0 ||
         Boolean(loai);
-      const cacheKey = `shop:products:v34:${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|maxTon=${maxTon}|${sort}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
+      const cacheKey = `shop:products:v35:${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|maxTon=${maxTon}|${sort}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
       const pinScope = resolvePinBadgeScope({ sort, badge, maxTon });
 
       const { body, cache } = await cachedJson(cacheKey, async () => {

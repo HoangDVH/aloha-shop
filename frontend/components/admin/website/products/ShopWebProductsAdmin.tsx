@@ -285,9 +285,8 @@ export function ShopWebProductsAdmin() {
             <h2 className="text-[15px] font-semibold text-gray-900">Hàng hóa trên web</h2>
             <p className="mt-0.5 text-[12px] text-gray-500">
               Hiện/ẩn · Ghim theo nhãn đang chọn (số = vị trí trong nhãn đó; cùng số cùng
-              nhãn sẽ thay SP cũ) · Đã gắn nhãn = khóa đến khi chọn «Chưa gắn» rồi «Áp nhãn
-              mặc định». Mục «Sản phẩm mới» xếp theo ngày tạo, không gắn cứng nhãn Mới. 5
-              nhãn: Nổi bật · Bán chạy và sắp hết · Giảm giá · Đặt trước · Mới.
+              nhãn sẽ thay SP cũ; mục «Sản phẩm mới» ưu tiên các SP ghim nhãn Mới) · Đã gắn nhãn = khóa đến khi chọn «Chưa gắn» rồi «Áp nhãn
+              mặc định». 5 nhãn: Nổi bật · Bán chạy và sắp hết · Giảm giá · Đặt trước · Mới.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
