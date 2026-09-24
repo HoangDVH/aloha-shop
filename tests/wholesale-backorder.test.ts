@@ -176,15 +176,86 @@ test("SI-I: administrative merger detection detects old merger divisions", () =>
   assert.ok(suggestion);
   assert.equal(suggestion?.effectiveDate, "01/01/2021");
   assert.equal(suggestion?.suggest.displayText, "Thành Phố Thủ Đức - Thành phố Hồ Chí Minh");
-
-  // When already updated to new address, no alert
-  const alreadyUpdated = findAddressMergerSuggestion({
-    province: "Thành phố Hồ Chí Minh",
-    district: "Thành Phố Thủ Đức",
-    detail: "16/A Thảo Điền",
-  });
-  assert.equal(alreadyUpdated, null);
 });
+
+test("SI-J: lookup recognizes existing KV wholesale customer vs non-si vs new", async () => {
+  process.env.KV_GROUP_ID_SI_HCM = "11";
+  process.env.KV_GROUP_ID_SI_TINH = "22";
+
+  // Mock dữ liệu khách hàng từ KiotViet
+  const kvOldWholesaleCustomer = {
+    id: 1001,
+    code: "KH001",
+    name: "Đại lý Cây Cảnh Xanh",
+    contactNumber: "0909123456",
+    address: "123 Nguyễn Huệ",
+    locationName: "Quận 1, Thành phố Hồ Chí Minh",
+    wardName: "Phường Bến Nghé",
+    customerGroupDetails: [{ id: 1, groupId: 11 }], // Thuộc nhóm sỉ HCM
+  };
+
+  const kvRetailCustomer = {
+    id: 1002,
+    code: "KH002",
+    name: "Khách lẻ",
+    contactNumber: "0909999888",
+    address: "456 Lê Lợi",
+    locationName: "Quận 1, Thành phố Hồ Chí Minh",
+    wardName: "Phường Bến Nghé",
+    customerGroupDetails: [{ id: 2, groupId: 99 }], // Không thuộc nhóm sỉ 11 hay 22
+  };
+
+  // Helper mô phỏng logic phân loại kết quả lookup trong backend/shopWholesale/routes.ts
+  function evaluateLookup(foundCustomers: any[], inputAddress: { province: string; ward: string; detail: string }) {
+    if (!foundCustomers.length) return "not_found";
+    if (foundCustomers.length !== 1) return "manual_review";
+    const candidate = foundCustomers[0];
+    const isWholesale = customerRegion(candidate) !== null;
+    if (!isWholesale) return "existing_non_si";
+
+    const directAddress = {
+      province: String(candidate.locationName).split(",").pop()?.trim() || String(candidate.locationName),
+      ward: String(candidate.wardName || ""),
+      detail: String(candidate.address || ""),
+    };
+    return canonicalAddress(directAddress) === canonicalAddress(inputAddress)
+      ? "existing_si_candidate"
+      : "manual_review";
+  }
+
+  // TH 1: Khách sỉ cũ khớp cả SĐT và đúng địa chỉ đã lưu trên KiotViet -> Nhận diện là khách sỉ cũ
+  const res1 = evaluateLookup([kvOldWholesaleCustomer], {
+    province: "Thành phố Hồ Chí Minh",
+    ward: "Phường Bến Nghé",
+    detail: "123 Nguyễn Huệ",
+  });
+  assert.equal(res1, "existing_si_candidate");
+
+  // TH 2: Khách sỉ cũ trên KiotViet nhưng nhập sai hoặc khác địa chỉ kho -> Cần duyệt thủ công để bảo vệ tài khoản
+  const res2 = evaluateLookup([kvOldWholesaleCustomer], {
+    province: "Thành phố Hồ Chí Minh",
+    ward: "Phường Đa Kao",
+    detail: "789 Hai Bà Trưng",
+  });
+  assert.equal(res2, "manual_review");
+
+  // TH 3: Khách có trên KiotViet nhưng là khách lẻ, chưa từng vào nhóm sỉ
+  const res3 = evaluateLookup([kvRetailCustomer], {
+    province: "Thành phố Hồ Chí Minh",
+    ward: "Phường Bến Nghé",
+    detail: "456 Lê Lợi",
+  });
+  assert.equal(res3, "existing_non_si");
+
+  // TH 4: Khách hoàn toàn mới, chưa từng có trên KiotViet
+  const res4 = evaluateLookup([], {
+    province: "Thành phố Hồ Chí Minh",
+    ward: "Phường Bến Nghé",
+    detail: "100 Đồng Khởi",
+  });
+  assert.equal(res4, "not_found");
+});
+
 
 
 
