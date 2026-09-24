@@ -9,7 +9,7 @@ import { siRequest } from "@/lib/siQueries";
 import { InviteWholesale } from "./InviteWholesale";
 
 const schema = z.object({ region: z.string(), verified: z.boolean(), reason: z.string().trim().min(3, "Nhập lý do / phương thức xác minh").max(1000) });
-type Row = { id: string; fullName: string; phone: string; email: string; siStatus: string; siRegion?: string; revision: number; siProfile: Record<string, unknown>; candidate?: { code?: string; name?: string; address?: string }; syncStatus?: string; audit?: Array<{ id: string; action: string; reason: string; at: string }> };
+type Row = { id: string; fullName: string; phone: string; email: string; siStatus: string; siRegion?: string; revision: number; siProfile: Record<string, unknown>; candidate?: { code?: string; name?: string; address?: string }; syncStatus?: string; siLookupResult?: string; audit?: Array<{ id: string; action: string; reason: string; at: string }> };
 const labels: Record<string,string> = { cho_duyet: "Chờ duyệt", active: "Đã duyệt", tu_choi: "Cần bổ sung", khoa: "Tạm khóa" };
 export function SiAccountsPanel() {
   const [status,setStatus] = useState("cho_duyet");
@@ -27,14 +27,14 @@ export function SiAccountsPanel() {
     <div className="flex flex-wrap gap-3"><Select value={status} onChange={setStatus} className="min-w-44" options={[{value:"",label:"Tất cả"},...Object.entries(labels).map(([value,label])=>({value,label}))]}/><Input.Search value={search} onChange={e=>setSearch(e.target.value)} placeholder="Tìm tên hoặc SĐT trong danh sách" className="max-w-sm"/></div>
     {query.error&&<Alert type="error" title={query.error.message}/>}
     <Table rowKey="id" loading={query.isPending} scroll={{x:700}} locale={{emptyText:<Empty description="Chưa có hồ sơ"/>}} dataSource={(query.data?.items||[]).filter(r=>`${r.fullName} ${r.phone}`.toLowerCase().includes(search.toLowerCase()))} columns={[
-      {title:"Khách hàng",dataIndex:"fullName",render:(_,r)=><div><strong>{r.fullName}</strong><div className="text-xs text-slate-500">{r.email}</div></div>},
+      {title:"Khách hàng",dataIndex:"fullName",render:(_,r)=><div><strong>{r.fullName}</strong>{r.siLookupResult==="existing_si_candidate"&&<Tag color="cyan" className="ml-2">Khách sỉ cũ KV</Tag>}<div className="text-xs text-slate-500">{r.email}</div></div>},
       {title:"SĐT",dataIndex:"phone"},{title:"Vùng",dataIndex:"siRegion",render:v=>v||"Chờ xác nhận"},
       {title:"Trạng thái",dataIndex:"siStatus",render:v=><Tag color={v==="active"?"green":v==="cho_duyet"?"gold":"default"}>{labels[v]||v}</Tag>},
       {title:"",render:(_,r)=><Button onClick={()=>{setSelected(r);form.reset({region:r.siRegion||"",verified:false,reason:""});patch.reset();}}>Xem hồ sơ</Button>},
     ]}/>
     <Drawer open={Boolean(selected)} onClose={()=>setSelected(null)} title={selected?.fullName} size="large">
       {selected&&<div className="space-y-6"><section><h2 className="mb-3 font-bold">Thông tin đã khai</h2><dl className="grid grid-cols-[minmax(90px,.5fr)_1fr] gap-3 text-sm">{Object.entries(selected.siProfile||{}).map(([key,value])=><div key={key} className="contents"><dt className="text-slate-500">{({fullName:"Họ tên",phone:"SĐT",province:"Tỉnh/TP",ward:"Phường/xã",detail:"Địa chỉ",shopName:"Cửa hàng",businessType:"Loại hình",taxCode:"MST",note:"Ghi chú",acceptedTermsAt:"Đồng ý điều khoản",termsVersion:"Phiên bản"} as Record<string,string>)[key]||key}</dt><dd className="break-words">{String(value)}</dd></div>)}</dl><Button className="mt-3" onClick={()=>void navigator.clipboard.writeText(selected.phone)}>Copy SĐT</Button></section>
-        {selected.candidate&&<Alert type="info" title="Hồ sơ KV đề xuất — chưa phải bằng chứng sở hữu" description={`${selected.candidate.code||""} · ${selected.candidate.name||""} · ${selected.candidate.address||""}`}/>}
+        {selected.candidate&&<Alert type="info" title={selected.siLookupResult==="existing_si_candidate"?"Khách sỉ cũ KiotViet — Đã nhận diện qua SĐT":"Hồ sơ KV đề xuất — chưa phải bằng chứng sở hữu"} description={`${selected.candidate.code||""} · ${selected.candidate.name||""} · ${selected.candidate.address||""}`}/>}
         <section className="space-y-4 border-t pt-5"><h2 className="font-bold">Xác minh và duyệt</h2><Select className="w-full" placeholder="Chọn vùng kinh doanh đã xác minh" value={form.watch("region")||undefined} onChange={v=>form.setValue("region",v)} options={[{value:"HCM",label:"Khách sỉ HCM"},{value:"TINH",label:"Khách sỉ tỉnh — từ 2 triệu"}]}/>
           <Checkbox checked={form.watch("verified")} onChange={e=>form.setValue("verified",e.target.checked)}>Đã xác minh người đại diện qua kênh liên hệ đáng tin cậy</Checkbox>
           <label className="block text-sm">Phương thức xác minh / lý do<Input.TextArea rows={4} value={form.watch("reason")} onChange={e=>form.setValue("reason",e.target.value)} placeholder="Ghi rõ đã đối chiếu với ai, qua kênh nào"/></label>

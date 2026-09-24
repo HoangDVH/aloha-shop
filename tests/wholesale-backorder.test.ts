@@ -211,19 +211,10 @@ test("SI-J: lookup recognizes existing KV wholesale customer vs non-si vs new", 
     if (foundCustomers.length !== 1) return "manual_review";
     const candidate = foundCustomers[0];
     const isWholesale = customerRegion(candidate) !== null;
-    if (!isWholesale) return "existing_non_si";
-
-    const directAddress = {
-      province: String(candidate.locationName).split(",").pop()?.trim() || String(candidate.locationName),
-      ward: String(candidate.wardName || ""),
-      detail: String(candidate.address || ""),
-    };
-    return canonicalAddress(directAddress) === canonicalAddress(inputAddress)
-      ? "existing_si_candidate"
-      : "manual_review";
+    return !isWholesale ? "existing_non_si" : "existing_si_candidate";
   }
 
-  // TH 1: Khách sỉ cũ khớp cả SĐT và đúng địa chỉ đã lưu trên KiotViet -> Nhận diện là khách sỉ cũ
+  // TH 1: Khách sỉ cũ có SĐT thuộc nhóm sỉ trên KiotViet -> Nhận diện ngay là khách sỉ cũ (kể cả địa chỉ kho nhập khác format)
   const res1 = evaluateLookup([kvOldWholesaleCustomer], {
     province: "Thành phố Hồ Chí Minh",
     ward: "Phường Bến Nghé",
@@ -231,13 +222,13 @@ test("SI-J: lookup recognizes existing KV wholesale customer vs non-si vs new", 
   });
   assert.equal(res1, "existing_si_candidate");
 
-  // TH 2: Khách sỉ cũ trên KiotViet nhưng nhập sai hoặc khác địa chỉ kho -> Cần duyệt thủ công để bảo vệ tài khoản
+  // TH 2: Khách sỉ cũ trên KiotViet dù nhập địa chỉ kho mới -> Vẫn nhận diện là khách sỉ cũ dựa trên SĐT & nhóm sỉ KV
   const res2 = evaluateLookup([kvOldWholesaleCustomer], {
     province: "Thành phố Hồ Chí Minh",
     ward: "Phường Đa Kao",
     detail: "789 Hai Bà Trưng",
   });
-  assert.equal(res2, "manual_review");
+  assert.equal(res2, "existing_si_candidate");
 
   // TH 3: Khách có trên KiotViet nhưng là khách lẻ, chưa từng vào nhóm sỉ
   const res3 = evaluateLookup([kvRetailCustomer], {

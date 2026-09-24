@@ -143,6 +143,12 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
       const who = await identity(req, db);
       if (!who) return res.status(401).json({ error: "Vui lòng đăng nhập Zalo trước" });
       const input = addressSchema.parse(req.body);
+
+      // Nếu tài khoản đã có SĐT gắn với Zalo trước đó, khóa cố định SĐT này, không cho tra cứu số khác
+      if (who.account?.phoneNorm && normalizeWholesalePhone(who.account.phoneNorm) !== input.phone) {
+        return res.status(400).json({ error: "Số điện thoại tra cứu phải trùng khớp với số điện thoại đã liên kết của tài khoản Zalo này." });
+      }
+
       let result = "lookup_unavailable"; let candidate: any = null; let retailer: string | null = null;
       try {
         const found = await lookupKvCustomers(await getOpsDb(), input.phone);
@@ -160,7 +166,10 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
             detail: String(candidate.address || ""),
           } : null;
           const address = mapping ? { province: String(mapping.province), ward: String(mapping.ward), detail: String(candidate.address || "") } : directAddress;
-          result = !await verifyCustomerRegion(await getOpsDb(), candidate) ? "existing_non_si" : address && canonicalAddress(address) === canonicalAddress(input) ? "existing_si_candidate" : "manual_review";
+          const isWholesale = await verifyCustomerRegion(await getOpsDb(), candidate);
+          // Nới lỏng: Chỉ cần đúng SĐT có trên KiotViet và thuộc nhóm khách sỉ là công nhận khách sỉ cũ (existing_si_candidate),
+          // không bắt buộc phải khớp 100% từng chữ của địa chỉ kho do cách nhập khác nhau.
+          result = !isWholesale ? "existing_non_si" : "existing_si_candidate";
         }
       } catch { result = "lookup_unavailable"; }
       const lookupId = crypto.randomUUID();
@@ -184,6 +193,11 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
       if (account && ["active", "cho_duyet", "khoa"].includes(String(account.siStatus))) {
         return res.status(409).json({ error: "Tài khoản đã có hồ sơ sỉ. Vui lòng xem trạng thái hồ sơ." });
       }
+      // Nếu tài khoản đã có SĐT gắn với Zalo trước đó, bắt buộc phải dùng đúng SĐT này để tránh đổi sang số khác
+      if (account?.phoneNorm && normalizeWholesalePhone(account.phoneNorm) !== input.phone) {
+        return res.status(409).json({ error: "Số điện thoại đăng ký phải trùng khớp với số điện thoại đã liên kết của tài khoản Zalo này." });
+      }
+
       // Check legacy phone spellings as well as the new atomic unique index.
       const conflicts = await db.collection(SHOP_ACCOUNTS).findOne({
         ...(account ? { _id: { $ne: account._id } } : {}),
@@ -226,7 +240,7 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
       const docs = await db.collection(SHOP_ACCOUNTS).find(filter).sort({ updatedAt: -1 }).limit(100).toArray();
       res.json({ items: docs.map(d => ({ ...toPublicShopAccount(d), revision: d.applicationRevision || 0,
         verification: d.siVerification, candidate: d.siCandidate, kvCustomerId: d.kvCustomerId,
-        syncStatus: d.siKvSyncStatus, audit: d.siAudit || [] })) });
+        syncStatus: d.siKvSyncStatus, siLookupResult: d.siLookupResult, audit: d.siAudit || [] })) });
     } catch (error) { sendError(res, error); }
   });
 

@@ -44,7 +44,8 @@ export function SiRegisterWizard() {
     const owner = account?.id || "onboarding";
     if (saved.owner && saved.owner !== owner) saved.clear();
     const draft = saved.owner === owner && Date.now() - saved.savedAt < 86400000 ? saved.draft : {};
-    form.reset({ ...defaults, ...draft, fullName: account?.fullName || draft.fullName || "", phone: account?.phone || draft.phone || "", email: account?.email || "" });
+    const fixedPhone = account?.phone || draft.phone || "";
+    form.reset({ ...defaults, ...draft, fullName: account?.fullName || draft.fullName || "", phone: fixedPhone, email: account?.email || "" });
   }, [account?.id, form]);
   const saveDraft = () => {
     const { email, password, acceptedTerms, ...draft } = form.getValues();
@@ -94,7 +95,19 @@ export function SiRegisterWizard() {
           </div> : <form onSubmit={form.handleSubmit(values=>register.mutate(values))} onBlur={saveDraft} className="mt-5 space-y-5">
             {step===2 ? (
               <>
-                {field("phone","Số điện thoại","tel")}
+                <label className="block text-sm font-semibold text-slate-700">
+                  Số điện thoại {account?.phone && <span className="font-normal text-xs text-slate-500">(đã gắn với tài khoản)</span>}
+                  <input
+                    {...form.register("phone")}
+                    type="tel"
+                    readOnly={Boolean(account?.phone)}
+                    aria-invalid={Boolean(form.formState.errors.phone)}
+                    className={`mt-2 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-base font-normal outline-none transition focus:border-[var(--aloha-green)] focus:ring-2 focus:ring-[var(--aloha-green-light)] ${
+                      account?.phone ? "bg-slate-100 cursor-not-allowed text-slate-600" : ""
+                    }`}
+                  />
+                  {form.formState.errors.phone && <span role="alert" className="mt-1 block text-xs text-red-700">{form.formState.errors.phone.message}</span>}
+                </label>
                 <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
                   <p className="mb-3 text-sm font-semibold text-slate-700">Địa chỉ kinh doanh / kho hàng</p>
                   <GhnAddressFields
