@@ -150,13 +150,11 @@ export function GhnAddressFields({
             return;
           }
 
+          // Khi không tìm thấy quận/huyện tương ứng trong tỉnh mới trên GHN:
+          // Không xóa trắng quận/huyện hiện tại mà giữ nguyên thông tin để người dùng không bị mất dữ liệu
           onChange({
             province: p.name,
-            district: suggest.district || "",
-            ward: suggest.ward || "",
             ghnProvinceId: p.id,
-            ghnDistrictId: 0,
-            ghnWardCode: "",
           });
           return;
         } catch {

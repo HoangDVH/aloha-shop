@@ -34,47 +34,6 @@ export function normalizeAddressString(str: string): string {
 
 export const ADDRESS_MERGER_RULES: AddressMergerRule[] = [
   {
-    id: "binh-duong-thuan-an-lai-thieu",
-    effectiveDate: "01/07/2025",
-    match: {
-      province: ["binh duong"],
-      district: ["thuan an"],
-      ward: ["lai thieu"],
-    },
-    suggest: {
-      province: "Thành phố Hồ Chí Minh",
-      district: "Thành phố Thuận An",
-      ward: "Phường Lái Thiêu",
-      displayText: "Phường Lái Thiêu - Thành phố Hồ Chí Minh",
-    },
-  },
-  {
-    id: "binh-duong-thuan-an",
-    effectiveDate: "01/07/2025",
-    match: {
-      province: ["binh duong"],
-      district: ["thuan an"],
-    },
-    suggest: {
-      province: "Thành phố Hồ Chí Minh",
-      district: "Thành phố Thuận An",
-      displayText: "Thành phố Thuận An - Thành phố Hồ Chí Minh",
-    },
-  },
-  {
-    id: "binh-duong-di-an",
-    effectiveDate: "01/07/2025",
-    match: {
-      province: ["binh duong"],
-      district: ["di an"],
-    },
-    suggest: {
-      province: "Thành phố Hồ Chí Minh",
-      district: "Thành phố Dĩ An",
-      displayText: "Thành phố Dĩ An - Thành phố Hồ Chí Minh",
-    },
-  },
-  {
     id: "hcm-quan-2-thu-duc",
     effectiveDate: "01/01/2021",
     match: {
@@ -83,8 +42,8 @@ export const ADDRESS_MERGER_RULES: AddressMergerRule[] = [
     },
     suggest: {
       province: "Thành phố Hồ Chí Minh",
-      district: "Thành phố Thủ Đức",
-      displayText: "Thành phố Thủ Đức - Thành phố Hồ Chí Minh",
+      district: "Thành Phố Thủ Đức",
+      displayText: "Thành Phố Thủ Đức - Thành phố Hồ Chí Minh",
     },
   },
   {
@@ -96,8 +55,8 @@ export const ADDRESS_MERGER_RULES: AddressMergerRule[] = [
     },
     suggest: {
       province: "Thành phố Hồ Chí Minh",
-      district: "Thành phố Thủ Đức",
-      displayText: "Thành phố Thủ Đức - Thành phố Hồ Chí Minh",
+      district: "Thành Phố Thủ Đức",
+      displayText: "Thành Phố Thủ Đức - Thành phố Hồ Chí Minh",
     },
   },
   {
@@ -109,8 +68,8 @@ export const ADDRESS_MERGER_RULES: AddressMergerRule[] = [
     },
     suggest: {
       province: "Thành phố Hồ Chí Minh",
-      district: "Thành phố Thủ Đức",
-      displayText: "Thành phố Thủ Đức - Thành phố Hồ Chí Minh",
+      district: "Thành Phố Thủ Đức",
+      displayText: "Thành Phố Thủ Đức - Thành phố Hồ Chí Minh",
     },
   },
 ];

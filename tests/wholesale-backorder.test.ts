@@ -167,21 +167,21 @@ test("SI-H: addressSchema accepts optional district and validates phone", () => 
   assert.equal(parsed.phone, "0909609521");
 });
 test("SI-I: administrative merger detection detects old merger divisions", () => {
-  // Test Thuận An, Lái Thiêu, Bình Dương
+  // Test Quận 2, Quận 9, Quận Thủ Đức -> Thành Phố Thủ Đức
   const suggestion = findAddressMergerSuggestion({
-    province: "Bình Dương - Thành phố Thuận An",
-    ward: "Phường Lái Thiêu",
-    detail: "16/A Bình Hòa",
+    province: "Hồ Chí Minh",
+    district: "Quận 2",
+    detail: "16/A Thảo Điền",
   });
   assert.ok(suggestion);
-  assert.equal(suggestion?.effectiveDate, "01/07/2025");
-  assert.equal(suggestion?.suggest.displayText, "Phường Lái Thiêu - Thành phố Hồ Chí Minh");
+  assert.equal(suggestion?.effectiveDate, "01/01/2021");
+  assert.equal(suggestion?.suggest.displayText, "Thành Phố Thủ Đức - Thành phố Hồ Chí Minh");
 
   // When already updated to new address, no alert
   const alreadyUpdated = findAddressMergerSuggestion({
     province: "Thành phố Hồ Chí Minh",
-    ward: "Phường Lái Thiêu",
-    detail: "16/A Bình Hòa",
+    district: "Thành Phố Thủ Đức",
+    detail: "16/A Thảo Điền",
   });
   assert.equal(alreadyUpdated, null);
 });
