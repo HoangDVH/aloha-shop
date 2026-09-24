@@ -1465,6 +1465,28 @@ export function registerShopApi(
         }
 
         if (!needPostFilter) {
+          // Khi limit === 1 (ví dụ preview đếm), nếu không có post-filter phức tạp, chỉ count và lấy 1 item
+          if (limit === 1 && page === 1) {
+            const [total, sampleDocs] = await Promise.all([
+              col.countDocuments(filter as any),
+              col.find(filter as any).project(projection).limit(1).toArray(),
+            ]);
+            const sampleMapped = await mapDocsToPublicWithPriceBooks(db, sampleDocs as any[]);
+            const sampleItems = filterRequirePublicImage(
+              filterZeroPriceUnlessTestBuyer(
+                dedupeListItems(sampleMapped.docs, sampleMapped.items),
+                buyerEmail
+              )
+            );
+            return {
+              items: sampleItems.slice(0, 1),
+              total,
+              page: 1,
+              limit: 1,
+              pages: Math.max(1, total),
+            };
+          }
+
           // Quét đủ rồi dedupe → total/pages khớp số card (shop ~3k SP)
           const docs = await col
             .find(filter as any)
@@ -1503,9 +1525,10 @@ export function registerShopApi(
         }
 
         // Lọc giá / sort phức tạp trên bản công khai (sau khi map giá web + price books)
+        // Tối ưu: Khi chỉ preview đếm kết quả (limit: 1 và page: 1), chỉ cần project các trường tối thiểu cần thiết để lọc
         const docs = await col
           .find(filter as any)
-          .project(projection)
+          .project(limit === 1 && page === 1 ? { ma: 1, ten: 1, giaWeb: 1, giaBan: 1, basePrice: 1, ton: 1, onHand: 1, kvTon: 1, anh: 1, images: 1, categoryId: 1, createdAt: 1 } : projection)
           .limit(5000)
           .toArray();
         const mapped = await mapDocsToPublicWithPriceBooks(db, docs as any[]);
@@ -1520,6 +1543,20 @@ export function registerShopApi(
           items = items.filter((p) => p.ton > 0 && p.ton <= maxTon);
         }
         items = filterRequirePublicImage(items);
+
+        // Khi preview đếm (limit: 1), bỏ qua sắp xếp tốn kém
+        if (limit === 1 && page === 1) {
+          const total = items.length;
+          return {
+            items: items.slice(0, 1),
+            total,
+            page: 1,
+            limit: 1,
+            pages: Math.max(1, total),
+            sortMode: sort,
+          };
+        }
+
         const createdMsByMa = new Map<string, number>();
         for (const d of mapped.docs as Record<string, unknown>[]) {
           const ma = normalizeMa(d.ma);

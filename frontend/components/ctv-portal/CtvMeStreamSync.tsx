@@ -11,6 +11,7 @@ export function CtvMeStreamSync() {
   const { user } = useShopAuth();
   const qc = useQueryClient();
   const enabled = Boolean(user?.roles?.includes?.("ctv"));
+  const userId = user?.id || user?.email || "anonymous";
 
   useEffect(() => {
     if (!enabled || typeof EventSource === "undefined") return;
@@ -21,11 +22,31 @@ export function CtvMeStreamSync() {
     let attempt = 0;
     let debounce: ReturnType<typeof setTimeout> | null = null;
 
-    const invalidate = () => {
+    const invalidate = (payload?: { collections?: string[]; source?: string }) => {
       if (debounce) clearTimeout(debounce);
       debounce = setTimeout(() => {
-        void qc.invalidateQueries({ queryKey: ["ctv-portal"] });
-      }, 300);
+        const cols = payload?.collections || [];
+        // Nếu không có thông tin chi tiết collections, fallback invalidate chung với staleTime bảo vệ
+        if (!cols.length) {
+          void qc.invalidateQueries({ queryKey: ["ctv-portal", userId, "stats"] });
+          void qc.invalidateQueries({ queryKey: ["ctv-portal", userId, "overview"] });
+          return;
+        }
+
+        // Phân loại chỉ invalidate query bị ảnh hưởng thay vì toàn bộ ["ctv-portal"]
+        if (cols.includes("aloha_shop_commissions")) {
+          void qc.invalidateQueries({ queryKey: ["ctv-portal", userId, "stats"] });
+          void qc.invalidateQueries({ queryKey: ["ctv-portal", userId, "overview"] });
+          void qc.invalidateQueries({ queryKey: ["ctv-portal", userId, "conversions"] });
+        }
+        if (cols.includes("aloha_shop_commission_bills")) {
+          void qc.invalidateQueries({ queryKey: ["ctv-portal", userId, "stats"] });
+          void qc.invalidateQueries({ queryKey: ["ctv-portal", userId, "bills"] });
+        }
+        if (cols.includes("aloha_shop_accounts")) {
+          void qc.invalidateQueries({ queryKey: ["ctv-portal", userId, "payout-bank"] });
+        }
+      }, 400);
     };
 
     const connect = () => {
@@ -41,9 +62,14 @@ export function CtvMeStreamSync() {
       es.addEventListener("hello", () => {
         attempt = 0;
       });
-      es.addEventListener("me", () => {
+      es.addEventListener("me", (ev: MessageEvent) => {
         attempt = 0;
-        invalidate();
+        try {
+          const payload = JSON.parse(ev.data || "{}");
+          invalidate(payload);
+        } catch {
+          invalidate();
+        }
       });
       es.onerror = () => {
         try {

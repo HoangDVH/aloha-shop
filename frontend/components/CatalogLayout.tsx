@@ -408,6 +408,7 @@ export function CatalogLayout({
   useEffect(() => {
     if (!open || !draft) return;
     const reqId = ++draftCountRef.current;
+    const abortController = new AbortController();
     setDraftTotalLoading(true);
     const t = window.setTimeout(() => {
       void (async () => {
@@ -442,10 +443,14 @@ export function CatalogLayout({
             sort,
             page: 1,
             limit: 1,
+            signal: abortController.signal,
           });
           if (reqId !== draftCountRef.current) return;
           setDraftTotal(res.total);
-        } catch {
+        } catch (err: any) {
+          if (err?.name === "AbortError" || abortController.signal.aborted) {
+            return;
+          }
           if (reqId !== draftCountRef.current) return;
           setDraftTotal(null);
         } finally {
@@ -453,7 +458,10 @@ export function CatalogLayout({
         }
       })();
     }, 280);
-    return () => window.clearTimeout(t);
+    return () => {
+      window.clearTimeout(t);
+      abortController.abort();
+    };
   }, [
     open,
     draft?.nhoms.join("|"),

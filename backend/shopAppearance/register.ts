@@ -242,26 +242,35 @@ async function publishDoc(
   return { published, publishedAt, history };
 }
 
-let scheduleTimer: ReturnType<typeof setInterval> | null = null;
+let scheduleTimer: ReturnType<typeof setTimeout> | null = null;
+let isSchedulePublishing = false;
 
 function startScheduleTicker(getShopDb: GetShopDb) {
   if (scheduleTimer) return;
-  const tick = () => {
-    void (async () => {
-      try {
-        const shopDb = await getShopDb();
-        const doc = await ensureDoc(shopDb);
-        const at = doc.scheduledPublishAt ? Date.parse(doc.scheduledPublishAt) : NaN;
-        if (!Number.isFinite(at) || at > Date.now()) return;
+
+  const tick = async () => {
+    if (isSchedulePublishing) {
+      scheduleTimer = setTimeout(tick, 15_000);
+      return;
+    }
+    isSchedulePublishing = true;
+    try {
+      const shopDb = await getShopDb();
+      const doc = await ensureDoc(shopDb);
+      const at = doc.scheduledPublishAt ? Date.parse(doc.scheduledPublishAt) : NaN;
+      if (Number.isFinite(at) && at <= Date.now()) {
         await publishDoc(shopDb, doc, doc.updatedBy || "schedule", "scheduled-publish");
-      } catch {
-        /* ignore tick errors */
       }
-    })();
+    } catch {
+      /* ignore tick errors */
+    } finally {
+      isSchedulePublishing = false;
+      scheduleTimer = setTimeout(tick, 15_000);
+      if (typeof scheduleTimer.unref === "function") scheduleTimer.unref();
+    }
   };
-  // 15s — đủ nhanh cho SME, không đợi cả phút
-  scheduleTimer = setInterval(tick, 15_000);
-  tick();
+
+  scheduleTimer = setTimeout(tick, 15_000);
   if (typeof scheduleTimer.unref === "function") scheduleTimer.unref();
 }
 

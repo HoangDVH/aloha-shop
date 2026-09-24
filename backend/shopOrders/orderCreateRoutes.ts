@@ -216,6 +216,7 @@ export function registerShopOrderCreateRoutes(
         // Sỉ chưa gắn khách KV vẫn lưu yêu cầu trên web. Đơn còn lại, sau khi đồng ý chính sách, đi tạo đơn đặt hàng KV.
         if (needsCustomerLink || (hasPreOrder && !policyAccepted)) {
           const result = await createBackorderRequest(shopDb, { userId: req.shopAuth!.userId, account: userEarly, body, details: orderDetails });
+          try { (res as any).releaseCheckoutLock?.(); } catch {}
           return res.status(result.status).json(result.body);
         }
         if (!policyAccepted) {
@@ -489,6 +490,34 @@ export function registerShopOrderCreateRoutes(
         const insertRes = await shopDb.collection(SHOP_ORDERS).insertOne(doc);
         const mongoId = insertRes.insertedId;
 
+        // Soft-hold tồn shop ngay khi đơn đã được lưu trên Mongo
+        if (shopStockHoldEnabled()) {
+          const holdDetails = orderDetails.filter((d) => !d.preOrder);
+          if (holdDetails.length) {
+            try {
+              await ensureShopStockHoldIndexes(shopDb);
+              await createShopStockHolds({
+                shopDb,
+                orderId: code,
+                orderCode: code,
+                details: holdDetails,
+                expiresAt: expiresAt || null,
+              });
+              await shopDb.collection(SHOP_ORDERS).updateOne(
+                { _id: mongoId },
+                { $set: { stockHeld: true, updatedAt: new Date().toISOString() } }
+              );
+              doc.stockHeld = true;
+            } catch (e: any) {
+              console.warn("[shop-order] stock hold failed", code, e?.message || e);
+            }
+          }
+        }
+
+        // Tồn kho và soft-hold đã an toàn trên Mongo -> Giải phóng lock checkout ngay lập tức,
+        // không giữ lock trong lúc gọi các API đồng bộ ngoài như KiotViet (có thể mất vài giây)
+        try { (res as any).releaseCheckoutLock?.(); } catch {}
+
         // Đồng ý chính sách → Đặt hàng KV, chưa hóa đơn. COD cũ giữ nhánh dưới.
         if ((reviewFirst || !isTransfer) && shopCodKvEnabled()) {
           try {
@@ -544,6 +573,9 @@ export function registerShopOrderCreateRoutes(
                 .updateOne({ _id: mongoId }, { $set: patch });
               Object.assign(doc, patch);
             } else {
+              if (doc.stockHeld) {
+                await releaseShopStockHolds(shopDb, code).catch(() => {});
+              }
               await shopDb.collection(SHOP_ORDERS).deleteOne({ _id: mongoId }).catch(() => {});
               return res.status(400).json({
                 error: msg,
@@ -603,6 +635,9 @@ export function registerShopOrderCreateRoutes(
                   .updateOne({ _id: mongoId }, { $set: patch });
                 Object.assign(doc, patch);
               } else {
+                if (doc.stockHeld) {
+                  await releaseShopStockHolds(shopDb, code).catch(() => {});
+                }
                 await shopDb.collection(SHOP_ORDERS).deleteOne({ _id: mongoId }).catch(() => {});
                 return res.status(400).json({
                   error: msg,
@@ -610,29 +645,6 @@ export function registerShopOrderCreateRoutes(
                   hint: "Kiểm tra tồn đúng chi nhánh bán trên KiotViet, hoặc tạm tắt SHOP_KIOTQR_AWAITING=0.",
                 });
               }
-            }
-          }
-        }
-
-        if (shopStockHoldEnabled()) {
-          const holdDetails = orderDetails.filter((d) => !d.preOrder);
-          if (holdDetails.length) {
-            try {
-              await ensureShopStockHoldIndexes(shopDb);
-              await createShopStockHolds({
-                shopDb,
-                orderId: code,
-                orderCode: code,
-                details: holdDetails,
-                expiresAt: expiresAt || null,
-              });
-              await shopDb.collection(SHOP_ORDERS).updateOne(
-                { _id: mongoId },
-                { $set: { stockHeld: true, updatedAt: new Date().toISOString() } }
-              );
-              doc.stockHeld = true;
-            } catch (e: any) {
-              console.warn("[shop-order] stock hold failed", code, e?.message || e);
             }
           }
         }

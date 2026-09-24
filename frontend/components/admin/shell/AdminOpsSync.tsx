@@ -34,6 +34,8 @@ export function AdminOpsSync({ enabled }: { enabled: boolean }) {
   const lastToastAt = useRef(0);
   const pendingIds = useRef<Set<string>>(new Set());
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const invalidateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingInvalidationCols = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!enabled || typeof EventSource === "undefined") return;
@@ -66,14 +68,47 @@ export function AdminOpsSync({ enabled }: { enabled: boolean }) {
       );
     };
 
+    const flushInvalidation = () => {
+      invalidateTimer.current = null;
+      const cols = [...pendingInvalidationCols.current];
+      pendingInvalidationCols.current.clear();
+
+      // Luôn cập nhật badge counts khi có thay đổi nghiệp vụ
+      void qc.invalidateQueries({ queryKey: ["admin", "ops", "counts"] });
+
+      // Chỉ invalidate các query thực sự bị ảnh hưởng
+      if (cols.some((c) => c.includes("ctv") || c.includes("affiliate"))) {
+        void qc.invalidateQueries({ queryKey: ["admin", "ctv"] });
+      }
+      if (cols.some((c) => c.includes("order"))) {
+        void qc.invalidateQueries({ queryKey: ["admin", "orders"] });
+        void qc.invalidateQueries({ queryKey: ["admin", "ctv", "commissions"] });
+      }
+      if (cols.some((c) => c.includes("product") || c.includes("catalog"))) {
+        void qc.invalidateQueries({ queryKey: ["admin", "products"] });
+      }
+      if (cols.some((c) => c.includes("account"))) {
+        void qc.invalidateQueries({ queryKey: ["admin", "accounts"] });
+      }
+    };
+
     const invalidate = (payload: {
       collections?: string[];
       ids?: string[];
       source?: string;
     }) => {
-      void qc.invalidateQueries({ queryKey: ["admin", "ops", "counts"] });
-      void qc.invalidateQueries({ queryKey: ["admin", "ctv"] });
       const cols = payload.collections || [];
+      if (!cols.length) {
+        // Fallback chung
+        pendingInvalidationCols.current.add("order");
+      } else {
+        for (const c of cols) pendingInvalidationCols.current.add(c);
+      }
+
+      if (!invalidateTimer.current) {
+        invalidateTimer.current = setTimeout(flushInvalidation, 300);
+      }
+
       if (cols.some((c) => c.includes("order"))) {
         const ids = payload.ids || [];
         for (const id of ids) pendingIds.current.add(id);
