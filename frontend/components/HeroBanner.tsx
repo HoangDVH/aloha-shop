@@ -54,13 +54,13 @@ export const BRAND_BANNERS: HeroSlide[] = [
     cta: "Mua ngay",
   },
   {
-    src: "/banners/banner-hero-04.png?v=2",
-    alt: "Trở thành CTV Aloha — Kiếm thêm thu nhập cùng Aloha",
+    src: "/banners/banner-hero-04.png?v=3",
+    alt: "Cộng tác viên Aloha — Chia sẻ cây xanh, nhận hoa hồng",
     href: "/tuyen-ctv",
     label: "CTV Aloha",
-    eyebrow: "Trở thành CTV Aloha",
-    title: "Kiếm thêm thu nhập cùng Aloha",
-    desc: "Chia sẻ sản phẩm cây/chậu và nhận hoa hồng từ đơn hàng thành công.",
+    eyebrow: "Cộng tác viên Aloha",
+    title: "Chia sẻ cây xanh, nhận hoa hồng",
+    desc: "Đăng ký miễn phí, lấy link bán, nhận hoa hồng đến 15% mỗi đơn thành công.",
     cta: "Đăng ký ngay",
   },
 ];

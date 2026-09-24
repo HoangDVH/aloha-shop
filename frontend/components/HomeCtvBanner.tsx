@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 /**
- * Banner CTV — ảnh 2000×667 (~3:1), hiện full không crop.
+ * Banner CTV — ảnh 1971×798 (~2.47:1), hiện full không crop.
  * Cả banner dẫn tới /tuyen-ctv.
  */
 export function HomeCtvBanner() {
@@ -12,13 +12,13 @@ export function HomeCtvBanner() {
           <Link
             href="/tuyen-ctv"
             className="absolute inset-0 z-[5] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--aloha-green)]"
-            aria-label="Trở thành CTV Aloha — xem trang tuyển CTV"
+            aria-label="Cộng tác viên Aloha — xem trang tuyển CTV"
           />
 
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/banners/banner-ctv-aloha.png?v=12"
-            alt="Trở thành CTV Aloha — kiếm thêm thu nhập cùng Aloha"
+            src="/banners/banner-ctv-aloha.png?v=13"
+            alt="Cộng tác viên Aloha — Chia sẻ cây xanh, nhận hoa hồng"
             className="home-ctv-banner__img pointer-events-none block h-full w-full select-none"
             draggable={false}
           />
