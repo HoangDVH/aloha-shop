@@ -1374,10 +1374,22 @@ function KyThang({ onDone }: { onDone: () => void }) {
   }, [load]);
 
   const monthBase = /^(\d{4}-\d{2})/.exec(period)?.[1] || period;
+  const cycle = /^(\d{4}-\d{2})-(K[12])$/.exec(period)?.[2] || "ALL";
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <input
+          type="month"
+          value={monthBase}
+          onChange={(e) => {
+            const newMonth = e.target.value;
+            if (newMonth) {
+              setPeriod(cycle === "ALL" ? newMonth : `${newMonth}-${cycle}`);
+            }
+          }}
+          className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold"
+        />
         <select
           value={period}
           onChange={(e) => setPeriod(e.target.value)}
