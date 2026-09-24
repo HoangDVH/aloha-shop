@@ -2065,11 +2065,10 @@ body {
   }
 }
 
-/* Banner CTV — giữ file CSS cũ (khối đã tắt trên trang chủ) */
+/* Banner CTV — tỉ lệ 2170x725 (~3:1) chuẩn hero */
 .home-ctv-banner {
-  /* Banner CTV 1971x798 (~2.47:1) — hiện full theo tỉ lệ ảnh */
   width: 100%;
-  aspect-ratio: 1971 / 798;
+  aspect-ratio: 2170 / 725;
   height: auto;
 }
 .home-ctv-banner__img {
