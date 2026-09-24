@@ -917,18 +917,19 @@ body {
 .hero-banner--full .hero-banner__controls {
   position: absolute;
   z-index: 3;
-  left: clamp(1rem, 3.5vw, 3.25rem);
+  left: auto;
+  right: clamp(1rem, 3.5vw, 3.25rem);
   bottom: 1rem;
   margin: 0;
   gap: 0.65rem;
-  justify-content: flex-start;
+  justify-content: flex-end;
 }
 
 @media (max-width: 1024px) {
   .hero-banner--full .hero-banner__controls {
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%);
+    left: auto;
+    right: 1rem;
+    transform: none;
   }
 }
 
@@ -1001,9 +1002,9 @@ body {
   }
 
   .hero-banner--full .hero-banner__controls {
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%);
+    left: auto;
+    right: 0.5rem;
+    transform: none;
     bottom: 0.25rem;
     gap: 0.15rem;
   }
