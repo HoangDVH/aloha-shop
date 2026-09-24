@@ -527,6 +527,7 @@ export async function buildEligiblePeriodPreview(
     .collection(SHOP_COMMISSIONS)
     .find({
       status: "eligible",
+      billingPeriod: { $in: [null, ""] },
       eligibleAt: eligibleAtFilter,
     })
     .toArray();
@@ -565,6 +566,7 @@ export async function buildEligiblePeriodPreview(
     .collection(SHOP_COMMISSIONS)
     .find({
       status: "eligible",
+      billingPeriod: { $in: [null, ""] },
       isAdjustment: true,
       $or: [
         { billingPeriodTarget: period },

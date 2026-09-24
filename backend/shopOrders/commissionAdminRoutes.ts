@@ -355,24 +355,32 @@ export function registerShopCommissionAdminRoutes(
           if (inBill) {
             filter.billingPeriod = period;
           } else {
-            // Kỳ: đã vào bill kỳ này HOẶC eligibleAt thuộc phạm vi đợt (K2 đón thêm đơn eligible cùng tháng từ ngày 01 chưa vào bill)
+            // Kỳ: đã vào bill kỳ này HOẶC (chưa vào bill nào và eligibleAt thuộc phạm vi đợt)
+            const unbilledEligibleOr = [
+              {
+                billingPeriod: { $in: [null, ""] },
+                eligibleAt: { $gte: pStart, $lt: pEnd },
+              },
+              ...(cycle === "K2"
+                ? [
+                    {
+                      status: "eligible",
+                      billingPeriod: { $in: [null, ""] },
+                      eligibleAt: {
+                        $gte: new Date(Date.UTC(y, mo - 1, 1)).toISOString(),
+                        $lt: pEnd,
+                      },
+                    },
+                  ]
+                : []),
+            ];
+
             filter.$and = [
               ...(Array.isArray(filter.$and) ? (filter.$and as unknown[]) : []),
               {
                 $or: [
                   { billingPeriod: period },
-                  { eligibleAt: { $gte: pStart, $lt: pEnd } },
-                  ...(cycle === "K2"
-                    ? [
-                        {
-                          status: "eligible",
-                          eligibleAt: {
-                            $gte: new Date(Date.UTC(y, mo - 1, 1)).toISOString(),
-                            $lt: pEnd,
-                          },
-                        },
-                      ]
-                    : []),
+                  ...unbilledEligibleOr,
                 ],
               },
             ];
@@ -627,6 +635,7 @@ export function registerShopCommissionAdminRoutes(
                   $match: {
                     ctvCode,
                     status: "eligible",
+                    billingPeriod: { $in: [null, ""] },
                     ...eligibleQuery,
                   },
                 },
@@ -640,11 +649,15 @@ export function registerShopCommissionAdminRoutes(
                     ctvCode,
                     $or: [
                       { billingPeriod: period },
-                      { eligibleAt: { $gte: pStart, $lt: pEnd } },
+                      {
+                        billingPeriod: { $in: [null, ""] },
+                        eligibleAt: { $gte: pStart, $lt: pEnd },
+                      },
                       ...(cycle === "K2"
                         ? [
                             {
                               status: "eligible",
+                              billingPeriod: { $in: [null, ""] },
                               eligibleAt: {
                                 $gte: new Date(Date.UTC(y, mo - 1, 1)).toISOString(),
                                 $lt: pEnd,
