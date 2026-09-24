@@ -33,10 +33,10 @@ export const DEFAULT_HERO_SLIDES: HeroSlideDraft[] = [
     label: "HẠT GIỐNG",
   },
   {
-    src: "/banners/banner-hero-04.png?v=13",
-    alt: "Cây cảnh và chậu cây ALOHA",
-    href: "/tim?q=cay+canh",
-    label: "CÂY CẢNH",
+    src: "/banners/banner-hero-04.png?v=2",
+    alt: "Trở thành CTV Aloha — Kiếm thêm thu nhập cùng Aloha",
+    href: "/tuyen-ctv",
+    label: "CTV ALOHA",
   },
 ];
 

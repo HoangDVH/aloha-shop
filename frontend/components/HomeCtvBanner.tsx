@@ -1,8 +1,8 @@
 import Link from "next/link";
 
 /**
- * Banner CTV — ảnh user, tỉ lệ 1024×256 (~2/3 cao gốc), hiện full không crop.
- * Cả banner dẫn tới /tuyen-ctv; giữ hotspot nút Đăng ký / tìm hiểu.
+ * Banner CTV — ảnh 2000×667 (~3:1), hiện full không crop.
+ * Cả banner dẫn tới /tuyen-ctv.
  */
 export function HomeCtvBanner() {
   return (
@@ -17,7 +17,7 @@ export function HomeCtvBanner() {
 
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/banners/banner-ctv-aloha.png?v=11"
+            src="/banners/banner-ctv-aloha.png?v=12"
             alt="Trở thành CTV Aloha — kiếm thêm thu nhập cùng Aloha"
             className="home-ctv-banner__img pointer-events-none block h-full w-full select-none"
             draggable={false}
