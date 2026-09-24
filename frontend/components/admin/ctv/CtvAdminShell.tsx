@@ -1524,24 +1524,131 @@ function PeriodCtvLinesDrawer({
   onPayCtv?: (ctvCode: string) => void;
   payPending?: boolean;
 }) {
+  const isLocked = billStatus === "locked" || billStatus === "paid";
+  const [activeTab, setActiveTab] = useState<string>(isLocked ? "billed" : "all");
   const [page, setPage] = useState(1);
   const pageSize = 20;
-  useEffect(() => {
-    if (open) setPage(1);
-  }, [open, ctvCode, period]);
 
-  const { data, isLoading, isError, error, refetch, isFetching } =
-    useCtvCommissions({
-      ctvCode: ctvCode || undefined,
+  useEffect(() => {
+    if (open) {
+      setPage(1);
+      setActiveTab(isLocked ? "billed" : "all");
+    }
+  }, [open, ctvCode, period, isLocked]);
+
+  const queryParams = useMemo(() => {
+    if (!open || !ctvCode) return { enabled: false };
+    if (activeTab === "billed") {
+      return {
+        ctvCode,
+        period,
+        status: "billed,paid_out",
+        inBill: true,
+        page,
+        limit: pageSize,
+        enabled: true,
+      };
+    }
+    if (activeTab === "eligible") {
+      return {
+        ctvCode,
+        period,
+        status: "eligible",
+        page,
+        limit: pageSize,
+        enabled: true,
+      };
+    }
+    return {
+      ctvCode,
       period,
       page,
       limit: pageSize,
-      enabled: open && Boolean(ctvCode),
-    });
+      enabled: true,
+    };
+  }, [open, ctvCode, period, activeTab, page, pageSize]);
+
+  const { data, isLoading, isError, error, refetch, isFetching } =
+    useCtvCommissions(queryParams);
   const rows = open && ctvCode ? data?.data || [] : [];
   const total = Number(data?.total) || rows.length;
   const totalHh = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
   const ctvName = String(rows[0]?.ctvName || "").trim();
+  const periodCounts = data?.periodCounts;
+
+  const tabItems = useMemo(() => {
+    if (isLocked) {
+      return [
+        {
+          key: "billed",
+          label: (
+            <span className="flex items-center gap-1.5">
+              <span>Đã vào kỳ thanh toán</span>
+              {periodCounts?.inBill != null ? (
+                <span className="rounded-full bg-blue-100 px-1.5 py-0.2 text-[11px] font-semibold text-blue-700">
+                  {periodCounts.inBill}
+                </span>
+              ) : null}
+            </span>
+          ),
+        },
+        {
+          key: "eligible",
+          label: (
+            <span className="flex items-center gap-1.5">
+              <span>Đơn đủ điều kiện chờ kỳ tới</span>
+              {periodCounts?.eligible != null ? (
+                <span className="rounded-full bg-emerald-100 px-1.5 py-0.2 text-[11px] font-semibold text-emerald-700">
+                  {periodCounts.eligible}
+                </span>
+              ) : null}
+            </span>
+          ),
+        },
+        {
+          key: "all",
+          label: (
+            <span className="flex items-center gap-1.5">
+              <span>Tất cả đơn phát sinh trong tháng</span>
+              {periodCounts?.all != null ? (
+                <span className="rounded-full bg-slate-100 px-1.5 py-0.2 text-[11px] font-semibold text-slate-700">
+                  {periodCounts.all}
+                </span>
+              ) : null}
+            </span>
+          ),
+        },
+      ];
+    }
+    return [
+      {
+        key: "eligible",
+        label: (
+          <span className="flex items-center gap-1.5">
+            <span>Đủ điều kiện chi (dự kiến chốt)</span>
+            {periodCounts?.eligible != null ? (
+              <span className="rounded-full bg-emerald-100 px-1.5 py-0.2 text-[11px] font-semibold text-emerald-700">
+                {periodCounts.eligible}
+              </span>
+            ) : null}
+          </span>
+        ),
+      },
+      {
+        key: "all",
+        label: (
+          <span className="flex items-center gap-1.5">
+            <span>Tất cả đơn trong tháng</span>
+            {periodCounts?.all != null ? (
+              <span className="rounded-full bg-slate-100 px-1.5 py-0.2 text-[11px] font-semibold text-slate-700">
+                {periodCounts.all}
+              </span>
+            ) : null}
+          </span>
+        ),
+      },
+    ];
+  }, [isLocked, periodCounts]);
 
   return (
     <Drawer
@@ -1594,6 +1701,54 @@ function PeriodCtvLinesDrawer({
         </Space>
       }
     >
+      <div className="mb-3">
+        <Tabs
+          activeKey={activeTab}
+          onChange={(k) => {
+            setActiveTab(k);
+            setPage(1);
+          }}
+          items={tabItems}
+          className="!mb-2"
+        />
+        {activeTab === "billed" && isLocked ? (
+          <div className="mb-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-[12.5px] text-blue-900 flex flex-wrap items-center justify-between gap-1">
+            <div>
+              <span className="font-semibold text-blue-800">Đơn trong kỳ thanh toán đã chốt:</span> Chỉ hiển thị các đơn được khóa sổ trong kỳ {period} (khớp với số tiền chốt ngoài bảng đối soát).
+            </div>
+            {periodCounts?.inBillSum != null ? (
+              <span className="font-bold text-blue-800">
+                {periodCounts.inBill} đơn · {formatVnd(periodCounts.inBillSum)}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+        {activeTab === "eligible" ? (
+          <div className="mb-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200 text-[12.5px] text-emerald-900 flex flex-wrap items-center justify-between gap-1">
+            <div>
+              <span className="font-semibold text-emerald-800">Đơn đủ điều kiện chờ kỳ tới:</span> Đã hết hạn đổi/trả nhưng chưa nằm trong đợt chốt kỳ này. Sẽ được đưa vào đợt thanh toán kế tiếp.
+            </div>
+            {periodCounts?.eligibleSum != null ? (
+              <span className="font-bold text-emerald-800">
+                {periodCounts.eligible} đơn · {formatVnd(periodCounts.eligibleSum)}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+        {activeTab === "all" ? (
+          <div className="mb-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-[12.5px] text-slate-700 flex flex-wrap items-center justify-between gap-1">
+            <div>
+              <span className="font-semibold text-slate-800">Tất cả đơn phát sinh:</span> Toàn bộ các dòng hoa hồng của CTV trong kỳ (đang giữ đổi trả, cảnh báo gian lận, đủ điều kiện và đã chốt).
+            </div>
+            {periodCounts?.allSum != null ? (
+              <span className="font-bold text-slate-800">
+                {periodCounts.all} đơn · {formatVnd(periodCounts.allSum)}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
       {isLoading && !data ? <Spin /> : null}
       {isError ? (
         <Alert
@@ -1603,7 +1758,15 @@ function PeriodCtvLinesDrawer({
         />
       ) : null}
       {!isLoading && !rows.length ? (
-        <Empty description="Không có dòng hoa hồng trong kỳ này" />
+        <Empty
+          description={
+            activeTab === "billed"
+              ? "Không có đơn nào trong kỳ thanh toán này"
+              : activeTab === "eligible"
+              ? "Không có đơn nào đang chờ kỳ tới"
+              : "Không có dòng hoa hồng trong kỳ này"
+          }
+        />
       ) : null}
       {rows.length ? (
         <>

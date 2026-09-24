@@ -301,10 +301,17 @@ export function registerShopCommissionAdminRoutes(
       const period = String(req.query.period || "").trim();
       const fromYmd = String(req.query.from || "").trim();
       const toYmd = String(req.query.to || "").trim();
+      const inBill = req.query.inBill === "1" || req.query.inBill === "true";
       const page = Math.max(1, Number(req.query.page) || 1);
       const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50));
       const filter: Record<string, unknown> = {};
-      if (status) filter.status = status;
+      if (status) {
+        if (status.includes(",")) {
+          filter.status = { $in: status.split(",").map((s) => s.trim()).filter(Boolean) };
+        } else {
+          filter.status = status;
+        }
+      }
       if (ctvCode) filter.ctvCode = ctvCode;
 
       const ymdOk = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
@@ -334,16 +341,20 @@ export function registerShopCommissionAdminRoutes(
           const mo = Number(periodMatch[2]);
           const periodStart = new Date(Date.UTC(y, mo - 1, 1)).toISOString();
           const periodEnd = new Date(Date.UTC(y, mo, 1)).toISOString();
-          // Kỳ: đã vào bill kỳ này HOẶC eligibleAt thuộc tháng (preview chưa chốt)
-          filter.$and = [
-            ...(Array.isArray(filter.$and) ? (filter.$and as unknown[]) : []),
-            {
-              $or: [
-                { billingPeriod: period },
-                { eligibleAt: { $gte: periodStart, $lt: periodEnd } },
-              ],
-            },
-          ];
+          if (inBill) {
+            filter.billingPeriod = period;
+          } else {
+            // Kỳ: đã vào bill kỳ này HOẶC eligibleAt thuộc tháng (preview chưa chốt)
+            filter.$and = [
+              ...(Array.isArray(filter.$and) ? (filter.$and as unknown[]) : []),
+              {
+                $or: [
+                  { billingPeriod: period },
+                  { eligibleAt: { $gte: periodStart, $lt: periodEnd } },
+                ],
+              },
+            ];
+          }
         }
       }
 
@@ -532,6 +543,80 @@ export function registerShopCommissionAdminRoutes(
           { $group: { _id: null, t: { $sum: "$amount" } } },
         ])
         .toArray();
+
+      let periodCounts:
+        | {
+            inBill: number;
+            inBillSum: number;
+            eligible: number;
+            eligibleSum: number;
+            all: number;
+            allSum: number;
+          }
+        | undefined;
+
+      if (ctvCode && period) {
+        const periodMatch = /^(\d{4})-(\d{2})$/.exec(period);
+        if (periodMatch) {
+          const y = Number(periodMatch[1]);
+          const mo = Number(periodMatch[2]);
+          const pStart = new Date(Date.UTC(y, mo - 1, 1)).toISOString();
+          const pEnd = new Date(Date.UTC(y, mo, 1)).toISOString();
+
+          const [inBillAgg, eligibleAgg, allAgg] = await Promise.all([
+            col
+              .aggregate([
+                {
+                  $match: {
+                    ctvCode,
+                    $or: [
+                      { billingPeriod: period },
+                      { status: "billed", eligibleAt: { $gte: pStart, $lt: pEnd } },
+                    ],
+                  },
+                },
+                { $group: { _id: null, count: { $sum: 1 }, sum: { $sum: "$amount" } } },
+              ])
+              .toArray(),
+            col
+              .aggregate([
+                {
+                  $match: {
+                    ctvCode,
+                    status: "eligible",
+                    eligibleAt: { $gte: pStart, $lt: pEnd },
+                  },
+                },
+                { $group: { _id: null, count: { $sum: 1 }, sum: { $sum: "$amount" } } },
+              ])
+              .toArray(),
+            col
+              .aggregate([
+                {
+                  $match: {
+                    ctvCode,
+                    $or: [
+                      { billingPeriod: period },
+                      { eligibleAt: { $gte: pStart, $lt: pEnd } },
+                    ],
+                  },
+                },
+                { $group: { _id: null, count: { $sum: 1 }, sum: { $sum: "$amount" } } },
+              ])
+              .toArray(),
+          ]);
+
+          periodCounts = {
+            inBill: Number(inBillAgg[0]?.count) || 0,
+            inBillSum: Number(inBillAgg[0]?.sum) || 0,
+            eligible: Number(eligibleAgg[0]?.count) || 0,
+            eligibleSum: Number(eligibleAgg[0]?.sum) || 0,
+            all: Number(allAgg[0]?.count) || 0,
+            allSum: Number(allAgg[0]?.sum) || 0,
+          };
+        }
+      }
+
       return res.json({
         ok: true,
         total,
@@ -541,6 +626,7 @@ export function registerShopCommissionAdminRoutes(
           eligible: Number(sumEligible[0]?.t) || 0,
           held: Number(sumHeld[0]?.t) || 0,
         },
+        periodCounts,
         data: rows.map((r) => {
           const { _id, ...rest } = r as any;
           const shopCode = String(rest.orderCode || "").trim();

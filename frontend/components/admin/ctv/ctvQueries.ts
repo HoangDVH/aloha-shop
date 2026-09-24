@@ -42,6 +42,7 @@ export function useCtvCommissions(params: {
   period?: string;
   from?: string;
   to?: string;
+  inBill?: boolean;
   page?: number;
   limit?: number;
   enabled?: boolean;
@@ -53,13 +54,26 @@ export function useCtvCommissions(params: {
   if (params.period) sp.set("period", params.period);
   if (params.from) sp.set("from", params.from);
   if (params.to) sp.set("to", params.to);
+  if (params.inBill) sp.set("inBill", "1");
   if (params.page) sp.set("page", String(params.page));
   if (params.limit) sp.set("limit", String(params.limit));
   const qs = sp.toString();
   return useQuery({
     queryKey: ["admin", "ctv", "commissions", params],
     queryFn: () =>
-      adminFetch<{ ok: boolean; data: any[]; total?: number }>(
+      adminFetch<{
+        ok: boolean;
+        data: any[];
+        total?: number;
+        periodCounts?: {
+          inBill: number;
+          inBillSum: number;
+          eligible: number;
+          eligibleSum: number;
+          all: number;
+          allSum: number;
+        };
+      }>(
         `/api/shop/admin/ctv/commissions${qs ? `?${qs}` : ""}`
       ),
     enabled: params.enabled !== false,
