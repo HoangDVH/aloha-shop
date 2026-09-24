@@ -355,14 +355,24 @@ export function registerShopCommissionAdminRoutes(
           if (inBill) {
             filter.billingPeriod = period;
           } else {
-            // Kỳ: đã vào bill kỳ này HOẶC eligibleAt thuộc phạm vi đợt (K2 đón thêm đơn eligible cũ chưa vào bill)
+            // Kỳ: đã vào bill kỳ này HOẶC eligibleAt thuộc phạm vi đợt (K2 đón thêm đơn eligible cùng tháng từ ngày 01 chưa vào bill)
             filter.$and = [
               ...(Array.isArray(filter.$and) ? (filter.$and as unknown[]) : []),
               {
                 $or: [
                   { billingPeriod: period },
                   { eligibleAt: { $gte: pStart, $lt: pEnd } },
-                  ...(cycle === "K2" ? [{ status: "eligible", eligibleAt: { $lt: pEnd } }] : []),
+                  ...(cycle === "K2"
+                    ? [
+                        {
+                          status: "eligible",
+                          eligibleAt: {
+                            $gte: new Date(Date.UTC(y, mo - 1, 1)).toISOString(),
+                            $lt: pEnd,
+                          },
+                        },
+                      ]
+                    : []),
                 ],
               },
             ];
@@ -583,8 +593,13 @@ export function registerShopCommissionAdminRoutes(
           } else if (cycle === "K2") {
             pStart = new Date(Date.UTC(y, mo - 1, 16)).toISOString();
             pEnd = new Date(Date.UTC(y, mo, 1)).toISOString();
-            // Đợt 2: gom cả đơn trước 16 còn sót
-            eligibleQuery = { eligibleAt: { $lt: pEnd } };
+            // Đợt 2: gom đơn từ ngày 01 đến hết tháng thuộc cùng tháng yyyy-mm còn sót
+            eligibleQuery = {
+              eligibleAt: {
+                $gte: new Date(Date.UTC(y, mo - 1, 1)).toISOString(),
+                $lt: pEnd,
+              },
+            };
           } else {
             pStart = new Date(Date.UTC(y, mo - 1, 1)).toISOString();
             pEnd = new Date(Date.UTC(y, mo, 1)).toISOString();
@@ -626,7 +641,17 @@ export function registerShopCommissionAdminRoutes(
                     $or: [
                       { billingPeriod: period },
                       { eligibleAt: { $gte: pStart, $lt: pEnd } },
-                      ...(cycle === "K2" ? [{ status: "eligible", eligibleAt: { $lt: pEnd } }] : []),
+                      ...(cycle === "K2"
+                        ? [
+                            {
+                              status: "eligible",
+                              eligibleAt: {
+                                $gte: new Date(Date.UTC(y, mo - 1, 1)).toISOString(),
+                                $lt: pEnd,
+                              },
+                            },
+                          ]
+                        : []),
                     ],
                   },
                 },

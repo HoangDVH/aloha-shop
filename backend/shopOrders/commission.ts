@@ -512,9 +512,10 @@ export async function buildEligiblePeriodPreview(
     const periodEnd = new Date(Date.UTC(y, mo - 1, 16)).toISOString(); // exclusive -> hết ngày 15
     eligibleAtFilter = { $gte: periodStart, $lt: periodEnd };
   } else if (cycle === "K2") {
-    // Đợt 2: gom từ ngày 16 đến hết tháng, đồng thời đón cả những đơn eligible cũ trước ngày 16 chưa vào bill nào
+    // Đợt 2: gom từ ngày 16 đến hết tháng thuộc cùng tháng YYYY-MM (bao gồm đơn đợt 1 từ ngày 01 còn sót chưa vào bill)
+    const periodStart = new Date(Date.UTC(y, mo - 1, 1)).toISOString();
     const periodEnd = new Date(Date.UTC(y, mo, 1)).toISOString();
-    eligibleAtFilter = { $lt: periodEnd };
+    eligibleAtFilter = { $gte: periodStart, $lt: periodEnd };
   } else {
     // Cả tháng (legacy / full month)
     const periodStart = new Date(Date.UTC(y, mo - 1, 1)).toISOString();
