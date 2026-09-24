@@ -1838,7 +1838,27 @@ export function registerShopCommissionAdminRoutes(
       const prevFrom = new Date(prevTo.getTime() - rangeMs);
       const prevFromIso = prevFrom.toISOString();
       const prevToIso = prevTo.toISOString();
-      const prevPeriodKey = `${prevFrom.getFullYear()}-${String(prevFrom.getMonth() + 1).padStart(2, "0")}`;
+
+      // Xác định prevPeriodKey chuẩn theo kỳ đợt K1/K2 hoặc cả tháng
+      let prevPeriodKey: string;
+      const mCycle = /^(\d{4})-(\d{2})-(K[12])$/.exec(periodKey);
+      if (mCycle) {
+        const y = Number(mCycle[1]);
+        const mo = Number(mCycle[2]);
+        const cyc = mCycle[3];
+        if (cyc === "K2") {
+          // Kỳ liền trước của K2 cùng tháng là K1
+          prevPeriodKey = `${y}-${String(mo).padStart(2, "0")}-K1`;
+        } else {
+          // Kỳ liền trước của K1 là K2 của tháng trước
+          const prevMoDate = new Date(y, mo - 2, 1);
+          const py = prevMoDate.getFullYear();
+          const pmo = prevMoDate.getMonth() + 1;
+          prevPeriodKey = `${py}-${String(pmo).padStart(2, "0")}-K2`;
+        }
+      } else {
+        prevPeriodKey = `${prevFrom.getFullYear()}-${String(prevFrom.getMonth() + 1).padStart(2, "0")}`;
+      }
 
       const acc = shopDb.collection(SHOP_ACCOUNTS);
       const col = shopDb.collection(SHOP_COMMISSIONS);
