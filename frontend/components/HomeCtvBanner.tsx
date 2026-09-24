@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 /**
- * Banner CTV — ảnh 1971×798 (~2.47:1), hiện full không crop.
+ * Banner CTV — ảnh 2170×725 (~3:1), chuẩn tỉ lệ hero, hiện full không crop.
  * Cả banner dẫn tới /tuyen-ctv.
  */
 export function HomeCtvBanner() {
@@ -17,7 +17,7 @@ export function HomeCtvBanner() {
 
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/banners/banner-ctv-aloha.png?v=13"
+            src="/banners/banner-ctv-aloha.png?v=14"
             alt="Cộng tác viên Aloha — Chia sẻ cây xanh, nhận hoa hồng"
             className="home-ctv-banner__img pointer-events-none block h-full w-full select-none"
             draggable={false}
@@ -27,10 +27,10 @@ export function HomeCtvBanner() {
             href="/tuyen-ctv"
             className="absolute z-10 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--aloha-green)]"
             style={{
-              left: "9.18%",
-              top: "75.00%",
-              width: "19.34%",
-              height: "12.11%",
+              left: "24.75%",
+              top: "79.86%",
+              width: "14.98%",
+              height: "10.62%",
             }}
           >
             <span className="absolute h-px w-px overflow-hidden whitespace-nowrap border-0 p-0 [clip:rect(0,0,0,0)]">
@@ -42,10 +42,10 @@ export function HomeCtvBanner() {
             href="/tuyen-ctv#cach-hoat-dong"
             className="absolute z-10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--aloha-green)]"
             style={{
-              left: "30.57%",
-              top: "78.91%",
-              width: "15.14%",
-              height: "4.69%",
+              left: "41.47%",
+              top: "83.72%",
+              width: "11.43%",
+              height: "2.34%",
             }}
           >
             <span className="absolute h-px w-px overflow-hidden whitespace-nowrap border-0 p-0 [clip:rect(0,0,0,0)]">

@@ -924,6 +924,14 @@ body {
   justify-content: flex-start;
 }
 
+@media (max-width: 1024px) {
+  .hero-banner--full .hero-banner__controls {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+  }
+}
+
 @media (max-width: 767px) {
   /*
    * Mobile: giữ cùng tỉ lệ khung mọi slide (tránh CTV phình cao đẩy mất USP).
