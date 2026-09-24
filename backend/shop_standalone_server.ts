@@ -234,7 +234,7 @@ void redisReady().then((ok) => {
   if (ok) console.log("[redis] shop sync ready");
 });
 void redisSubscribeChanges((payload) => {
-  syncBus.emit("change", payload);
+  syncBus.handleRemoteChange(payload);
 });
 
 /**

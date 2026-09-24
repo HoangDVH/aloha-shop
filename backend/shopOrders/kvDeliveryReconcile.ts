@@ -400,7 +400,9 @@ export async function reconcileOpenCodDeliveries(
   return { checked: open.length, acted };
 }
 
-let timer: ReturnType<typeof setInterval> | null = null;
+let timer: ReturnType<typeof setTimeout> | null = null;
+let isReconciling = false;
+let stopped = false;
 
 export function startKvDeliveryReconcile(
   getShopDb: GetShopDb,
@@ -411,31 +413,48 @@ export function startKvDeliveryReconcile(
     return;
   }
   if (timer) return;
+  stopped = false;
   const interval = deliveryReconcileIntervalMs();
-  const tick = () => {
-    void reconcileOpenCodDeliveries(getShopDb, getMainDb)
-      .then((r) => {
-        if (r.acted > 0) {
-          console.log("[kv-delivery-reconcile] tick", r);
-        }
-      })
-      .catch((e: any) => {
-        console.warn(
-          "[kv-delivery-reconcile] tick lỗi (Mongo/KV tạm thời?):",
-          e?.message || e
-        );
-      });
+
+  const scheduleNext = () => {
+    if (stopped) return;
+    timer = setTimeout(tick, interval);
   };
-  tick();
-  timer = setInterval(tick, interval);
+
+  const tick = async () => {
+    if (stopped) return;
+    if (isReconciling) {
+      console.warn("[kv-delivery-reconcile] Lượt trước chưa hoàn tất — hoãn tick tiếp theo");
+      scheduleNext();
+      return;
+    }
+    isReconciling = true;
+    try {
+      const r = await reconcileOpenCodDeliveries(getShopDb, getMainDb);
+      if (r.acted > 0) {
+        console.log("[kv-delivery-reconcile] tick", r);
+      }
+    } catch (e: any) {
+      console.warn(
+        "[kv-delivery-reconcile] tick lỗi (Mongo/KV tạm thời?):",
+        e?.message || e
+      );
+    } finally {
+      isReconciling = false;
+      scheduleNext();
+    }
+  };
+
+  void tick();
   console.log(
-    `[kv-delivery-reconcile] Bật — mỗi ${Math.round(interval / 1000)}s`
+    `[kv-delivery-reconcile] Bật — mỗi ${Math.round(interval / 1000)}s (chống chạy chồng)`
   );
 }
 
 export function stopKvDeliveryReconcile(): void {
+  stopped = true;
   if (timer) {
-    clearInterval(timer);
+    clearTimeout(timer);
     timer = null;
   }
 }

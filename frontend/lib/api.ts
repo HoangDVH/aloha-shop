@@ -232,6 +232,7 @@ export async function fetchProducts(
     home?: boolean;
     /** Lọc theo nhãn tay: ban_chay_sap_het | giam_gia | dat_truoc | moi */
     badge?: "ban_chay_sap_het" | "giam_gia" | "dat_truoc" | "moi" | "ban_chay" | "noi_bat";
+    signal?: AbortSignal;
   },
   /** Mặc định no-store (danh sách cần tồn mới). SP liên quan trên PDP: truyền revalidate. */
   cacheOpts?: { revalidate?: number; cache?: RequestCache; headers?: Record<string,string> }
@@ -284,7 +285,11 @@ export async function fetchProducts(
     page: number;
     limit: number;
     pages: number;
-  }>(`/api/shop/products${qs ? `?${qs}` : ""}`, { ...fetchInit, headers: cacheOpts?.headers });
+  }>(`/api/shop/products${qs ? `?${qs}` : ""}`, {
+    ...fetchInit,
+    headers: cacheOpts?.headers,
+    signal: opts.signal,
+  });
 }
 
 export async function fetchShopFacets(opts: {

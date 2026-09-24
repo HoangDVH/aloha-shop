@@ -14,6 +14,13 @@ let ready = false;
 let skipped = !REDIS_URL;
 let connecting: Promise<boolean> | null = null;
 let loggedSkip = false;
+let subConnecting: Promise<void> | null = null;
+
+/** Backoff reconnect strategy (1s -> 2s -> 4s -> max 10s) */
+const reconnectStrategy = (retries: number) => {
+  const delay = Math.min(10000, 1000 * Math.pow(1.5, Math.min(retries, 10)));
+  return delay;
+};
 
 async function connectMain(): Promise<boolean> {
   if (skipped) {
@@ -27,24 +34,39 @@ async function connectMain(): Promise<boolean> {
   if (connecting) return connecting;
   connecting = (async () => {
     try {
-      client = createClient({
-        url: REDIS_URL,
-        socket: { reconnectStrategy: false },
-      });
-      client.on("error", (e) => {
-        console.warn("[redis]", (e as Error)?.message || e);
-        ready = false;
-        skipped = true;
-      });
-      await client.connect();
+      if (client?.isOpen) {
+        ready = true;
+        return true;
+      }
+      if (!client) {
+        client = createClient({
+          url: REDIS_URL,
+          socket: { reconnectStrategy },
+        });
+        client.on("error", (e) => {
+          console.warn("[redis]", (e as Error)?.message || e);
+          ready = false;
+        });
+        client.on("ready", () => {
+          ready = true;
+          console.log("[redis] connection ready");
+          void ensureSubClient();
+        });
+        client.on("reconnecting", () => {
+          ready = false;
+          console.warn("[redis] reconnecting...");
+        });
+      }
+      if (!client.isOpen) {
+        await client.connect();
+      }
       ready = true;
       console.log("[redis] connected", REDIS_URL.replace(/\/\/.*@/, "//***@"));
+      void ensureSubClient();
       return true;
     } catch (e) {
-      console.warn("[redis] unavailable — fallback Mongo only:", (e as Error)?.message || e);
+      console.warn("[redis] unavailable — fallback Mongo/RAM cache:", (e as Error)?.message || e);
       ready = false;
-      skipped = true;
-      client = null;
       return false;
     } finally {
       connecting = null;
@@ -107,49 +129,26 @@ export async function redisInvalidateCollection(coll: string): Promise<void> {
   }
 }
 
-export async function redisPublishChange(
-  collections: string[],
-  source?: string,
-  extra?: { ids?: string[] }
-): Promise<void> {
-  if (!(await connectMain()) || !client) return;
-  try {
-    const ids = (extra?.ids || []).map((x) => String(x || "").trim()).filter(Boolean).slice(0, 200);
-    const payload = JSON.stringify({
-      collections,
-      at: Date.now(),
-      source: source || "api",
-      ...(ids.length ? { ids } : {}),
-    });
-    await client.publish(CHANNEL, payload);
-  } catch {
-    /* ignore */
-  }
-}
+async function ensureSubClient(): Promise<void> {
+  if (skipped || !handlers.size) return;
+  if (subClient?.isOpen) return;
+  if (subConnecting) return subConnecting;
 
-type ChangeHandler = (payload: {
-  collections: string[];
-  at: number;
-  source?: string;
-  ids?: string[];
-}) => void;
-
-const handlers = new Set<ChangeHandler>();
-
-/** Subscribe pub/sub một lần; gọi handler mỗi tin. */
-export async function redisSubscribeChanges(handler: ChangeHandler): Promise<() => void> {
-  handlers.add(handler);
-  if (!subClient) {
+  subConnecting = (async () => {
     try {
-      if (!(await connectMain()) || !client) {
-        handlers.delete(handler);
-        return () => handlers.delete(handler);
+      if (!client || !client.isOpen) return;
+      if (!subClient) {
+        subClient = client.duplicate();
+        subClient.on("error", (e) => {
+          console.warn("[redis-sub]", (e as Error)?.message || e);
+        });
+        subClient.on("ready", () => {
+          console.log("[redis-sub] subscription ready");
+        });
       }
-      subClient = client.duplicate();
-      subClient.on("error", (e) => {
-        console.warn("[redis-sub]", (e as Error)?.message || e);
-      });
-      await subClient.connect();
+      if (!subClient.isOpen) {
+        await subClient.connect();
+      }
       await subClient.subscribe(CHANNEL, (message) => {
         try {
           const data = JSON.parse(message) as {
@@ -157,11 +156,15 @@ export async function redisSubscribeChanges(handler: ChangeHandler): Promise<() 
             at?: number;
             source?: string;
             ids?: string[];
+            origin?: string;
+            eventId?: string;
           };
           const payload = {
             collections: Array.isArray(data.collections) ? data.collections : [],
             at: data.at || Date.now(),
             source: data.source,
+            origin: data.origin,
+            eventId: data.eventId,
             ...(Array.isArray(data.ids) && data.ids.length ? { ids: data.ids } : {}),
           };
           for (const h of handlers) {
@@ -178,9 +181,50 @@ export async function redisSubscribeChanges(handler: ChangeHandler): Promise<() 
       console.log("[redis] subscribed", CHANNEL);
     } catch (e) {
       console.warn("[redis] subscribe failed:", (e as Error)?.message || e);
-      subClient = null;
+    } finally {
+      subConnecting = null;
     }
+  })();
+  return subConnecting;
+}
+
+export async function redisPublishChange(
+  collections: string[],
+  source?: string,
+  extra?: { ids?: string[]; origin?: string; eventId?: string }
+): Promise<void> {
+  if (!(await connectMain()) || !client) return;
+  try {
+    const ids = (extra?.ids || []).map((x) => String(x || "").trim()).filter(Boolean).slice(0, 200);
+    const payload = JSON.stringify({
+      collections,
+      at: Date.now(),
+      source: source || "api",
+      origin: extra?.origin,
+      eventId: extra?.eventId,
+      ...(ids.length ? { ids } : {}),
+    });
+    await client.publish(CHANNEL, payload);
+  } catch {
+    /* ignore */
   }
+}
+
+type ChangeHandler = (payload: {
+  collections: string[];
+  at: number;
+  source?: string;
+  ids?: string[];
+  origin?: string;
+  eventId?: string;
+}) => void;
+
+const handlers = new Set<ChangeHandler>();
+
+/** Subscribe pub/sub một lần; gọi handler mỗi tin; tự động phục hồi khi redis reconnect. */
+export async function redisSubscribeChanges(handler: ChangeHandler): Promise<() => void> {
+  handlers.add(handler);
+  void ensureSubClient();
   return () => {
     handlers.delete(handler);
   };
