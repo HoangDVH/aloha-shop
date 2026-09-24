@@ -54,7 +54,7 @@ export const BRAND_BANNERS: HeroSlide[] = [
     cta: "Mua ngay",
   },
   {
-    src: "/banners/banner-hero-04.png?v=4",
+    src: "/banners/banner-hero-04.png?v=5",
     alt: "Cộng tác viên Aloha — Chia sẻ cây xanh, nhận hoa hồng",
     href: "/tuyen-ctv",
     label: "CTV Aloha",
