@@ -17,7 +17,7 @@ export function HomeCtvBanner() {
 
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/banners/banner-ctv-aloha.png?v=14"
+            src="/banners/banner-ctv-aloha.png?v=15"
             alt="Cộng tác viên Aloha — Chia sẻ cây xanh, nhận hoa hồng"
             className="home-ctv-banner__img pointer-events-none block h-full w-full select-none"
             draggable={false}
