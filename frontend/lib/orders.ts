@@ -134,7 +134,7 @@ export async function listAddresses(): Promise<ShopAddress[]> {
 }
 
 export async function createAddress(body: Omit<ShopAddress, "id">) {
-  return shopFetch<{ addresses: ShopAddress[] }>("/api/shop/auth/addresses", {
+  return shopFetch<{ addresses: ShopAddress[]; addressId: string; reused?: boolean }>("/api/shop/auth/addresses", {
     method: "POST",
     body: JSON.stringify(body),
   });

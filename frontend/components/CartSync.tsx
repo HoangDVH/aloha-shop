@@ -11,6 +11,8 @@ import {
   isCartSyncPaused,
   onShopUserChanged,
   scheduleCartPushToServer,
+  retryCartSync,
+  useCartSyncStatus,
 } from "@/lib/cartSync";
 
 /**
@@ -24,6 +26,7 @@ export function CartSync() {
   const lines = useCart((s) => s.lines);
   const router = useRouter();
   const previous = useRef<string | null>(null);
+  const syncError = useCartSyncStatus((s) => s.error);
   useEffect(() => {
     if (loading) return;
     const key = `${user?.id || "guest"}:${user?.siStatus || "web"}:${user?.siRegion || ""}`;
@@ -43,5 +46,13 @@ export function CartSync() {
     scheduleCartPushToServer(user.id);
   }, [loading, user?.id, lines]);
 
-  return null;
+  if (!user || !syncError) return null;
+  return (
+    <div role="alert" className="fixed bottom-20 left-4 right-4 z-[100] mx-auto max-w-lg rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 shadow-lg">
+      <p>{syncError}</p>
+      <button type="button" className="mt-2 font-semibold underline" onClick={() => {
+        void retryCartSync(user.id).then(() => refreshCartPricesFromCatalog()).catch(() => {});
+      }}>Thử đồng bộ lại</button>
+    </div>
+  );
 }

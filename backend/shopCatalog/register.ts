@@ -1216,7 +1216,7 @@ export function registerShopApi(
         attrFilters.length > 0 ||
         dvtFilters.length > 0 ||
         Boolean(loai);
-      const cacheKey = `shop:products:v35:${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|maxTon=${maxTon}|${sort}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
+      const cacheKey = `shop:products:v36:${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|maxTon=${maxTon}|${sort}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
       const pinScope = resolvePinBadgeScope({ sort, badge, maxTon });
 
       const { body, cache } = await cachedJson(cacheKey, async () => {
@@ -1323,142 +1323,52 @@ export function registerShopApi(
             .map(([ma]) => ma);
 
           if (rankedMas.length) {
-            const soldDocs = await col
-              .find({
-                $and: [
-                  ...and,
-                  {
-                    $expr: {
-                      $in: [{ $toUpper: { $ifNull: ["$ma", ""] } }, rankedMas],
-                    },
-                  },
-                ],
-              } as any)
+            // Pins are absolute within the eligible list, including products
+            // without revenue. Never paginate either group before applying pins.
+            // Preserve the low-stock rule: only revenue-ranked products qualify.
+            const eligibleFilter = maxTon > 0
+              ? {
+                  $and: [
+                    ...and,
+                    { $expr: { $in: [{ $toUpper: { $ifNull: ["$ma", ""] } }, rankedMas] } },
+                  ],
+                }
+              : filter;
+            const eligibleDocs = await col
+              .find(eligibleFilter as any)
               .project(projection)
               .toArray();
-
-            const soldMapped = await mapDocsToPublicWithPriceBooks(db, soldDocs as any[]);
-            let sold = dedupeListItems(soldMapped.docs, soldMapped.items);
-            if (minPrice > 0) sold = sold.filter((p) => p.gia >= minPrice);
-            if (maxPrice > 0) sold = sold.filter((p) => p.gia <= maxPrice);
-            if (inStock) sold = sold.filter((p) => p.ton > 0);
-            if (maxTon > 0) sold = sold.filter((p) => p.ton > 0 && p.ton <= maxTon);
-            sold = filterRequirePublicImage(sold);
-            sold = arrangeByAbsolutePin(
-              sold,
+            const mapped = await mapDocsToPublicWithPriceBooks(db, eligibleDocs as any[]);
+            let items = dedupeListItems(mapped.docs, mapped.items);
+            if (minPrice > 0) items = items.filter((p) => p.gia >= minPrice);
+            if (maxPrice > 0) items = items.filter((p) => p.gia <= maxPrice);
+            if (inStock) items = items.filter((p) => p.ton > 0);
+            if (maxTon > 0) items = items.filter((p) => p.ton > 0 && p.ton <= maxTon);
+            items = filterRequirePublicImage(items);
+            const ranked = items.filter((p) => rank.has(normalizeMa(p.ma))).length;
+            items = arrangeByAbsolutePin(
+              items,
               (a, b) => {
-                const ra = rank.get(normalizeMa(a.ma)) || 0;
-                const rb = rank.get(normalizeMa(b.ma)) || 0;
-                if (rb !== ra) return rb - ra;
-                return a.ten.localeCompare(b.ten, "vi");
+                const ma = normalizeMa(a.ma);
+                const mb = normalizeMa(b.ma);
+                // Keep ranked products ahead of unranked products, even if a
+                // revenue entry is zero/negative (e.g. after returns).
+                const group = Number(rank.has(mb)) - Number(rank.has(ma));
+                if (group) return group;
+                const revenue = (rank.get(mb) || 0) - (rank.get(ma) || 0);
+                return revenue || a.ten.localeCompare(b.ten, "vi") || ma.localeCompare(mb);
               },
               badge || "ban_chay_sap_het"
             );
-
-            const soldMas = new Set(sold.map((p) => normalizeMa(p.ma)));
-            // maxTon (sắp hết): chỉ lấy SP có doanh thu ∩ tồn ≤ maxTon — không filler theo tên.
-            if (maxTon > 0) {
-              const totalRanked = sold.length;
-              return {
-                items: sold.slice(skip, skip + limit),
-                total: totalRanked,
-                page,
-                limit,
-                pages: Math.max(1, Math.ceil(totalRanked / limit)),
-                sortMode: "ban_chay",
-                ranked: totalRanked,
-              };
-            }
-            const totalAll = await col.countDocuments(filter as any);
-
-            if (skip < sold.length) {
-              const fromSold = sold.slice(skip, skip + limit);
-              if (fromSold.length >= limit) {
-                return {
-                  items: fromSold,
-                  total: totalAll,
-                  page,
-                  limit,
-                  pages: Math.max(1, Math.ceil(totalAll / limit)),
-                  sortMode: "ban_chay",
-                  ranked: sold.length,
-                };
-              }
-              const need = limit - fromSold.length;
-              const fillerDocs = await col
-                .find({
-                  $and: [
-                    ...and,
-                    {
-                      $expr: {
-                        $not: {
-                          $in: [{ $toUpper: { $ifNull: ["$ma", ""] } }, [...soldMas]],
-                        },
-                      },
-                    },
-                  ],
-                } as any)
-                .project(projection)
-                .sort({ ten: 1 })
-                .limit(need)
-                .toArray();
-              const fillerMapped = await mapDocsToPublicWithPriceBooks(db, fillerDocs as any[]);
-              let filler = dedupeListItems(fillerMapped.docs, fillerMapped.items);
-              if (minPrice > 0) filler = filler.filter((p) => p.gia >= minPrice);
-              if (maxPrice > 0) filler = filler.filter((p) => p.gia <= maxPrice);
-              if (inStock) filler = filler.filter((p) => p.ton > 0);
-              if (maxTon > 0) filler = filler.filter((p) => p.ton > 0 && p.ton <= maxTon);
-              filler = filterRequirePublicImage(filler);
-              const merged = dedupeCanonicalPublic(
-                [...fromSold, ...filler],
-                new Map(),
-                new Map()
-              ).slice(0, limit);
-              return {
-                items: merged,
-                total: totalAll,
-                page,
-                limit,
-                pages: Math.max(1, Math.ceil(totalAll / limit)),
-                sortMode: "ban_chay",
-                ranked: sold.length,
-              };
-            }
-
-            const unrankedSkip = skip - sold.length;
-            const fillerDocs = await col
-              .find({
-                $and: [
-                  ...and,
-                  {
-                    $expr: {
-                      $not: {
-                        $in: [{ $toUpper: { $ifNull: ["$ma", ""] } }, [...soldMas]],
-                      },
-                    },
-                  },
-                ],
-              } as any)
-              .project(projection)
-              .sort({ ten: 1 })
-              .skip(unrankedSkip)
-              .limit(limit)
-              .toArray();
-            const fillerMapped = await mapDocsToPublicWithPriceBooks(db, fillerDocs as any[]);
-            let filler = dedupeListItems(fillerMapped.docs, fillerMapped.items);
-            if (minPrice > 0) filler = filler.filter((p) => p.gia >= minPrice);
-            if (maxPrice > 0) filler = filler.filter((p) => p.gia <= maxPrice);
-            if (inStock) filler = filler.filter((p) => p.ton > 0);
-            if (maxTon > 0) filler = filler.filter((p) => p.ton > 0 && p.ton <= maxTon);
-            filler = filterRequirePublicImage(filler);
+            const total = items.length;
             return {
-              items: filler,
-              total: totalAll,
+              items: items.slice(skip, skip + limit),
+              total,
               page,
               limit,
-              pages: Math.max(1, Math.ceil(totalAll / limit)),
+              pages: Math.max(1, Math.ceil(total / limit)),
               sortMode: "ban_chay",
-              ranked: sold.length,
+              ranked,
             };
           }
           // Chưa có HĐ doanh thu → xếp theo tên (không dùng tồn)

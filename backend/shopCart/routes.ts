@@ -7,10 +7,9 @@ import {
 import {
   SHOP_CARTS,
   ensureShopCartIndexes,
-  mergeCartLines,
   normalizeCartLines,
-  type CartLineDoc,
 } from "./models.js";
+import { cartPayload, CartWriteError, mergeCart, saveCart } from "./writes.js";
 
 const SHOP_ORIGIN_ALLOW = new Set([
   "http://localhost:3002",
@@ -34,12 +33,9 @@ function setCors(req: { headers: { origin?: string } }, res: Response) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 }
 
-function cartPayload(lines: CartLineDoc[], updatedAt: Date) {
-  return {
-    ok: true,
-    lines,
-    updatedAt: updatedAt.toISOString(),
-  };
+function writeError(res: Response, error: any) {
+  if (error instanceof CartWriteError) return res.status(error.status).json({ error: error.message, code: error.code });
+  return res.status(500).json({ error: "Không đồng bộ được giỏ hàng. Vui lòng thử lại." });
 }
 
 export function registerShopCartRoutes(app: Express, getShopDb: GetShopDb) {
@@ -62,6 +58,7 @@ export function registerShopCartRoutes(app: Express, getShopDb: GetShopDb) {
 
   const withCors = (req: { headers: { origin?: string } }, res: Response, next: () => void) => {
     setCors(req, res);
+    res.setHeader("Cache-Control", "private, no-store");
     next();
   };
 
@@ -74,12 +71,7 @@ export function registerShopCartRoutes(app: Express, getShopDb: GetShopDb) {
         await ensureIdx();
         const db = await getShopDb();
         const row = await db.collection(SHOP_CARTS).findOne({ userId: req.shopAuth!.userId });
-        if (!row) {
-          return res.json(cartPayload([], new Date(0)));
-        }
-        const lines = normalizeCartLines(row.lines);
-        const updatedAt = row.updatedAt ? new Date(row.updatedAt as Date) : new Date(0);
-        return res.json(cartPayload(lines, updatedAt));
+        return res.json(cartPayload(row, req.shopAuth!.userId));
       } catch (e: any) {
         return res.status(500).json({ error: e?.message || "cart_get_failed" });
       }
@@ -94,19 +86,11 @@ export function registerShopCartRoutes(app: Express, getShopDb: GetShopDb) {
       try {
         await ensureIdx();
         const db = await getShopDb();
+        if (req.body?.userId !== req.shopAuth!.userId) return res.status(409).json({ error: "Phiên đăng nhập đã thay đổi. Vui lòng tải lại trang.", code: "cart_session_changed" });
         const lines = normalizeCartLines(req.body?.lines);
-        const now = new Date();
-        await db.collection(SHOP_CARTS).updateOne(
-          { userId: req.shopAuth!.userId },
-          {
-            $set: { lines, updatedAt: now },
-            $setOnInsert: { userId: req.shopAuth!.userId, createdAt: now },
-          },
-          { upsert: true }
-        );
-        return res.json(cartPayload(lines, now));
+        return res.json(await saveCart(db.collection(SHOP_CARTS), req.shopAuth!.userId, lines, req.body?.revision));
       } catch (e: any) {
-        return res.status(500).json({ error: e?.message || "cart_put_failed" });
+        return writeError(res, e);
       }
     }
   );
@@ -120,22 +104,11 @@ export function registerShopCartRoutes(app: Express, getShopDb: GetShopDb) {
       try {
         await ensureIdx();
         const db = await getShopDb();
+        if (req.body?.userId !== req.shopAuth!.userId) return res.status(409).json({ error: "Phiên đăng nhập đã thay đổi. Vui lòng tải lại trang.", code: "cart_session_changed" });
         const guest = normalizeCartLines(req.body?.lines);
-        const row = await db.collection(SHOP_CARTS).findOne({ userId: req.shopAuth!.userId });
-        const server = normalizeCartLines(row?.lines);
-        const merged = mergeCartLines(server, guest);
-        const now = new Date();
-        await db.collection(SHOP_CARTS).updateOne(
-          { userId: req.shopAuth!.userId },
-          {
-            $set: { lines: merged, updatedAt: now },
-            $setOnInsert: { userId: req.shopAuth!.userId, createdAt: now },
-          },
-          { upsert: true }
-        );
-        return res.json(cartPayload(merged, now));
+        return res.json(await mergeCart(db.collection(SHOP_CARTS), req.shopAuth!.userId, guest, req.body?.idempotencyKey));
       } catch (e: any) {
-        return res.status(500).json({ error: e?.message || "cart_merge_failed" });
+        return writeError(res, e);
       }
     }
   );

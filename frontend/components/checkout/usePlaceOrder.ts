@@ -109,124 +109,124 @@ export function usePlaceOrder({
   });
 
   const placeOrder = async (opts?: { policyAccepted?: boolean; preOrderCodConfirmed?: boolean }) => {
-    if (placingLockRef.current) return;
-    setError("");
-    if (!usePriceSession.getState().ready) { setError(usePriceSession.getState().error || "Đang cập nhật giá. Vui lòng thử lại sau ít giây."); return; }
-
-    if (note.trim().length > 255) {
-      setError("Ghi chú tối đa 255 ký tự");
-      return;
-    }
-    if (!selected.length) {
-      setError("Chưa chọn sản phẩm");
-      return;
-    }
-
-    const policyAccepted = Boolean(opts?.policyAccepted ?? preOrderCodConfirmed);
-    if (!policyAccepted) {
-      setError("Vui lòng đồng ý chính sách kiểm hàng và xác nhận ảnh trước khi đặt hàng");
-      return;
-    }
-
-    const method = "Pending" as const;
-
-    let customerName = "";
-    let customerPhone = "";
-    let province = "";
-    let district = "";
-    let ward = "";
-    let ghnDistrictId = 0;
-    let ghnWardCode = "";
-    let shippingAddress = "";
-    let addressId: string | undefined;
-
-    if (delivery === "giao_tan_noi") {
-      if (showNewForm || !selectedAddr) {
-        customerName = draft.fullName.trim();
-        customerPhone = draft.phone.trim();
-        province = draft.province.trim();
-        district = draft.district.trim();
-        ward = draft.ward.trim();
-        ghnDistrictId = draft.ghnDistrictId;
-        ghnWardCode = draft.ghnWardCode;
-        shippingAddress = draft.detail.trim();
-        const addrParsed = checkoutShipAddressSchema.safeParse({
-          customerName,
-          customerPhone,
-          province,
-          ward,
-          shippingAddress,
-          district: district || undefined,
-        });
-        if (!addrParsed.success) {
-          setError(addrParsed.error.issues[0]?.message || "Địa chỉ chưa đủ");
-          return;
-        }
-        try {
-          const res = await createAddress({
-            fullName: customerName,
-            phone: customerPhone,
-            province,
-            district: district || undefined,
-            ward,
-            detail: shippingAddress,
-            ghnProvinceId: draft.ghnProvinceId || undefined,
-            ghnDistrictId: ghnDistrictId || undefined,
-            ghnWardCode: ghnWardCode || undefined,
-            isDefault: addresses.length === 0,
-          });
-          setAddresses(res.addresses);
-          const newest = res.addresses[res.addresses.length - 1];
-          addressId = newest?.id;
-          setSelectedAddrId(addressId || "");
-          setShowNewForm(false);
-        } catch (e: any) {
-          setError(e?.message || "Không lưu được địa chỉ");
-          return;
-        }
-      } else {
-        customerName = selectedAddr.fullName;
-        customerPhone = selectedAddr.phone;
-        province = selectedAddr.province;
-        district = selectedAddr.district || "";
-        ward = selectedAddr.ward;
-        ghnDistrictId = selectedAddr.ghnDistrictId || 0;
-        ghnWardCode = selectedAddr.ghnWardCode || "";
-        shippingAddress = selectedAddr.detail;
-        addressId = selectedAddr.id;
-        const addrParsed = checkoutShipAddressSchema.safeParse({
-          customerName,
-          customerPhone,
-          province,
-          ward,
-          shippingAddress,
-          district: district || undefined,
-        });
-        if (!addrParsed.success) {
-          setError(addrParsed.error.issues[0]?.message || "Địa chỉ chưa đủ");
-          return;
-        }
-      }
-    } else {
-      customerName = (draft.fullName || user?.fullName || "").trim();
-      customerPhone = (draft.phone || user?.phone || "").trim();
-      const recv = checkoutReceiverSchema.safeParse({ customerName, customerPhone });
-      if (!recv.success) {
-        setError(recv.error.issues[0]?.message || "Nhập tên và số điện thoại");
-        return;
-      }
-    }
-
-    if (showShip && delivery === "giao_tan_noi") {
-      if (!shippingQuote?.quoteToken || !shippingQuote.selected) {
-        setError(shippingError || "Chưa có phí ship — kiểm tra địa chỉ nhận hàng");
-        return;
-      }
-    }
-
+    if (placingLockRef.current || orderPlacedRef.current) return;
+    // Acquire synchronously: React state alone cannot block two calls in one tick.
     placingLockRef.current = true;
     setSubmitting(true);
     try {
+      setError("");
+      if (!usePriceSession.getState().ready) { setError(usePriceSession.getState().error || "Đang cập nhật giá. Vui lòng thử lại sau ít giây."); return; }
+
+      if (note.trim().length > 255) {
+        setError("Ghi chú tối đa 255 ký tự");
+        return;
+      }
+      if (!selected.length) {
+        setError("Chưa chọn sản phẩm");
+        return;
+      }
+
+      const policyAccepted = Boolean(opts?.policyAccepted ?? preOrderCodConfirmed);
+      if (!policyAccepted) {
+        setError("Vui lòng đồng ý chính sách kiểm hàng và xác nhận ảnh trước khi đặt hàng");
+        return;
+      }
+
+      const method = "Pending" as const;
+
+      let customerName = "";
+      let customerPhone = "";
+      let province = "";
+      let district = "";
+      let ward = "";
+      let ghnDistrictId = 0;
+      let ghnWardCode = "";
+      let shippingAddress = "";
+      let addressId: string | undefined;
+
+      if (delivery === "giao_tan_noi") {
+        if (showNewForm || !selectedAddr) {
+          customerName = draft.fullName.trim();
+          customerPhone = draft.phone.trim();
+          province = draft.province.trim();
+          district = draft.district.trim();
+          ward = draft.ward.trim();
+          ghnDistrictId = draft.ghnDistrictId;
+          ghnWardCode = draft.ghnWardCode;
+          shippingAddress = draft.detail.trim();
+          const addrParsed = checkoutShipAddressSchema.safeParse({
+            customerName,
+            customerPhone,
+            province,
+            ward,
+            shippingAddress,
+            district: district || undefined,
+          });
+          if (!addrParsed.success) {
+            setError(addrParsed.error.issues[0]?.message || "Địa chỉ chưa đủ");
+            return;
+          }
+          try {
+            const res = await createAddress({
+              fullName: customerName,
+              phone: customerPhone,
+              province,
+              district: district || undefined,
+              ward,
+              detail: shippingAddress,
+              ghnProvinceId: draft.ghnProvinceId || undefined,
+              ghnDistrictId: ghnDistrictId || undefined,
+              ghnWardCode: ghnWardCode || undefined,
+              isDefault: addresses.length === 0,
+            });
+            setAddresses(res.addresses);
+            addressId = res.addressId;
+            setSelectedAddrId(addressId || "");
+            setShowNewForm(false);
+          } catch (e: any) {
+            setError(e?.message || "Không lưu được địa chỉ");
+            return;
+          }
+        } else {
+          customerName = selectedAddr.fullName;
+          customerPhone = selectedAddr.phone;
+          province = selectedAddr.province;
+          district = selectedAddr.district || "";
+          ward = selectedAddr.ward;
+          ghnDistrictId = selectedAddr.ghnDistrictId || 0;
+          ghnWardCode = selectedAddr.ghnWardCode || "";
+          shippingAddress = selectedAddr.detail;
+          addressId = selectedAddr.id;
+          const addrParsed = checkoutShipAddressSchema.safeParse({
+            customerName,
+            customerPhone,
+            province,
+            ward,
+            shippingAddress,
+            district: district || undefined,
+          });
+          if (!addrParsed.success) {
+            setError(addrParsed.error.issues[0]?.message || "Địa chỉ chưa đủ");
+            return;
+          }
+        }
+      } else {
+        customerName = (draft.fullName || user?.fullName || "").trim();
+        customerPhone = (draft.phone || user?.phone || "").trim();
+        const recv = checkoutReceiverSchema.safeParse({ customerName, customerPhone });
+        if (!recv.success) {
+          setError(recv.error.issues[0]?.message || "Nhập tên và số điện thoại");
+          return;
+        }
+      }
+
+      if (showShip && delivery === "giao_tan_noi") {
+        if (!shippingQuote?.quoteToken || !shippingQuote.selected) {
+          setError(shippingError || "Chưa có phí ship — kiểm tra địa chỉ nhận hàng");
+          return;
+        }
+      }
+
       const fingerprint = JSON.stringify({ selected, delivery, customerName, customerPhone, shippingAddress, province, ward, note, method });
       const nextKey =
         typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -276,6 +276,8 @@ export function usePlaceOrder({
         }),
       });
       const orderCode = displayShopOrderCode(res.data) || String(res.data?.code || "").trim();
+      // The order is committed even if a subsequent UI/profile update fails.
+      orderPlacedRef.current = true;
 
       // Lần đầu chưa có SĐT trên hồ sơ → lưu từ checkout (không chặn đặt hàng nếu lỗi).
       if (profilePhoneEmpty(user?.phone) && customerPhone) {
@@ -287,7 +289,6 @@ export function usePlaceOrder({
         }
       }
 
-      orderPlacedRef.current = true;
       removeSelected();
       if (orderCode) {
         replace(`/don-hang/${encodeURIComponent(orderCode)}`);

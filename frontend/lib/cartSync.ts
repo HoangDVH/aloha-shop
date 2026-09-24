@@ -1,194 +1,212 @@
 "use client";
 
+import { create } from "zustand";
 import { priceSessionGeneration } from "./priceSession";
-import type { CartLine } from "./cart";
-import { useCart } from "./cart";
-import { fetchServerCart, mergeServerCart, saveServerCart } from "./cartApi";
+import { useCart, type CartLine } from "./cart";
+import { fetchServerCart, mergeServerCart, saveServerCart, type ServerCartResponse } from "./cartApi";
 
-const SYNC_META_KEY = "aloha-shop-cart-sync-meta";
-const PUSH_DEBOUNCE_MS = 700;
-
-let syncPaused = false;
-let pushTimer: ReturnType<typeof setTimeout> | null = null;
-let syncInFlight: Promise<void> | null = null;
+const META_KEY = "aloha-shop-cart-sync-meta";
+const MERGE_KEY = "aloha-shop-cart-pending-merge-v1";
+const LOCK_NAME = "aloha-shop-cart-sync-v1";
+type Meta = { userId: string; serverUpdatedAt: string; revision?: number; completedMergeKey?: string };
+type MergeIntent = { userId: string; key: string; lines: CartLine[] };
+export const useCartSyncStatus = create<{ error: string }>(() => ({ error: "" }));
+let activeUserId: string | null = null;
 let syncedUserId: string | null = null;
+let revision = 0; // Per-tab base version; never borrow another tab's newer version for PUT.
+let acknowledgedSignature = "";
+let syncPaused = false;
+let applyingServer = false;
+let pushTimer: ReturnType<typeof setTimeout> | null = null;
+let syncInFlight: { userId: string; generation: number; promise: Promise<void> } | null = null;
+let pushInFlight: Promise<void> | null = null;
+let pushAgain = false;
 
-type CartSyncMeta = {
-  userId: string;
-  serverUpdatedAt: string;
-};
-
-export function isCartSyncPaused() {
-  return syncPaused;
+export function isCartSyncPaused() { return syncPaused || applyingServer; }
+function read<T>(key: string): T | null {
+  const raw = localStorage.getItem(key);
+  return raw ? JSON.parse(raw) as T : null;
 }
-
-function normalizeLines(lines: CartLine[]): CartLine[] {
-  return lines.map((l) => ({
-    ...l,
-    dvt: l.dvt || "Cái",
-    selected: l.selected !== false,
-  }));
+function report(error: unknown) {
+  useCartSyncStatus.setState({ error: error instanceof Error ? error.message : "Chưa đồng bộ được giỏ hàng. Vui lòng thử lại." });
 }
-
-function linesSignature(lines: CartLine[]): string {
-  return JSON.stringify(
-    [...lines]
-      .map((l) => ({
-        ma: l.ma,
-        qty: l.qty,
-        gia: l.gia,
-        selected: l.selected !== false,
-        ctv: l.ctv || "",
-      }))
-      .sort((a, b) => a.ma.localeCompare(b.ma))
-  );
+function valid(userId: string, generation: number) {
+  return activeUserId === userId && generation === priceSessionGeneration();
 }
-
-function readMeta(): CartSyncMeta | null {
-  if (typeof localStorage === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(SYNC_META_KEY);
-    if (!raw) return null;
-    const o = JSON.parse(raw) as CartSyncMeta;
-    if (!o?.userId || !o?.serverUpdatedAt) return null;
-    return o;
-  } catch {
-    return null;
-  }
+function verifyResponse(response: ServerCartResponse, userId: string) {
+  if (response.userId !== userId) throw new Error("Phiên đăng nhập đã thay đổi. Vui lòng tải lại trang.");
 }
-
-function writeMeta(meta: CartSyncMeta) {
-  if (typeof localStorage === "undefined") return;
-  try {
-    localStorage.setItem(SYNC_META_KEY, JSON.stringify(meta));
-  } catch {
-    /* ignore */
-  }
+async function locked<T>(work: () => Promise<T>, required = false): Promise<T> {
+  if (typeof navigator !== "undefined" && navigator.locks) return navigator.locks.request(LOCK_NAME, work);
+  // localStorage leases are not atomic; do not create independent merge IDs across tabs.
+  if (required) throw new Error("Chưa thể đồng bộ giỏ khách an toàn. Vui lòng mở shop bằng HTTPS trên trình duyệt mới và thử lại.");
+  return work(); // Server version checks still protect ordinary PUTs.
 }
-
-function clearMeta() {
-  if (typeof localStorage === "undefined") return;
-  try {
-    localStorage.removeItem(SYNC_META_KEY);
-  } catch {
-    /* ignore */
-  }
+function remember(response: ServerCartResponse, completedMergeKey?: string) {
+  localStorage.setItem(META_KEY, JSON.stringify({ userId: response.userId,
+    serverUpdatedAt: response.updatedAt, revision: response.revision, completedMergeKey } satisfies Meta));
+  revision = response.revision;
+  acknowledgedSignature = signature(response.lines);
 }
-
-/** Tải giỏ từ server vào zustand — không gửi ngược lên server. */
-export function hydrateCartFromServer(lines: CartLine[], userId?: string, updatedAt?: string) {
-  syncPaused = true;
-  useCart.getState().replaceLines(normalizeLines(lines));
-  if (userId && updatedAt) {
-    writeMeta({ userId, serverUpdatedAt: updatedAt });
-  }
-  queueMicrotask(() => {
-    syncPaused = false;
-  });
+function hydrate(response: ServerCartResponse, completedMergeKey?: string) {
+  // Acknowledge before changing the persisted cart; keep pending intent until both succeed.
+  remember(response, completedMergeKey);
+  applyingServer = true;
+  try { useCart.getState().replaceLines(response.lines); }
+  finally { queueMicrotask(() => { applyingServer = false; }); }
 }
-
-/** Đồng bộ lần đầu sau đăng nhập / mở app đã đăng nhập. */
-async function pullOrMergeCart(userId: string): Promise<void> {
-  const generation = priceSessionGeneration();
-  const valid = () => generation === priceSessionGeneration();
-  const local = normalizeLines(useCart.getState().lines);
-  const meta = readMeta();
-  syncPaused = true;
-
-  try {
-    const serverRes = await fetchServerCart();
-    if (!valid()) return;
-
-    // Đổi tài khoản (meta còn userId khác) → lấy đúng giỏ cloud, KHÔNG gộp giỏ tài khoản cũ
-    if (meta && meta.userId !== userId) {
-      hydrateCartFromServer(serverRes.lines, userId, serverRes.updatedAt);
-      return;
+function signature(lines: CartLine[]) {
+  return JSON.stringify(lines.map(({ ma, qty, selected, lineNote, ctv }) => ({ ma, qty, selected, lineNote, ctv })).sort((a, b) => a.ma.localeCompare(b.ma)));
+}
+function applyLocalDelta(server: CartLine[], before: CartLine[], after: CartLine[]) {
+  const result = new Map(server.map(line => [line.ma, { ...line }]));
+  const old = new Map(before.map(line => [line.ma, line]));
+  const current = new Map(after.map(line => [line.ma, line]));
+  for (const ma of new Set([...old.keys(), ...current.keys()])) {
+    const a = old.get(ma); const b = current.get(ma); const remote = result.get(ma);
+    const delta = (b?.qty || 0) - (a?.qty || 0);
+    if (delta || (b && (b.selected !== a?.selected || b.lineNote !== a?.lineNote || b.ctv !== a?.ctv))) {
+      const qty = Math.max(0, (remote?.qty || 0) + delta);
+      if (!qty) result.delete(ma);
+      else result.set(ma, { ...(remote || b || a)!, qty,
+        selected: b?.selected ?? remote?.selected ?? true, lineNote: b?.lineNote, ctv: b?.ctv });
     }
-
-    // Chưa từng gắn user (giỏ khách thuần trên máy) → gộp vào tài khoản vừa đăng nhập
-    if (!meta) {
-      if (local.length) {
-        const merged = await mergeServerCart(local);
-        if (!valid()) return;
-        hydrateCartFromServer(merged.lines, userId, merged.updatedAt);
-      } else {
-        hydrateCartFromServer(serverRes.lines, userId, serverRes.updatedAt);
+  }
+  return [...result.values()];
+}
+async function pullOrMerge(userId: string, generation: number) {
+  const meta = read<Meta>(META_KEY);
+  const pending = read<MergeIntent>(MERGE_KEY);
+  const before = useCart.getState().lines;
+  let response = await fetchServerCart();
+  if (!valid(userId, generation)) return;
+  verifyResponse(response, userId);
+  let intent = pending?.userId === userId ? pending : null;
+  if (!intent && !meta && !pending && before.length) {
+    intent = { userId, key: `${Date.now()}.${crypto.randomUUID()}`, lines: before };
+    localStorage.setItem(MERGE_KEY, JSON.stringify(intent)); // Must succeed before POST.
+  }
+  if (intent) {
+    response = await mergeServerCart(intent.lines, userId, intent.key);
+    if (!valid(userId, generation)) return;
+    verifyResponse(response, userId);
+  }
+  const after = useCart.getState().lines;
+  // If the prior response was lost, local edits since that attempt are relative
+  // to its immutable guest snapshot, not to the cart already merged on the server.
+  const baseline = intent && (!meta || (meta.userId === userId && meta.completedMergeKey !== intent.key)) ? intent.lines : before;
+  const changed = signature(baseline) !== signature(after);
+  hydrate(response, intent?.key);
+  if (intent) localStorage.removeItem(MERGE_KEY);
+  syncedUserId = userId;
+  useCartSyncStatus.setState({ error: "" });
+  if (changed) {
+    useCart.getState().replaceLines(applyLocalDelta(response.lines, baseline, after));
+    pushAgain = true;
+  }
+}
+export function syncCartForUser(userId: string): Promise<void> {
+  const generation = priceSessionGeneration();
+  activeUserId = userId;
+  if (syncInFlight?.userId === userId && syncInFlight.generation === generation) return syncInFlight.promise;
+  syncPaused = true;
+  syncedUserId = null;
+  const task = { userId, generation, promise: Promise.resolve() };
+  // Defer so even synchronous storage failures run after syncInFlight is assigned.
+  task.promise = Promise.resolve().then(async () => {
+    try {
+      const needsMerge = Boolean(read<MergeIntent>(MERGE_KEY)?.userId === userId || (!read<Meta>(META_KEY) && useCart.getState().lines.length));
+      await locked(async () => { if (valid(userId, generation)) await pullOrMerge(userId, generation); }, needsMerge);
+    } catch (error) {
+      if (valid(userId, generation)) report(error);
+      throw error;
+    } finally {
+      if (syncInFlight === task) {
+        syncInFlight = null;
+        syncPaused = false;
+        if (pushAgain && syncedUserId === userId) scheduleCartPushToServer(userId);
       }
-      return;
     }
-
-    // Cùng tài khoản, F5 hoặc mở tab mới — không cộng đôi SL
-    const serverNewer = serverRes.updatedAt > meta.serverUpdatedAt;
-    const localDiffers = linesSignature(local) !== linesSignature(serverRes.lines);
-
-    if (serverNewer) {
-      hydrateCartFromServer(serverRes.lines, userId, serverRes.updatedAt);
-    } else if (localDiffers && local.length) {
-      const saved = await saveServerCart(local);
-      if (!valid()) return;
-      writeMeta({ userId, serverUpdatedAt: saved.updatedAt });
-    }
-  } catch {
-    /* giữ giỏ local nếu mạng lỗi */
-  } finally {
-    queueMicrotask(() => {
-      syncPaused = false;
-    });
-  }
+  });
+  syncInFlight = task;
+  return task.promise;
 }
-
-export async function syncCartForUser(userId: string): Promise<void> {
-  const generation = priceSessionGeneration();
-  syncInFlight = (async () => {
-    await pullOrMergeCart(userId);
-    if (generation === priceSessionGeneration()) syncedUserId = userId;
-    syncInFlight = null;
-  })();
-  return syncInFlight;
-}
-
-/** Đẩy giỏ hiện tại lên server (debounce khi đang sửa). */
 export function scheduleCartPushToServer(userId: string) {
-  if (syncPaused) return;
+  if (isCartSyncPaused() || syncedUserId !== userId) return;
+  if (signature(useCart.getState().lines) === acknowledgedSignature) return;
   if (pushTimer) clearTimeout(pushTimer);
+  const generation = priceSessionGeneration();
   pushTimer = setTimeout(() => {
     pushTimer = null;
-    void pushCartToServerNow(userId);
-  }, PUSH_DEBOUNCE_MS);
+    if (valid(userId, generation)) void pushCartToServerNow(userId);
+  }, 700);
 }
-
-export async function pushCartToServerNow(userId: string): Promise<void> {
-  if (syncPaused || syncedUserId !== userId) return;
+export function pushCartToServerNow(userId: string): Promise<void> {
+  if (isCartSyncPaused() || syncedUserId !== userId) return Promise.resolve();
+  if (signature(useCart.getState().lines) === acknowledgedSignature && !pushInFlight) return Promise.resolve();
+  pushAgain = true;
+  if (pushInFlight) return pushInFlight;
   const generation = priceSessionGeneration();
-  const lines = normalizeLines(useCart.getState().lines);
-  try {
-    const saved = await saveServerCart(lines);
-    if (generation !== priceSessionGeneration()) return;
-    writeMeta({ userId, serverUpdatedAt: saved.updatedAt });
-  } catch {
-    /* không chặn UI */
-  }
-}
-
-/** Gọi khi trạng thái đăng nhập thay đổi. */
-export async function onShopUserChanged(userId: string | null): Promise<void> {
-  if (!userId) {
-    const wasAccountCart = Boolean(syncedUserId || readMeta());
-    syncedUserId = null;
-    if (!wasAccountCart) return;
-    clearMeta();
-    // Đăng xuất: xóa giỏ trên máy — tránh tài khoản sau bị gộp/nhìn thấy giỏ người trước
-    if (pushTimer) {
-      clearTimeout(pushTimer);
-      pushTimer = null;
+  pushInFlight = Promise.resolve().then(async () => {
+    try {
+      while (pushAgain && valid(userId, generation)) {
+        pushAgain = false;
+        await locked(async () => {
+          if (!valid(userId, generation)) return;
+          const lines = useCart.getState().lines;
+          try {
+            const saved = await saveServerCart(lines, userId, revision);
+            if (!valid(userId, generation)) return;
+            verifyResponse(saved, userId);
+            remember(saved);
+            useCartSyncStatus.setState({ error: "" });
+            if (signature(lines) !== signature(useCart.getState().lines)) pushAgain = true;
+          } catch (error: any) {
+            if (!valid(userId, generation)) return;
+            if (error.code === "cart_conflict") {
+              const latest = await fetchServerCart();
+              if (!valid(userId, generation)) return;
+              verifyResponse(latest, userId);
+              hydrate(latest);
+              pushAgain = false;
+            }
+            throw error;
+          }
+        });
+      }
+    } catch (error) {
+      if (valid(userId, generation)) { pushAgain = false; report(error); }
+    } finally {
+      pushInFlight = null;
+      if (pushAgain && activeUserId && syncedUserId === activeUserId) scheduleCartPushToServer(activeUserId);
     }
-    syncPaused = true;
-    useCart.getState().clear();
-    queueMicrotask(() => {
-      syncPaused = false;
-    });
+  });
+  return pushInFlight;
+}
+export async function retryCartSync(userId: string) {
+  if (syncedUserId === userId) {
+    if (signature(useCart.getState().lines) === acknowledgedSignature) useCartSyncStatus.setState({ error: "" });
+    else await pushCartToServerNow(userId);
+  }
+  else await syncCartForUser(userId);
+}
+export async function onShopUserChanged(userId: string | null): Promise<void> {
+  activeUserId = userId;
+  if (!userId) {
+    const wasAccountCart = Boolean(syncedUserId || read<Meta>(META_KEY) || read<MergeIntent>(MERGE_KEY));
+    syncedUserId = null;
+    if (pushTimer) clearTimeout(pushTimer);
+    pushTimer = null;
+    pushAgain = false;
+    useCartSyncStatus.setState({ error: "" });
+    if (wasAccountCart) {
+      // Clear persisted lines before removing ownership/intent; a crash must not
+      // turn an account cart into a new guest cart eligible for another merge.
+      useCart.getState().clear();
+      localStorage.removeItem(MERGE_KEY);
+      localStorage.removeItem(META_KEY);
+    }
     return;
   }
-  if (syncedUserId === userId) return;
-  await syncCartForUser(userId);
+  if (syncedUserId !== userId) await syncCartForUser(userId);
 }

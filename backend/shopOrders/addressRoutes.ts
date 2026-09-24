@@ -9,7 +9,8 @@ import {
   shopAccountIdQuery,
   toPublicShopAccount,
 } from "../shopAuth/models.js";
-import { ensureOneDefault, newAddressId, normalizeAddresses } from "./models.js";
+import { ensureOneDefault, normalizeAddresses } from "./models.js";
+import { addressSnapshotFilter, createAddressSafely } from "./addressWrite.js";
 
 const SHOP_ORIGIN_ALLOW = new Set([
   "http://localhost:3002",
@@ -95,13 +96,7 @@ export function registerShopAddressRoutes(app: Express, getShopDb: GetShopDb) {
           return res.status(400).json({ error: "Điền đủ tên, SĐT, tỉnh, phường, địa chỉ" });
         }
 
-        let addresses = normalizeAddresses(user.addresses);
-        const isFirst = addresses.length === 0;
-        if (wantDefault || isFirst) {
-          addresses = addresses.map((a) => ({ ...a, isDefault: false }));
-        }
         const addr = {
-          id: newAddressId(),
           fullName,
           phone,
           province,
@@ -112,16 +107,17 @@ export function registerShopAddressRoutes(app: Express, getShopDb: GetShopDb) {
           ghnDistrictId,
           ghnWardCode,
           label,
-          isDefault: wantDefault || isFirst,
+          isDefault: wantDefault,
         };
-        addresses = ensureOneDefault([...addresses, addr]);
-        await db
-          .collection(SHOP_ACCOUNTS)
-          .updateOne({ _id: user._id }, { $set: { addresses, updatedAt: new Date() } });
-        return res.status(201).json({
+        const saved = await createAddressSafely(db.collection(SHOP_ACCOUNTS), user, addr);
+        if (!saved) return res.status(409).json({ error: "Địa chỉ vừa thay đổi. Vui lòng thử lại.", code: "address_conflict" });
+        const { addresses, addressId, reused } = saved;
+        return res.status(reused ? 200 : 201).json({
           ok: true,
           addresses,
-          user: toPublicShopAccount({ ...user, addresses }),
+          addressId,
+          reused,
+          user: toPublicShopAccount({ ...saved.user, addresses }),
         });
       } catch (e: any) {
         return res.status(500).json({ error: e?.message || "Lỗi" });
@@ -188,9 +184,10 @@ export function registerShopAddressRoutes(app: Express, getShopDb: GetShopDb) {
           addresses[idx] = patched;
         }
         addresses = ensureOneDefault(addresses);
-        await db
+        const saved = await db
           .collection(SHOP_ACCOUNTS)
-          .updateOne({ _id: user._id }, { $set: { addresses, updatedAt: new Date() } });
+          .updateOne(addressSnapshotFilter(user), { $set: { addresses, updatedAt: new Date() } });
+        if (!saved.matchedCount) return res.status(409).json({ error: "Địa chỉ vừa thay đổi. Vui lòng tải lại và thử lại.", code: "address_conflict" });
         return res.json({
           ok: true,
           addresses,
@@ -219,9 +216,10 @@ export function registerShopAddressRoutes(app: Express, getShopDb: GetShopDb) {
         const id = String(req.params.id || "").trim();
         let addresses = normalizeAddresses(user.addresses).filter((a) => a.id !== id);
         addresses = ensureOneDefault(addresses);
-        await db
+        const saved = await db
           .collection(SHOP_ACCOUNTS)
-          .updateOne({ _id: user._id }, { $set: { addresses, updatedAt: new Date() } });
+          .updateOne(addressSnapshotFilter(user), { $set: { addresses, updatedAt: new Date() } });
+        if (!saved.matchedCount) return res.status(409).json({ error: "Địa chỉ vừa thay đổi. Vui lòng tải lại và thử lại.", code: "address_conflict" });
         return res.json({
           ok: true,
           addresses,

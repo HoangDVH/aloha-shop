@@ -733,7 +733,7 @@ export function CatalogLayout({
     <div id="shop-catalog" className="scroll-mt-24 space-y-4">
       {!filtersOnly ? (
         <div>
-          <h1 className="text-xl font-extrabold text-[var(--aloha-green)] sm:text-2xl">{heading}</h1>
+          <h1 className="truncate text-xl font-bold text-stone-900 sm:text-2xl sm:text-[var(--aloha-green)]">{heading}</h1>
           <p className="mt-1 text-sm text-slate-500">
             {total} sản phẩm
             {pages > 1 ? ` · Trang ${page}/${pages}` : ""}
@@ -772,7 +772,7 @@ export function CatalogLayout({
                   className={`inline-flex h-10 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm font-bold transition ${
                     secondaryFilterCount > 0
                       ? "border-[var(--aloha-green)] bg-[var(--aloha-green-light)] text-[var(--aloha-green)]"
-                      : "border-[var(--aloha-green)] bg-white text-[var(--aloha-green)] hover:bg-[var(--aloha-green-light)]"
+                      : "rounded-xl border-stone-200 bg-white text-stone-700 hover:bg-stone-50 sm:rounded-md sm:border-[var(--aloha-green)] sm:text-[var(--aloha-green)]"
                   }`}
                 >
                   <span className="relative">
@@ -793,7 +793,7 @@ export function CatalogLayout({
                 className={`inline-flex h-10 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm font-bold transition ${
                   secondaryFilterCount > 0
                     ? "border-[var(--aloha-green)] bg-[var(--aloha-green)] text-white"
-                    : "border-[var(--aloha-green)] bg-white text-[var(--aloha-green)] hover:bg-[var(--aloha-green-light)]"
+                    : "rounded-xl border-stone-200 bg-white text-stone-700 hover:bg-stone-50 sm:rounded-md sm:border-[var(--aloha-green)] sm:text-[var(--aloha-green)]"
                 }`}
               >
                 <SlidersHorizontal size={16} />

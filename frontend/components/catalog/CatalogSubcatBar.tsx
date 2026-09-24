@@ -9,6 +9,7 @@ import {
 } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { X } from "lucide-react";
+import { CatalogMobileCategories, type MobileCategoryGroup } from "./CatalogMobileCategories";
 import {
   fetchCategoryTree,
   type ShopCategoryNavNode,
@@ -550,8 +551,41 @@ export function CatalogSubcatPicker({
   }
 
   /* —— Toolbar: lọc phụ trước → chỉ chip kết quả; có chọn L1/L2/L3 mới hiện nhánh —— */
+  const mobileGroups: MobileCategoryGroup[] = [
+    {
+      label: l1 ? chipLabel(l1.name) : "Danh mục",
+      title: "Danh mục",
+      active: Boolean(l1),
+      options: [
+        { id: 0, label: "Tất cả danh mục", href: clearToTim, active: !l1 },
+        ...roots.map(n => ({ id: n.id, label: chipLabel(n.name), href: selectL1Href(n), active: n.id === l1?.id })),
+      ],
+    },
+    ...(allL2.length ? [{
+      label: l2 ? chipLabel(l2.name) : "Chọn nhóm",
+      title: l1 ? chipLabel(l1.name) : "Nhóm sản phẩm",
+      active: Boolean(l2),
+      options: allL2.map(n => ({ id: n.id, label: chipLabel(n.name), href: selectL2Href(n), active: n.id === l2?.id })),
+    }] : []),
+    ...(allL3.length ? [{
+      label: selectedL3s.length ? `Loại · ${selectedL3s.length}` : "Chọn loại",
+      title: l2 ? chipLabel(l2.name) : "Loại sản phẩm",
+      active: selectedL3s.length > 0,
+      options: allL3.map(n => ({ id: n.id, label: chipLabel(n.name), href: toggleL3Href(n), active: selectedL3Ids.has(n.id) })),
+    }] : []),
+  ].filter(group => group.options.length > 0);
+
   return (
-    <div className="flex min-w-0 flex-1 flex-col gap-2">
+    <div className="min-w-0 flex-1">
+      <CatalogMobileCategories
+        groups={mobileGroups}
+        selected={selectedCatChips.slice((l1 ? 1 : 0) + (l2 ? 1 : 0))}
+        filters={filterResultChips}
+        filterButton={filterButton}
+        clearAll={clearAllChip}
+        onNavigate={() => { markPinCatalog(); onChipClick(); }}
+      />
+      <div className="hidden min-w-0 flex-1 flex-col gap-2 sm:flex">
       <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-md bg-white">
         {filterButton}
         {hasCategoryNav ? (
@@ -574,6 +608,7 @@ export function CatalogSubcatPicker({
         ) : null}
       </div>
       {hasCategoryNav ? optionsRow : null}
+      </div>
     </div>
   );
 }

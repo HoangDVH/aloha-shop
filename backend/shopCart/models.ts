@@ -126,5 +126,6 @@ export async function ensureShopCartIndexes(db: Db) {
       .createIndex({ updatedAt: -1 }, { background: true });
   } catch (e) {
     console.warn("[shopCart] ensureShopCartIndexes:", e);
+    throw e; // Unique userId is required for safe concurrent cart initialization.
   }
 }

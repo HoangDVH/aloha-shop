@@ -605,32 +605,24 @@ export function CtvRecruitLanding() {
   const closeForm = () => setFormOpen(false);
 
   return (
-    <div className="bg-[#FDFBF7] text-[var(--aloha-ink)]">
+    <div className="bg-[#FAF9F6] text-[#202622]">
       {/* Hero — 2 cột kiểu landing Affiliate sàn TMĐT */}
-      <section className="relative overflow-hidden border-b border-[var(--aloha-border-brown)]/30 bg-[linear-gradient(105deg,#FDFBF7_0%,#F3F8F0_48%,#EEF5EA_100%)]">
+      <section className="relative overflow-hidden border-b border-stone-200/70 bg-[#FAF9F6]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/decor/leaves-tr.png"
           alt=""
           aria-hidden
-          className="pointer-events-none absolute -right-4 top-0 z-0 h-28 w-28 opacity-30 sm:h-44 sm:w-44"
+          className="pointer-events-none absolute -right-4 top-0 z-0 h-28 w-28 opacity-[0.12] sm:h-44 sm:w-44"
         />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/decor/leaves-bl.png"
-          alt=""
-          aria-hidden
-          className="pointer-events-none absolute -left-2 bottom-0 z-0 h-24 w-24 opacity-25 sm:h-40 sm:w-40"
-        />
-
         <div className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:py-12">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="inline-flex items-center gap-1.5 rounded-full bg-[var(--aloha-green-light)] px-3 py-1 text-[11px] font-bold tracking-wide text-[var(--aloha-green-dark)] uppercase">
+            <p className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1 text-[11px] font-bold tracking-wide text-[#202622] uppercase">
               <Sprout size={14} aria-hidden />
               Cộng tác viên Aloha
             </p>
-            <h1 className="mt-4 text-[1.85rem] font-extrabold leading-[1.2] tracking-tight text-[var(--aloha-green-dark)] sm:text-[2.35rem]">
-              Chia sẻ cây xanh — nhận hoa hồng
+            <h1 className="mt-4 text-[1.85rem] font-extrabold leading-[1.2] tracking-tight text-[#202622] sm:text-[2.35rem]">
+              Chia sẻ cây xanh — <span className="text-[var(--aloha-green-dark)]">nhận hoa hồng</span>
             </h1>
             <p className="mx-auto mt-3 max-w-lg text-[15px] leading-relaxed text-slate-600 sm:text-base">
               Đăng ký miễn phí, lấy link bán, nhận hoa hồng đến 15% mỗi đơn thành công.
@@ -640,7 +632,7 @@ export function CtvRecruitLanding() {
               <button
                 type="button"
                 onClick={openForm}
-                className="inline-flex h-11 items-center gap-1.5 rounded-full bg-[var(--aloha-green-dark)] px-6 text-[15px] font-bold text-white shadow-lg shadow-[var(--aloha-green-dark)]/25 transition hover:bg-[var(--aloha-green)]"
+                className="inline-flex h-11 items-center gap-1.5 rounded-full bg-[var(--aloha-green-dark)] px-6 text-[15px] font-bold text-white shadow-sm transition hover:bg-[var(--aloha-green)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--aloha-green-dark)]"
               >
                 Đăng ký ngay
                 <ChevronRight size={18} aria-hidden />
@@ -649,7 +641,7 @@ export function CtvRecruitLanding() {
                 href="https://zalo.me/0794901233"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex h-11 items-center gap-1.5 rounded-full border-2 border-[var(--aloha-green)] bg-white/90 px-5 text-[15px] font-bold text-[var(--aloha-green-dark)] transition hover:bg-[var(--aloha-green-light)]"
+                className="inline-flex h-11 items-center gap-1.5 rounded-full border border-stone-300 bg-white px-5 text-[15px] font-bold text-[#202622] transition hover:bg-stone-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-stone-500"
               >
                 Liên hệ tư vấn
               </a>
@@ -657,16 +649,16 @@ export function CtvRecruitLanding() {
           </div>
 
           {/* Điểm nổi bật — chỉ tiêu đề ngắn */}
-          <ul className="mt-8 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
+          <ul className="mx-auto mt-8 grid max-w-3xl grid-cols-2 gap-x-4 gap-y-3 border-t border-stone-200/70 pt-5 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-6">
             {QUICK_BENEFITS.map(({ icon: Icon, title }) => (
               <li
                 key={title}
-                className="inline-flex items-center gap-2 rounded-full bg-white/90 px-3.5 py-2 text-[13px] font-semibold text-[var(--aloha-ink)] ring-1 ring-[var(--aloha-line)] sm:text-sm"
+                className="inline-flex items-center gap-2 text-[13px] font-medium text-stone-600 sm:text-sm"
               >
                 <Icon
                   size={16}
                   strokeWidth={2}
-                  className="shrink-0 text-[var(--aloha-green)]"
+                  className="shrink-0 text-[#526759]"
                   aria-hidden
                 />
                 {title}
@@ -702,7 +694,7 @@ export function CtvRecruitLanding() {
       {/* Vì sao */}
       <section className="mx-auto max-w-7xl px-4 py-12 sm:py-14">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <h2 className="text-2xl font-extrabold text-[var(--aloha-green-dark)] sm:text-[1.75rem]">
+          <h2 className="text-2xl font-extrabold text-[#202622] sm:text-[1.75rem]">
             Vì sao nên trở thành CTV Aloha?
           </h2>
           <p className="max-w-md text-sm text-[var(--aloha-muted)]">
@@ -715,7 +707,7 @@ export function CtvRecruitLanding() {
               key={title}
               className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[var(--aloha-line)] transition hover:-translate-y-0.5 hover:shadow-md"
             >
-              <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--aloha-green-light)] text-[var(--aloha-green)]">
+              <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-stone-100 text-[#526759]">
                 <Icon size={22} strokeWidth={1.75} aria-hidden />
               </span>
               <h3 className="mt-3 text-[15px] font-extrabold text-[var(--aloha-ink)]">{title}</h3>
@@ -728,8 +720,8 @@ export function CtvRecruitLanding() {
       {/* Quy trình */}
       <section className="border-y border-[var(--aloha-line)] bg-white py-12 sm:py-14">
         <div className="mx-auto max-w-7xl px-4">
-          <h2 className="flex items-center gap-2 text-2xl font-extrabold text-[var(--aloha-green-dark)] sm:text-[1.75rem]">
-            <Sprout size={22} className="text-[var(--aloha-green)]" aria-hidden />
+          <h2 className="flex items-center gap-2 text-2xl font-extrabold text-[#202622] sm:text-[1.75rem]">
+            <Sprout size={22} className="text-[#526759]" aria-hidden />
             Quy trình tham gia đơn giản
           </h2>
           <div className="mt-10 grid gap-6 md:grid-cols-3 md:gap-4">
@@ -737,14 +729,14 @@ export function CtvRecruitLanding() {
               <div key={step.n} className="relative flex flex-col items-center text-center md:px-4">
                 {i < STEPS.length - 1 ? (
                   <span
-                    className="pointer-events-none absolute top-7 left-[58%] hidden h-0.5 w-[84%] bg-[var(--aloha-green)]/25 md:block"
+                    className="pointer-events-none absolute top-7 left-[58%] hidden h-0.5 w-[84%] bg-stone-200 md:block"
                     aria-hidden
                   />
                 ) : null}
-                <span className="relative z-10 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--aloha-green-dark)] text-lg font-black text-white shadow-md">
+                <span className="relative z-10 flex h-14 w-14 items-center justify-center rounded-full bg-stone-100 text-lg font-bold text-[#202622] ring-1 ring-stone-200">
                   {step.n}
                 </span>
-                <span className="mt-3 text-[var(--aloha-green)]">
+                <span className="mt-3 text-[#526759]">
                   <step.icon size={22} strokeWidth={1.75} aria-hidden />
                 </span>
                 <h3 className="mt-2 text-base font-extrabold text-[var(--aloha-ink)]">{step.title}</h3>
@@ -761,7 +753,7 @@ export function CtvRecruitLanding() {
         className="scroll-mt-24 border-t border-[var(--aloha-line)] bg-white py-10 sm:py-12"
       >
         <div className="mx-auto max-w-3xl px-4">
-          <h2 className="text-xl font-extrabold text-[var(--aloha-green-dark)] sm:text-2xl">
+          <h2 className="text-xl font-extrabold text-[#202622] sm:text-2xl">
             Điều khoản cộng tác viên
           </h2>
           <div className="mt-4">
@@ -771,7 +763,7 @@ export function CtvRecruitLanding() {
       </section>
 
       {/* Trust strip */}
-      <section className="border-t border-[var(--aloha-border-brown)]/40 bg-[#FDF6E3] py-10">
+      <section className="border-t border-stone-200 bg-[#F3F2EE] py-10">
         <div className="mx-auto flex max-w-7xl flex-col gap-8 px-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="grid flex-1 gap-6 sm:grid-cols-3">
             {[
@@ -780,7 +772,7 @@ export function CtvRecruitLanding() {
               { icon: Headphones, title: "Hỗ trợ 24/7", desc: "Zalo / hotline sẵn sàng" },
             ].map(({ icon: Icon, title, desc }) => (
               <div key={title} className="flex items-start gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[var(--aloha-green)] ring-1 ring-[var(--aloha-border-brown)]/50">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#526759] ring-1 ring-stone-200">
                   <Icon size={20} strokeWidth={1.75} aria-hidden />
                 </span>
                 <div>
@@ -790,7 +782,7 @@ export function CtvRecruitLanding() {
               </div>
             ))}
           </div>
-          <p className="max-w-sm text-lg font-extrabold leading-snug text-[var(--aloha-green-dark)] sm:text-xl lg:text-right">
+          <p className="max-w-sm text-lg font-extrabold leading-snug text-[#202622] sm:text-xl lg:text-right">
             Cùng Aloha lan tỏa màu xanh
           </p>
         </div>
