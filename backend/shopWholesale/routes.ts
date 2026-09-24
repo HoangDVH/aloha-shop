@@ -7,7 +7,7 @@ import { ACCESS_COOKIE, verifyShopAccessToken } from "../shopAuth/tokens.js";
 import { SHOP_ACCOUNTS, shopAccountIdQuery, toPublicShopAccount } from "../shopAuth/models.js";
 import { issueShopSession } from "../shopAuth/routes.js";
 import { requireAuth, requireActive, requireManager, type AuthRequest } from "../auth/middleware.js";
-import { isAllowedShopOrigin } from "../shopCors.js";
+import { applyShopCors, isAllowedShopOrigin } from "../shopCors.js";
 import { shopRateLimitOrReject } from "../shopRateLimit.js";
 import { syncBus } from "../syncBus.js";
 import { addressSchema, applicationSchema, canonicalAddress } from "./schema.js";
