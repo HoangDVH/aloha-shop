@@ -7,7 +7,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Check, Leaf, ShieldCheck, Truck, LoaderCircle } from "lucide-react";
 import { siRegisterSchema, type SiRegisterInput } from "@/lib/siRegisterSchema";
-import { siRequest, useSiSession } from "@/lib/siQueries";
+import { SiApiError, siRequest, useSiSession } from "@/lib/siQueries";
+import { shopLogout } from "@/lib/auth";
 import { shopMeQueryKey, useShopMeQuery } from "@/lib/authQueries";
 import { formatVnd } from "@/lib/api";
 import { GhnAddressFields } from "@/components/GhnAddressFields";
@@ -15,6 +16,12 @@ import { useSiDraft } from "./siRegisterDraftStore";
 import type { ShopUser } from "@/lib/auth";
 
 const defaults: SiRegisterInput = { phone: "", province: "", district: "", ward: "", detail: "", fullName: "", shopName: "", businessType: "", taxCode: "", note: "", email: "", password: "", acceptedTerms: false };
+function accountWholesalePhone(phone?: string | null) {
+  const digits = String(phone || "").replace(/\D/g, "");
+  const norm = digits.startsWith("84") ? `0${digits.slice(2)}` : digits;
+  return /^0[35789]\d{8}$/.test(norm) ? norm : "";
+}
+
 const lookupMessages: Record<string, string> = {
   existing_si_candidate: "Thông tin phù hợp với hồ sơ khách sỉ. Aloha sẽ xác minh khi duyệt.",
   not_found: "Hãy giới thiệu cửa hàng của bạn để Aloha hỗ trợ chính sách mua sỉ phù hợp.",
@@ -32,10 +39,12 @@ export function SiRegisterWizard() {
   const [step, setStep] = useState(1);
   const [lookup, setLookup] = useState<{ lookupId: string; result: string } | null>(null);
   const [error, setError] = useState("");
+  const [errorCode, setErrorCode] = useState("");
   const [ghnLoc, setGhnLoc] = useState({ ghnProvinceId: 0, ghnDistrictId: 0, ghnWardCode: "" });
   const form = useForm<SiRegisterInput>({ resolver: zodResolver(siRegisterSchema), defaultValues: defaults });
   const account = me.data;
   const status = account?.siStatus;
+  const linkedPhone = accountWholesalePhone(account?.phone);
   useEffect(() => {
     if (session.data?.verified) setStep(s => Math.max(2, s));
   }, [session.data?.verified]);
@@ -44,9 +53,9 @@ export function SiRegisterWizard() {
     const owner = account?.id || "onboarding";
     if (saved.owner && saved.owner !== owner) saved.clear();
     const draft = saved.owner === owner && Date.now() - saved.savedAt < 86400000 ? saved.draft : {};
-    const fixedPhone = account?.phone || draft.phone || "";
-    form.reset({ ...defaults, ...draft, fullName: account?.fullName || draft.fullName || "", phone: fixedPhone, email: account?.email || "" });
-  }, [account?.id, form]);
+    const phone = linkedPhone || draft.phone || "";
+    form.reset({ ...defaults, ...draft, fullName: account?.fullName || draft.fullName || "", phone, email: account?.email || "" });
+  }, [account?.id, account?.fullName, account?.email, linkedPhone, form]);
   const saveDraft = () => {
     const { email, password, acceptedTerms, ...draft } = form.getValues();
     useSiDraft.getState().save(draft, account?.id || "onboarding");
@@ -56,12 +65,16 @@ export function SiRegisterWizard() {
     saveDraft();
     const v = form.getValues();
     return siRequest<{ lookupId: string; result: string }>("/api/shop/auth/si/lookup", { phone: v.phone, province: v.province, district: v.district, ward: v.ward, detail: v.detail });
-  }, onSuccess: data => { setLookup(data); setStep(3); setError(""); }, onError: e => setError(e.message) });
+  }, onSuccess: data => { setLookup(data); setStep(3); setError(""); setErrorCode(""); }, onError: e => { setError(e.message); setErrorCode(e instanceof SiApiError ? e.code : ""); } });
   const register = useMutation({ mutationFn: async (values: SiRegisterInput) => {
     if (!lookup) throw new Error("Vui lòng kiểm tra thông tin lại");
     return siRequest<{ user: ShopUser }>("/api/shop/auth/si/register", { ...values, lookupId: lookup.lookupId,
       email: account ? undefined : values.email, password: account ? undefined : values.password });
-  }, onSuccess: data => { qc.setQueryData(shopMeQueryKey, data.user); void qc.invalidateQueries({ queryKey: ["shop", "si"] }); useSiDraft.getState().clear(); setError(""); }, onError: e => setError(e.message) });
+  }, onSuccess: data => { qc.setQueryData(shopMeQueryKey, data.user); void qc.invalidateQueries({ queryKey: ["shop", "si"] }); useSiDraft.getState().clear(); setError(""); setErrorCode(""); }, onError: e => { setError(e.message); setErrorCode(e instanceof SiApiError ? e.code : ""); } });
+  const continueWithPhoneAccount = async () => {
+    await shopLogout();
+    window.location.href = `/dang-nhap?next=${encodeURIComponent("/dang-ky-si")}`;
+  };
   const field = (name: keyof SiRegisterInput, label: string, type = "text", optional = false) => <label className="block text-sm font-semibold text-slate-700" key={name}>
     {label} {optional && <span className="font-normal text-slate-400">(không bắt buộc)</span>}
     <input {...form.register(name)} type={type} autoComplete={name === "password" ? "new-password" : undefined} aria-invalid={Boolean(form.formState.errors[name])}
@@ -96,14 +109,14 @@ export function SiRegisterWizard() {
             {step===2 ? (
               <>
                 <label className="block text-sm font-semibold text-slate-700">
-                  Số điện thoại {account?.phone && <span className="font-normal text-xs text-slate-500">(đã gắn với tài khoản)</span>}
+                  Số điện thoại {linkedPhone && <span className="font-normal text-xs text-slate-500">(đã gắn với tài khoản)</span>}
                   <input
                     {...form.register("phone")}
                     type="tel"
-                    readOnly={Boolean(account?.phone)}
+                    readOnly={Boolean(linkedPhone)}
                     aria-invalid={Boolean(form.formState.errors.phone)}
                     className={`mt-2 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-base font-normal outline-none transition focus:border-[var(--aloha-green)] focus:ring-2 focus:ring-[var(--aloha-green-light)] ${
-                      account?.phone ? "bg-slate-100 cursor-not-allowed text-slate-600" : ""
+                      linkedPhone ? "bg-slate-100 cursor-not-allowed text-slate-600" : ""
                     }`}
                   />
                   {form.formState.errors.phone && <span role="alert" className="mt-1 block text-xs text-red-700">{form.formState.errors.phone.message}</span>}
@@ -149,7 +162,10 @@ export function SiRegisterWizard() {
             </>}
             <div className="flex gap-3 border-t border-slate-100 pt-5">{step===3&&<button type="button" disabled={busy} onClick={()=>{setStep(2);setLookup(null);}} className="min-h-12 rounded-xl border border-slate-200 px-4 font-semibold">Quay lại</button>}<button type={step===2?"button":"submit"} disabled={busy} onClick={step===2?()=>lookupMutation.mutate():undefined} className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-[var(--aloha-green)] px-4 font-bold text-white disabled:opacity-50">{busy&&<LoaderCircle size={18} className="animate-spin"/>}{step===2?"Kiểm tra thông tin":"Gửi hồ sơ mua sỉ"}</button></div>
           </form>}
-          {(error || session.error || callbackError) && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error || session.error?.message || (callbackError === "zalo_account_conflict" ? "Zalo đã liên kết tài khoản khác. Vui lòng dùng tài khoản cũ hoặc liên hệ Aloha." : callbackError === "zalo_cancelled" ? "Bạn đã hủy đăng nhập Zalo. Có thể thử lại khi sẵn sàng." : "Phiên đăng nhập Zalo hết hạn hoặc chưa hoàn tất. Vui lòng thử lại.")}</p>}
+          {(error || session.error || callbackError) && <div role="alert" className="mt-4 space-y-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">
+            <p>{error || session.error?.message || (callbackError === "zalo_account_conflict" ? "Zalo đã liên kết tài khoản khác. Vui lòng dùng tài khoản cũ hoặc liên hệ Aloha." : callbackError === "zalo_cancelled" ? "Bạn đã hủy đăng nhập Zalo. Có thể thử lại khi sẵn sàng." : "Phiên đăng nhập Zalo hết hạn hoặc chưa hoàn tất. Vui lòng thử lại.")}</p>
+            {(errorCode === "phone_requires_login" || errorCode === "phone_belongs_to_other") && <button type="button" onClick={() => void continueWithPhoneAccount()} className="inline-flex min-h-10 items-center rounded-lg bg-[var(--aloha-green)] px-3 font-bold text-white">Đăng nhập tài khoản này</button>}
+          </div>}
         </>}
       </section>
     </div>

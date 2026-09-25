@@ -12,7 +12,8 @@ import { shopRateLimitOrReject } from "../shopRateLimit.js";
 import { syncBus } from "../syncBus.js";
 import { addressSchema, applicationSchema, canonicalAddress } from "./schema.js";
 import { verifyCustomerRegion, lookupKvCustomers } from "./kvCustomers.js";
-import { SI_TERMS_VERSION, wholesaleMinimum } from "./policy.js";
+import { SI_TERMS_VERSION, normalizeWholesalePhone, wholesaleMinimum } from "./policy.js";
+import { accountOwnsPhone, decideWholesalePhoneLink, maskShopEmail, phoneOwnerFilter } from "./accountLink.js";
 
 type GetDb = () => Promise<Db>;
 const SESSIONS = "aloha_shop_si_sessions";
@@ -189,21 +190,46 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
         phone: input.phone, address: canonicalAddress(input), expiresAt: { $gt: new Date() } });
       if (!lookup) return res.status(409).json({ error: "Thông tin đã thay đổi hoặc hết hạn. Vui lòng kiểm tra lại SĐT/địa chỉ." });
       if (lookup.result !== "existing_si_candidate" && (!input.shopName || !input.businessType)) return res.status(400).json({ error: "Vui lòng nhập tên cửa hàng và loại hình kinh doanh" });
-      let account = who.account;
+      let account = who.account || await currentAccount(req, db);
       if (account && ["active", "cho_duyet", "khoa"].includes(String(account.siStatus))) {
         return res.status(409).json({ error: "Tài khoản đã có hồ sơ sỉ. Vui lòng xem trạng thái hồ sơ." });
       }
-      // Nếu tài khoản đã có SĐT gắn với Zalo trước đó, bắt buộc phải dùng đúng SĐT này để tránh đổi sang số khác
       if (account?.phoneNorm && normalizeWholesalePhone(account.phoneNorm) !== input.phone) {
-        return res.status(409).json({ error: "Số điện thoại đăng ký phải trùng khớp với số điện thoại đã liên kết của tài khoản Zalo này." });
+        return res.status(409).json({ error: "Số điện thoại đăng ký phải trùng khớp với số điện thoại đã liên kết của tài khoản này." });
       }
 
-      // Check legacy phone spellings as well as the new atomic unique index.
-      const conflicts = await db.collection(SHOP_ACCOUNTS).findOne({
-        ...(account ? { _id: { $ne: account._id } } : {}),
-        $or: [{ phoneNorm: input.phone }, { phone: input.phone }, { phone: `+84${input.phone.slice(1)}` }, { phone: `84${input.phone.slice(1)}` }],
+      const owners = await db.collection(SHOP_ACCOUNTS).find(phoneOwnerFilter(input.phone)).limit(5).toArray();
+      const ownerIds = owners.map((owner) => String(owner._id));
+      if (account && accountOwnsPhone(account, input.phone) && !ownerIds.includes(String(account._id))) {
+        ownerIds.push(String(account._id));
+      }
+      const otherOwner = owners.find((owner) => !account || String(owner._id) !== String(account._id)) || owners[0];
+      const decision = decideWholesalePhoneLink({
+        sessionAccountId: account ? String(account._id) : null,
+        ownerIds,
+        maskedEmail: otherOwner ? maskShopEmail(String(otherOwner.email || "")) : null,
       });
-      if (conflicts) return res.status(409).json({ error: "SĐT đã có tài khoản. Hãy đăng nhập tài khoản cũ hoặc liên hệ Aloha." });
+      if (decision.action === "login_required") {
+        return res.status(409).json({
+          error: `Số ${input.phone} đã thuộc tài khoản ${decision.maskedEmail}. Đăng nhập tài khoản đó rồi gửi lại — hồ sơ sẽ gắn vào tài khoản sẵn có.`,
+          code: "phone_requires_login",
+        });
+      }
+      if (decision.action === "switch_account") {
+        return res.status(409).json({
+          error: `Số ${input.phone} thuộc tài khoản ${decision.maskedEmail}, khác tài khoản đang đăng nhập. Đăng xuất và đăng nhập đúng tài khoản đó để tiếp tục.`,
+          code: "phone_belongs_to_other",
+        });
+      }
+      if (decision.action === "create") account = null;
+
+      const zaloOwner = await db.collection(SHOP_ACCOUNTS).findOne({ zaloId: who.zaloId });
+      if (zaloOwner && (!account || String(zaloOwner._id) !== String(account._id))) {
+        return res.status(409).json({
+          error: "Zalo này đã gắn với tài khoản khác. Hãy đăng nhập đúng tài khoản đó rồi thử lại.",
+          code: "zalo_account_conflict",
+        });
+      }
       const { password, email, lookupId, acceptedTerms, ...profile } = input;
       const now = new Date().toISOString();
       const patch = { fullName: input.fullName, phone: input.phone, phoneNorm: input.phone, siIdentity: true,
