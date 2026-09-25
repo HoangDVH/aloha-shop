@@ -23,6 +23,7 @@ import { useShopUpdateMeMutation } from "@/lib/authQueries";
 import { useShopLogoutAction, isShopLoggingOut } from "@/lib/useShopLogoutAction";
 import { profileSchema, type ProfileInput } from "@/lib/authSchemas";
 import { ShopPageLoader } from "@/components/ShopPageLoader";
+import { shopAccountRoleLabel } from "@/lib/accountRoleLabel";
 
 type Tab = "tai-khoan" | "dia-chi" | "don-mua" | "thanh-toan";
 
@@ -119,15 +120,7 @@ function AccountPageInner() {
 
   const profileOk = profileForm.formState.errors.root?.type === "success";
   const hasGoogle = user.authProviders.includes("google");
-  const roleLabel = user.roles.includes("ctv")
-    ? user.ctvStatus === "active"
-      ? "Cộng tác viên"
-      : user.ctvStatus === "tu_choi"
-        ? "CTV (bị từ chối)"
-        : user.ctvStatus === "cho_duyet"
-          ? "CTV (chờ duyệt)"
-          : "CTV"
-    : "Khách hàng";
+  const roleLabel = shopAccountRoleLabel(user);
 
   const tabItems: { id: Tab; label: string; icon: ReactNode }[] = [
     { id: "tai-khoan", label: "Tài khoản", icon: <UserIcon size={16} /> },
