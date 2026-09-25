@@ -212,7 +212,7 @@ export function OrdersPanel({ highlightCode }: { highlightCode?: string }) {
             ) : null}
             <div className="flex justify-between font-bold">
               <span>Tổng thanh toán</span>
-              <span className="text-[#EE6055]">{formatVnd(o.totalPayment ?? o.total)}</span>
+              <span className="text-[#EE6055]">{formatVnd(o.total)}</span>
             </div>
           </div>
 

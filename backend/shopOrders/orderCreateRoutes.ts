@@ -19,6 +19,7 @@ import {
 import { annotatePreOrderDetails, assertStockAvailable } from "./stockApply.js";
 import {
   createShopStockHolds,
+  releaseShopStockHolds,
   ensureShopStockHoldIndexes,
   shopStockHoldEnabled,
 } from "./stockHold.js";
@@ -420,6 +421,7 @@ export function registerShopOrderCreateRoutes(
         const doc: Record<string, unknown> = {
           id: code,
           code,
+          revision: 0,
           kvOrderId: null,
           kvOrderCode: null,
           kvInvoiceId: null,
@@ -428,6 +430,7 @@ export function registerShopOrderCreateRoutes(
           isTest,
           shopAccountId: req.shopAuth!.userId,
           kvCustomerId: user?.kvCustomerId || null,
+          kvPushStatus: user?.siStatus === "active" && user?.roles?.includes("si") ? "queued" : undefined,
           priceMode: user?.siStatus === "active" && user?.roles?.includes("si") ? "si" : "web",
           siRegion: user?.siRegion || null,
           addressId: addressId || null,
@@ -519,7 +522,7 @@ export function registerShopOrderCreateRoutes(
         try { (res as any).releaseCheckoutLock?.(); } catch {}
 
         // Đồng ý chính sách → Đặt hàng KV, chưa hóa đơn. COD cũ giữ nhánh dưới.
-        if ((reviewFirst || !isTransfer) && shopCodKvEnabled()) {
+        if (doc.priceMode !== "si" && (reviewFirst || !isTransfer) && shopCodKvEnabled()) {
           try {
             const ord = await (reviewFirst ? ensureReviewKvOrder : ensureCodKvOrder)({
               mainDb: mainDbEarly,
@@ -587,7 +590,7 @@ export function registerShopOrderCreateRoutes(
         }
 
         // Transfer + KiotQR: HĐ chờ CK sau khi đã có đơn Mongo
-        if (isTransfer) {
+        if (isTransfer && doc.priceMode !== "si") {
           doc.kvInvoiceId = null;
           doc.kvInvoiceCode = null;
           doc.kvInvoiceMode = null;

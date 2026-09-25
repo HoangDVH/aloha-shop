@@ -151,6 +151,7 @@ export async function createBackorderRequest(db: Db, input: {
     orderDetails: details, subtotal, total: subtotal, shippingFee: 0, shippingFeePending: true,
     totalPayment: 0, paidAmount: 0, paymentStatus: "unpaid", method: "Pending", usingCod: false,
     orderStatus: "cho_xac_nhan", status: "cho_xac_nhan", statusValue: "Chờ Aloha gửi ảnh",
+    policyAcceptedAt: body.policyAccepted === true ? now.toISOString() : null,
     hasPreOrder, backorderStatus: "pending_confirmation", backorderAcceptedAt: hasPreOrder ? now.toISOString() : null,
     backorderTermsVersion: BACKORDER_TERMS_VERSION, idempotencyKey: key,
     stockApplied: false, stockHeld: true, holdExpiresAt, expiresAt: null,

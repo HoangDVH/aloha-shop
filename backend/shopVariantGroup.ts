@@ -6,6 +6,7 @@ import type { Db, Document } from "mongodb";
 export type ShopAttr = { attributeName: string; attributeValue: string };
 
 export type VariantModel = {
+  webPrice?: number;
   priceKind?: "web" | "si" | "si_missing";
   allowBackorder?: boolean;
   ma: string;
@@ -356,6 +357,7 @@ export function scoreCanonical(doc: {
 }
 
 type Publicizer = (doc: Record<string, unknown>) => {
+  webPrice?: number;
   priceKind?: "web" | "si" | "si_missing";
   allowBackorder?: boolean;
   ma: string;
@@ -379,6 +381,7 @@ export function toVariantModel(
     ten: p.ten,
     dvt: p.dvt,
     gia: p.gia,
+    webPrice: p.webPrice,
     priceKind: p.priceKind,
     allowBackorder: p.allowBackorder,
     ton: p.ton,

@@ -627,6 +627,10 @@ export function registerShopOrdersAdminRoutes(
             skipped.push({ code, reason: "not_found" });
             continue;
           }
+          if (doc.priceMode === "si" && doc.kvPushStatus) {
+            skipped.push({ code, reason: "wholesale_sync_requires_audited_cancellation" });
+            continue;
+          }
           const isTest =
             Boolean((doc as any).isTest) ||
             String((doc as any).customerNote || "")

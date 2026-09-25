@@ -1,3 +1,6 @@
+import { registerWholesaleSyncGuard } from "./shopOrders/wholesaleSyncGuard.js";
+import { startWholesaleOrderSync } from "./shopOrders/wholesaleSync.js";
+import { registerWholesaleSyncAdmin } from "./shopOrders/wholesaleSyncAdmin.js";
 /**
  * Server API độc lập dành riêng cho ALOHA Shop.
  * Shop data + staff auth: SHOP_STANDALONE_DB (aloha_shop_db) — không dùng DB Garden.
@@ -208,7 +211,9 @@ registerShopApi(app, getDb, getDb, getCatalogSourceDb);
 registerShopAuthRoutes(app, getDb);
 registerWholesaleRoutes(app, getDb, getOpsDb);
 registerWholesalePasswordRoutes(app, getDb, getOpsDb);
+registerWholesaleSyncGuard(app, getDb, getOpsDb);
 registerBackorderAdminRoutes(app, getDb, getOpsDb);
+registerWholesaleSyncAdmin(app, getDb, getOpsDb);
 registerShopCartQuote(app, getDb, getDb);
 registerShopAddressRoutes(app, getDb);
 registerShopCartRoutes(app, getDb);
@@ -308,5 +313,6 @@ app.listen(PORT, '0.0.0.0', () => {
   startShopKvStockPoller(getDb);
   startKvPaymentReconcile(getDb, getOpsDb);
   startWholesaleProvisionWorker(getDb, getOpsDb);
+  startWholesaleOrderSync(getDb, getOpsDb);
   startKvDeliveryReconcile(getDb, getOpsDb);
 });

@@ -37,6 +37,8 @@ export type ShopBankInfo = {
 };
 
 export type ShopOrder = {
+  kvPushStatus?: string;
+  shippingFeePending?: boolean;
   backorderStatus?: string;
   paidAmount?: number;
   proposal?: { version: string; subtotal: number; total: number; shippingFee: number; depositDue: number; deliveryNote: string };

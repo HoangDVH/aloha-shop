@@ -127,11 +127,20 @@ test("SI-D: phone normalization, address house numbers and mandatory terms", () 
   assert.notEqual(canonicalAddress({ province: "HCM", ward: "A", detail: "12/3 Lê Lợi" }), canonicalAddress({ province: "HCM", ward: "A", detail: "123 Lê Lợi" }));
   assert.equal(applicationSchema.safeParse({ phone: "0912345678", province: "HCM", ward: "AA", detail: "123", fullName: "Fixture", lookupId: "878e0d09-7b4e-4699-865b-91c55a550321", acceptedTerms: false }).success, false);
 });
-test("SI-D: KV group-detail ID is not the membership ID", () => {
-  process.env.KV_GROUP_ID_SI_HCM = "11"; process.env.KV_GROUP_ID_SI_TINH = "22";
-  assert.equal(customerRegion({ customerGroupDetails: [{ id: 999, groupId: 11 }] }), "HCM");
-  assert.equal(customerRegion({ groups: "Khách sỉ HCM" }), null);
-  assert.equal(customerRegion({ confirmedGroupIds: [11, 22] }), null);
+test("SI-D: KV group IDs and groups string both resolve wholesale region", () => {
+  process.env.KV_GROUP_ID_SI_HCM = "13004";
+  process.env.KV_GROUP_ID_SI_TINH = "22";
+  assert.equal(customerRegion({ customerGroupDetails: [{ id: 999, groupId: 13004 }] }), "HCM");
+  assert.equal(customerRegion({ groups: "KHÁCH SỈ - HCM" }), "HCM");
+  assert.equal(customerRegion({ groups: "KHÁCH SỈ - TỈNH" }), "TINH");
+  assert.equal(customerRegion({ groups: "XÓA 3|SÀN THƯƠNG MẠI" }), null);
+  assert.equal(customerRegion({ confirmedGroupIds: [13004, 22] }), null);
+  assert.equal(customerRegion({ groups: "KHÁCH SỈ - HCM", confirmedGroupIds: ["22"] }), null);
+});
+test("SI-D: normalizeWholesalePhone covers +84 and spaced input used by KV lookup", () => {
+  assert.equal(normalizeWholesalePhone("+84 337 095 980"), "0337095980");
+  assert.equal(normalizeWholesalePhone("0337-095-980"), "0337095980");
+  assert.equal(normalizeWholesalePhone(""), "");
 });
 test("SI-E: password reset invalidates an existing access token", async () => {
   const token = signShopAccessToken({ sub: "u", roles: ["customer"], email: "fixture@example.invalid" });
@@ -180,7 +189,7 @@ test("SI-I: administrative merger detection detects old merger divisions", () =>
 });
 
 test("SI-J: lookup recognizes existing KV wholesale customer vs non-si vs new", async () => {
-  process.env.KV_GROUP_ID_SI_HCM = "11";
+  process.env.KV_GROUP_ID_SI_HCM = "13004";
   process.env.KV_GROUP_ID_SI_TINH = "22";
 
   // Mock dữ liệu khách hàng từ KiotViet
@@ -192,7 +201,7 @@ test("SI-J: lookup recognizes existing KV wholesale customer vs non-si vs new", 
     address: "123 Nguyễn Huệ",
     locationName: "Quận 1, Thành phố Hồ Chí Minh",
     wardName: "Phường Bến Nghé",
-    customerGroupDetails: [{ id: 1, groupId: 11 }], // Thuộc nhóm sỉ HCM
+    groups: "KHÁCH SỈ - HCM",
   };
 
   const kvRetailCustomer = {
@@ -203,7 +212,7 @@ test("SI-J: lookup recognizes existing KV wholesale customer vs non-si vs new", 
     address: "456 Lê Lợi",
     locationName: "Quận 1, Thành phố Hồ Chí Minh",
     wardName: "Phường Bến Nghé",
-    customerGroupDetails: [{ id: 2, groupId: 99 }], // Không thuộc nhóm sỉ 11 hay 22
+    groups: "SÀN THƯƠNG MẠI",
   };
 
   // Helper mô phỏng logic phân loại kết quả lookup trong backend/shopWholesale/routes.ts

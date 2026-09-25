@@ -12,6 +12,7 @@ export type ShopProduct = {
   categoryId?: number;
   categoryName?: string;
   gia: number;
+  webPrice?: number;
   priceKind?: "web" | "si" | "si_missing";
   allowBackorder?: boolean;
   ton: number;
@@ -51,6 +52,7 @@ export type ShopVariantModel = {
   ten: string;
   dvt: string;
   gia: number;
+  webPrice?: number;
   priceKind?: "web" | "si" | "si_missing";
   allowBackorder?: boolean;
   ton: number;

@@ -61,13 +61,86 @@ export function registerWholesalePasswordRoutes(app:Express,getDb:()=>Promise<Db
   app.post("/api/shop/admin/si/invite",requireAuth(getOpsDb),requireActive,requireManager,async(req:AuthRequest,res)=>{
     try{
       const body=z.object({email:z.string().trim().email(),fullName:z.string().trim().min(2).max(120),phone:z.string().transform(normalizeWholesalePhone).pipe(z.string().regex(/^0[35789]\d{8}$/))}).parse(req.body);
-      const db=await getDb();const existing=await db.collection(SHOP_ACCOUNTS).findOne({$or:[{email:body.email.toLowerCase()},{phone:body.phone},{phoneNorm:body.phone}]});
-      if(existing)return res.status(409).json({error:"Email/SĐT đã có tài khoản. Khách cần đăng nhập hoặc dùng quên mật khẩu; không tạo tài khoản thứ hai."});
+      const db=await getDb();
       await db.collection(SHOP_ACCOUNTS).createIndex({phoneNorm:1},{unique:true,partialFilterExpression:{siIdentity:true,phoneNorm:{$type:"string"}}});
+      const email=body.email.toLowerCase();
+      const phone=body.phone;
+      const byEmail=await db.collection(SHOP_ACCOUNTS).findOne({email});
+      const byPhone=await db.collection(SHOP_ACCOUNTS).findOne({$or:[{phone},{phoneNorm:phone}]});
+      if(byEmail&&byPhone&&String(byEmail._id)!==String(byPhone._id)){
+        return res.status(409).json({error:"Email và SĐT đang thuộc hai tài khoản khác nhau. Cần đối soát/gộp tay trước khi mời."});
+      }
+      if(byPhone&&!byEmail&&byPhone.email&&String(byPhone.email).toLowerCase()!==email){
+        const masked=String(byPhone.email).replace(/(^.).+(@.*$)/,"$1***$2");
+        return res.status(409).json({error:`SĐT đã gắn tài khoản ${masked}. Hãy mời đúng email đó (nâng cấp cùng tài khoản).`});
+      }
+      const existing=byEmail||byPhone||null;
       const now=new Date().toISOString();
-      const inserted=await db.collection(SHOP_ACCOUNTS).insertOne({...body,email:body.email.toLowerCase(),phoneNorm:body.phone,siIdentity:true,roles:["customer","si"],siStatus:"cho_duyet",active:true,applicationRevision:1,
-        siProfile:{fullName:body.fullName,phone:body.phone},createdAt:now,updatedAt:now,siAudit:[{id:crypto.randomUUID(),action:"invite",actorAdminId:req.auth!.userId,at:now}]});
-      res.json({ok:true,url:await makeToken(db,String(inserted.insertedId),"invite")});
+      const auditBase={id:crypto.randomUUID(),actorAdminId:req.auth!.userId,at:now};
+
+      if(existing){
+        if(existing.active===false){
+          return res.status(409).json({error:"Tài khoản đang khóa. Mở khóa trước khi mời nâng cấp sỉ."});
+        }
+        const roles=Array.isArray(existing.roles)?existing.roles.map(String):[];
+        const siStatus=String(existing.siStatus||"");
+        if(roles.includes("si")&&siStatus==="active"){
+          return res.status(409).json({error:"Tài khoản này đã là khách sỉ đang hoạt động. Không cần mời lại."});
+        }
+        if(roles.includes("si")&&siStatus==="khoa"){
+          return res.status(409).json({error:"Tài khoản sỉ đang bị khóa. Mở khóa / duyệt lại thay vì tạo lời mời mới."});
+        }
+        // Retail or rejected/pending SI: upgrade same account (big-co pattern — never create a second login).
+        const nextRoles=[...new Set([...roles.filter(Boolean),"customer","si"])];
+        const phoneOwner=await db.collection(SHOP_ACCOUNTS).findOne({
+          _id:{$ne:existing._id},$or:[{phone},{phoneNorm:phone}],
+        });
+        if(phoneOwner){
+          return res.status(409).json({error:"SĐT đang được tài khoản khác sử dụng. Không thể gắn vào lời mời này."});
+        }
+        const patch:Record<string,unknown>={
+          fullName:body.fullName||existing.fullName,
+          phone,
+          phoneNorm:phone,
+          siIdentity:true,
+          roles:nextRoles,
+          siStatus:"cho_duyet",
+          updatedAt:now,
+          "siProfile.fullName":body.fullName,
+          "siProfile.phone":phone,
+        };
+        const result=await db.collection(SHOP_ACCOUNTS).updateOne(
+          {_id:existing._id,active:{$ne:false}},
+          {
+            $set:patch,
+            $inc:{applicationRevision:1},
+            $push:{siAudit:{...auditBase,action:siStatus==="cho_duyet"?"invite_resend":"invite_upgrade",fromStatus:siStatus||null,toStatus:"cho_duyet"}} as any,
+          }
+        );
+        if(!result.modifiedCount){
+          return res.status(409).json({error:"Hồ sơ vừa thay đổi. Tải lại rồi thử mời lại."});
+        }
+        const url=await makeToken(db,String(existing._id),"invite");
+        return res.json({
+          ok:true,
+          mode:"upgrade",
+          url,
+          message:"Đã nâng cấp tài khoản khách sẵn có lên hồ sơ sỉ (chờ duyệt). Gửi liên kết để khách đặt/cập nhật mật khẩu và đồng ý điều khoản.",
+        });
+      }
+
+      const inserted=await db.collection(SHOP_ACCOUNTS).insertOne({
+        email,fullName:body.fullName,phone,phoneNorm:phone,siIdentity:true,
+        roles:["customer","si"],siStatus:"cho_duyet",active:true,applicationRevision:1,
+        siProfile:{fullName:body.fullName,phone},createdAt:now,updatedAt:now,
+        siAudit:[{...auditBase,action:"invite"}],
+      });
+      res.json({
+        ok:true,
+        mode:"create",
+        url:await makeToken(db,String(inserted.insertedId),"invite"),
+        message:"Đã tạo tài khoản sỉ mới (chờ duyệt). Gửi liên kết để khách đặt mật khẩu và đồng ý điều khoản.",
+      });
     }catch(error:any){res.status(error.code===11000?409:400).json({error:error.issues?.[0]?.message||"Không tạo được lời mời. Kiểm tra tài khoản trùng."});}
   });
 }

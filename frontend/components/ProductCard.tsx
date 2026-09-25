@@ -23,6 +23,7 @@ function ImagePendingOverlay({ active }: { active: boolean }) {
 export function ProductCard({
   product,
   shopee = false,
+  liveWebPrice,
   liveGia,
   liveTon,
   livePriceKind,
@@ -31,6 +32,7 @@ export function ProductCard({
   product: ShopProduct;
   shopee?: boolean;
   /** Giá mới từ API prices — nếu có thì hiện thay product.gia */
+  liveWebPrice?: number;
   liveGia?: number;
   liveTon?: number;
   livePriceKind?: ShopProduct["priceKind"];
@@ -233,8 +235,11 @@ export function ProductCard({
           {product.ten}
         </Link>
 
-        <SiPriceBadge kind={priceKind} />
-        <div className="mt-auto flex items-end justify-between gap-2 pt-0.5">
+        <div className={`mt-auto flex items-end justify-between gap-2 pt-0.5 ${expectsSi && !pricePending && priceKind === "si" ? "flex-wrap" : ""}`}>
+          <div className={expectsSi && !pricePending && priceKind === "si" ? "min-w-0 w-full" : "min-w-0"}>
+          {expectsSi && !pricePending && priceKind === "si" ? (
+            <SiPriceBadge price={displayGia} webPrice={liveWebPrice ?? product.webPrice} unit={product.dvt} variant="card" />
+          ) : (
           <div
             className={`min-w-0 truncate font-extrabold tracking-tight text-[var(--aloha-price)] ${
               shopee ? "text-[15px] sm:text-base" : "text-base sm:text-lg"
@@ -250,6 +255,8 @@ export function ProductCard({
                 / {product.dvt}
               </span>
             ) : null}
+          </div>
+          )}
           </div>
           {!purchaseBlocked ? (
             <div className="product-card__add-wrap shrink-0">{addBtn}</div>
@@ -270,7 +277,7 @@ export function ProductGrid({
   shopee?: boolean;
   homeRow6?: boolean;
 }) {
-  const [liveMap, setLiveMap] = useState<Record<string, { gia: number; ton: number; priceKind?: ShopProduct["priceKind"]; allowBackorder?: boolean }>>({});
+  const [liveMap, setLiveMap] = useState<Record<string, { gia: number; webPrice?: number; ton: number; priceKind?: ShopProduct["priceKind"]; allowBackorder?: boolean }>>({});
   const masKey = products.map((p) => p.ma).join("|");
 
   useEffect(() => {
@@ -286,12 +293,13 @@ export function ProductGrid({
         const { fetchLivePrices } = await import("@/lib/livePrices");
         const rows = await fetchLivePrices(mas);
         if (cancelled) return;
-        const next: Record<string, { gia: number; ton: number; priceKind?: ShopProduct["priceKind"]; allowBackorder?: boolean }> = {};
+        const next: Record<string, { gia: number; webPrice?: number; ton: number; priceKind?: ShopProduct["priceKind"]; allowBackorder?: boolean }> = {};
         for (const r of rows) {
           const ma = String(r.ma || "").trim().toUpperCase();
           if (!ma) continue;
           next[ma] = {
             gia: Number(r.gia) || 0,
+            webPrice: r.webPrice,
             ton: Number(r.ton) || 0,
             priceKind: r.priceKind, allowBackorder: r.allowBackorder,
           };
@@ -352,6 +360,7 @@ export function ProductGrid({
             key={p.ma}
             product={p}
             shopee={shopee || homeRow6}
+            liveWebPrice={live?.webPrice}
             livePriceKind={live?.priceKind}
             liveAllowBackorder={live?.allowBackorder}
             liveGia={live != null ? live.gia : undefined}

@@ -6,6 +6,7 @@ import { shopApiBase } from "./api";
 export type LivePriceRow = {
   ma: string;
   gia: number;
+  webPrice?: number;
   priceKind?: "web" | "si" | "si_missing";
   allowBackorder?: boolean;
   ton?: number;

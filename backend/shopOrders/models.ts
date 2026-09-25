@@ -194,6 +194,7 @@ export async function ensureShopOrderIndexes(db: Db) {
       db.collection(SHOP_ORDERS).createIndex({ shopAccountId: 1, createdAt: -1 }, { background: true }),
       db.collection(SHOP_ORDERS).createIndex({ createdAt: -1 }, { background: true }),
       db.collection(SHOP_ORDERS).createIndex({ kvOrderId: 1 }, { sparse: true, background: true }),
+      db.collection(SHOP_ORDERS).createIndex({ priceMode: 1, kvPushStatus: 1, kvSyncNextAt: 1 }),
       db.collection(SHOP_ORDERS).createIndex({ ctvCodes: 1 }, { sparse: true, background: true }),
       db
         .collection(SHOP_ORDERS)

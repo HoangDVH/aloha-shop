@@ -603,6 +603,7 @@ function toPublicProduct(doc: Record<string, unknown>) {
     categoryName: categoryName || nhom || undefined,
     gia,
     priceKind,
+    webPrice: resolveShopPrice(doc, "web").gia,
     allowBackorder: doc.allowBackorder !== false,
     ton,
     trongLuong: trongLuong > 0 ? trongLuong : undefined,
@@ -1216,7 +1217,7 @@ export function registerShopApi(
         attrFilters.length > 0 ||
         dvtFilters.length > 0 ||
         Boolean(loai);
-      const cacheKey = `shop:products:v36:${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|maxTon=${maxTon}|${sort}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
+      const cacheKey = `shop:products:v37:${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|maxTon=${maxTon}|${sort}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
       const pinScope = resolvePinBadgeScope({ sort, badge, maxTon });
 
       const { body, cache } = await cachedJson(cacheKey, async () => {

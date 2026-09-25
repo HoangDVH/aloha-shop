@@ -420,7 +420,9 @@ export default function DonHangStatusPage() {
               </div>
             </div>
             <div className="border-t border-[var(--aloha-line)] px-3 py-5 sm:px-8">
-              <BackorderProposal key={order.proposal?.version || order.code} order={order} onAccepted={() => void reload(true)} />
+              {order.kvPushStatus && order.kvPushStatus !== "synced" ? <p className="mb-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Aloha đã lưu yêu cầu. Đơn đang chờ cửa hàng kiểm tra và đồng bộ; bạn không cần đặt lại.</p> : null}
+            {order.shippingFeePending ? <p className="mb-3 text-sm text-stone-600">Tổng tạm tính chưa bao gồm phí giao hàng. Aloha sẽ xác nhận trước khi yêu cầu thanh toán.</p> : null}
+            <BackorderProposal key={order.proposal?.version || order.code} order={order} onAccepted={() => void reload(true)} />
               <OrderStatusTimeline order={order} />
             </div>
           </section>
@@ -478,7 +480,7 @@ export default function DonHangStatusPage() {
                 <div className="mt-3 flex items-end justify-between border-t border-dashed border-[var(--aloha-line)] pt-3">
                   <span className="text-sm font-semibold text-slate-600">Tổng thanh toán</span>
                   <span className="text-xl font-extrabold text-[#EE6055]">
-                    {formatVnd(order.totalPayment ?? order.total)}
+                    {formatVnd(order.total)}
                   </span>
                 </div>
               </section>
@@ -567,7 +569,7 @@ export default function DonHangStatusPage() {
                   <div className="flex items-center justify-between border-t border-dashed border-[var(--aloha-line)] pt-2">
                     <span className="font-extrabold text-[var(--aloha-ink)]">Thành tiền</span>
                     <span className="text-lg font-extrabold text-[#EE6055]">
-                      {formatVnd(order.totalPayment ?? order.total)}
+                      {formatVnd(order.total)}
                     </span>
                   </div>
                 </div>
@@ -610,7 +612,7 @@ export default function DonHangStatusPage() {
                 <p className="truncate text-sm font-extrabold text-[var(--aloha-ink)]">{hero.title}</p>
                 <p className="truncate text-[11px] text-slate-500">
                   {displayShopOrderCode(order)}
-                  {order.method === "Transfer" ? " · Chuyển khoản" : " · COD"}
+                  {order.method === "Pending" ? " · Chưa yêu cầu thanh toán" : order.method === "Transfer" ? " · Chuyển khoản" : " · COD"}
                 </p>
               </div>
             </div>
@@ -622,6 +624,8 @@ export default function DonHangStatusPage() {
           </div>
 
           <div className="mb-3 rounded-xl bg-white px-3 py-4 shadow-sm ring-1 ring-[#E8E2D6] sm:px-5">
+            {order.kvPushStatus && order.kvPushStatus !== "synced" ? <p className="mb-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Aloha đã lưu yêu cầu. Đơn đang chờ cửa hàng kiểm tra và đồng bộ; bạn không cần đặt lại.</p> : null}
+            {order.shippingFeePending ? <p className="mb-3 text-sm text-stone-600">Tổng tạm tính chưa bao gồm phí giao hàng. Aloha sẽ xác nhận trước khi yêu cầu thanh toán.</p> : null}
             <BackorderProposal key={order.proposal?.version || order.code} order={order} onAccepted={() => void reload(true)} />
               <OrderStatusTimeline order={order} />
           </div>
@@ -901,7 +905,7 @@ export default function DonHangStatusPage() {
                   <div className="flex justify-between pt-0.5 text-sm font-extrabold">
                     <span>Tổng</span>
                     <span className="text-[#EE6055]">
-                      {formatVnd(order.totalPayment ?? order.total)}
+                      {formatVnd(order.total)}
                     </span>
                   </div>
                 </div>

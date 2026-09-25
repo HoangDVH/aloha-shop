@@ -133,6 +133,7 @@ export function ProductDetailView({
       ten: selectedModel.ten || product.ten,
       dvt: selectedModel.dvt || product.dvt,
       gia: selectedModel.gia,
+      webPrice: selectedModel.webPrice,
       priceKind: selectedModel.priceKind,
       allowBackorder: selectedModel.allowBackorder,
       ton: selectedModel.ton,
@@ -172,6 +173,7 @@ export function ProductDetailView({
   const [affiliateCtv, setAffiliateCtv] = useState(() => getAffiliateCtvCode());
   const reportedKeyRef = useRef<string>("");
   const [liveGia, setLiveGia] = useState(product.gia);
+  const [liveWebPrice, setLiveWebPrice] = useState(product.webPrice);
   const [liveTon, setLiveTon] = useState(product.ton);
   const [livePriceKind, setLivePriceKind] = useState(product.priceKind);
   const [ctvRate, setCtvRate] = useState<number | null>(null);
@@ -205,9 +207,10 @@ export function ProductDetailView({
 
   useEffect(() => {
     setLiveGia(activeProduct.gia);
+    setLiveWebPrice(activeProduct.webPrice);
     setLivePriceKind(activeProduct.priceKind);
     setLiveTon(activeProduct.ton);
-  }, [activeProduct.ma, activeProduct.gia, activeProduct.ton, activeProduct.priceKind]);
+  }, [activeProduct.ma, activeProduct.gia, activeProduct.ton, activeProduct.priceKind, activeProduct.webPrice]);
 
   // Đổi biến thể → cập nhật URL (giữ ?ctv=), không remount trang.
   useEffect(() => {
@@ -232,6 +235,7 @@ export function ProductDetailView({
         );
         if (cancelled || !hit) return;
         if (Number(hit.gia) >= 0) setLiveGia(Number(hit.gia) || 0);
+        setLiveWebPrice(hit.webPrice);
         setLivePriceKind(hit.priceKind);
         if (hit.ton != null && Number.isFinite(Number(hit.ton))) {
           const next = Number(hit.ton) || 0;
@@ -461,15 +465,18 @@ export function ProductDetailView({
                 </h1>
 
                 <div className="flex flex-wrap items-center gap-3">
+                  {expectsSi && !pricePending && livePriceKind === "si" ? (
+                    <SiPriceBadge price={liveGia} webPrice={liveWebPrice} unit={activeProduct.dvt} />
+                  ) : (
                   <div className="flex flex-wrap items-baseline gap-x-2 text-2xl font-bold text-[var(--aloha-price)] sm:text-[1.75rem]">
                     <span>{pricePending ? "Đang cập nhật…" : livePriceKind === "si_missing" ? "Liên hệ báo giá" : formatVnd(liveGia)}</span>
-                    <SiPriceBadge kind={livePriceKind} />
                     {activeProduct.dvt ? (
                       <span className="text-base font-semibold text-[var(--aloha-muted)] sm:text-lg">
                         / {activeProduct.dvt}
                       </span>
                     ) : null}
                   </div>
+                  )}
                 </div>
 
                 {isCtvAccount ? (
