@@ -2,6 +2,7 @@
 
 import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
+import { ImageIcon, ShieldCheck, X } from "lucide-react";
 import { formatVnd } from "@/lib/api";
 
 export type PolicyConfirmLine = {
@@ -9,7 +10,21 @@ export type PolicyConfirmLine = {
   ten: string;
   qty: number;
   dvt?: string;
+  anh?: string;
 };
+
+function PolicyProductImage({ src }: { src?: string }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [src]);
+  return (
+    <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-stone-200/70 bg-white sm:h-14 sm:w-14">
+      {src && !failed ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="" width={56} height={56} onError={() => setFailed(true)} className="h-full w-full object-contain" />
+      ) : <ImageIcon size={22} className="text-stone-300" aria-hidden />}
+    </span>
+  );
+}
 
 /**
  * Xác nhận trước khi đặt — áp dụng mọi đơn.
@@ -63,17 +78,18 @@ export function PreOrderCodConfirmModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="order-policy-title"
-        className="max-h-[calc(100dvh-24px)] w-full max-w-[600px] overflow-y-auto rounded-[30px] bg-white shadow-[0_28px_80px_rgba(15,32,18,0.22)] sm:max-h-[calc(100dvh-48px)]"
+        className="flex max-h-[calc(100dvh-24px)] w-full max-w-[600px] flex-col overflow-hidden rounded-3xl border border-white/70 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.2)] sm:max-h-[calc(100dvh-48px)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-4 px-5 pb-1 pt-5 sm:px-8 sm:pt-7">
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-stone-100 px-5 py-5 sm:px-7 sm:py-6">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--aloha-green)] sm:text-sm">
+            <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-500">
+              <ShieldCheck size={15} className="text-[var(--aloha-green)]" aria-hidden />
               Chính sách Aloha
             </p>
             <h3
               id="order-policy-title"
-              className="mt-1 text-[26px] font-extrabold leading-tight text-[var(--aloha-ink)] sm:text-[32px]"
+              className="mt-2 text-2xl font-bold leading-tight tracking-tight text-stone-900 sm:text-[28px]"
             >
               Xác nhận đặt hàng
             </h3>
@@ -83,21 +99,33 @@ export function PreOrderCodConfirmModal({
             aria-label="Đóng"
             disabled={submitting}
             onClick={onClose}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xl leading-none text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:opacity-40"
+            className="-mr-1 -mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-stone-400 transition hover:bg-stone-100 hover:text-stone-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-green-800 disabled:opacity-40"
           >
-            ×
+            <X size={20} aria-hidden />
           </button>
         </div>
 
-        <div className="space-y-5 px-5 pb-5 pt-4 sm:px-8 sm:pb-8">
+        <div className="min-h-0 space-y-5 overflow-y-auto overscroll-contain px-5 py-5 sm:px-7">
+          <p className="rounded-2xl border border-[#e9e3d6] bg-[#faf8f2] px-4 py-4 text-[15px] leading-7 text-stone-700 sm:px-5">
+            ALOHA sẽ kiểm tra sản phẩm và gửi hình ảnh thực tế cho bạn xác nhận
+            trước khi đóng gói. Sau khi bạn xác nhận hình ảnh thực tế, ALOHA gửi
+            hướng dẫn thanh toán trước toàn bộ đơn hàng hoặc đặt cọc tối thiểu
+            bằng phí ship. Bạn có đồng ý chính sách này và tiếp tục đặt hàng
+            không?
+          </p>
+
           {lines.length ? (
-            <ul className="max-h-44 divide-y divide-black/[0.04] overflow-auto rounded-2xl bg-[#f6f5f1] px-4 sm:px-5">
+            <ul className="divide-y divide-stone-200/60 rounded-2xl border border-stone-200/70 bg-stone-50/70 px-3 sm:px-4">
               {lines.map((line) => (
-                <li key={line.ma} className="flex items-start justify-between gap-3 py-3.5">
-                  <span className="min-w-0 text-base font-semibold leading-snug text-[var(--aloha-ink)] sm:text-lg">
+                <li
+                  key={line.ma}
+                  className="flex items-center gap-2.5 py-2.5"
+                >
+                  <PolicyProductImage src={line.anh} />
+                  <span className="min-w-0 flex-1 break-words text-[13px] font-medium leading-5 text-stone-800 sm:text-sm">
                     {line.ten}
                   </span>
-                  <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-sm font-bold tabular-nums text-slate-600 shadow-sm">
+                  <span className="max-w-24 shrink-0 rounded-lg border border-stone-200/60 bg-white px-2 py-1 text-[11px] font-medium tabular-nums text-stone-600 sm:text-xs">
                     × {line.qty}
                     {line.dvt ? ` ${line.dvt}` : ""}
                   </span>
@@ -106,29 +134,27 @@ export function PreOrderCodConfirmModal({
             </ul>
           ) : null}
 
-          <div className="flex items-baseline justify-between gap-3">
-            <span className="text-base text-slate-500 sm:text-lg">Tổng tiền ước tính</span>
-            <span className="text-2xl font-extrabold tabular-nums text-[var(--aloha-price)] sm:text-[28px]">
+          {error ? (
+            <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
+              {error}
+            </p>
+          ) : null}
+
+        </div>
+          <div className="grid shrink-0 grid-cols-[1fr_1.4fr] gap-3 border-t border-stone-100 bg-white px-5 pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-7 sm:pb-6">
+          <div className="col-span-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 px-1">
+            <span className="text-sm text-stone-500 sm:text-base">
+              Tổng tiền ước tính
+            </span>
+            <span className="text-xl font-bold tracking-tight tabular-nums text-[var(--aloha-price)] sm:text-2xl">
               {formatVnd(total)}
             </span>
           </div>
-
-          <p className="rounded-[22px] bg-[var(--aloha-green-light)] px-5 py-5 text-base leading-[1.7] text-[var(--aloha-ink)] sm:px-6 sm:py-6 sm:text-lg">
-            Aloha sẽ kiểm tra sản phẩm và gửi hình ảnh cho bạn xác nhận trước khi đóng gói.
-            Sau khi bạn xác nhận ảnh, Aloha gửi hướng dẫn thanh toán trước toàn bộ đơn, hoặc
-            đặt cọc tối thiểu bằng phí ship. Bạn có đồng ý chính sách này và tiếp tục đặt hàng không?
-          </p>
-
-          {error ? (
-            <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
-          ) : null}
-
-          <div className="grid grid-cols-2 gap-2.5 pt-1">
             <button
               type="button"
               disabled={submitting}
               onClick={onClose}
-              className="min-h-14 rounded-full border border-[var(--aloha-line)] text-base font-bold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+              className="min-h-12 rounded-xl border border-stone-200 bg-white text-base font-semibold text-stone-600 transition hover:bg-stone-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-800 disabled:opacity-50"
             >
               Hủy
             </button>
@@ -136,12 +162,11 @@ export function PreOrderCodConfirmModal({
               type="button"
               disabled={submitting}
               onClick={onAgree}
-              className="min-h-14 rounded-full bg-[var(--aloha-green)] text-base font-bold text-white shadow-[0_8px_20px_rgba(47,107,58,0.28)] transition hover:bg-[var(--aloha-green-hover)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+              className="min-h-12 rounded-xl bg-[var(--aloha-green)] text-base font-semibold text-white shadow-sm transition hover:bg-[var(--aloha-green-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-800 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
             >
               {submitting ? "Đang gửi…" : "Đồng ý"}
             </button>
           </div>
-        </div>
       </div>
     </div>
   );

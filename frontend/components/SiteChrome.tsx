@@ -8,6 +8,15 @@ import {
   Menu,
   X,
   BadgePercent,
+  Leaf,
+  MapPin,
+  Phone,
+  Mail,
+  ShoppingBag,
+  LayoutGrid,
+  UserRound,
+  FileText,
+  ChevronRight,
 } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { fetchCategoryTreeCached, shopApiBase, type ShopCategoryNavNode } from "@/lib/api";
@@ -96,6 +105,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
   const navActiveKey = useMemo(() => {
     if (pathname === "/tuyen-ctv" || pathname.startsWith("/tuyen-ctv/")) return "tuyen-ctv";
     if (pathname === "/bai-viet" || pathname.startsWith("/bai-viet/")) return "bai-viet";
+    if (pathname === "/ve-aloha" || pathname.startsWith("/ve-aloha/")) return "ve-aloha";
     if (pathname === "/tim") {
       const sort = searchParams.get("sort") || "";
       const badge = searchParams.get("badge") || "";
@@ -272,6 +282,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                   kind: "link" as const,
                 },
                 { href: "/bai-viet", label: "Bài viết", key: "bai-viet", kind: "link" as const },
+                { href: "/ve-aloha", label: "Về Aloha", key: "ve-aloha", kind: "link" as const },
                 {
                   href: "/dang-ky-si",
                   label: "Đăng ký sỉ",
@@ -408,69 +419,80 @@ export function SiteFooter() {
   return (
     <footer
       id="ve-chung-toi"
-      className="mt-10 border-t border-[var(--aloha-border-brown)]/40 bg-[#FDF6E3] text-[var(--aloha-ink)] md:mt-14"
+      className="relative isolate mt-10 overflow-hidden border-t border-[#e7dfc7] bg-[#FDF6E3] text-[#284d32] md:mt-14"
     >
-      <div className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:grid-cols-2 sm:gap-8 sm:py-10 lg:grid-cols-3">
-        <div>
-          <div className="text-base font-bold text-[var(--aloha-ink)]">{siteName}</div>
-          <p className="mt-2 text-sm leading-relaxed text-[var(--aloha-muted)]">{footer.address}</p>
-        </div>
-        <div className="text-sm">
-          <div className="font-bold text-[var(--aloha-ink)]">Liên hệ</div>
-          <p className="mt-2 text-[var(--aloha-muted)]">
-            Zalo / Điện thoại:{" "}
-            <a
-              href={zaloHref(footer.zalo || footer.phone)}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex min-h-10 items-center font-semibold text-[var(--aloha-green)] underline-offset-2 hover:text-[var(--aloha-green-hover)] hover:underline"
-            >
-              {footer.phone || footer.zalo}
-            </a>
-          </p>
-          {footer.email ? (
-            <p className="mt-1 text-[var(--aloha-muted)]">
-              <a
-                href={`mailto:${footer.email}`}
-                className="inline-flex min-h-10 items-center font-semibold text-[var(--aloha-green)] underline-offset-2 hover:text-[var(--aloha-green-hover)] hover:underline"
-              >
+      {/* Decorative leaves stay behind the content and never intercept links. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/decor/leaves-bl.png" alt="" aria-hidden="true" loading="lazy" width={240} height={240}
+        className="pointer-events-none absolute bottom-0 left-0 -z-10 w-28 opacity-20 sm:w-44 lg:w-60 lg:opacity-35" />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/decor/leaves-br.png" alt="" aria-hidden="true" loading="lazy" width={240} height={240}
+        className="pointer-events-none absolute bottom-0 right-0 -z-10 w-28 opacity-20 sm:w-44 lg:w-60 lg:opacity-35" />
+      <div className="mx-auto grid max-w-7xl gap-4 px-4 pb-7 pt-10 sm:grid-cols-2 sm:px-6 sm:pt-14 lg:grid-cols-[1.15fr_1fr_1fr] lg:gap-5">
+        <section aria-label="Thương hiệu và địa chỉ" className="min-w-0 rounded-3xl border border-white/60 bg-white/45 p-6 sm:col-span-2 sm:p-8 lg:col-span-1">
+          <Link href="/" aria-label={`${siteName} — Trang chủ`} className="inline-block rounded-lg text-[#284d32] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-green-800">
+            <span className="flex items-start gap-1.5 font-serif text-5xl font-semibold leading-none tracking-[0.04em] sm:text-6xl">
+              ALOHA<Leaf size={23} strokeWidth={1.6} className="mt-0.5 shrink-0" aria-hidden />
+            </span>
+            <span className="mt-3 block text-xs font-medium tracking-[0.17em] sm:text-sm">THẾ GIỚI CHẬU CÂY</span>
+          </Link>
+          <address className="mt-7 flex items-start gap-3 text-sm not-italic leading-7 text-stone-600">
+            <MapPin size={23} strokeWidth={1.7} className="mt-0.5 shrink-0 text-[#456a43]" aria-hidden />
+            <span>{footer.address}</span>
+          </address>
+        </section>
+        <section aria-labelledby="footer-contact-title" className="min-w-0 rounded-3xl border border-white/60 bg-white/45 p-6 sm:p-8">
+          <h2 id="footer-contact-title" className="flex items-center gap-3 text-xl font-bold">
+            <Leaf size={25} strokeWidth={1.7} aria-hidden />Liên hệ
+          </h2>
+          <div className="ml-9 mt-3 h-0.5 w-11 bg-[#d8dfbf]" />
+          <div className="mt-6 flex items-center gap-3">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#e9ecd5]"><Phone size={23} strokeWidth={1.7} aria-hidden /></span>
+            <div className="min-w-0">
+              <p className="text-sm text-stone-600">Zalo / Điện thoại:</p>
+              <a href={zaloHref(footer.zalo || footer.phone)} target="_blank" rel="noopener noreferrer"
+                className="inline-flex min-h-11 items-center text-lg font-semibold text-[#2e7139] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+                {footer.phone || footer.zalo}
+              </a>
+            </div>
+          </div>
+          {footer.email && (
+            <div className="mt-4 flex items-center gap-3">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#e9ecd5]"><Mail size={23} strokeWidth={1.7} aria-hidden /></span>
+              <a href={`mailto:${footer.email}`} className="flex min-h-11 min-w-0 items-center break-all text-sm font-semibold text-[#2e7139] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
                 {footer.email}
               </a>
-            </p>
-          ) : null}
-        </div>
-        <div className="text-sm text-[var(--aloha-muted)]">
-          <div className="font-bold text-[var(--aloha-ink)]">Mua sắm</div>
-          <div className="mt-2 flex flex-col">
-            <Link
-              href="/tim"
-              className="inline-flex min-h-10 items-center py-1 hover:text-[var(--aloha-green)]"
-            >
-              Tất cả sản phẩm
-            </Link>
-            <Link
-              href="/tim?badge=noi_bat&inStock=1"
-              className="inline-flex min-h-10 items-center py-1 hover:text-[var(--aloha-green)]"
-            >
-              Ưu đãi
-            </Link>
-            <Link
-              href="/ve-aloha"
-              className="inline-flex min-h-10 items-center py-1 hover:text-[var(--aloha-green)]"
-            >
-              Về Aloha
-            </Link>
-            <Link
-              href="/bai-viet"
-              className="inline-flex min-h-10 items-center py-1 hover:text-[var(--aloha-green)]"
-            >
-              Bài viết
-            </Link>
-          </div>
-        </div>
+            </div>
+          )}
+        </section>
+        <nav aria-labelledby="footer-shopping-title" className="min-w-0 rounded-3xl border border-white/60 bg-white/45 p-6 sm:p-8">
+          <h2 id="footer-shopping-title" className="flex items-center gap-3 text-xl font-bold">
+            <ShoppingBag size={25} strokeWidth={1.7} aria-hidden />Mua sắm
+          </h2>
+          <div className="ml-9 mt-3 h-0.5 w-11 bg-[#d8dfbf]" />
+          <ul className="mt-4 divide-y divide-[#e7dfc7]/60">
+            {[
+              { href: "/tim", label: "Tất cả sản phẩm", icon: LayoutGrid },
+              { href: "/tim?badge=noi_bat&inStock=1", label: "Ưu đãi", icon: BadgePercent },
+              { href: "/ve-aloha", label: "Về Aloha", icon: UserRound },
+              { href: "/bai-viet", label: "Bài viết", icon: FileText },
+            ].map(({ href, label, icon: Icon }) => (
+              <li key={href}>
+                <Link href={href} className="group flex min-h-12 items-center gap-3 rounded-md py-2 text-sm text-stone-600 transition hover:text-[#2e7139] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-800">
+                  <Icon size={21} strokeWidth={1.7} className="shrink-0 text-[#456a43]" aria-hidden />
+                  <span>{label}</span>
+                  <ChevronRight size={17} className="ml-auto shrink-0 text-[#65845a] transition-transform group-hover:translate-x-0.5" aria-hidden />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
       </div>
-      <div className="border-t border-[var(--aloha-border-brown)]/40 px-4 py-4 text-center text-[11px] text-[var(--aloha-muted)]">
-        © {new Date().getFullYear()} {siteName}
+      <div className="mx-auto max-w-7xl px-4 pb-7 sm:px-6">
+        <div className="flex items-center gap-5" aria-hidden="true">
+          <span className="h-px flex-1 bg-[#deddbd]" /><Leaf size={23} strokeWidth={1.6} className="text-[#789461]" /><span className="h-px flex-1 bg-[#deddbd]" />
+        </div>
+        <p className="mt-3 text-center text-xs leading-6 text-stone-600">© {new Date().getFullYear()} {siteName}</p>
       </div>
     </footer>
   );

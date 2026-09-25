@@ -23,7 +23,10 @@ import {
   X,
 } from "lucide-react";
 import { useShopAuth } from "@/components/ShopAuthProvider";
-import { useShopRegisterMutation, useShopUpdateMeMutation } from "@/lib/authQueries";
+import {
+  useShopRegisterMutation,
+  useShopUpdateMeMutation,
+} from "@/lib/authQueries";
 import { useShopRouter } from "@/lib/useShopRouter";
 import { CTV_PENDING_PATH, isCtvPendingBlocked } from "@/lib/ctvGate";
 import { SHOP_BRAND } from "@/lib/brand";
@@ -38,12 +41,15 @@ import {
   type CtvRecruitLoggedInInput,
 } from "@/lib/ctvRecruitSchema";
 import { PasswordField } from "@/components/PasswordField";
-import { CtvTermsAccept, CtvTermsBody } from "@/components/ctv-recruit/CtvTermsAccept";
+import {
+  CtvTermsAccept,
+  CtvTermsBody,
+} from "@/components/ctv-recruit/CtvTermsAccept";
 
 type CtvFormValues = CtvRecruitGuestInput | CtvRecruitLoggedInInput;
 
 const QUICK_BENEFITS = [
-  { icon: Percent, title: "Hoa hồng đến 15%" },
+  { icon: Percent, title: "Hoa hồng từ 10% - 15%" },
   { icon: Boxes, title: "4.000+ sản phẩm" },
   { icon: Sparkles, title: "Công cụ bán sẵn" },
   { icon: Wallet, title: "Thanh toán nhanh" },
@@ -106,10 +112,11 @@ function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
   const [done, setDone] = useState(false);
   const loggedIn = Boolean(user);
   const rejected = Boolean(
-    user?.roles.includes("ctv") && user.ctvStatus === "tu_choi"
+    user?.roles.includes("ctv") && user.ctvStatus === "tu_choi",
   );
-  const locked =
-    Boolean(user && (user.active === false || user.ctvStatus === "khoa"));
+  const locked = Boolean(
+    user && (user.active === false || user.ctvStatus === "khoa"),
+  );
 
   const schema = loggedIn ? ctvRecruitLoggedInSchema : ctvRecruitGuestSchema;
 
@@ -130,7 +137,9 @@ function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
       phone: user?.phone || "",
       zalo: user?.zalo || "",
       addressText: user?.addressText || "",
-      referralChannel: (user?.referralChannel as CtvRecruitGuestInput["referralChannel"]) || undefined,
+      referralChannel:
+        (user?.referralChannel as CtvRecruitGuestInput["referralChannel"]) ||
+        undefined,
       channelUrl: user?.channelUrl || "",
       referralSource: user?.referralSource || "",
       hasBusinessExp: user?.hasBusinessExp
@@ -151,7 +160,6 @@ function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
           }),
     },
   });
-
 
   const hasExp = watch("hasBusinessExp");
   const agreeTerms = watch("agreeTerms");
@@ -204,13 +212,17 @@ function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
       onClose?.();
       if (isCtvPendingBlocked(dataUser) || dataUser.ctvStatus === "cho_duyet") {
         router.replace(CTV_PENDING_PATH);
-      } else if (dataUser.roles.includes("ctv") && dataUser.ctvStatus === "active") {
+      } else if (
+        dataUser.roles.includes("ctv") &&
+        dataUser.ctvStatus === "active"
+      ) {
         router.replace("/cong-tac-vien");
       } else {
         router.replace(CTV_PENDING_PATH);
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Không gửi được. Thử lại sau.";
+      const msg =
+        err instanceof Error ? err.message : "Không gửi được. Thử lại sau.";
       setError("root", { message: msg });
     }
   });
@@ -218,7 +230,11 @@ function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
   if (done) {
     return (
       <div className="rounded-2xl bg-white p-6 text-center shadow-lg ring-1 ring-[var(--aloha-line)] sm:p-8">
-        <CheckCircle2 className="mx-auto text-[var(--aloha-green)]" size={40} strokeWidth={1.75} />
+        <CheckCircle2
+          className="mx-auto text-[var(--aloha-green)]"
+          size={40}
+          strokeWidth={1.75}
+        />
         <h3 className="mt-3 text-lg font-extrabold text-[var(--aloha-green-dark)]">
           Đã gửi đăng ký CTV
         </h3>
@@ -291,16 +307,29 @@ function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
             Liên hệ
           </legend>
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-slate-600" htmlFor="ctv-name">
+            <label
+              className="mb-1.5 block text-xs font-semibold text-slate-600"
+              htmlFor="ctv-name"
+            >
               Họ và tên
             </label>
-            <input id="ctv-name" placeholder="Nguyễn Văn A" className="auth-field" {...register("fullName")} />
+            <input
+              id="ctv-name"
+              placeholder="Nguyễn Văn A"
+              className="auth-field"
+              {...register("fullName")}
+            />
             {fieldErr("fullName") ? (
-              <p className="mt-1 text-xs font-medium text-red-600">{fieldErr("fullName")}</p>
+              <p className="mt-1 text-xs font-medium text-red-600">
+                {fieldErr("fullName")}
+              </p>
             ) : null}
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-slate-600" htmlFor="ctv-phone">
+            <label
+              className="mb-1.5 block text-xs font-semibold text-slate-600"
+              htmlFor="ctv-phone"
+            >
               Số điện thoại
             </label>
             <input
@@ -311,11 +340,16 @@ function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
               {...register("phone")}
             />
             {fieldErr("phone") ? (
-              <p className="mt-1 text-xs font-medium text-red-600">{fieldErr("phone")}</p>
+              <p className="mt-1 text-xs font-medium text-red-600">
+                {fieldErr("phone")}
+              </p>
             ) : null}
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-slate-600" htmlFor="ctv-zalo">
+            <label
+              className="mb-1.5 block text-xs font-semibold text-slate-600"
+              htmlFor="ctv-zalo"
+            >
               Zalo
             </label>
             <input
@@ -325,13 +359,18 @@ function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
               {...register("zalo")}
             />
             {fieldErr("zalo") ? (
-              <p className="mt-1 text-xs font-medium text-red-600">{fieldErr("zalo")}</p>
+              <p className="mt-1 text-xs font-medium text-red-600">
+                {fieldErr("zalo")}
+              </p>
             ) : null}
           </div>
           {!loggedIn ? (
             <>
               <div>
-                <label className="mb-1.5 block text-xs font-semibold text-slate-600" htmlFor="ctv-email">
+                <label
+                  className="mb-1.5 block text-xs font-semibold text-slate-600"
+                  htmlFor="ctv-email"
+                >
                   Email
                 </label>
                 <input
@@ -361,18 +400,24 @@ function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
                 label="Xác nhận mật khẩu"
                 autoComplete="new-password"
                 placeholder="Nhập lại mật khẩu"
-                error={fieldErr("passwordConfirm" as keyof CtvFormValues) || undefined}
+                error={
+                  fieldErr("passwordConfirm" as keyof CtvFormValues) ||
+                  undefined
+                }
                 {...register("passwordConfirm" as keyof CtvFormValues)}
               />
             </>
           ) : (
             <p className="rounded-xl bg-[var(--aloha-green-light)]/70 px-3 py-2 text-xs text-[var(--aloha-muted)]">
-              Đang nộp trên tài khoản <strong>{user?.email}</strong> — không cần nhập lại email /
-              mật khẩu.
+              Đang nộp trên tài khoản <strong>{user?.email}</strong> — không cần
+              nhập lại email / mật khẩu.
             </p>
           )}
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-slate-600" htmlFor="ctv-addr">
+            <label
+              className="mb-1.5 block text-xs font-semibold text-slate-600"
+              htmlFor="ctv-addr"
+            >
               Địa chỉ
             </label>
             <input
@@ -382,7 +427,9 @@ function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
               {...register("addressText")}
             />
             {fieldErr("addressText") ? (
-              <p className="mt-1 text-xs font-medium text-red-600">{fieldErr("addressText")}</p>
+              <p className="mt-1 text-xs font-medium text-red-600">
+                {fieldErr("addressText")}
+              </p>
             ) : null}
           </div>
         </fieldset>
@@ -419,7 +466,9 @@ function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
             )}
           />
           {fieldErr("hasBusinessExp") ? (
-            <p className="text-xs font-medium text-red-600">{fieldErr("hasBusinessExp")}</p>
+            <p className="text-xs font-medium text-red-600">
+              {fieldErr("hasBusinessExp")}
+            </p>
           ) : null}
           {hasExp === "co_roi" ? (
             <div className="space-y-3 rounded-xl bg-[#FDF6E3]/70 p-3 ring-1 ring-[var(--aloha-border-brown)]/40">
@@ -475,7 +524,11 @@ function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
                 >
                   Bạn bán chủ yếu trên kênh nào?
                 </label>
-                <select id="ctv-channel" className="auth-field" {...register("referralChannel")}>
+                <select
+                  id="ctv-channel"
+                  className="auth-field"
+                  {...register("referralChannel")}
+                >
                   <option value="">— Chọn kênh —</option>
                   {CTV_REFERRAL_CHANNELS.map((c) => (
                     <option key={c.value} value={c.value}>
@@ -503,7 +556,9 @@ function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
                   {...register("channelUrl")}
                 />
                 {fieldErr("channelUrl") ? (
-                  <p className="mt-1 text-xs font-medium text-red-600">{fieldErr("channelUrl")}</p>
+                  <p className="mt-1 text-xs font-medium text-red-600">
+                    {fieldErr("channelUrl")}
+                  </p>
                 ) : null}
               </div>
             </div>
@@ -515,11 +570,18 @@ function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
             Bạn biết đến Aloha
           </legend>
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-slate-600" htmlFor="ctv-source">
+            <label
+              className="mb-1.5 block text-xs font-semibold text-slate-600"
+              htmlFor="ctv-source"
+            >
               Bạn biết đến Aloha qua đâu?{" "}
               <span className="font-normal text-slate-400">(tuỳ chọn)</span>
             </label>
-            <select id="ctv-source" className="auth-field" {...register("referralSource")}>
+            <select
+              id="ctv-source"
+              className="auth-field"
+              {...register("referralSource")}
+            >
               <option value="">— Chọn nguồn —</option>
               {CTV_REFERRAL_SOURCES.map((s) => (
                 <option key={s} value={s}>
@@ -534,7 +596,10 @@ function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
           agreed={agreeTerms === true}
           error={fieldErr("agreeTerms") || undefined}
           onAgreed={() => {
-            setValue("agreeTerms", true, { shouldValidate: true, shouldDirty: true });
+            setValue("agreeTerms", true, {
+              shouldValidate: true,
+              shouldDirty: true,
+            });
             clearErrors("agreeTerms");
           }}
         />
@@ -542,9 +607,13 @@ function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
         {errors.root?.message ? (
           <div className="rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-700 ring-1 ring-red-100">
             <p>{errors.root.message}</p>
-            {/đã được đăng ký|Email đã/i.test(errors.root.message) && !loggedIn ? (
+            {/đã được đăng ký|Email đã/i.test(errors.root.message) &&
+            !loggedIn ? (
               <p className="mt-1 text-xs font-normal">
-                <Link href={shopLoginHref("/tuyen-ctv")} className="font-bold underline">
+                <Link
+                  href={shopLoginHref("/tuyen-ctv")}
+                  className="font-bold underline"
+                >
                   Đăng nhập
                 </Link>{" "}
                 rồi nộp hồ sơ trên đúng tài khoản đó.
@@ -562,7 +631,11 @@ function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
         </button>
 
         <p className="flex items-center justify-center gap-1.5 text-center text-[11px] text-[var(--aloha-muted)]">
-          <ShieldCheck size={14} className="text-[var(--aloha-green)]" aria-hidden />
+          <ShieldCheck
+            size={14}
+            className="text-[var(--aloha-green)]"
+            aria-hidden
+          />
           Thông tin của bạn được bảo mật tuyệt đối
         </p>
 
@@ -605,28 +678,40 @@ export function CtvRecruitLanding() {
   const closeForm = () => setFormOpen(false);
 
   return (
-    <div className="bg-[#FAF9F6] text-[#202622]">
+    <div className="bg-[#F7F7F4] text-[#202622]">
       {/* Hero — 2 cột kiểu landing Affiliate sàn TMĐT */}
-      <section className="relative overflow-hidden border-b border-stone-200/70 bg-[#FAF9F6]">
+      <section className="relative overflow-hidden border-b border-stone-200/70 bg-[linear-gradient(135deg,#FFF8E8_0%,#FAF9F6_100%)]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/decor/leaves-tr.png"
           alt=""
           aria-hidden
-          className="pointer-events-none absolute -right-4 top-0 z-0 h-28 w-28 opacity-[0.12] sm:h-44 sm:w-44"
+          className="pointer-events-none absolute -right-4 top-0 z-0 h-28 w-28 opacity-[0.06] sm:h-44 sm:w-44"
         />
         <div className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:py-12">
-          <div className="mx-auto max-w-2xl text-center">
-            <p className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1 text-[11px] font-bold tracking-wide text-[#202622] uppercase">
-              <Sprout size={14} aria-hidden />
-              Cộng tác viên Aloha
-            </p>
-            <h1 className="mt-4 text-[1.85rem] font-extrabold leading-[1.2] tracking-tight text-[#202622] sm:text-[2.35rem]">
-              Chia sẻ cây xanh — <span className="text-[var(--aloha-green-dark)]">nhận hoa hồng</span>
+          <div className="mx-auto max-w-4xl text-center">
+            <h1 className="text-[1.85rem] font-extrabold leading-[1.2] tracking-tight text-[#202622] sm:text-[2.35rem]">
+              Chia sẻ cây xanh —{" "}
+              <span className="text-[var(--aloha-green-dark)]">
+                nhận hoa hồng
+              </span>
             </h1>
-            <p className="mx-auto mt-3 max-w-lg text-[15px] leading-relaxed text-slate-600 sm:text-base">
-              Đăng ký miễn phí, lấy link bán, nhận hoa hồng đến 15% mỗi đơn thành công.
-            </p>
+          <ul className="mx-auto mt-5 grid max-w-3xl grid-cols-2 gap-x-4 gap-y-3 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-6">
+            {QUICK_BENEFITS.map(({ icon: Icon, title }) => (
+              <li
+                key={title}
+                className="inline-flex items-center gap-2 text-[13px] font-medium text-stone-600 sm:text-sm"
+              >
+                <Icon
+                  size={16}
+                  strokeWidth={2}
+                  className="shrink-0 text-[#526759]"
+                  aria-hidden
+                />
+                {title}
+              </li>
+            ))}
+          </ul>
 
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               <button
@@ -649,22 +734,7 @@ export function CtvRecruitLanding() {
           </div>
 
           {/* Điểm nổi bật — chỉ tiêu đề ngắn */}
-          <ul className="mx-auto mt-8 grid max-w-3xl grid-cols-2 gap-x-4 gap-y-3 border-t border-stone-200/70 pt-5 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-6">
-            {QUICK_BENEFITS.map(({ icon: Icon, title }) => (
-              <li
-                key={title}
-                className="inline-flex items-center gap-2 text-[13px] font-medium text-stone-600 sm:text-sm"
-              >
-                <Icon
-                  size={16}
-                  strokeWidth={2}
-                  className="shrink-0 text-[#526759]"
-                  aria-hidden
-                />
-                {title}
-              </li>
-            ))}
-          </ul>
+
         </div>
       </section>
 
@@ -683,10 +753,7 @@ export function CtvRecruitLanding() {
             onClick={closeForm}
           />
           <div className="relative z-[1] max-h-[min(92svh,720px)] w-full max-w-lg overflow-y-auto rounded-t-2xl sm:rounded-2xl">
-            <CtvRecruitForm
-              key={user?.id || "guest"}
-              onClose={closeForm}
-            />
+            <CtvRecruitForm key={user?.id || "guest"} onClose={closeForm} />
           </div>
         </div>
       ) : null}
@@ -705,13 +772,17 @@ export function CtvRecruitLanding() {
           {WHY_CARDS.map(({ icon: Icon, title, desc }) => (
             <article
               key={title}
-              className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[var(--aloha-line)] transition hover:-translate-y-0.5 hover:shadow-md"
+              className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-200 transition hover:-translate-y-0.5 hover:shadow-md"
             >
               <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-stone-100 text-[#526759]">
                 <Icon size={22} strokeWidth={1.75} aria-hidden />
               </span>
-              <h3 className="mt-3 text-[15px] font-extrabold text-[var(--aloha-ink)]">{title}</h3>
-              <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--aloha-muted)]">{desc}</p>
+              <h3 className="mt-3 text-[15px] font-extrabold text-[var(--aloha-ink)]">
+                {title}
+              </h3>
+              <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--aloha-muted)]">
+                {desc}
+              </p>
             </article>
           ))}
         </div>
@@ -726,7 +797,10 @@ export function CtvRecruitLanding() {
           </h2>
           <div className="mt-10 grid gap-6 md:grid-cols-3 md:gap-4">
             {STEPS.map((step, i) => (
-              <div key={step.n} className="relative flex flex-col items-center text-center md:px-4">
+              <div
+                key={step.n}
+                className="relative flex flex-col items-center text-center md:px-4"
+              >
                 {i < STEPS.length - 1 ? (
                   <span
                     className="pointer-events-none absolute top-7 left-[58%] hidden h-0.5 w-[84%] bg-stone-200 md:block"
@@ -739,8 +813,12 @@ export function CtvRecruitLanding() {
                 <span className="mt-3 text-[#526759]">
                   <step.icon size={22} strokeWidth={1.75} aria-hidden />
                 </span>
-                <h3 className="mt-2 text-base font-extrabold text-[var(--aloha-ink)]">{step.title}</h3>
-                <p className="mt-1.5 max-w-[16rem] text-sm text-[var(--aloha-muted)]">{step.desc}</p>
+                <h3 className="mt-2 text-base font-extrabold text-[var(--aloha-ink)]">
+                  {step.title}
+                </h3>
+                <p className="mt-1.5 max-w-[16rem] text-sm text-[var(--aloha-muted)]">
+                  {step.desc}
+                </p>
               </div>
             ))}
           </div>
@@ -759,32 +837,6 @@ export function CtvRecruitLanding() {
           <div className="mt-4">
             <CtvTermsBody />
           </div>
-        </div>
-      </section>
-
-      {/* Trust strip */}
-      <section className="border-t border-stone-200 bg-[#F3F2EE] py-10">
-        <div className="mx-auto flex max-w-7xl flex-col gap-8 px-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="grid flex-1 gap-6 sm:grid-cols-3">
-            {[
-              { icon: Package, title: "Sản phẩm chất lượng", desc: "Cây & chậu chọn lọc" },
-              { icon: ShieldCheck, title: "Đóng gói cẩn thận", desc: "Giao hàng toàn quốc" },
-              { icon: Headphones, title: "Hỗ trợ 24/7", desc: "Zalo / hotline sẵn sàng" },
-            ].map(({ icon: Icon, title, desc }) => (
-              <div key={title} className="flex items-start gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#526759] ring-1 ring-stone-200">
-                  <Icon size={20} strokeWidth={1.75} aria-hidden />
-                </span>
-                <div>
-                  <div className="text-sm font-bold text-[var(--aloha-ink)]">{title}</div>
-                  <p className="text-xs text-[var(--aloha-muted)]">{desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="max-w-sm text-lg font-extrabold leading-snug text-[#202622] sm:text-xl lg:text-right">
-            Cùng Aloha lan tỏa màu xanh
-          </p>
         </div>
       </section>
     </div>

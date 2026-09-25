@@ -325,12 +325,37 @@ export function ProductVariantPicker({
   axes,
   selected,
   onPick,
+  sheet = false,
 }: {
   axes: ShopVariantAxis[];
   selected: Record<string, string>;
   onPick: (axisName: string, value: string) => void;
+  sheet?: boolean;
 }) {
   if (!axes.length) return null;
+  if (sheet) return (
+    <div className="space-y-6">
+      {axes.map(ax => {
+        const withImages = ax.kind === "attr" && ax.values.some(v => v.image);
+        return <fieldset key={ax.name}>
+          <legend className="mb-3 text-base font-semibold text-stone-900">{ax.name} ({ax.values.length})</legend>
+          <div className={withImages ? "grid grid-cols-3 gap-2" : "flex flex-wrap gap-2"}>
+            {ax.values.map(v => {
+              const active = norm(selected[ax.name] || "") === norm(v.value);
+              return <button key={v.value} type="button" aria-pressed={active} disabled={!v.available && !active} onClick={() => onPick(ax.name, v.value)}
+                className={`min-w-0 overflow-hidden rounded-xl border text-sm transition disabled:opacity-35 ${active ? "border-[#e91e50] bg-[#fff5f7] text-[#c91543] ring-1 ring-[#e91e50]" : "border-stone-200 bg-white text-stone-800"} ${withImages ? "flex flex-col" : "min-h-11 min-w-16 px-4 py-2"}`}>
+                {withImages && <div className="aspect-square w-full bg-stone-50">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {v.image && <img src={v.image} alt="" loading="lazy" className="h-full w-full object-contain" />}
+                </div>}
+                <span className={withImages ? "w-full break-words px-2 py-2.5 text-center" : ""}>{v.value}{v.outOfStock && <span className="mt-1 block text-[11px] text-amber-700">Đặt trước</span>}</span>
+              </button>;
+            })}
+          </div>
+        </fieldset>;
+      })}
+    </div>
+  );
   return (
     <div className="space-y-3">
       {axes.map((ax) => (

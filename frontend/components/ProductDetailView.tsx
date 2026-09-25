@@ -15,6 +15,7 @@ import {
 } from "@/components/ProductVariantPicker";
 import { ProductGallery } from "@/components/pdp/ProductGallery";
 import { ProductStickyCta } from "@/components/pdp/ProductStickyCta";
+import { ProductPurchaseSheet } from "@/components/pdp/ProductPurchaseSheet";
 import {
   buildProductShareUrl,
   getAffiliateCtvCode,
@@ -166,6 +167,7 @@ export function ProductDetailView({
   }, [activeProduct.videos, activeProduct.videoUrl]);
 
   const [qty, setQty] = useState(1);
+  const [purchaseSheetOpen, setPurchaseSheetOpen] = useState(false);
   const cartQty = useCart(s => s.lines.find(l => l.ma === activeProduct.ma)?.qty || 0);
   const [affiliateCtv, setAffiliateCtv] = useState(() => getAffiliateCtvCode());
   const reportedKeyRef = useRef<string>("");
@@ -681,8 +683,28 @@ export function ProductDetailView({
         preOrder={isPreOrder}
         purchaseDisabled={purchaseDisabled}
         onAddCart={() => addCart(false)}
-        onBuyNow={() => addCart(true)}
+        buyDisabled={false}
+        onBuyNow={() => setPurchaseSheetOpen(true)}
       />
+      {purchaseSheetOpen && (
+        <ProductPurchaseSheet
+          name={activeProduct.ten}
+          image={gallery[0] || activeProduct.anh}
+          price={liveGia}
+          pending={pricePending || variantsLoading}
+          disabled={purchaseDisabled || (activeProduct.allowBackorder === false && qty + cartQty > liveTon)}
+          status={variantsLoading ? "Đang tải biến thể…" : needPick ? "Vui lòng chọn đủ phân loại sản phẩm." : pricePending ? "Đang cập nhật giá…" : zeroPriceBlocked ? "Sản phẩm chưa mở bán." : activeProduct.allowBackorder === false && liveTon < 1 ? "Sản phẩm đã hết hàng." : activeProduct.allowBackorder === false && qty + cartQty > liveTon ? "Giỏ hàng đã có sản phẩm này. Số lượng vượt tồn kho hiện tại." : isPreOrder ? "Đặt trước — thời gian giao sẽ được Aloha xác nhận." : `Còn ${formatTonDisplay(liveTon)} ${activeProduct.dvt || "sản phẩm"}`}
+          selection={Object.values(variantSelected).filter(Boolean).join(" · ") || `Mã: ${activeProduct.ma}`}
+          qty={qty}
+          maxQty={activeProduct.allowBackorder === false ? Math.max(1, Math.min(10000, Math.floor(liveTon - cartQty))) : 10000}
+          onQty={setQty}
+          onClose={() => setPurchaseSheetOpen(false)}
+          onBuy={() => { setPurchaseSheetOpen(false); addCart(true); }}
+          preOrder={isPreOrder}
+        >
+          <ProductVariantPicker axes={variantAxes} selected={variantSelected} onPick={pickVariant} sheet />
+        </ProductPurchaseSheet>
+      )}
     </div>
   );
 }

@@ -266,6 +266,12 @@ export function CategoryMegaMenu({
               {roots.map((node) => {
                 const selected = active?.id === node.id;
                 const hasKids = nodeSubs(node).length > 0;
+                const showProductCount = !hasKids && nameMatchesAny(node.name, [
+                  "BÌNH CẮM HOA", "BÌNH HOA", "HẠT GIỐNG",
+                ]);
+                const productCount = Number.isFinite(node.count)
+                  ? Math.max(0, Math.trunc(node.count))
+                  : null;
                 return (
                   <Link
                     key={node.id}
@@ -300,6 +306,18 @@ export function CategoryMegaMenu({
                         }
                         aria-hidden
                       />
+                    ) : showProductCount && productCount !== null ? (
+                      <span
+                        title={`${productCount.toLocaleString("vi-VN")} sản phẩm`}
+                        aria-label={`${productCount.toLocaleString("vi-VN")} sản phẩm`}
+                        className={`inline-flex h-6 min-w-7 shrink-0 items-center justify-center rounded-full px-2 text-[11px] font-medium tabular-nums ${
+                          selected
+                            ? "bg-white/75 text-[var(--aloha-green-dark)]"
+                            : "bg-stone-100 text-stone-500"
+                        }`}
+                      >
+                        {productCount.toLocaleString("vi-VN")}
+                      </span>
                     ) : null}
                   </Link>
                 );

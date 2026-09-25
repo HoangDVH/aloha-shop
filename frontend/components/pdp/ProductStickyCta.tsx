@@ -8,6 +8,7 @@ type Props = {
   needPick: boolean;
   preOrder?: boolean;
   purchaseDisabled: boolean;
+  buyDisabled?: boolean;
   onAddCart: () => void;
   onBuyNow: () => void;
 };
@@ -19,6 +20,7 @@ export function ProductStickyCta({
   needPick,
   preOrder = false,
   purchaseDisabled,
+  buyDisabled = purchaseDisabled,
   onAddCart,
   onBuyNow,
 }: Props) {
@@ -47,7 +49,7 @@ export function ProductStickyCta({
           </button>
           <button
             type="button"
-            disabled={purchaseDisabled}
+            disabled={buyDisabled}
             onClick={onBuyNow}
             className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--aloha-green)] px-4 text-xs font-bold text-white disabled:opacity-40"
           >

@@ -383,6 +383,7 @@ function CheckoutConfirm() {
           ten: l.ten,
           qty: l.qty,
           dvt: l.dvt,
+          anh: l.anh,
         }))}
         open={policyModalOpen}
         total={grandTotal}

@@ -11,19 +11,24 @@ export function CtvTermsBody() {
   return (
     <div className="space-y-4 text-sm leading-relaxed text-slate-600">
       <p>
-        Khi đăng ký làm cộng tác viên (CTV) của {SHOP_BRAND}, bạn xác nhận đã đọc, hiểu và đồng ý
-        tuân thủ toàn bộ điều khoản dưới đây. Điều khoản có hiệu lực kể từ khi bạn bấm «Tôi đã
-        hiểu» và gửi hồ sơ đăng ký.
+        Khi đăng ký làm cộng tác viên (CTV) của {SHOP_BRAND}, bạn xác nhận đã
+        đọc, hiểu và đồng ý tuân thủ toàn bộ điều khoản dưới đây. Điều khoản có
+        hiệu lực kể từ khi bạn bấm «Tôi đã hiểu» và gửi hồ sơ đăng ký.
       </p>
 
       <div>
         <h4 className="font-bold text-slate-800">1. Điều kiện tham gia</h4>
         <ul className="mt-1.5 list-disc space-y-1 pl-5">
-          <li>Đủ 18 tuổi, cung cấp thông tin trung thực (họ tên, SĐT, Zalo, địa chỉ, kênh bán).</li>
-          <li>Có kênh bán / chia sẻ hợp pháp (Facebook, TikTok, Zalo, website…).</li>
           <li>
-            Hồ sơ chỉ được kích hoạt sau khi Aloha duyệt; Aloha có quyền từ chối mà không cần nêu lý
-            do chi tiết.
+            Cung cấp thông tin trung thực (họ tên, SĐT, Zalo, địa chỉ, kênh
+            bán,...).
+          </li>
+          <li>
+            Có kênh bán / chia sẻ hợp pháp (Facebook, TikTok, Zalo, website…).
+          </li>
+          <li>
+            Hồ sơ chỉ được kích hoạt sau khi ALOHA duyệt, ALOHA có quyền từ chối
+            mà không cần nêu lý do chi tiết.
           </li>
         </ul>
       </div>
@@ -31,25 +36,43 @@ export function CtvTermsBody() {
       <div>
         <h4 className="font-bold text-slate-800">2. Vai trò & nghĩa vụ CTV</h4>
         <ul className="mt-1.5 list-disc space-y-1 pl-5">
-          <li>Chỉ dùng link / mã giới thiệu được cấp để chia sẻ sản phẩm chính thức của Aloha.</li>
           <li>
-            Không được tự ý thay đổi giá, chính sách đổi trả, hoặc cam kết vượt thẩm quyền cửa hàng.
+            Chỉ dùng link / mã giới thiệu được cấp để chia sẻ sản phẩm chính
+            thức của Aloha.
           </li>
-          <li>Không đăng nội dung sai sự thật, xúc phạm, hoặc làm ảnh hưởng uy tín thương hiệu.</li>
-          <li>Tuân thủ hướng dẫn bán hàng, hình ảnh và nội dung mẫu do Aloha cung cấp (nếu có).</li>
+          <li>
+            Không được tự ý thay đổi giá, chính sách đổi trả, hoặc cam kết vượt
+            thẩm quyền cửa hàng.
+          </li>
+          <li>
+            Không đăng nội dung sai sự thật, xúc phạm, hoặc làm ảnh hưởng uy tín
+            thương hiệu.
+          </li>
+          <li>
+            Tuân thủ hướng dẫn bán hàng, hình ảnh và nội dung mẫu do Aloha cung
+            cấp (nếu có).
+          </li>
         </ul>
       </div>
 
       <div>
         <h4 className="font-bold text-slate-800">3. Hoa hồng & thanh toán</h4>
         <ul className="mt-1.5 list-disc space-y-1 pl-5">
-          <li>Hoa hồng chỉ tính trên đơn hợp lệ theo chính sách Aloha (đã giao / đủ điều kiện chi).</li>
           <li>
-            Đơn hủy, hoàn, gian lận hoặc không đủ điều kiện sẽ không được tính / bị thu hồi hoa hồng.
+            Hoa hồng chỉ tính trên đơn hợp lệ theo chính sách Aloha (đã giao /
+            đủ điều kiện chi).
           </li>
-          <li>Thanh toán theo kỳ và theo thông tin tài khoản ngân hàng CTV đã khai báo.</li>
           <li>
-            Mức hoa hồng có thể thay đổi theo sản phẩm / chương trình; Aloha thông báo trên cổng CTV.
+            Đơn hủy, hoàn, gian lận hoặc không đủ điều kiện sẽ không được tính /
+            bị thu hồi hoa hồng.
+          </li>
+          <li>
+            Thanh toán theo kỳ và theo thông tin tài khoản ngân hàng CTV đã khai
+            báo.
+          </li>
+          <li>
+            Mức hoa hồng có thể thay đổi theo sản phẩm / chương trình; Aloha
+            thông báo trên cổng CTV.
           </li>
         </ul>
       </div>
@@ -58,13 +81,16 @@ export function CtvTermsBody() {
         <h4 className="font-bold text-slate-800">4. Cấm gian lận</h4>
         <ul className="mt-1.5 list-disc space-y-1 pl-5">
           <li>
-            Cấm tự mua để hưởng hoa hồng, tạo đơn ảo, dùng SĐT / tài khoản giả, hoặc thao túng hệ
-            thống.
+            Cấm tự mua để hưởng hoa hồng, tạo đơn ảo, dùng SĐT / tài khoản giả,
+            hoặc thao túng hệ thống.
           </li>
-          <li>Cấm spam, quấy rối khách hàng, hoặc dùng công cụ bot trái phép.</li>
           <li>
-            Vi phạm có thể dẫn tới hủy hoa hồng, khóa tài khoản CTV và từ chối thanh toán các khoản
-            liên quan.
+            Cấm spam, quấy rối khách hàng, hoặc dùng công cụ bot trái phép.
+          </li>
+          <li>
+            Vi phạm có thể dẫn tới hủy hoa hồng, khóa tài khoản CTV và từ chối
+            thanh toán các khoản liên quan, thực hiện xử lí theo quy định pháp
+            luật.
           </li>
         </ul>
       </div>
@@ -72,11 +98,17 @@ export function CtvTermsBody() {
       <div>
         <h4 className="font-bold text-slate-800">5. Bảo mật & dữ liệu</h4>
         <ul className="mt-1.5 list-disc space-y-1 pl-5">
-          <li>Bạn chịu trách nhiệm bảo mật tài khoản đăng nhập và link giới thiệu của mình.</li>
-          <li>Không chia sẻ dữ liệu khách hàng / đơn hàng cho bên thứ ba khi chưa được phép.</li>
           <li>
-            Aloha xử lý dữ liệu hồ sơ CTV nhằm xét duyệt, vận hành chương trình và thanh toán hoa
-            hồng.
+            Bạn chịu trách nhiệm bảo mật tài khoản đăng nhập và link giới thiệu
+            của mình.
+          </li>
+          <li>
+            Không chia sẻ dữ liệu khách hàng / đơn hàng cho bên thứ ba khi chưa
+            được phép.
+          </li>
+          <li>
+            Aloha xử lý dữ liệu hồ sơ CTV nhằm xét duyệt, vận hành chương trình
+            và thanh toán hoa hồng.
           </li>
         </ul>
       </div>
@@ -84,12 +116,18 @@ export function CtvTermsBody() {
       <div>
         <h4 className="font-bold text-slate-800">6. Tạm dừng / chấm dứt</h4>
         <ul className="mt-1.5 list-disc space-y-1 pl-5">
-          <li>Aloha có quyền tạm dừng hoặc chấm dứt tư cách CTV nếu phát hiện vi phạm điều khoản.</li>
           <li>
-            Bạn có thể ngừng hợp tác bằng cách liên hệ Aloha; hoa hồng đủ điều kiện vẫn được xử lý
-            theo kỳ.
+            Aloha có quyền tạm dừng hoặc chấm dứt tư cách CTV nếu phát hiện vi
+            phạm điều khoản.
           </li>
-          <li>Aloha có thể cập nhật điều khoản; phiên bản mới sẽ được công bố trên trang tuyển CTV.</li>
+          <li>
+            Bạn có thể ngừng hợp tác bằng cách liên hệ Aloha; hoa hồng đủ điều
+            kiện vẫn được xử lý theo kỳ.
+          </li>
+          <li>
+            Aloha có thể cập nhật điều khoản; phiên bản mới sẽ được công bố trên
+            trang tuyển CTV.
+          </li>
         </ul>
       </div>
 
@@ -105,8 +143,8 @@ export function CtvTermsBody() {
           >
             zalo.me/0794901233
           </a>
-          . Mọi thắc mắc về hoa hồng, đơn hàng hoặc tài khoản CTV vui lòng liên hệ kênh hỗ trợ chính
-          thức.
+          . Mọi thắc mắc về hoa hồng, đơn hàng hoặc tài khoản CTV vui lòng liên
+          hệ kênh hỗ trợ chính thức.
         </p>
       </div>
 
@@ -151,7 +189,8 @@ export function CtvTermsAccept({ agreed, onAgreed, error }: Props) {
 
     check();
     el.addEventListener("scroll", check, { passive: true });
-    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(check) : null;
+    const ro =
+      typeof ResizeObserver !== "undefined" ? new ResizeObserver(check) : null;
     ro?.observe(el);
     const t = window.setTimeout(check, 80);
     return () => {
@@ -221,7 +260,9 @@ export function CtvTermsAccept({ agreed, onAgreed, error }: Props) {
         </div>
       </div>
 
-      {error ? <p className="text-xs font-medium text-red-600">{error}</p> : null}
+      {error ? (
+        <p className="text-xs font-medium text-red-600">{error}</p>
+      ) : null}
     </div>
   );
 }
