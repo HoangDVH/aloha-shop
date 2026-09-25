@@ -15,20 +15,7 @@ import { useShopAuth } from "@/components/ShopAuthProvider";
 import { useShopLogoutAction } from "@/lib/useShopLogoutAction";
 import { useShopLoginHref } from "@/lib/useShopLoginHref";
 import { AccountAvatar } from "@/components/AccountAvatar";
-
-function accountRoleLabel(user: {
-  roles: string[];
-  ctvStatus?: string | null;
-}) {
-  if (user.roles.includes("ctv")) {
-    if (user.ctvStatus === "active") return "Cộng tác viên";
-    if (user.ctvStatus === "pending" || user.ctvStatus === "cho_duyet") {
-      return "CTV (chờ duyệt)";
-    }
-    return "CTV";
-  }
-  return "Khách hàng";
-}
+import { shopAccountRoleLabel } from "@/lib/accountRoleLabel";
 
 export function HeaderAccountMenu() {
   const { user, loading } = useShopAuth();
@@ -69,7 +56,7 @@ export function HeaderAccountMenu() {
 
   const shortName =
     user.fullName.trim().split(/\s+/).slice(-2).join(" ") || user.email.split("@")[0];
-  const roleLabel = accountRoleLabel(user);
+  const roleLabel = shopAccountRoleLabel(user);
   const isCtv = user.roles.includes("ctv") && user.ctvStatus === "active";
 
   const itemClass =
