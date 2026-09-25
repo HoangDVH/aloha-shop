@@ -13,6 +13,7 @@ import { findAddressMergerSuggestion } from "../frontend/lib/addressMerger.js";
 import { requireShopAuth } from "../backend/shopAuth/routes.js";
 import { signShopAccessToken } from "../backend/shopAuth/tokens.js";
 import { catalogPriceContext, currentPriceMode } from "../backend/shopWholesale/priceContext.js";
+import { accountOwnsPhone, decideWholesalePhoneLink, maskShopEmail, wholesalePhoneVariants } from "../backend/shopWholesale/accountLink.js";
 
 const si = { active: true, roles: ["customer", "si"], siStatus: "active", siRegion: "TINH" };
 const line = (qty = 1, code = "P1") => ({ productCode: code, productName: "Chậu", quantity: qty, price: 1 });
@@ -245,6 +246,42 @@ test("SI-J: lookup recognizes existing KV wholesale customer vs non-si vs new", 
     detail: "100 Đồng Khởi",
   });
   assert.equal(res4, "not_found");
+});
+
+test("SI-K: phone variants and ownership", () => {
+  assert.deepEqual(wholesalePhoneVariants("0337095980"), ["0337095980", "84337095980", "+84337095980"]);
+  assert.equal(accountOwnsPhone({ phone: "+84337095980" }, "0337095980"), true);
+  assert.equal(accountOwnsPhone({ phone: "0900000000" }, "0337095980"), false);
+  assert.equal(maskShopEmail("dauvuhoang01@gmail.com"), "d***@gmail.com");
+});
+
+test("SI-K: logged-in phone owner keeps the same account", () => {
+  assert.deepEqual(decideWholesalePhoneLink({
+    sessionAccountId: "acc-1",
+    ownerIds: ["acc-1"],
+    maskedEmail: "d***@gmail.com",
+  }), { action: "use_current" });
+});
+
+test("SI-K: logged-out visitor must sign in to the account that already owns the phone", () => {
+  assert.deepEqual(decideWholesalePhoneLink({
+    sessionAccountId: null,
+    ownerIds: ["acc-1"],
+    maskedEmail: "d***@gmail.com",
+  }), { action: "login_required", maskedEmail: "d***@gmail.com" });
+});
+
+test("SI-K: a different logged-in account cannot take the phone", () => {
+  assert.deepEqual(decideWholesalePhoneLink({
+    sessionAccountId: "acc-2",
+    ownerIds: ["acc-1"],
+    maskedEmail: "d***@gmail.com",
+  }), { action: "switch_account", maskedEmail: "d***@gmail.com" });
+});
+
+test("SI-K: a free phone creates an account only when nobody is logged in", () => {
+  assert.equal(decideWholesalePhoneLink({ sessionAccountId: null, ownerIds: [], maskedEmail: null }).action, "create");
+  assert.equal(decideWholesalePhoneLink({ sessionAccountId: "acc-2", ownerIds: [], maskedEmail: null }).action, "use_current");
 });
 
 

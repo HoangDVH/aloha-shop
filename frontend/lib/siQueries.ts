@@ -12,9 +12,19 @@ export async function siRequest<T>(path: string, body?: unknown, method = "POST"
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error((data as { error?: string })?.error || `Lỗi máy chủ (${response.status}) — vui lòng thử lại sau`);
+    const body = data as { error?: string; code?: string };
+    throw new SiApiError(body.error || `Lỗi máy chủ (${response.status}) — vui lòng thử lại sau`, body.code || "");
   }
   return data as T;
+}
+
+export class SiApiError extends Error {
+  code: string;
+  constructor(message: string, code = "") {
+    super(message);
+    this.name = "SiApiError";
+    this.code = code;
+  }
 }
 export type SiSession = { verified: boolean; user: ShopUser | null; zaloConfigured: boolean; minOrder: number; termsVersion: string };
 export function useSiSession() {
