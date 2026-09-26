@@ -368,6 +368,9 @@ export async function syncCatalogFromOps(
         ) {
           setDoc.updatedAt = now;
         }
+        // CMS videos/videoUrl: never touch from catalog sync.
+        delete setDoc.videos;
+        delete setDoc.videoUrl;
         const update: Record<string, unknown> = { $set: setDoc };
         if (unsetLegacyNhom) {
           update.$unset = { nhom: "", nhomPath: "" };

@@ -136,6 +136,9 @@ function buildSetForShopDoc(
     if (candidate[key] === undefined) continue;
     $set[key] = candidate[key];
   }
+  // CMS videos are never owned by KV stock sync (fail-closed).
+  delete $set.videos;
+  delete $set.videoUrl;
   return Object.keys($set).length ? $set : null;
 }
 

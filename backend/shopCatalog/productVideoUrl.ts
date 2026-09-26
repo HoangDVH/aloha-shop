@@ -146,3 +146,43 @@ export function publicProductVideos(doc: Record<string, unknown>): string[] {
   if (!legacy) return [];
   return normalizeProductVideos([legacy]);
 }
+
+/** CMS fields — KV/catalog sync must never $set / $unset these. */
+export const PRODUCT_VIDEO_FIELD_KEYS = ["videos", "videoUrl"] as const;
+
+/**
+ * Big-co merge: keep existing shop videos when incoming is empty/missing.
+ * Never replace a non-empty CMS video list with [].
+ */
+export function mergePreserveProductVideos(
+  existing: Record<string, unknown> | null | undefined,
+  incoming: Record<string, unknown> | null | undefined
+): { videos: string[]; videoUrl: string } | Record<string, never> {
+  const next = publicProductVideos(incoming || {});
+  const prev = publicProductVideos(existing || {});
+  const keep = next.length ? next : prev;
+  if (!keep.length) return {};
+  return { videos: keep, videoUrl: keep[0] };
+}
+
+/** Remove video keys from a Mongo $set / $unset patch (fail-closed for sync workers). */
+export function stripProductVideoMutations<T extends Record<string, unknown>>(
+  patch: T | null | undefined
+): T {
+  if (!patch || typeof patch !== "object") return patch as T;
+  for (const key of PRODUCT_VIDEO_FIELD_KEYS) {
+    if (key in patch) delete (patch as Record<string, unknown>)[key];
+  }
+  return patch;
+}
+
+/** True when shop should be filled from a richer ops/source list. */
+export function shopNeedsVideoFill(
+  shopDoc: Record<string, unknown> | null | undefined,
+  sourceUrls: string[]
+): boolean {
+  const src = normalizeProductVideos(sourceUrls);
+  if (!src.length) return false;
+  const shop = publicProductVideos(shopDoc || {});
+  return shop.length === 0;
+}

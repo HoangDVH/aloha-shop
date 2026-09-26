@@ -1993,12 +1993,13 @@ body {
 }
 
 .home-low-stock__nav {
+  /* Mobile (Shopee/Lazada): không hiện nút — vuốt ngang; desktop mới hiện */
+  display: none;
   position: absolute;
   top: 42%;
   z-index: 20;
-  display: inline-flex;
-  height: 2.75rem;
-  width: 2.75rem;
+  height: 2.5rem;
+  width: 2.5rem;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
@@ -2007,6 +2008,24 @@ body {
   box-shadow: 0 6px 16px -8px rgba(15, 23, 42, 0.45);
   border: 1px solid rgba(15, 23, 42, 0.06);
   transition: color 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+}
+
+@media (min-width: 640px) {
+  .home-low-stock__nav {
+    display: inline-flex;
+    /* Đẩy ra mép ngoài carousel, tránh che ảnh SP */
+    top: 38%;
+  }
+
+  .home-low-stock__nav.left-0 {
+    left: 0;
+    transform: translate(-40%, -50%);
+  }
+
+  .home-low-stock__nav.right-0 {
+    right: 0;
+    transform: translate(40%, -50%);
+  }
 }
 
 .home-low-stock__nav:hover:not(:disabled) {
@@ -2021,25 +2040,19 @@ body {
 
 .embla--home-sale {
   overflow: hidden;
-  margin: 0 0.35rem;
+  margin: 0;
 }
 
 .embla--home-sale .embla__container {
   display: flex;
-  margin-left: -0.5rem;
+  margin-left: -0.625rem;
 }
 
 .embla--home-sale .embla__slide {
-  /* Flash sale: tối đa 3 card như mock */
-  flex: 0 0 85%;
+  /* Mobile: 2 card / hàng giống lưới SP bên dưới */
+  flex: 0 0 50%;
   min-width: 0;
-  padding-left: 0.5rem;
-}
-
-@media (min-width: 480px) {
-  .embla--home-sale .embla__slide {
-    flex-basis: 48%;
-  }
+  padding-left: 0.625rem;
 }
 
 @media (min-width: 640px) {
@@ -2048,19 +2061,7 @@ body {
   }
 }
 
-@media (min-width: 768px) {
-  .embla--home-sale .embla__slide {
-    flex-basis: 33.333%;
-  }
-}
-
 @media (min-width: 1024px) {
-  .embla--home-sale .embla__slide {
-    flex-basis: 33.333%;
-  }
-}
-
-@media (min-width: 1280px) {
   .embla--home-sale .embla__slide {
     flex-basis: 33.333%;
   }

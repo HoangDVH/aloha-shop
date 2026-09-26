@@ -21,6 +21,7 @@ import { registerShopAuthRoutes } from './shopAuth/routes.js';
 import { registerWholesaleRoutes } from './shopWholesale/routes.js';
 import { registerBackorderAdminRoutes } from './shopOrders/backorderAdmin.js';
 import { startWholesaleProvisionWorker } from './shopWholesale/provision.js';
+import { startProductVideoReconcileWorker } from './shopCatalog/videoReconcile.js';
 import { registerShopCartQuote } from './shopWholesale/quote.js';
 import { registerWholesalePasswordRoutes } from './shopWholesale/passwordRoutes.js';
 import { registerShopAddressRoutes } from './shopOrders/addressRoutes.js';
@@ -315,4 +316,5 @@ app.listen(PORT, '0.0.0.0', () => {
   startWholesaleProvisionWorker(getDb, getOpsDb);
   startWholesaleOrderSync(getDb, getOpsDb);
   startKvDeliveryReconcile(getDb, getOpsDb);
+  startProductVideoReconcileWorker(getDb, getOpsDb);
 });

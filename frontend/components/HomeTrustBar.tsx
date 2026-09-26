@@ -32,9 +32,12 @@ const ITEMS = [
 export function HomeTrustBar() {
   return (
     <section className="border-b border-[var(--aloha-line)] bg-white">
-      <div className="mx-auto grid max-w-7xl grid-cols-2 gap-4 px-4 py-5 sm:grid-cols-3 sm:gap-6 sm:py-6 lg:grid-cols-5 lg:gap-5 lg:py-7">
+      <div className="mx-auto flex max-w-7xl snap-x snap-mandatory gap-4 overflow-x-auto px-4 py-5 [-ms-overflow-style:none] [scrollbar-width:none] sm:gap-6 sm:py-6 lg:grid lg:grid-cols-5 lg:gap-5 lg:overflow-visible lg:py-7 [&::-webkit-scrollbar]:hidden">
         {ITEMS.map(({ icon: Icon, title, desc }) => (
-          <div key={title} className="flex items-start gap-3">
+          <div
+            key={title}
+            className="flex w-[min(72vw,15.5rem)] shrink-0 snap-start items-start gap-3 lg:w-auto lg:min-w-0"
+          >
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--aloha-green-light)] text-[var(--aloha-green)] ring-1 ring-[var(--aloha-line)]">
               <Icon size={20} strokeWidth={1.75} aria-hidden />
             </span>

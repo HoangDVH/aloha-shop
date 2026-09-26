@@ -93,17 +93,20 @@ export function HomeLowStockSale({ products }: Props) {
           />
 
           <div className="relative z-10 flex flex-col gap-7 lg:flex-row lg:items-stretch lg:gap-10">
-            {/* Cột trái — promo lớn hơn để hút mắt */}
-            <div className="flex w-full shrink-0 flex-col justify-center lg:w-[min(100%,22rem)] xl:w-[24rem]">
+            {/* Cột trái — mobile căn giữa (mock); desktop giữ trái */}
+            <div className="flex w-full shrink-0 flex-col items-center justify-center text-center lg:w-[min(100%,22rem)] lg:items-start lg:text-left xl:w-[24rem]">
               <span className="home-flash-sale__badge inline-flex w-fit items-center gap-1.5 rounded-full bg-[var(--aloha-green-dark)] px-4 py-1.5 text-[12px] font-extrabold tracking-wide text-white shadow-md sm:px-5 sm:py-2 sm:text-[13px]">
                 <Flame size={15} strokeWidth={2.4} className="text-[#ffd666]" aria-hidden />
                 Flash Sale
               </span>
 
               <h2 className="mt-4 text-[1.85rem] font-black leading-[1.12] tracking-tight text-[var(--aloha-green-dark)] sm:mt-5 sm:text-[2.15rem] md:text-[2.35rem]">
-                Săn cây xinh
-                <br />
-                Giá cực hời
+                <span className="lg:hidden">Săn cây xinh - Giá cực hời</span>
+                <span className="hidden lg:inline">
+                  Săn cây xinh
+                  <br />
+                  Giá cực hời
+                </span>
               </h2>
 
               <p className="mt-2 max-w-xs text-sm font-medium text-[var(--aloha-green-dark)]/75 sm:text-[15px]">
@@ -111,13 +114,13 @@ export function HomeLowStockSale({ products }: Props) {
               </p>
 
               <div
-                className="mt-5 flex flex-wrap gap-2 sm:mt-6 sm:gap-3"
+                className="mt-5 flex flex-wrap justify-center gap-2 sm:mt-6 sm:gap-3 lg:justify-start"
                 aria-label="Đếm ngược flash sale"
               >
                 {units.map((b) => (
                   <div
                     key={b.label}
-                    className="flex min-w-[3.6rem] flex-col items-center rounded-2xl bg-white px-2.5 py-2.5 shadow-md ring-1 ring-black/5 sm:min-w-[4.1rem] sm:px-3 sm:py-3"
+                    className="flex min-w-[3.6rem] flex-col items-center rounded-2xl bg-white px-2.5 py-2.5 text-center shadow-md ring-1 ring-black/10 sm:min-w-[4.1rem] sm:px-3 sm:py-3"
                   >
                     <span className="text-xl font-black tabular-nums leading-none text-[var(--aloha-green-dark)] sm:text-2xl">
                       {b.v}
@@ -137,9 +140,9 @@ export function HomeLowStockSale({ products }: Props) {
               </Link>
             </div>
 
-            {/* Cột phải — card SP */}
-            <div className="relative min-w-0 flex-1">
-              <div className="embla embla--home-sale" ref={emblaRef}>
+            {/* Cột phải — card SP (mobile: vuốt ngang, không nút che ảnh) */}
+            <div className="relative min-w-0 flex-1 sm:px-3">
+              <div className="embla embla--home-sale touch-pan-x" ref={emblaRef}>
                 <div className="embla__container">
                   {items.map((p) => (
                     <div className="embla__slide" key={p.ma}>
@@ -154,7 +157,7 @@ export function HomeLowStockSale({ products }: Props) {
                 aria-label="Sản phẩm trước"
                 disabled={!canPrev}
                 onClick={() => emblaApi?.scrollPrev()}
-                className="home-low-stock__nav left-0 hidden sm:inline-flex"
+                className="home-low-stock__nav left-0"
               >
                 <ChevronLeft className="h-5 w-5" aria-hidden />
               </button>
@@ -163,7 +166,7 @@ export function HomeLowStockSale({ products }: Props) {
                 aria-label="Sản phẩm sau"
                 disabled={!canNext}
                 onClick={() => emblaApi?.scrollNext()}
-                className="home-low-stock__nav right-0 hidden sm:inline-flex"
+                className="home-low-stock__nav right-0"
               >
                 <ChevronRight className="h-5 w-5" aria-hidden />
               </button>
