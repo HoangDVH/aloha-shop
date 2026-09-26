@@ -1,0 +1,67 @@
+{
+  "at": "2026-09-26T08:23:30.463Z",
+  "dayLocalHint": "Asia/Ho_Chi_Minh",
+  "db": "aloha_shop_db",
+  "mongoUriHost": "mongodb://127.0.0.1:27018",
+  "totalProducts": 3044,
+  "withVideoCount": 5,
+  "items": [
+    {
+      "ma": "CBCTAN",
+      "ten": "COMBO CHÚ TIỂU AN NHIÊN",
+      "webBadge": "noi_bat",
+      "videoUrl": "https://pub-47761e6b4231489580175c7b8a2d0490.r2.dev/san-pham/VIDEO%20CONTEN%20/VIDEO%20CH%C6%AFA%20PH%C3%82N%20LO%E1%BA%A0I/ch%C3%BA%20ti%E1%BB%83u%20an%20nhi%C3%AAn.mp4",
+      "videos": [
+        "https://pub-47761e6b4231489580175c7b8a2d0490.r2.dev/san-pham/VIDEO%20CONTEN%20/VIDEO%20CH%C6%AFA%20PH%C3%82N%20LO%E1%BA%A0I/ch%C3%BA%20ti%E1%BB%83u%20an%20nhi%C3%AAn.mp4"
+      ],
+      "updatedAt": "2026-09-24T03:46:32.758Z"
+    },
+    {
+      "ma": "CBCTPT",
+      "ten": "THÀNH PHẨM CẦN THĂNG PHÁT TÀI (CẦN THĂNG GỐC THỤ)",
+      "webBadge": "noi_bat",
+      "videoUrl": "https://pub-47761e6b4231489580175c7b8a2d0490.r2.dev/san-pham/VIDEO%20CONTEN%20/VIDEO%20CH%C6%AFA%20PH%C3%82N%20LO%E1%BA%A0I/C%E1%BA%A6N%20TH%C4%82NG%20PH%C3%81T%20T%C3%80I.mp4",
+      "videos": [
+        "https://pub-47761e6b4231489580175c7b8a2d0490.r2.dev/san-pham/VIDEO%20CONTEN%20/VIDEO%20CH%C6%AFA%20PH%C3%82N%20LO%E1%BA%A0I/C%E1%BA%A6N%20TH%C4%82NG%20PH%C3%81T%20T%C3%80I.mp4"
+      ],
+      "updatedAt": "2026-09-24T03:46:32.814Z"
+    },
+    {
+      "ma": "CBDVDP",
+      "ten": "COMBO ĐẾ VƯƠNG ĐẠI PHÁT",
+      "webBadge": "noi_bat",
+      "videoUrl": "https://pub-47761e6b4231489580175c7b8a2d0490.r2.dev/san-pham/VIDEO%20CONTEN%20/VIDEO%20CH%C6%AFA%20PH%C3%82N%20LO%E1%BA%A0I/%C4%91%E1%BA%BF%20v%C6%B0%C6%A1ng%20%C4%91%E1%BA%A1i%20ph%C3%A1t",
+      "videos": [
+        "https://pub-47761e6b4231489580175c7b8a2d0490.r2.dev/san-pham/VIDEO%20CONTEN%20/VIDEO%20CH%C6%AFA%20PH%C3%82N%20LO%E1%BA%A0I/%C4%91%E1%BA%BF%20v%C6%B0%C6%A1ng%20%C4%91%E1%BA%A1i%20ph%C3%A1t"
+      ],
+      "updatedAt": "2026-09-24T03:46:32.758Z"
+    },
+    {
+      "ma": "TPHPAK",
+      "ten": "THÀNH PHẨM HẠNH PHÚC AN KHANG",
+      "webBadge": "noi_bat",
+      "videoUrl": "https://pub-47761e6b4231489580175c7b8a2d0490.r2.dev/san-pham/C%C3%82Y%20TH%C3%80NH%20PH%E1%BA%A8M%20C%C3%81C%20LO%E1%BA%A0I%20/C%C3%82Y%20TH%C3%80NH%20PH%E1%BA%A8M%201%20%2B%202%20%2B%203%20(%20H%C3%ACnh%20%2B%20B%C3%A0i%20Vi%E1%BA%BFt%20%2B%20Video%20)/TH%C3%80NH%20PH%E1%BA%A8M%20H%E1%BA%A0NH%20PH%C3%9AC%20AN%20KHANG/HPAK.mp4",
+      "videos": [
+        "https://pub-47761e6b4231489580175c7b8a2d0490.r2.dev/san-pham/C%C3%82Y%20TH%C3%80NH%20PH%E1%BA%A8M%20C%C3%81C%20LO%E1%BA%A0I%20/C%C3%82Y%20TH%C3%80NH%20PH%E1%BA%A8M%201%20%2B%202%20%2B%203%20(%20H%C3%ACnh%20%2B%20B%C3%A0i%20Vi%E1%BA%BFt%20%2B%20Video%20)/TH%C3%80NH%20PH%E1%BA%A8M%20H%E1%BA%A0NH%20PH%C3%9AC%20AN%20KHANG/HPAK.mp4"
+      ],
+      "updatedAt": "2026-09-26T08:07:19.324Z"
+    },
+    {
+      "ma": "TPKTTL",
+      "ten": "THÀNH PHẨM KIM TIỀN TÀI LỘC",
+      "webBadge": "noi_bat",
+      "videoUrl": "https://pub-47761e6b4231489580175c7b8a2d0490.r2.dev/san-pham/C%C3%82Y%20TH%C3%80NH%20PH%E1%BA%A8M%20C%C3%81C%20LO%E1%BA%A0I%20/C%C3%82Y%20TH%C3%80NH%20PH%E1%BA%A8M%201%20%2B%202%20%2B%203%20(%20H%C3%ACnh%20%2B%20B%C3%A0i%20Vi%E1%BA%BFt%20%2B%20Video%20)/TH%C3%80NH%20PH%E1%BA%A8M%20KIM%20TI%E1%BB%80N%20T%C3%80I%20L%E1%BB%98C/Aloha_Standard_KIM%20TI%E1%BB%80N%20T%C3%80I%20L%E1%BB%98C_gwr_video_mvp.mp4",
+      "videos": [
+        "https://pub-47761e6b4231489580175c7b8a2d0490.r2.dev/san-pham/C%C3%82Y%20TH%C3%80NH%20PH%E1%BA%A8M%20C%C3%81C%20LO%E1%BA%A0I%20/C%C3%82Y%20TH%C3%80NH%20PH%E1%BA%A8M%201%20%2B%202%20%2B%203%20(%20H%C3%ACnh%20%2B%20B%C3%A0i%20Vi%E1%BA%BFt%20%2B%20Video%20)/TH%C3%80NH%20PH%E1%BA%A8M%20KIM%20TI%E1%BB%80N%20T%C3%80I%20L%E1%BB%98C/Aloha_Standard_KIM%20TI%E1%BB%80N%20T%C3%80I%20L%E1%BB%98C_gwr_video_mvp.mp4"
+      ],
+      "updatedAt": "2026-09-26T08:04:52.530Z"
+    }
+  ],
+  "diagnoseIfMissing": [
+    "So sánh với scripts/snapshots/product-videos-latest.json (hoặc file dated cùng thư mục).",
+    "Nếu mã mất video: check shop + ops aloha_products cùng ma — videos/videoUrl.",
+    "KV stock poll / catalog sync KHÔNG được ghi đè video (đã delete field). Nếu null → do patch-videos rỗng hoặc ghi document khác.",
+    "Garden patch-videos: POST /api/aloha/products/patch-videos — kiểm tra mirror VPS + SHOP_CATALOG_NOTIFY.",
+    "Gắn lại video rồi chạy lại script này; count phải tăng."
+  ]
+}

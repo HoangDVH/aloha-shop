@@ -1,6 +1,9 @@
 /**
- * Rate limit IP nhẹ cho shop (memory) — không đụng Mongo catalog.
+ * Rate limit IP — Redis INCR+EXPIRE (chuẩn multi-instance);
+ * local không REDIS_URL → memory fallback.
  */
+import { redisIncr } from "./redis.js";
+
 type Bucket = { n: number; resetAt: number };
 
 const buckets = new Map<string, Bucket>();
@@ -10,6 +13,19 @@ function prune(now: number) {
   for (const [k, v] of buckets) {
     if (v.resetAt <= now) buckets.delete(k);
   }
+}
+
+function memoryAllow(key: string, max: number, windowMs: number): boolean {
+  const now = Date.now();
+  prune(now);
+  const b = buckets.get(key);
+  if (!b || b.resetAt <= now) {
+    buckets.set(key, { n: 1, resetAt: now + windowMs });
+    return true;
+  }
+  if (b.n >= max) return false;
+  b.n += 1;
+  return true;
 }
 
 export function clientIpFromReq(req: {
@@ -26,24 +42,18 @@ export function clientIpFromReq(req: {
 /**
  * @returns true nếu còn trong hạn mức; false nếu vượt → caller trả 429
  */
-export function rateLimitAllow(
+export async function rateLimitAllow(
   key: string,
   max: number,
   windowMs: number
-): boolean {
-  const now = Date.now();
-  prune(now);
-  const b = buckets.get(key);
-  if (!b || b.resetAt <= now) {
-    buckets.set(key, { n: 1, resetAt: now + windowMs });
-    return true;
-  }
-  if (b.n >= max) return false;
-  b.n += 1;
-  return true;
+): Promise<boolean> {
+  const ttlSec = Math.max(1, Math.ceil(windowMs / 1000));
+  const n = await redisIncr(`aloha:rl:${key}`, ttlSec);
+  if (n != null) return n <= max;
+  return memoryAllow(key, max, windowMs);
 }
 
-export function shopRateLimitOrReject(
+export async function shopRateLimitOrReject(
   req: {
     headers: { [k: string]: string | string[] | undefined };
     ip?: string;
@@ -53,9 +63,9 @@ export function shopRateLimitOrReject(
   scope: string,
   max: number,
   windowMs: number
-): boolean {
+): Promise<boolean> {
   const ip = clientIpFromReq(req);
-  if (rateLimitAllow(`${scope}:${ip}`, max, windowMs)) return true;
+  if (await rateLimitAllow(`${scope}:${ip}`, max, windowMs)) return true;
   res.status(429).json({ error: "Quá nhiều yêu cầu — thử lại sau", code: "rate_limited" });
   return false;
 }

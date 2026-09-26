@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "dev:api": "cross-env SHOP_SERVER_PORT=3001 SHOP_STANDALONE_DB=aloha_shop_db tsx backend/shop_standalone_server.ts",
+    "dev:api": "cross-env SHOP_SERVER_PORT=3001 SHOP_STANDALONE_DB=aloha_shop_db tsx watch backend/shop_standalone_server.ts",
     "dev:frontend": "cross-env NEXT_PUBLIC_API_BASE=http://127.0.0.1:3001 NEXT_PUBLIC_SHOP_SHOW_TRANSFER=1 npm run dev --prefix frontend",
     "dev": "concurrently -k -n api,shop -c green,cyan \"npm run dev:api\" \"npm run dev:frontend\"",
     "seed:shop-admin": "node scripts/seed-shop-admin.cjs",

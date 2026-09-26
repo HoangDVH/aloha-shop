@@ -5,8 +5,6 @@ import crypto from "crypto";
 import {
   SHOP_ACCOUNTS,
   SHOP_REFRESH,
-  SHOP_LOGIN_IP,
-  SHOP_OAUTH_STATE,
   ensureShopAuthIndexes,
   isValidCtvCode,
   normalizeCtvCode,
@@ -31,7 +29,8 @@ import {
 } from "./tokens.js";
 import { applyShopCors, isAllowedShopOrigin } from "../shopCors.js";
 import { syncBus } from "../syncBus.js";
-import { shopRateLimitOrReject } from "../shopRateLimit.js";
+import { rateLimitAllow, shopRateLimitOrReject } from "../shopRateLimit.js";
+import { putGoogleOauthState, takeGoogleOauthState } from "./authEphemeral.js";
 import {
   allocateCtvCode,
   ctvApplicationToDoc,
@@ -67,11 +66,8 @@ function clientIp(req: Request): string {
   return req.ip || req.socket.remoteAddress || "unknown";
 }
 
-async function rateLimitIp(db: Db, ip: string): Promise<boolean> {
-  const since = new Date(Date.now() - IP_WINDOW_MS);
-  const n = await db.collection(SHOP_LOGIN_IP).countDocuments({ ip, at: { $gte: since } });
-  await db.collection(SHOP_LOGIN_IP).insertOne({ ip, at: new Date() });
-  return n < IP_MAX;
+async function rateLimitIp(ip: string): Promise<boolean> {
+  return rateLimitAllow(`login:${ip}`, IP_MAX, IP_WINDOW_MS);
 }
 
 function parseRoles(raw: unknown): ShopRole[] {
@@ -183,7 +179,7 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
 
   app.post("/api/shop/auth/register", async (req, res) => {
     try {
-      if (!shopRateLimitOrReject(req, res, "shop_register", 8, 60_000)) {
+      if (!(await shopRateLimitOrReject(req, res, "shop_register", 8, 60_000))) {
         return;
       }
       const db = await getShopDb();
@@ -303,7 +299,7 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
       const db = await getShopDb();
       await ensureIdx(db);
       const ip = clientIp(req);
-      if (!(await rateLimitIp(db, ip))) {
+      if (!(await rateLimitIp(ip))) {
         return res.status(429).json({ error: "Thử quá nhiều lần. Đợi khoảng 1 phút." });
       }
       const email = normalizeEmail(req.body?.email);
@@ -518,13 +514,7 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
         req.query.origin,
         String(req.headers.referer || "")
       );
-      await db.collection(SHOP_OAUTH_STATE).insertOne({
-        state,
-        next,
-        returnOrigin,
-        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-        createdAt: new Date(),
-      });
+      await putGoogleOauthState(state, { next, returnOrigin });
       const params = new URLSearchParams({
         client_id: process.env.GOOGLE_CLIENT_ID!,
         redirect_uri: googleRedirectUri(),
@@ -550,9 +540,8 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
         return res.redirect(`${shopOrigin}/dang-nhap?error=google_denied`);
       }
       const db = await getShopDb();
-      const st = await db.collection(SHOP_OAUTH_STATE).findOne({ state });
+      const st = await takeGoogleOauthState(state);
       if (!st) return res.redirect(`${shopOrigin}/dang-nhap?error=google_state`);
-      await db.collection(SHOP_OAUTH_STATE).deleteOne({ state });
       shopOrigin = resolveShopReturnOrigin(st.returnOrigin);
       const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
         method: "POST",

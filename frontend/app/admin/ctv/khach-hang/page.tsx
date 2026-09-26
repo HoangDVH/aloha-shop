@@ -1,7 +1,7 @@
 "use client";
 
-import CtvAdminShell from "@/components/admin/ctv/CtvAdminShell";
+import CustomerDirectory from "@/components/admin/customers/CustomerDirectory";
 
 export default function AdminCtvKhachHangPage() {
-  return <CtvAdminShell />;
+  return <CustomerDirectory />;
 }

@@ -4,102 +4,118 @@ import type { Db } from "mongodb";
 import { SHOP_ORDERS, newShopOrderCode, type ShopOrderDetail } from "./models.js";
 import { createShopStockHolds, releaseShopStockHolds } from "./stockHold.js";
 import { syncBus } from "../syncBus.js";
+import {
+  redisAcquireLock,
+  redisReleaseLock,
+  redisRenewLock,
+} from "../redis.js";
 
 export const BACKORDER_TERMS_VERSION = "2026-09-23";
 
+const CHECKOUT_LOCK_KEY = "aloha:lock:checkout";
+
+/** Fallback khi không có Redis (local): khóa trong process — cùng semantics TTL. */
+const memoryLocks = new Map<string, { owner: string; expiresAt: number }>();
+
+function memoryAcquire(key: string, owner: string, ttlMs: number): boolean {
+  const now = Date.now();
+  const cur = memoryLocks.get(key);
+  if (cur && cur.expiresAt > now && cur.owner !== owner) return false;
+  memoryLocks.set(key, { owner, expiresAt: now + ttlMs });
+  return true;
+}
+
+function memoryRenew(key: string, owner: string, ttlMs: number): boolean {
+  const cur = memoryLocks.get(key);
+  if (!cur || cur.owner !== owner) return false;
+  if (cur.expiresAt <= Date.now()) {
+    memoryLocks.delete(key);
+    return false;
+  }
+  cur.expiresAt = Date.now() + ttlMs;
+  return true;
+}
+
+function memoryRelease(key: string, owner: string): void {
+  const cur = memoryLocks.get(key);
+  if (cur?.owner === owner) memoryLocks.delete(key);
+}
+
+async function acquireCheckoutLock(
+  owner: string,
+  ttlMs: number,
+  maxWaitMs: number
+): Promise<boolean> {
+  const start = Date.now();
+  while (Date.now() - start < maxWaitMs) {
+    const redis = await redisAcquireLock(CHECKOUT_LOCK_KEY, owner, ttlMs);
+    if (redis === true) return true;
+    if (redis === null && memoryAcquire(CHECKOUT_LOCK_KEY, owner, ttlMs)) {
+      return true;
+    }
+    await new Promise((r) => setTimeout(r, 50 + Math.floor(Math.random() * 80)));
+  }
+  const redis = await redisAcquireLock(CHECKOUT_LOCK_KEY, owner, ttlMs);
+  if (redis === true) return true;
+  if (redis === null) return memoryAcquire(CHECKOUT_LOCK_KEY, owner, ttlMs);
+  return false;
+}
+
+async function renewCheckoutLock(owner: string, ttlMs: number): Promise<void> {
+  const redis = await redisRenewLock(CHECKOUT_LOCK_KEY, owner, ttlMs);
+  if (redis === null) memoryRenew(CHECKOUT_LOCK_KEY, owner, ttlMs);
+}
+
+async function releaseCheckoutLockOwned(owner: string): Promise<void> {
+  const redis = await redisReleaseLock(CHECKOUT_LOCK_KEY, owner);
+  if (redis === null) memoryRelease(CHECKOUT_LOCK_KEY, owner);
+}
+
 /**
- * Lock nguyên tử cho bước kiểm tra tồn và tạo soft-hold / insert đơn.
- * Khóa có lease ngắn hạn (mặc định 10s), tự giải phóng sau khi xong bước kiểm tra và ghi nhận đơn,
- * không giữ trong suốt quá trình gọi API bên ngoài (như KiotViet) để tránh gây nghẽn (checkout_busy) cho các khách hàng khác.
+ * Lock nguyên tử (Redis SET NX PX; fallback memory khi không có REDIS_URL).
+ * Lease ngắn — giải phóng sau kiểm tra tồn / soft-hold, không giữ qua gọi KiotViet.
  */
 export async function withCheckoutLock<T>(
-  getDb: () => Promise<Db>,
+  _getDb: () => Promise<Db>,
   fn: () => Promise<T>,
   opts?: { maxWaitMs?: number; leaseMs?: number }
 ): Promise<T> {
-  const db = await getDb();
-  const col = db.collection<{ _id: string; owner: string; expiresAt: Date }>("aloha_shop_checkout_lock");
   const owner = randomUUID();
   const leaseMs = opts?.leaseMs || 10_000;
   const maxWaitMs = opts?.maxWaitMs || 4_000;
-  const start = Date.now();
-
-  while (Date.now() - start < maxWaitMs) {
-    try {
-      const now = new Date();
-      const res = await col.updateOne(
-        { _id: "checkout", $or: [{ expiresAt: { $lte: now } }, { expiresAt: { $exists: false } }] },
-        { $set: { owner, expiresAt: new Date(Date.now() + leaseMs) } },
-        { upsert: true }
-      );
-      if (res.upsertedCount > 0 || res.modifiedCount > 0) {
-        break;
-      }
-    } catch (error: any) {
-      if (error.code !== 11000) throw error;
-    }
-    // Chờ một khoảng nhỏ với jitter trước khi thử lại
-    const sleep = 50 + Math.floor(Math.random() * 80);
-    await new Promise((r) => setTimeout(r, sleep));
-  }
-
-  // Xác nhận đã giữ khóa
-  const current = await col.findOne({ _id: "checkout" });
-  if (current?.owner !== owner || (current.expiresAt && current.expiresAt.getTime() <= Date.now())) {
+  const ok = await acquireCheckoutLock(owner, leaseMs, maxWaitMs);
+  if (!ok) {
     const err: any = new Error("Shop đang cập nhật tồn kho. Vui lòng thử lại sau ít giây.");
     err.code = "checkout_busy";
     err.status = 409;
     throw err;
   }
-
   try {
     return await fn();
   } finally {
-    await col.deleteOne({ _id: "checkout", owner }).catch(() => {});
+    await releaseCheckoutLockOwned(owner);
   }
 }
 
 /** Serialize stock check + reservation across API workers, including ordinary orders. */
-export function serializeShopCheckout(getDb: () => Promise<Db>): RequestHandler {
+export function serializeShopCheckout(_getDb: () => Promise<Db>): RequestHandler {
   return async (_req, res, next) => {
     const owner = randomUUID();
+    const leaseMs = 15_000;
     try {
-      const db = await getDb();
-      const col = db.collection<{ _id: string; owner: string; expiresAt: Date }>("aloha_shop_checkout_lock");
-      let acquired = false;
-      const start = Date.now();
-      // Retry tối đa 3 giây trước khi báo busy
-      while (Date.now() - start < 3000) {
-        try {
-          const now = new Date();
-          const r = await col.updateOne(
-            { _id: "checkout", $or: [{ expiresAt: { $lte: now } }, { expiresAt: { $exists: false } }] },
-            { $set: { owner, expiresAt: new Date(Date.now() + 15000) } },
-            { upsert: true }
-          );
-          if (r.upsertedCount > 0 || r.modifiedCount > 0) {
-            acquired = true;
-            break;
-          }
-        } catch (error: any) {
-          if (error.code !== 11000) throw error;
-        }
-        await new Promise((r) => setTimeout(r, 60 + Math.floor(Math.random() * 60)));
-      }
-
+      const acquired = await acquireCheckoutLock(owner, leaseMs, 3_000);
       if (!acquired) {
-        const cur = await col.findOne({ _id: "checkout" });
-        if (cur?.owner !== owner) {
-          res.setHeader("Retry-After", "1");
-          res.status(409).json({ error: "Shop đang cập nhật tồn kho. Vui lòng thử lại sau ít giây.", code: "checkout_busy" });
-          return;
-        }
+        res.setHeader("Retry-After", "1");
+        res.status(409).json({
+          error: "Shop đang cập nhật tồn kho. Vui lòng thử lại sau ít giây.",
+          code: "checkout_busy",
+        });
+        return;
       }
 
       const timer = setInterval(() => {
-        void col.updateOne({ _id: "checkout", owner }, { $set: { expiresAt: new Date(Date.now() + 15000) } })
-          .catch(() => {});
-      }, 5000);
+        void renewCheckoutLock(owner, leaseMs);
+      }, 5_000);
       timer.unref();
 
       let released = false;
@@ -107,14 +123,11 @@ export function serializeShopCheckout(getDb: () => Promise<Db>): RequestHandler 
         if (released) return;
         released = true;
         clearInterval(timer);
-        void col.deleteOne({ _id: "checkout", owner }).catch(() => {});
+        void releaseCheckoutLockOwned(owner);
       };
       (res as any).releaseCheckoutLock = release;
       res.once("finish", release);
-      res.once("close", () => {
-        if (res.writableFinished) release();
-        else clearInterval(timer);
-      });
+      res.once("close", release);
       next();
     } catch {
       res.status(503).json({ error: "Chưa kiểm tra được tồn kho. Vui lòng thử lại." });

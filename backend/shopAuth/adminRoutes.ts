@@ -20,6 +20,7 @@ import {
 } from "./models.js";
 import type { GetShopDb } from "./routes.js";
 import { syncBus } from "../syncBus.js";
+import { directoryFilter } from "./directoryFilters.js";
 
 async function ensureIdx(db: Db) {
   await ensureShopAuthIndexes(db);
@@ -64,6 +65,23 @@ export function registerShopAccountsAdminRoutes(
     }
   });
 
+  app.get("/api/shop/admin/accounts/segments", ...gate, async (_req: AuthRequest, res: Response) => {
+    try {
+      const db = await getShopDb();
+      const col = db.collection(SHOP_ACCOUNTS);
+      const definitions = {
+        total: {}, retail: { customerType: "retail" }, HCM: { customerType: "HCM" },
+        TINH: { customerType: "TINH" }, unassigned: { customerType: "unassigned" },
+        affiliates: { affiliate: "member" }, pending: { pending: "1" },
+      };
+      const entries = await Promise.all(Object.entries(definitions).map(async ([key, query]) =>
+        [key, await col.countDocuments(directoryFilter(query))] as const));
+      return res.json(Object.fromEntries(entries));
+    } catch (e: any) {
+      return res.status(500).json({ error: e?.message || "Không tải được thống kê" });
+    }
+  });
+
   app.get("/api/shop/admin/accounts", ...gate, async (req: AuthRequest, res: Response) => {
     try {
       const db = await getShopDb();
@@ -99,6 +117,13 @@ export function registerShopAccountsAdminRoutes(
       if (scope === "ctv" && tab !== "customer" && !filter.roles) filter.roles = "ctv";
       if (scope === "customer" && tab !== "ctv" && tab !== "pending" && tab !== "active" && !filter.roles) {
         filter.roles = "customer";
+      }
+
+      if (scope === "directory") {
+        // Ignore legacy tabs: all roles share one paginated directory.
+        for (const key of Object.keys(filter)) delete filter[key];
+        try { Object.assign(filter, directoryFilter(req.query)); }
+        catch (error) { return res.status(400).json({ error: (error as Error).message }); }
       }
 
       const ymdRe = /^\d{4}-\d{2}-\d{2}$/;
@@ -154,6 +179,7 @@ export function registerShopAccountsAdminRoutes(
         .toArray();
       return res.json({
         ok: true,
+        ...(scope === "directory" ? { directoryVersion: 1 } : {}),
         total,
         page,
         limit,

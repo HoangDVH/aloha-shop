@@ -3,9 +3,13 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
-import { ChevronLeft, ChevronRight, Flame } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ProductCard } from "@/components/ProductCard";
 import type { ShopProduct } from "@/lib/api";
+import {
+  livePropsForMa,
+  useLiveProductPrices,
+} from "@/lib/useLiveProductPrices";
 
 type Props = {
   products: ShopProduct[];
@@ -43,6 +47,8 @@ function useFlashCountdown() {
 
 export function HomeLowStockSale({ products }: Props) {
   const items = products.slice(0, 6);
+  const desktopItems = items.slice(0, 3);
+  const liveMap = useLiveProductPrices(items);
   const [emblaRef, emblaApi] = useEmblaCarousel({
     align: "start",
     dragFree: false,
@@ -92,13 +98,17 @@ export function HomeLowStockSale({ products }: Props) {
             className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover opacity-45"
           />
 
-          <div className="relative z-10 flex flex-col gap-7 lg:flex-row lg:items-stretch lg:gap-10">
-            {/* Cột trái — mobile căn giữa (mock); desktop giữ trái */}
-            <div className="flex w-full shrink-0 flex-col items-center justify-center text-center lg:w-[min(100%,22rem)] lg:items-start lg:text-left xl:w-[24rem]">
-              <span className="home-flash-sale__badge inline-flex w-fit items-center gap-1.5 rounded-full bg-[var(--aloha-green-dark)] px-4 py-1.5 text-[12px] font-extrabold tracking-wide text-white shadow-md sm:px-5 sm:py-2 sm:text-[13px]">
-                <Flame size={15} strokeWidth={2.4} className="text-[#ffd666]" aria-hidden />
-                Flash Sale
-              </span>
+          <div className="relative z-10 grid grid-cols-1 gap-7 lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start lg:gap-8 xl:grid-cols-[22rem_minmax(0,1fr)] xl:gap-x-10">
+            {/* Căn giữa nội dung bên dưới hình Flash Sale trên mọi màn hình. */}
+            <div className="flex w-full shrink-0 flex-col items-center justify-center text-center lg:w-[min(100%,20rem)] xl:w-[22rem]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/banners/flash-sale-title.svg?v=2"
+                alt="Flash Sale — Số lượng có hạn"
+                width={600}
+                height={185}
+                className="h-auto w-full max-w-[28rem] lg:max-w-none"
+              />
 
               <h2 className="mt-4 text-[1.85rem] font-black leading-[1.12] tracking-tight text-[var(--aloha-green-dark)] sm:mt-5 sm:text-[2.15rem] md:text-[2.35rem]">
                 <span className="lg:hidden">Săn cây xinh - Giá cực hời</span>
@@ -109,12 +119,12 @@ export function HomeLowStockSale({ products }: Props) {
                 </span>
               </h2>
 
-              <p className="mt-2 max-w-xs text-sm font-medium text-[var(--aloha-green-dark)]/75 sm:text-[15px]">
+              <p className="mt-2 max-w-xs text-sm font-medium text-[var(--aloha-green-dark)]/75 sm:text-[15px] lg:max-w-none">
                 Ưu đãi trong ngày — số lượng có hạn, chốt nhanh kẻo hết!
               </p>
 
               <div
-                className="mt-5 flex flex-wrap justify-center gap-2 sm:mt-6 sm:gap-3 lg:justify-start"
+                className="mt-5 flex flex-wrap justify-center gap-2 sm:mt-6 sm:gap-3"
                 aria-label="Đếm ngược flash sale"
               >
                 {units.map((b) => (
@@ -132,21 +142,25 @@ export function HomeLowStockSale({ products }: Props) {
                 ))}
               </div>
 
-              <Link
-                href="/tim?sort=ban_chay&inStock=1&maxTon=8"
-                className="mt-6 inline-flex h-12 w-fit items-center justify-center rounded-full bg-[var(--aloha-green-dark)] px-7 text-[15px] font-bold text-white shadow-lg shadow-[var(--aloha-green-dark)]/25 transition hover:bg-[var(--aloha-green)] hover:shadow-xl sm:mt-7 sm:h-[3.25rem] sm:px-8 sm:text-base"
-              >
-                Mua ngay →
-              </Link>
             </div>
 
-            {/* Cột phải — card SP (mobile: vuốt ngang, không nút che ảnh) */}
-            <div className="relative min-w-0 flex-1 sm:px-3">
-              <div className="embla embla--home-sale touch-pan-x" ref={emblaRef}>
+            {/* Cột phải — mobile carousel; desktop lưới 3 cột đều */}
+            <div className="relative min-w-0 flex-1 sm:px-1 lg:px-0">
+              <div className="home-flash-sale__grid">
+                {desktopItems.map((p) => (
+                  <div className="home-flash-sale__card" key={p.ma}>
+                    <ProductCard product={p} shopee {...livePropsForMa(liveMap, p.ma)} />
+                  </div>
+                ))}
+              </div>
+
+              <div className="embla embla--home-sale touch-pan-x lg:hidden" ref={emblaRef}>
                 <div className="embla__container">
                   {items.map((p) => (
                     <div className="embla__slide" key={p.ma}>
-                      <ProductCard product={p} shopee />
+                      <div className="home-flash-sale__card">
+                        <ProductCard product={p} shopee {...livePropsForMa(liveMap, p.ma)} />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -157,7 +171,7 @@ export function HomeLowStockSale({ products }: Props) {
                 aria-label="Sản phẩm trước"
                 disabled={!canPrev}
                 onClick={() => emblaApi?.scrollPrev()}
-                className="home-low-stock__nav left-0"
+                className="home-low-stock__nav left-0 lg:hidden"
               >
                 <ChevronLeft className="h-5 w-5" aria-hidden />
               </button>
@@ -166,11 +180,17 @@ export function HomeLowStockSale({ products }: Props) {
                 aria-label="Sản phẩm sau"
                 disabled={!canNext}
                 onClick={() => emblaApi?.scrollNext()}
-                className="home-low-stock__nav right-0"
+                className="home-low-stock__nav right-0 lg:hidden"
               >
                 <ChevronRight className="h-5 w-5" aria-hidden />
               </button>
             </div>
+            <Link
+              href="/tim?sort=ban_chay&inStock=1&maxTon=8"
+              className="inline-flex h-12 w-fit items-center justify-center justify-self-center rounded-full bg-[var(--aloha-green-dark)] px-7 text-[15px] font-bold text-white shadow-lg shadow-[var(--aloha-green-dark)]/25 transition hover:bg-[var(--aloha-green)] hover:shadow-xl sm:h-[3.25rem] sm:px-8 sm:text-base lg:col-start-2"
+            >
+              Mua ngay →
+            </Link>
           </div>
         </div>
       </div>

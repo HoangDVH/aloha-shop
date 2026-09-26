@@ -12,28 +12,28 @@ export type HeroSlideDraft = {
   label?: string;
 };
 
-/** Khớp HeroBanner — 4 ảnh ALOHA: khách sỉ, đất/dụng cụ, hạt giống, cây cảnh. */
+/** Khớp HeroBanner — sản phẩm, cây cảnh, khách sỉ, cộng tác viên. */
 export const DEFAULT_HERO_SLIDES: HeroSlideDraft[] = [
   {
-    src: "/banners/banner-hero-01.png?v=13",
-    alt: "Ưu đãi dịch vụ khách sỉ ALOHA",
-    href: "/tim?q=bao+gia+si",
+    src: "/banners/banner-hero-01.png?v=23",
+    alt: "ALOHA — Đa dạng mẫu mã, phối theo yêu cầu",
+    href: "/tim",
+    label: "TẤT CẢ SẢN PHẨM",
+  },
+  {
+    src: "/banners/banner-hero-03.png?v=22",
+    alt: "ALOHA — Sản phẩm chất lượng, tuyển chọn kỹ",
+    href: "/danh-muc/cay-canh-du-loai",
+    label: "CÂY CẢNH",
+  },
+  {
+    src: "/banners/banner-hero-02.png?v=22",
+    alt: "ALOHA — Ưu đãi và dịch vụ dành cho khách sỉ",
+    href: "/dang-ky-si",
     label: "KHÁCH SỈ",
   },
   {
-    src: "/banners/banner-hero-02.png?v=13",
-    alt: "Đất trồng phân bón dụng cụ chăm sóc cây",
-    href: "/tim?q=dat+trong",
-    label: "ĐẤT TRỒNG",
-  },
-  {
-    src: "/banners/banner-hero-03.png?v=13",
-    alt: "Hạt giống ALOHA",
-    href: "/tim?q=hat+giong",
-    label: "HẠT GIỐNG",
-  },
-  {
-    src: "/banners/banner-hero-04.png?v=7",
+    src: "/banners/bannerctv.png?v=7",
     alt: "Cộng tác viên Aloha — Trở thành CTV Aloha, kiếm thêm thu nhập cùng Aloha",
     href: "/tuyen-ctv",
     label: "CTV ALOHA",
@@ -55,18 +55,21 @@ export function HeroSlidesForm({
 }: {
   slides: HeroSlideDraft[];
   useDefaultBanners: boolean;
-  onChange: (next: { slides: HeroSlideDraft[]; useDefaultBanners: boolean }) => void;
+  onChange: (next: {
+    slides: HeroSlideDraft[];
+    useDefaultBanners: boolean;
+  }) => void;
 }) {
   const saved = Array.isArray(slides) ? slides : [];
   const onDefaults = useDefaultBanners || !saved.some((s) => s.src);
 
-  /** Hiển thị: nếu còn mặc định thì hiện đủ 3 banner cũ để sửa, không để list trống. */
+  /** Hiển thị đủ 4 banner mặc định, không để danh sách trống. */
   const list = useMemo(
     () => (onDefaults ? cloneDefaults() : saved),
-    [onDefaults, saved]
+    [onDefaults, saved],
   );
 
-  /** Mọi thao tác sửa đều giữ các slide hiện có (gồm 3 mặc định nếu đang ở chế độ mặc định). */
+  /** Mọi thao tác sửa đều giữ các slide hiện có. */
   const commit = (next: HeroSlideDraft[]) => {
     const withSrc = next.filter((s) => String(s.src || "").trim());
     if (!withSrc.length) {
@@ -98,7 +101,7 @@ export function HeroSlidesForm({
       <div className="flex items-start justify-between gap-2">
         <p className="text-[12px] leading-relaxed text-gray-500">
           {onDefaults
-            ? "Đang dùng 3 banner mặc định. Đổi ảnh / thêm slide sẽ giữ các banner còn lại."
+            ? "Đang dùng 4 banner mặc định. Đổi ảnh / thêm slide sẽ giữ các banner còn lại."
             : "Slide tùy chỉnh — Áp dụng để khách thấy. Ảnh giữ nguyên tỉ lệ (không cắt chữ)."}
         </p>
         {!onDefaults ? (
@@ -118,7 +121,9 @@ export function HeroSlidesForm({
           className="space-y-2 rounded-xl border border-gray-200 bg-white p-3"
         >
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[12px] font-semibold text-gray-800">Slide {idx + 1}</span>
+            <span className="text-[12px] font-semibold text-gray-800">
+              Slide {idx + 1}
+            </span>
             <button
               type="button"
               className="inline-flex h-7 items-center gap-1 rounded-md border-0 bg-transparent px-1.5 text-[11px] font-medium text-red-600 hover:bg-red-50"

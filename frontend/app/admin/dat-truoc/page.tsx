@@ -1,2 +1,6 @@
-import { BackordersPanel } from "@/components/admin/si/BackordersPanel";
-export default function Page(){return <BackordersPanel/>;}
+import { redirect } from "next/navigation";
+
+/** Đã bỏ màn xử lý đặt trước trên shop — xử lý qua Zalo + KiotViet. */
+export default function Page() {
+  redirect("/admin");
+}

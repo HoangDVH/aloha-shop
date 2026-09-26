@@ -3,7 +3,9 @@ import { ObjectId } from "mongodb";
 
 export const SHOP_ACCOUNTS = "aloha_shop_accounts";
 export const SHOP_REFRESH = "aloha_shop_refresh_tokens";
+/** @deprecated Ephemeral đã chuyển Redis — giữ tên để tham chiếu migrate. */
 export const SHOP_LOGIN_IP = "aloha_shop_login_ip";
+/** @deprecated Ephemeral đã chuyển Redis — giữ tên để tham chiếu migrate. */
 export const SHOP_OAUTH_STATE = "aloha_shop_oauth_state";
 
 export type ShopRole = "customer" | "ctv" | "si";
@@ -196,7 +198,6 @@ export async function ensureShopAuthIndexes(db: Db) {
       db.collection(SHOP_ACCOUNTS).createIndex({ ctvStatus: 1 }, { background: true }),
       db.collection(SHOP_REFRESH).createIndex({ jti: 1 }, { unique: true, background: true }),
       db.collection(SHOP_REFRESH).createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0, background: true }),
-      db.collection(SHOP_OAUTH_STATE).createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0, background: true }),
     ]);
   } catch (e) {
     console.warn("[shopAuth] ensureShopAuthIndexes:", e);

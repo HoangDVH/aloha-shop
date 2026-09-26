@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 185" fill="none">
+  <defs>
+    <linearGradient id="green" x1="300" y1="20" x2="300" y2="125" gradientUnits="userSpaceOnUse"><stop stop-color="#638a16"/><stop offset=".35" stop-color="#204f08"/><stop offset="1" stop-color="#0b3108"/></linearGradient>
+    <linearGradient id="gold" x1="90" y1="15" x2="140" y2="150" gradientUnits="userSpaceOnUse"><stop stop-color="#fffbd2"/><stop offset=".3" stop-color="#ffe85b"/><stop offset=".65" stop-color="#ffc21b"/><stop offset="1" stop-color="#e48a00"/></linearGradient>
+    <linearGradient id="orange" x1="310" y1="115" x2="310" y2="168" gradientUnits="userSpaceOnUse"><stop stop-color="#ffbc33"/><stop offset=".45" stop-color="#ff8b12"/><stop offset="1" stop-color="#ee5010"/></linearGradient>
+    <linearGradient id="letters" x1="370" y1="35" x2="370" y2="98" gradientUnits="userSpaceOnUse"><stop stop-color="#fff89b"/><stop offset=".5" stop-color="#ffdf3d"/><stop offset="1" stop-color="#ffaf13"/></linearGradient>
+    <filter id="shadow" x="-25%" y="-30%" width="160%" height="180%"><feDropShadow dx="0" dy="5" stdDeviation="3" flood-color="#54420a" flood-opacity=".3"/></filter>
+  </defs>
+  <g fill="#ffe76a">
+    <path d="M39 49Q24 32 19 41Q14 50 42 58Z"/><path d="M37 78Q3 71 6 82Q10 93 39 86Z"/><path d="M45 101Q15 109 23 119Q31 126 51 106Z"/>
+    <path d="M539 37Q565 8 574 20Q581 31 544 46Z"/><path d="M551 63Q595 49 594 63Q592 76 554 72Z"/><path d="M550 86Q590 87 586 99Q580 111 546 94Z"/>
+  </g>
+  <g transform="rotate(-5 300 90)">
+    <path d="M117 30H508Q538 30 532 60L521 104Q518 120 496 120H85L102 48Q106 30 117 30Z" fill="url(#green)" stroke="url(#gold)" stroke-width="4" filter="url(#shadow)"/>
+    <path d="M132 38H492" stroke="#eaff90" stroke-opacity=".5" stroke-width="3" stroke-linecap="round"/>
+    <text x="176" y="92" fill="#092d06" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="900" font-style="italic">FLASH</text>
+    <text x="175" y="89" fill="#fffef3" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="900" font-style="italic">FLASH</text>
+    <text x="344" y="89" fill="url(#letters)" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="900" font-style="italic">SALE</text>
+    <g transform="translate(507 65)" filter="url(#shadow)">
+      <path d="M-17-22L-23-29M17-22L23-29M-14 24L-20 31M14 24L20 31" stroke="#ffdb48" stroke-width="6" stroke-linecap="round"/>
+      <circle r="26" fill="url(#gold)"/><circle r="20" fill="#fffbe3" stroke="#d89718" stroke-width="2"/>
+      <path d="M0-14V0H11" stroke="#245425" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/><circle r="2.5" fill="#245425"/>
+    </g>
+    <path d="M108 13L79 77H110L82 158L166 63H132L155 10Z" fill="url(#gold)" stroke="#fff09b" stroke-width="3" stroke-linejoin="round" filter="url(#shadow)"/>
+    <path d="M108 20L87 70H111" stroke="#fffed4" stroke-width="4" stroke-linecap="round"/>
+    <rect x="155" y="114" width="340" height="52" rx="26" fill="url(#orange)" stroke="#ffe582" stroke-width="2" filter="url(#shadow)"/>
+    <path d="M196 126C199 133 188 136 190 145C191 155 206 155 209 145C211 138 203 134 203 131C202 137 199 138 198 140C195 137 201 132 196 126Z" fill="#fff"/>
+    <text x="221" y="148" fill="white" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="800">SỐ LƯỢNG CÓ HẠN</text>
+  </g>
+</svg>

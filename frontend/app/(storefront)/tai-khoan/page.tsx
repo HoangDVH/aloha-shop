@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useShopAuth } from "@/components/ShopAuthProvider";
 import { AccountAvatar } from "@/components/AccountAvatar";
+import { AccountMobileNav } from "@/components/AccountMobileNav";
 import { AddressBookPanel } from "@/components/AddressBookPanel";
 import { OrdersPanel } from "@/components/OrdersPanel";
 import { useShopUpdateMeMutation } from "@/lib/authQueries";
@@ -123,8 +124,8 @@ function AccountPageInner() {
   const roleLabel = shopAccountRoleLabel(user);
 
   const tabItems: { id: Tab; label: string; icon: ReactNode }[] = [
-    { id: "tai-khoan", label: "Tài khoản", icon: <UserIcon size={16} /> },
-    { id: "dia-chi", label: "Địa chỉ", icon: <MapPin size={16} /> },
+    { id: "tai-khoan", label: "Thông tin tài khoản", icon: <UserIcon size={16} /> },
+    { id: "dia-chi", label: "Sổ địa chỉ", icon: <MapPin size={16} /> },
     { id: "don-mua", label: "Đơn mua", icon: <Receipt size={16} /> },
     { id: "thanh-toan", label: "Thanh toán", icon: <CreditCard size={16} /> },
   ];
@@ -146,8 +147,8 @@ function AccountPageInner() {
   );
 
   return (
-    <div className="mx-auto max-w-7xl space-y-4 overflow-x-hidden px-4 py-6">
-      <nav className="text-sm text-slate-500">
+    <div className="mx-auto w-full min-w-0 max-w-7xl space-y-4 px-4 py-6">
+      <nav className="hidden text-sm text-slate-500 lg:block">
         <Link href="/" className="hover:text-[var(--aloha-green)]">
           Trang chủ
         </Link>
@@ -155,37 +156,7 @@ function AccountPageInner() {
         <span className="font-semibold text-[var(--aloha-ink)]">Tài khoản</span>
       </nav>
 
-      {/* Mobile tabs ngang */}
-      <div className="sticky top-[var(--shop-chrome-h,7.5rem)] z-30 -mx-4 border-b border-[var(--aloha-line)] bg-[var(--aloha-cream)]/95 px-4 backdrop-blur lg:hidden">
-        <div className="flex items-center gap-2">
-          <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto py-2">
-            {tabItems.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => goTab(t.id)}
-                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ${
-                  tab === t.id
-                    ? "bg-[var(--aloha-green)] text-white"
-                    : "bg-white text-slate-600 ring-1 ring-[var(--aloha-line)]"
-                }`}
-              >
-                {t.icon}
-                {t.label}
-              </button>
-            ))}
-          </div>
-          <button
-            type="button"
-            disabled={logoutPending}
-            onClick={() => logout()}
-            className="shrink-0 rounded-full p-2 text-slate-500 hover:bg-white hover:text-red-600"
-            aria-label="Đăng xuất"
-          >
-            <LogOut size={16} />
-          </button>
-        </div>
-      </div>
+      <AccountMobileNav value={tab} items={tabItems} onChange={goTab} onLogout={() => logout()} logoutPending={logoutPending} />
 
       <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
         {/* Sidebar desktop */}
@@ -240,11 +211,11 @@ function AccountPageInner() {
         <div className="min-w-0 space-y-4">
           {tab === "tai-khoan" ? (
             <>
-              <section className="flex flex-wrap items-center gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[var(--aloha-line)]">
+              <section className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[var(--aloha-line)] sm:p-5">
                 <AccountAvatar user={user} size={64}  />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h1 className="text-lg font-extrabold text-[var(--aloha-ink)]">
+                    <h1 className="break-words text-lg font-extrabold text-[var(--aloha-ink)]">
                       {user.fullName || "Khách ALOHA"}
                     </h1>
                     {hasGoogle ? (
@@ -254,13 +225,13 @@ function AccountPageInner() {
                       </span>
                     ) : null}
                   </div>
-                  <p className="mt-0.5 text-sm text-slate-600">{user.email}</p>
+                  <p className="mt-0.5 break-all text-sm text-slate-600">{user.email}</p>
                   <p className="mt-1 text-xs font-semibold text-[var(--aloha-green)]">{roleLabel}</p>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setTab("dia-chi")}
-                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--aloha-green)] hover:underline"
+                  onClick={() => goTab("dia-chi")}
+                  className="col-span-2 inline-flex min-h-10 items-center gap-1.5 justify-self-start text-sm font-semibold text-[var(--aloha-green)] hover:underline sm:col-span-1 sm:col-start-2"
                 >
                   <MapPin size={16} />
                   Sổ địa chỉ

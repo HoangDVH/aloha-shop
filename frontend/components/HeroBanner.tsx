@@ -25,36 +25,36 @@ export type HeroSlide = {
 export const BRAND_BANNERS: HeroSlide[] = [
   {
     src: "/banners/banner-hero-01.png?v=23",
-    alt: "Không gian xanh — Bắt đầu từ những chậu cây nhỏ",
+    alt: "ALOHA — Đa dạng mẫu mã, phối theo yêu cầu",
     href: "/tim",
-    label: "Cây cảnh",
-    eyebrow: "Không gian xanh",
-    title: "Bắt đầu từ những chậu cây nhỏ",
-    desc: "Cây xanh không chỉ là trang trí mà còn là người bạn đồng hành cho cuộc sống tích cực hơn!",
-    cta: "Mua ngay",
-  },
-  {
-    src: "/banners/banner-hero-02.png?v=22",
-    alt: "Mang thiên nhiên vào ngôi nhà bạn",
-    href: "/tim",
-    label: "Thiên nhiên",
-    eyebrow: "Mang thiên nhiên",
-    title: "Vào ngôi nhà bạn",
-    desc: "Cây xanh không chỉ là trang trí mà còn là người bạn đồng hành cho cuộc sống tích cực hơn!",
+    label: "Tất cả sản phẩm",
+    eyebrow: "Đa dạng mẫu mã",
+    title: "Phối theo yêu cầu",
+    desc: "Hàng nghìn mẫu chậu, cây và phụ kiện.",
     cta: "Mua ngay",
   },
   {
     src: "/banners/banner-hero-03.png?v=22",
-    alt: "Cây xanh — Cho không gian sống trong lành",
-    href: "/tim",
-    label: "Sống xanh",
-    eyebrow: "Cây xanh",
-    title: "Cho không gian sống trong lành",
-    desc: "Mang thiên nhiên vào nhà, mang lại sự thư giãn, tốt cho sức khỏe và nâng tầm cuộc sống.",
+    alt: "ALOHA — Sản phẩm chất lượng, tuyển chọn kỹ",
+    href: "/danh-muc/cay-canh-du-loai",
+    label: "Cây cảnh",
+    eyebrow: "Sản phẩm chất lượng",
+    title: "Tuyển chọn kỹ",
+    desc: "Cây khỏe, chậu đẹp, phối hài hòa. Kiểm tra kỹ trước khi giao đến khách hàng.",
     cta: "Mua ngay",
   },
   {
-    src: "/banners/banner-hero-04.png?v=7",
+    src: "/banners/banner-hero-02.png?v=22",
+    alt: "ALOHA — Ưu đãi và dịch vụ dành cho khách sỉ",
+    href: "/dang-ky-si",
+    label: "Khách sỉ",
+    eyebrow: "Ưu đãi và dịch vụ",
+    title: "Dành cho khách sỉ",
+    desc: "Đồng hành lâu dài, hợp tác bền vững cùng ALOHA.",
+    cta: "Đăng ký sỉ",
+  },
+  {
+    src: "/banners/bannerctv.png?v=7",
     alt: "Cộng tác viên Aloha — Trở thành CTV Aloha, kiếm thêm thu nhập cùng Aloha",
     href: "/tuyen-ctv",
     label: "CTV Aloha",
@@ -68,8 +68,8 @@ export const BRAND_BANNERS: HeroSlide[] = [
 const AUTOPLAY_MS = 5600;
 
 function isLegacyBannerSrc(src: string) {
-  return /banner-cay-canh|banner-dat-phan|banner-hat-giong|banner-hero-04|banner-hero-aloha|banner-01-|banner-02-|banner-03-|banner-04-/i.test(
-    src
+  return /banner-cay-canh|banner-dat-phan|banner-hat-giong|bannerctv|banner-hero-aloha|banner-01-|banner-02-|banner-03-|banner-04-/i.test(
+    src,
   );
 }
 
@@ -80,16 +80,13 @@ function pickText(override: string | undefined, fallback: string) {
 
 /** Hero full-bleed: cao = 1 viewport trừ header+nav, ngang 100%. */
 export function HeroBanner({ slides }: { slides?: HeroSlide[] }) {
-  // Luôn dùng ảnh brand; appearance chỉ được đổi href nếu hợp lệ.
-  // Slide CTV (index 3) luôn về /tuyen-ctv — tránh admin gắn nhầm /tim.
-  const items = BRAND_BANNERS.map((brand, i) => {
-    const s = slides?.[i];
-    if (i === 3) return { ...brand, href: "/tuyen-ctv" };
+  // Giữ thứ tự và đích đến của bộ banner; cấu hình cũ không ghi đè liên kết.
+  // Ghép nội dung theo ảnh, không theo vị trí cũ sau khi đổi thứ tự.
+  const items = BRAND_BANNERS.map((brand) => {
+    const s = slides?.find((slide) => String(slide.src || "").split("?")[0] === brand.src.split("?")[0]);
     if (!s || isLegacyBannerSrc(String(s.src || ""))) return brand;
-    const href = String(s.href || "").trim();
     return {
       ...brand,
-      href: href || brand.href,
       label: pickText(s.label, brand.label || ""),
       alt: pickText(s.alt, brand.alt),
     };
@@ -109,7 +106,7 @@ export function HeroBanner({ slides }: { slides?: HeroSlide[] }) {
         stopOnInteraction: false,
         stopOnMouseEnter: true,
       }),
-    ]
+    ],
   );
   const [selected, setSelected] = useState(0);
   const [progressKey, setProgressKey] = useState(0);
@@ -139,7 +136,10 @@ export function HeroBanner({ slides }: { slides?: HeroSlide[] }) {
   const active = items[selected] || items[0];
 
   return (
-    <section className="hero-banner hero-banner--full" aria-label="Banner cửa hàng">
+    <section
+      className="hero-banner hero-banner--full"
+      aria-label="Banner cửa hàng"
+    >
       <div className="hero-banner__full-inner">
         <div className="hero-banner__stage">
           <div className="embla embla--hero" ref={emblaRef}>
@@ -185,7 +185,11 @@ export function HeroBanner({ slides }: { slides?: HeroSlide[] }) {
             <ChevronLeft size={18} />
           </button>
 
-          <div className="hero-banner__dots" role="tablist" aria-label="Chọn banner">
+          <div
+            className="hero-banner__dots"
+            role="tablist"
+            aria-label="Chọn banner"
+          >
             {items.map((_, i) => (
               <button
                 key={i}

@@ -115,6 +115,81 @@ export async function redisDel(...keys: string[]): Promise<void> {
   }
 }
 
+/**
+ * Rate-limit counter: INCR + EXPIRE atomic (Lua).
+ * Trả null nếu Redis offline (caller fallback memory).
+ */
+export async function redisIncr(key: string, ttlSec: number): Promise<number | null> {
+  if (!(await connectMain()) || !client) return null;
+  try {
+    const n = await client.eval(
+      `local c = redis.call("INCR", KEYS[1])
+       if c == 1 then redis.call("EXPIRE", KEYS[1], ARGV[1]) end
+       return c`,
+      {
+        keys: [key],
+        arguments: [String(Math.max(1, Math.floor(ttlSec)))],
+      }
+    );
+    return Number(n);
+  } catch {
+    return null;
+  }
+}
+
+/** Distributed lock — SET NX PX. Trả false nếu Redis offline (caller dùng fallback). */
+export async function redisAcquireLock(
+  key: string,
+  owner: string,
+  ttlMs: number
+): Promise<boolean | null> {
+  if (!(await connectMain()) || !client) return null;
+  try {
+    const r = await client.set(key, owner, {
+      NX: true,
+      PX: Math.max(200, Math.floor(ttlMs)),
+    });
+    return r === "OK";
+  } catch {
+    return null;
+  }
+}
+
+/** Gia hạn TTL chỉ khi vẫn đúng owner. */
+export async function redisRenewLock(
+  key: string,
+  owner: string,
+  ttlMs: number
+): Promise<boolean | null> {
+  if (!(await connectMain()) || !client) return null;
+  try {
+    const r = await client.eval(
+      `if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("pexpire", KEYS[1], ARGV[2]) else return 0 end`,
+      {
+        keys: [key],
+        arguments: [owner, String(Math.max(200, Math.floor(ttlMs)))],
+      }
+    );
+    return Number(r) === 1;
+  } catch {
+    return null;
+  }
+}
+
+/** Nhả khóa chỉ khi đúng owner. */
+export async function redisReleaseLock(key: string, owner: string): Promise<boolean | null> {
+  if (!(await connectMain()) || !client) return null;
+  try {
+    const r = await client.eval(
+      `if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("del", KEYS[1]) else return 0 end`,
+      { keys: [key], arguments: [owner] }
+    );
+    return Number(r) === 1;
+  } catch {
+    return null;
+  }
+}
+
 /** Xóa mọi key cache theo prefix collection (SCAN nhẹ). */
 export async function redisInvalidateCollection(coll: string): Promise<void> {
   if (!(await connectMain()) || !client) return;

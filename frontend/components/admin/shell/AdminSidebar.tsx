@@ -85,8 +85,6 @@ export function AdminSidebar() {
         </p>
       </div>
       <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
-        <Link href="/admin/si" className={linkClass(pathname === "/admin/si")}><Users className="h-4 w-4"/>Khách sỉ</Link>
-        <Link href="/admin/dat-truoc" className={linkClass(pathname === "/admin/dat-truoc")}><FileText className="h-4 w-4"/>Đơn đặt trước</Link>
         <Link
           href="/admin"
           className={linkClass(pathname === "/admin")}

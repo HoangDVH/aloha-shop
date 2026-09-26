@@ -28,6 +28,7 @@ export function InviteWholesale() {
       siRequest<InviteResult>("/api/shop/admin/si/invite", body),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["admin", "si"] });
+      void qc.invalidateQueries({ queryKey: ["admin", "directory"] });
     },
   });
 

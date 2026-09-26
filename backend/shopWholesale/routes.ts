@@ -14,10 +14,16 @@ import { addressSchema, applicationSchema, canonicalAddress } from "./schema.js"
 import { verifyCustomerRegion, lookupKvCustomers } from "./kvCustomers.js";
 import { SI_TERMS_VERSION, normalizeWholesalePhone, wholesaleMinimum } from "./policy.js";
 import { accountOwnsPhone, decideWholesalePhoneLink, maskShopEmail, phoneOwnerFilter } from "./accountLink.js";
+import {
+  getSiIdentitySession,
+  getSiLookup,
+  putSiIdentitySession,
+  putSiLookup,
+  putSiOauthSession,
+  takeSiOauthSession,
+} from "./siEphemeral.js";
 
 type GetDb = () => Promise<Db>;
-const SESSIONS = "aloha_shop_si_sessions";
-const LOOKUPS = "aloha_shop_si_lookups";
 const COOKIE = "shop_si_onboarding";
 const hash = (s: string) => crypto.createHash("sha256").update(s).digest("hex");
 const cookieOptions = () => ({ httpOnly: true, secure: process.env.COOKIE_SECURE === "1" || process.env.NODE_ENV === "production", sameSite: "lax" as const, path: "/", maxAge: 30 * 60 * 1000 });
@@ -34,10 +40,10 @@ async function identity(req: Request, db: Db) {
   const account = await currentAccount(req, db);
   if (account?.zaloId && account.zaloVerifiedAt) return { owner: String(account._id), zaloId: String(account.zaloId), account };
   const secret = String(req.cookies?.[COOKIE] || "");
-  const session = secret && await db.collection(SESSIONS).findOne({ tokenHash: hash(secret), kind: "identity", expiresAt: { $gt: new Date() } });
+  const session = secret ? await getSiIdentitySession(hash(secret)) : null;
   if (!session) return null;
   if (session.accountId && String(account?._id) !== session.accountId) return null;
-  return { owner: session.tokenHash as string, zaloId: session.zaloId as string, account };
+  return { owner: session.tokenHash, zaloId: session.zaloId, account };
 }
 
 function sendError(res: Response, error: any) {
@@ -50,21 +56,17 @@ function sendError(res: Response, error: any) {
 export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: GetDb) {
   let indexes: Promise<unknown> | undefined;
   const ensure = (db: Db) => indexes ||= Promise.all([
-    db.collection(SESSIONS).createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
-    db.collection(SESSIONS).createIndex({ tokenHash: 1 }, { unique: true }),
-    db.collection(LOOKUPS).createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
-    db.collection(LOOKUPS).createIndex({ lookupId: 1 }, { unique: true }),
     db.collection(SHOP_ACCOUNTS).createIndex({ zaloId: 1 }, { unique: true, partialFilterExpression: { zaloId: { $type: "string" } } }),
     db.collection(SHOP_ACCOUNTS).createIndex({ phoneNorm: 1 }, { unique: true, partialFilterExpression: { siIdentity: true, phoneNorm: { $type: "string" } } }),
     db.collection(SHOP_ACCOUNTS).createIndex({ kvRetailer: 1, kvCustomerId: 1 }, { unique: true, partialFilterExpression: { kvCustomerId: { $type: "number" }, siIdentity: true } }),
   ]).catch(error => { indexes = undefined; throw error; });
 
-  app.use(["/api/shop/auth/si", "/api/shop/auth/zalo"], (req, res, next) => {
+  app.use(["/api/shop/auth/si", "/api/shop/auth/zalo"], async (req, res, next) => {
     applyShopCors(req, res);
     res.setHeader("Cache-Control", "private, no-store");
     if (req.method === "OPTIONS") return res.status(204).end();
     if (req.method !== "GET" && req.headers.origin && !isAllowedShopOrigin(req.headers.origin)) return res.sendStatus(403);
-    if (!shopRateLimitOrReject(req, res, "si_onboarding", 30, 60000)) return;
+    if (!(await shopRateLimitOrReject(req, res, "si_onboarding", 30, 60000))) return;
     next();
   });
 
@@ -88,8 +90,11 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
       const verifier = crypto.randomBytes(32).toString("base64url");
       const state = crypto.randomBytes(32).toString("hex");
       const binding = crypto.randomBytes(32).toString("hex");
-      await db.collection(SESSIONS).insertOne({ tokenHash: hash(binding), kind: "oauth", stateHash: hash(state), verifier,
-        accountId: account ? String(account._id) : null, expiresAt: new Date(Date.now() + 10 * 60000) });
+      await putSiOauthSession(hash(binding), {
+        stateHash: hash(state),
+        verifier,
+        accountId: account ? String(account._id) : null,
+      });
       res.cookie(COOKIE, binding, cookieOptions());
       const query = new URLSearchParams({ app_id: process.env.ZALO_APP_ID, redirect_uri: process.env.ZALO_REDIRECT_URI,
         code_challenge: crypto.createHash("sha256").update(verifier).digest("base64url"), state });
@@ -103,8 +108,7 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
       const binding = String(req.cookies?.[COOKIE] || "");
       const state = String(req.query.state || "");
       if (!binding || !state || !req.query.code) return res.redirect("/dang-ky-si?error=zalo_cancelled");
-      const session = await db.collection(SESSIONS).findOneAndDelete({ tokenHash: hash(binding), kind: "oauth",
-        stateHash: hash(state), expiresAt: { $gt: new Date() } });
+      const session = await takeSiOauthSession(hash(binding), hash(state));
       if (!session) return res.redirect("/dang-ky-si?error=zalo_expired");
       const current = await currentAccount(req, db);
       if ((session.accountId || null) !== (current ? String(current._id) : null)) return res.redirect("/dang-ky-si?error=account_changed");
@@ -130,8 +134,10 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
         account = await db.collection(SHOP_ACCOUNTS).findOne({ _id: current._id });
       }
       const secret = crypto.randomBytes(32).toString("hex");
-      await db.collection(SESSIONS).insertOne({ tokenHash: hash(secret), kind: "identity", zaloId,
-        accountId: account ? String(account._id) : null, expiresAt: new Date(Date.now() + 30 * 60000) });
+      await putSiIdentitySession(hash(secret), {
+        zaloId,
+        accountId: account ? String(account._id) : null,
+      });
       res.cookie(COOKIE, secret, cookieOptions());
       if (account) await issueShopSession(res, db, account);
       res.redirect("/dang-ky-si");
@@ -174,8 +180,15 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
         }
       } catch { result = "lookup_unavailable"; }
       const lookupId = crypto.randomUUID();
-      await db.collection(LOOKUPS).insertOne({ lookupId, owner: who.owner, address: canonicalAddress(input), phone: input.phone,
-        result, candidate, retailer, expiresAt: new Date(Date.now() + 30 * 60000) });
+      await putSiLookup({
+        lookupId,
+        owner: who.owner,
+        address: canonicalAddress(input),
+        phone: input.phone,
+        result,
+        candidate,
+        retailer,
+      });
       res.json({ lookupId, result });
     } catch (error) { sendError(res, error); }
   });
@@ -186,9 +199,15 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
       const who = await identity(req, db);
       if (!who) return res.status(401).json({ error: "Vui lòng đăng nhập Zalo lại" });
       const input = applicationSchema.parse(req.body);
-      const lookup = await db.collection(LOOKUPS).findOne({ lookupId: input.lookupId, owner: who.owner,
-        phone: input.phone, address: canonicalAddress(input), expiresAt: { $gt: new Date() } });
-      if (!lookup) return res.status(409).json({ error: "Thông tin đã thay đổi hoặc hết hạn. Vui lòng kiểm tra lại SĐT/địa chỉ." });
+      const lookup = await getSiLookup(input.lookupId);
+      if (
+        !lookup ||
+        lookup.owner !== who.owner ||
+        lookup.phone !== input.phone ||
+        lookup.address !== canonicalAddress(input)
+      ) {
+        return res.status(409).json({ error: "Thông tin đã thay đổi hoặc hết hạn. Vui lòng kiểm tra lại SĐT/địa chỉ." });
+      }
       if (lookup.result !== "existing_si_candidate" && (!input.shopName || !input.businessType)) return res.status(400).json({ error: "Vui lòng nhập tên cửa hàng và loại hình kinh doanh" });
       let account = who.account || await currentAccount(req, db);
       if (account && ["active", "cho_duyet", "khoa"].includes(String(account.siStatus))) {
@@ -267,6 +286,17 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
       res.json({ items: docs.map(d => ({ ...toPublicShopAccount(d), revision: d.applicationRevision || 0,
         verification: d.siVerification, candidate: d.siCandidate, kvCustomerId: d.kvCustomerId,
         syncStatus: d.siKvSyncStatus, siLookupResult: d.siLookupResult, audit: d.siAudit || [] })) });
+    } catch (error) { sendError(res, error); }
+  });
+
+  app.get("/api/shop/admin/si/:id", ...gate, async (req, res) => {
+    try {
+      const db = await getDb();
+      const d = await db.collection(SHOP_ACCOUNTS).findOne(shopAccountIdQuery(String(req.params.id)));
+      if (!d?.roles?.includes("si")) return res.status(404).json({ error: "Không tìm thấy hồ sơ sỉ" });
+      res.json({ ...toPublicShopAccount(d), revision: d.applicationRevision || 0,
+        verification: d.siVerification, candidate: d.siCandidate, kvCustomerId: d.kvCustomerId,
+        syncStatus: d.siKvSyncStatus, siLookupResult: d.siLookupResult, audit: d.siAudit || [] });
     } catch (error) { sendError(res, error); }
   });
 

@@ -19,7 +19,6 @@ dotenv.config();
 import { registerShopApi } from './shopCatalog/register.js';
 import { registerShopAuthRoutes } from './shopAuth/routes.js';
 import { registerWholesaleRoutes } from './shopWholesale/routes.js';
-import { registerBackorderAdminRoutes } from './shopOrders/backorderAdmin.js';
 import { startWholesaleProvisionWorker } from './shopWholesale/provision.js';
 import { startProductVideoReconcileWorker } from './shopCatalog/videoReconcile.js';
 import { registerShopCartQuote } from './shopWholesale/quote.js';
@@ -213,7 +212,6 @@ registerShopAuthRoutes(app, getDb);
 registerWholesaleRoutes(app, getDb, getOpsDb);
 registerWholesalePasswordRoutes(app, getDb, getOpsDb);
 registerWholesaleSyncGuard(app, getDb, getOpsDb);
-registerBackorderAdminRoutes(app, getDb, getOpsDb);
 registerWholesaleSyncAdmin(app, getDb, getOpsDb);
 registerShopCartQuote(app, getDb, getDb);
 registerShopAddressRoutes(app, getDb);
@@ -317,4 +315,24 @@ app.listen(PORT, '0.0.0.0', () => {
   startWholesaleOrderSync(getDb, getOpsDb);
   startKvDeliveryReconcile(getDb, getOpsDb);
   startProductVideoReconcileWorker(getDb, getOpsDb);
+  // Ephemeral đã chuyển Redis — bỏ collection Mongo cũ nếu còn.
+  void getDb()
+    .then(async (db) => {
+      for (const name of [
+        "aloha_shop_checkout_lock",
+        "aloha_shop_si_sessions",
+        "aloha_shop_si_lookups",
+        "aloha_shop_login_ip",
+        "aloha_shop_oauth_state",
+        "aloha_shop_password_tokens",
+      ]) {
+        try {
+          await db.collection(name).drop();
+          console.log(`[redis-migrate] dropped legacy Mongo collection ${name}`);
+        } catch {
+          /* not_found / already gone */
+        }
+      }
+    })
+    .catch(() => {});
 });

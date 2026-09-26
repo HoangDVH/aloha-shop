@@ -51,7 +51,7 @@ export function registerShopOrderCustomerActionRoutes(
     async (req: ShopAuthRequest, res) => {
       try {
         if (
-          !shopRateLimitOrReject(req, res, "shop_renew_payment", 12, 60_000)
+          !(await shopRateLimitOrReject(req, res, "shop_renew_payment", 12, 60_000))
         ) {
           return;
         }
@@ -333,7 +333,7 @@ export function registerShopOrderCustomerActionRoutes(
     async (req: ShopAuthRequest, res) => {
       try {
         if (
-          !shopRateLimitOrReject(req, res, "shop_reported_paid", 10, 60_000)
+          !(await shopRateLimitOrReject(req, res, "shop_reported_paid", 10, 60_000))
         ) {
           return;
         }

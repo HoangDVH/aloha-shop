@@ -4,6 +4,10 @@ import Link from "next/link";
 import { ProductCard } from "@/components/ProductCard";
 import { SectionTitle } from "@/components/SectionTitle";
 import type { ShopProduct } from "@/lib/api";
+import {
+  livePropsForMa,
+  useLiveProductPrices,
+} from "@/lib/useLiveProductPrices";
 
 const VIEW_ALL_HREF = "/tim?badge=noi_bat";
 const HOME_NOI_BAT_LIMIT = 6;
@@ -15,6 +19,7 @@ export function HomeFeaturedCategories({
   products: ShopProduct[];
 }) {
   const items = products.slice(0, HOME_NOI_BAT_LIMIT);
+  const liveMap = useLiveProductPrices(items);
   if (!items.length) return null;
 
   return (
@@ -51,7 +56,7 @@ export function HomeFeaturedCategories({
                 i < items.length - 1 ? "lg:border-r lg:border-[var(--aloha-line)]" : ""
               }`}
             >
-              <ProductCard product={p} shopee />
+              <ProductCard product={p} shopee {...livePropsForMa(liveMap, p.ma)} />
             </li>
           ))}
         </ul>

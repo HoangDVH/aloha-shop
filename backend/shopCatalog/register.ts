@@ -1926,7 +1926,7 @@ export function registerShopApi(
   app.post("/api/shop/ctv/click", async (req, res) => {
     setCors(req, res);
     try {
-      if (!shopRateLimitOrReject(req, res, "shop_ctv_click", 30, 60_000)) {
+      if (!(await shopRateLimitOrReject(req, res, "shop_ctv_click", 30, 60_000))) {
         return;
       }
       const body = (req.body || {}) as { ctv?: unknown; ma?: unknown; path?: unknown };

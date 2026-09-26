@@ -119,7 +119,7 @@ export function registerShopOrderCreateRoutes(
     async (req: ShopAuthRequest, res) => {
       try {
         if (
-          !shopRateLimitOrReject(req, res, "shop_order_create", 20, 60_000)
+          !(await shopRateLimitOrReject(req, res, "shop_order_create", 20, 60_000))
         ) {
           return;
         }

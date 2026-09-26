@@ -2045,14 +2045,27 @@ body {
 
 .embla--home-sale .embla__container {
   display: flex;
+  align-items: stretch;
   margin-left: -0.625rem;
 }
 
 .embla--home-sale .embla__slide {
-  /* Mobile: 2 card / hàng giống lưới SP bên dưới */
+  /* Mobile: 2 card / hàng */
   flex: 0 0 50%;
   min-width: 0;
   padding-left: 0.625rem;
+  display: flex;
+}
+
+.embla--home-sale .embla__slide > .home-flash-sale__card {
+  width: 100%;
+  height: 100%;
+  display: flex;
+}
+
+.embla--home-sale .embla__slide > .home-flash-sale__card > article {
+  height: 100%;
+  width: 100%;
 }
 
 @media (min-width: 640px) {
@@ -2061,9 +2074,34 @@ body {
   }
 }
 
+/* Desktop: lưới 3 cột full width — không để khoảng trống phải như Embla trimSnaps */
+.home-flash-sale__grid {
+  display: none;
+}
+
 @media (min-width: 1024px) {
-  .embla--home-sale .embla__slide {
-    flex-basis: 33.333%;
+  .embla--home-sale,
+  .home-flash-sale .home-low-stock__nav {
+    display: none !important;
+  }
+
+  .home-flash-sale__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .home-flash-sale__grid > .home-flash-sale__card {
+    min-width: 0;
+    height: 100%;
+    display: flex;
+  }
+
+  .home-flash-sale__grid > .home-flash-sale__card > article {
+    height: 100%;
+    width: 100%;
   }
 }
 

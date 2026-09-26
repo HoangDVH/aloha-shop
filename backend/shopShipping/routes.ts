@@ -99,7 +99,7 @@ export function registerShopShippingRoutes(
     requireShopAuth(_getShopDb),
     async (req: ShopAuthRequest, res) => {
       try {
-        if (!shopRateLimitOrReject(req, res, "shop_ship_quote", 40, 60_000)) {
+        if (!(await shopRateLimitOrReject(req, res, "shop_ship_quote", 40, 60_000))) {
           return;
         }
         const body = req.body || {};

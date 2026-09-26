@@ -1,0 +1,25 @@
+---
+description: Baseline & xử lý mất video SP shop (aloha_products)
+alwaysApply: false
+---
+
+# Product videos baseline
+
+## Snapshot (đã có script)
+
+- Chạy: `node scripts/snapshot-product-videos.cjs` (cần `MONGO_URI` tunnel VPS, DB `aloha_shop_db`)
+- Output: `scripts/snapshots/product-videos-YYYY-MM-DD.json` + `product-videos-latest.json`
+- Baseline **2026-09-26**: **5** SP có video — `CBCTAN`, `CBCTPT`, `CBDVDP`, `TPHPAK`, `TPKTTL` (lúc đó đều `webBadge=noi_bat`)
+
+## Khi user báo “hôm qua gắn video, hôm nay mất”
+
+1. Chạy lại snapshot; so với file ngày hôm trước (script tự in LOST/GAINED nếu có file `product-videos-<hôm-qua>.json`).
+2. Đọc Mongo shop + ops `aloha_products` theo `ma`: `videos`, `videoUrl`, `updatedAt`, `webBadge`, `merchandisingUpdatedAt`.
+3. Nếu field `null`/rỗng trên DB → không phải lỗi UI ProductCard.
+4. Sync KV / catalog sync **không** được ghi đè video (code delete field). Nghi: `PATCH /api/aloha/products/patch-videos` ghi rỗng, mirror VPS fail, hoặc ghi nhầm DB.
+5. Khôi phục: gắn lại video trên Garden → xác nhận Compass có URL → chạy lại snapshot.
+
+## Liên quan nhãn nổi bật
+
+- `webBadge` chỉ 1 giá trị/SP; đổi nhãn khác = mất `noi_bat`.
+- `ProductCard` có thể không vẽ sticker `noi_bat` dù DB còn field — khối trang chủ lọc `badge=noi_bat`.

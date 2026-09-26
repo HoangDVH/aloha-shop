@@ -466,7 +466,12 @@ export function ProductDetailView({
 
                 <div className="flex flex-wrap items-center gap-3">
                   {expectsSi && !pricePending && livePriceKind === "si" ? (
-                    <SiPriceBadge price={liveGia} webPrice={liveWebPrice} unit={activeProduct.dvt} />
+                    <SiPriceBadge
+                      price={liveGia}
+                      webPrice={liveWebPrice}
+                      unit={activeProduct.dvt}
+                      variant={user.siRegion === "HCM" || user.siRegion === "TINH" ? "wholesale-detail" : "detail"}
+                    />
                   ) : (
                   <div className="flex flex-wrap items-baseline gap-x-2 text-2xl font-bold text-[var(--aloha-price)] sm:text-[1.75rem]">
                     <span>{pricePending ? "Đang cập nhật…" : livePriceKind === "si_missing" ? "Liên hệ báo giá" : formatVnd(liveGia)}</span>

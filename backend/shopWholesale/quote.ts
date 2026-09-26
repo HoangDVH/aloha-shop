@@ -10,7 +10,7 @@ import { shopRateLimitOrReject } from "../shopRateLimit.js";
 export function registerShopCartQuote(app: Express, getDb: () => Promise<Db>, getCatalogDb: () => Promise<Db>) {
   app.post("/api/shop/cart/quote", requireShopAuth(getDb), async (req: ShopAuthRequest, res) => {
     res.setHeader("Cache-Control", "private, no-store");
-    if (!shopRateLimitOrReject(req, res, "cart_quote", 60, 60000)) return;
+    if (!(await shopRateLimitOrReject(req, res, "cart_quote", 60, 60000))) return;
     try {
       const input = z.object({ items: z.array(z.object({ productCode: z.string().trim().min(1).max(100), quantity: z.number().int().min(1).max(10000) })).min(1).max(100) }).parse(req.body);
       const db = await getDb();

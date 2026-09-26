@@ -10,6 +10,10 @@ import { useToast } from "@/components/Toast";
 import { formatVnd, type ShopProduct } from "@/lib/api";
 import { useShopAuth } from "@/components/ShopAuthProvider";
 import { canPurchaseZeroPrice } from "@/lib/testBuyer";
+import {
+  livePropsForMa,
+  useLiveProductPrices,
+} from "@/lib/useLiveProductPrices";
 
 function ImagePendingOverlay({ active }: { active: boolean }) {
   if (!active) return null;
@@ -53,6 +57,12 @@ export function ProductCard({
   const allowBackorder = liveAllowBackorder ?? product.allowBackorder;
   const expectsSi = user?.siStatus === "active" && user.roles.includes("si");
   const pricePending = Boolean(expectsSi) !== (priceKind === "si" || priceKind === "si_missing");
+  const wholesaleCard = expectsSi && !pricePending && priceKind === "si" &&
+    (user.siRegion === "HCM" || user.siRegion === "TINH");
+  const webPrice = liveWebPrice ?? product.webPrice;
+  const wholesaleDiscount = wholesaleCard && Number.isFinite(webPrice) && Number(webPrice) > displayGia && displayGia > 0
+    ? Math.floor(((Number(webPrice) - displayGia) / Number(webPrice)) * 100)
+    : 0;
   const zeroPriceBlocked = priceKind === "si_missing" || (!(displayGia > 0) && !canPurchaseZeroPrice(user?.email));
   const purchaseBlocked = pricePending || zeroPriceBlocked || (preOrder && allowBackorder === false);
 
@@ -200,6 +210,15 @@ export function ProductCard({
           <ImagePendingOverlay active={navPending} />
         </Link>
 
+        {wholesaleDiscount > 0 ? (
+          <span
+            className="pointer-events-none absolute right-0 top-0 z-10 rounded-bl-sm bg-[#fff0eb] px-2 py-1 text-lg font-normal leading-tight text-[#ee4d2d] sm:text-xl"
+            aria-label={`Thấp hơn giá web ${wholesaleDiscount}%`}
+          >
+            -{wholesaleDiscount}%
+          </span>
+        ) : null}
+
         <div className="pointer-events-none absolute left-2 top-2 z-10 flex flex-col items-start gap-1">
           {preOrder || manualBadge === "dat_truoc" ? (
             <span className="product-card__badge inline-flex h-5 w-max max-w-none shrink-0 items-center justify-center rounded-full bg-[var(--aloha-sale)] px-2.5 text-[10px] font-bold leading-none tracking-normal text-white shadow-sm whitespace-nowrap [word-break:keep-all] [overflow-wrap:normal]">
@@ -235,31 +254,34 @@ export function ProductCard({
           {product.ten}
         </Link>
 
-        <div className={`mt-auto flex items-end justify-between gap-2 pt-0.5 ${expectsSi && !pricePending && priceKind === "si" ? "flex-wrap" : ""}`}>
-          <div className={expectsSi && !pricePending && priceKind === "si" ? "min-w-0 w-full" : "min-w-0"}>
+        <div className={`mt-auto flex min-h-[2.65rem] flex-nowrap justify-between gap-2 pt-0.5 ${wholesaleCard ? "items-center" : "items-end"}`}>
+          <div className="min-w-0 flex-1">
           {expectsSi && !pricePending && priceKind === "si" ? (
-            <SiPriceBadge price={displayGia} webPrice={liveWebPrice ?? product.webPrice} unit={product.dvt} variant="card" />
+            <SiPriceBadge price={displayGia} webPrice={webPrice} unit={product.dvt} variant={wholesaleCard ? "wholesale-card" : "card"} />
           ) : (
-          <div
-            className={`min-w-0 truncate font-extrabold tracking-tight text-[var(--aloha-price)] ${
-              shopee ? "text-[15px] sm:text-base" : "text-base sm:text-lg"
-            }`}
-          >
-            {pricePending ? "Đang cập nhật…" : priceKind === "si_missing" ? "Liên hệ" : formatVnd(displayGia)}
-            {product.dvt ? (
-              <span
-                className={`ml-1 font-semibold text-[var(--aloha-muted)] ${
-                  shopee ? "text-[10px] sm:text-[11px]" : "text-xs"
-                }`}
-              >
-                / {product.dvt}
-              </span>
-            ) : null}
+          <div className="flex min-h-[2.65rem] min-w-0 flex-col justify-end">
+            <div
+              className={`min-w-0 truncate font-extrabold tracking-tight text-[var(--aloha-price)] ${
+                shopee ? "text-[15px] sm:text-base" : "text-base sm:text-lg"
+              }`}
+            >
+              {pricePending ? "Đang cập nhật…" : priceKind === "si_missing" ? "Liên hệ" : formatVnd(displayGia)}
+              {product.dvt ? (
+                <span
+                  className={`ml-1 font-semibold text-[var(--aloha-muted)] ${
+                    shopee ? "text-[10px] sm:text-[11px]" : "text-xs"
+                  }`}
+                >
+                  / {product.dvt}
+                </span>
+              ) : null}
+            </div>
+            <div className="mt-0.5 h-[1.05rem]" aria-hidden />
           </div>
           )}
           </div>
           {!purchaseBlocked ? (
-            <div className="product-card__add-wrap shrink-0">{addBtn}</div>
+            <div className={`product-card__add-wrap ml-auto shrink-0 ${wholesaleCard ? "!mt-0 self-center" : "self-end"}`}>{addBtn}</div>
           ) : null}
         </div>
       </div>
@@ -277,64 +299,7 @@ export function ProductGrid({
   shopee?: boolean;
   homeRow6?: boolean;
 }) {
-  const [liveMap, setLiveMap] = useState<Record<string, { gia: number; webPrice?: number; ton: number; priceKind?: ShopProduct["priceKind"]; allowBackorder?: boolean }>>({});
-  const masKey = products.map((p) => p.ma).join("|");
-
-  useEffect(() => {
-    let cancelled = false;
-    const mas = masKey ? masKey.split("|").filter(Boolean) : [];
-    if (!mas.length) {
-      setLiveMap({});
-      return;
-    }
-
-    const load = async () => {
-      try {
-        const { fetchLivePrices } = await import("@/lib/livePrices");
-        const rows = await fetchLivePrices(mas);
-        if (cancelled) return;
-        const next: Record<string, { gia: number; webPrice?: number; ton: number; priceKind?: ShopProduct["priceKind"]; allowBackorder?: boolean }> = {};
-        for (const r of rows) {
-          const ma = String(r.ma || "").trim().toUpperCase();
-          if (!ma) continue;
-          next[ma] = {
-            gia: Number(r.gia) || 0,
-            webPrice: r.webPrice,
-            ton: Number(r.ton) || 0,
-            priceKind: r.priceKind, allowBackorder: r.allowBackorder,
-          };
-        }
-        setLiveMap(next);
-      } catch {
-        /* giữ giá SSR */
-      }
-    };
-
-    void load();
-    const onSession = () => { setLiveMap({}); void load(); };
-    window.addEventListener("aloha-price-session", onSession);
-
-    let onCatalog: (() => void) | undefined;
-    void import("@/lib/catalogSync").then(({ onShopCatalogChanged }) => {
-      if (cancelled) return;
-      onCatalog = onShopCatalogChanged((detail) => {
-        const ids = (detail.ids || []).map((x) => String(x).toUpperCase());
-        if (
-          ids.length &&
-          !mas.some((m) => ids.includes(String(m).toUpperCase()))
-        ) {
-          return;
-        }
-        void load();
-      });
-    });
-
-    return () => {
-      cancelled = true;
-      onCatalog?.();
-      window.removeEventListener("aloha-price-session", onSession);
-    };
-  }, [masKey]);
+  const liveMap = useLiveProductPrices(products);
 
   if (!products.length) {
     return (
@@ -352,22 +317,14 @@ export function ProductGrid({
 
   return (
     <div className={gridClass}>
-      {products.map((p) => {
-        const key = String(p.ma || "").trim().toUpperCase();
-        const live = liveMap[key];
-        return (
-          <ProductCard
-            key={p.ma}
-            product={p}
-            shopee={shopee || homeRow6}
-            liveWebPrice={live?.webPrice}
-            livePriceKind={live?.priceKind}
-            liveAllowBackorder={live?.allowBackorder}
-            liveGia={live != null ? live.gia : undefined}
-            liveTon={live != null ? live.ton : undefined}
-          />
-        );
-      })}
+      {products.map((p) => (
+        <ProductCard
+          key={p.ma}
+          product={p}
+          shopee={shopee || homeRow6}
+          {...livePropsForMa(liveMap, p.ma)}
+        />
+      ))}
     </div>
   );
 }

@@ -31,7 +31,7 @@ export function CheckoutPaymentSection({
 }: Props) {
   const showTransfer = shopShowTransferPayment();
   const codMax = shopPreOrderCodMaxVnd();
-  if (hasPreOrder) return <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-relaxed text-amber-950"><h2 className="mb-2 font-bold">Thanh toán sau khi Aloha xác nhận</h2><p>Aloha sẽ kiểm tra tình trạng hàng và liên hệ xác nhận với bạn. Sau khi đơn hàng được xác nhận, Aloha sẽ hướng dẫn bạn thanh toán trước hoặc đặt cọc để hoàn tất đặt hàng và sắp xếp vận chuyển.</p></section>;
+  if (hasPreOrder) return <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-relaxed text-amber-950"><h2 className="mb-2 font-bold">Thanh toán sau khi Aloha liên hệ</h2><p>Aloha sẽ kiểm tra tình trạng hàng và liên hệ bạn qua Zalo để xác nhận. Thanh toán / đặt cọc sẽ được hướng dẫn trực tiếp (không cần xác nhận trên website).</p></section>;
   const methods = (
     [
       ...(requireTransfer
