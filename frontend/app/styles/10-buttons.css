@@ -1,0 +1,56 @@
+/* N�t ch�nh ? Dark Green #2E7D32, hover Light Green #4CAF50 */
+.btn-aloha-primary {
+  background: var(--aloha-green);
+  color: #fff;
+  transition: background-color 0.15s ease, filter 0.15s ease;
+}
+.btn-aloha-primary:hover:not(:disabled) {
+  background: var(--aloha-green-hover);
+}
+.btn-aloha-primary:active:not(:disabled) {
+  background: var(--aloha-green-dark);
+}
+
+/* N�t ph? (pastel) */
+.btn-aloha-secondary {
+  background: var(--aloha-green-light);
+  color: var(--aloha-green);
+  transition: filter 0.15s ease;
+}
+.btn-aloha-secondary:hover:not(:disabled) {
+  filter: brightness(0.97);
+}
+
+/* Outline ? tr?ng + vi?n xanh */
+.btn-aloha-outline {
+  background: #fff;
+  color: var(--aloha-green);
+  border: 1.5px solid var(--aloha-green);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.btn-aloha-outline:hover:not(:disabled) {
+  background: var(--aloha-green-light);
+}
+
+/* Ghost ? ch? ch? x�m */
+.btn-aloha-ghost {
+  background: transparent;
+  color: var(--aloha-muted);
+  border: 0;
+  transition: color 0.15s ease;
+}
+.btn-aloha-ghost:hover:not(:disabled) {
+  color: var(--aloha-green);
+}
+
+/* Sticky bottom bars (PDP / gi? / checkout) ? ??m ?�y + safe-area; nh?c l�n tr�n tab bar mobile */
+.shop-sticky-bottom {
+  bottom: 0 !important;
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+}
+
+.shop-pb-sticky {
+  padding-bottom: calc(
+    5.5rem + env(safe-area-inset-bottom, 0px)
+  );
+}

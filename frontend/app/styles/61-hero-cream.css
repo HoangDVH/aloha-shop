@@ -1,0 +1,480 @@
+/* Hero ? n?n kem + ch? t?i + CTA xanh (palette mock) */
+.hero-banner {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  color: var(--aloha-ink);
+  isolation: isolate;
+}
+
+.hero-banner__bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    linear-gradient(
+      160deg,
+      #ffffff 0%,
+      var(--aloha-cream, #fffdd0) 55%,
+      var(--aloha-cream-light, #fffee8) 100%
+    );
+}
+
+.hero-banner__mesh {
+  position: absolute;
+  inset: 0;
+  opacity: 0.75;
+  background:
+    radial-gradient(ellipse 60% 48% at 10% 15%, color-mix(in srgb, var(--aloha-green) 8%, transparent), transparent 58%),
+    radial-gradient(ellipse 48% 42% at 90% 75%, color-mix(in srgb, var(--aloha-cream-light) 80%, transparent), transparent 62%);
+  pointer-events: none;
+}
+
+.hero-banner__orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(2px);
+  pointer-events: none;
+}
+
+.hero-banner__orb--a {
+  top: -18%;
+  right: -8%;
+  width: min(52vw, 28rem);
+  height: min(52vw, 28rem);
+  background: radial-gradient(circle, color-mix(in srgb, var(--aloha-green) 14%, transparent), transparent 70%);
+  animation: hero-orb-a 14s ease-in-out infinite alternate;
+}
+
+.hero-banner__orb--b {
+  bottom: -22%;
+  left: -12%;
+  width: min(60vw, 32rem);
+  height: min(60vw, 32rem);
+  background: radial-gradient(circle, color-mix(in srgb, var(--aloha-green-dark) 12%, transparent), transparent 68%);
+  animation: hero-orb-b 16s ease-in-out infinite alternate;
+}
+
+.hero-banner__leaf {
+  position: absolute;
+  width: 7rem;
+  height: 7rem;
+  border-radius: 70% 30% 68% 32% / 42% 62% 38% 58%;
+  background: color-mix(in srgb, var(--aloha-green) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--aloha-green) 16%, transparent);
+  pointer-events: none;
+  opacity: 0.45;
+}
+
+.hero-banner__leaf--1 {
+  top: 12%;
+  left: 42%;
+  transform: rotate(18deg);
+  animation: hero-leaf-float 9s ease-in-out infinite;
+}
+
+.hero-banner__leaf--2 {
+  bottom: 18%;
+  left: 8%;
+  width: 4.5rem;
+  height: 4.5rem;
+  transform: rotate(-28deg);
+  animation: hero-leaf-float 11s ease-in-out infinite reverse;
+}
+
+.hero-banner__leaf--3 {
+  top: 8%;
+  right: 38%;
+  width: 3.2rem;
+  height: 3.2rem;
+  transform: rotate(48deg);
+  opacity: 0.35;
+  animation: hero-leaf-float 13s ease-in-out infinite;
+}
+
+@keyframes hero-orb-a {
+  from { transform: translate(0, 0) scale(1); }
+  to { transform: translate(-6%, 8%) scale(1.12); }
+}
+
+@keyframes hero-orb-b {
+  from { transform: translate(0, 0) scale(1); }
+  to { transform: translate(10%, -6%) scale(1.08); }
+}
+
+@keyframes hero-leaf-float {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -10px; }
+}
+
+@keyframes hero-rise {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes hero-shine {
+  0% { transform: translateX(-120%) skewX(-18deg); }
+  100% { transform: translateX(220%) skewX(-18deg); }
+}
+
+@keyframes hero-chip-in {
+  from { opacity: 0; transform: translate(-50%, 8px) scale(0.96); }
+  to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+
+@keyframes hero-dot-fill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.hero-banner__inner {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 1.1rem;
+  align-items: center;
+  width: 100%;
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 1.4rem;
+}
+
+@media (min-width: 768px) {
+  .hero-banner__inner {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.12fr);
+    gap: 1.5rem 2.25rem;
+    padding: 1.85rem 1.5rem 2rem;
+    min-height: min(34rem, calc(100svh - var(--shop-chrome-h, 7.5rem)));
+  }
+}
+
+@supports (height: 100dvh) {
+  @media (min-width: 768px) {
+    .hero-banner__inner {
+      min-height: min(34rem, calc(100dvh - var(--shop-chrome-h, 7.5rem)));
+    }
+  }
+}
+
+@media (min-width: 1024px) {
+  .hero-banner__inner {
+    gap: 2rem 3.25rem;
+    padding: 2.15rem 2rem 2.25rem;
+  }
+}
+
+.hero-banner__copy {
+  max-width: 36rem;
+  animation: hero-rise 0.7s ease both;
+}
+
+.hero-banner__left {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: 36rem;
+}
+
+.hero-banner__eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 0.75rem;
+  margin-bottom: 0.95rem;
+}
+
+.hero-banner__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.38rem 0.8rem 0.38rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--aloha-green) 28%, transparent);
+  background: color-mix(in srgb, var(--aloha-green) 10%, var(--aloha-cream-light, #ffffff));
+  color: var(--aloha-green-dark);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  backdrop-filter: blur(10px);
+}
+
+.hero-banner__title {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.hero-banner__brand {
+  font-size: clamp(0.95rem, 2vw, 1.15rem);
+  font-weight: 800;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--aloha-green-dark);
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+}
+
+.hero-banner__headline {
+  font-size: clamp(1.7rem, 4.2vw, 3.05rem);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+  color: var(--aloha-ink);
+  text-shadow: none;
+}
+
+.hero-banner__headline em {
+  font-style: normal;
+  color: var(--aloha-green-dark);
+  background: linear-gradient(
+    180deg,
+    transparent 62%,
+    color-mix(in srgb, var(--aloha-green) 28%, transparent) 62%,
+    color-mix(in srgb, var(--aloha-green) 28%, transparent) 88%,
+    transparent 88%
+  );
+}
+
+.hero-banner__desc {
+  margin: 0.95rem 0 0;
+  max-width: 30rem;
+  font-size: clamp(0.92rem, 1.45vw, 1.08rem);
+  line-height: 1.62;
+  color: var(--aloha-muted);
+  animation: hero-rise 0.75s 0.08s ease both;
+}
+
+.hero-banner__desc-short {
+  display: none;
+}
+
+.hero-banner__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 1.35rem;
+  animation: hero-rise 0.8s 0.14s ease both;
+}
+
+.hero-banner__cta {
+  display: inline-flex;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.7rem 1.35rem;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  transition:
+    transform 0.22s ease,
+    background 0.22s ease,
+    border-color 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+.hero-banner__cta--primary {
+  background: var(--aloha-green);
+  color: #fff;
+  box-shadow:
+    0 1px 0 color-mix(in srgb, #fff 22%, transparent) inset,
+    0 12px 28px color-mix(in srgb, var(--aloha-green) 32%, transparent);
+}
+
+.hero-banner__cta--primary:hover {
+  transform: translateY(-2px);
+  background: var(--aloha-green-dark);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, #fff 18%, transparent) inset,
+    0 16px 34px color-mix(in srgb, var(--aloha-green-dark) 36%, transparent);
+}
+
+.hero-banner__cta--primary:hover svg {
+  transform: translateX(3px);
+}
+
+.hero-banner__cta--primary svg {
+  transition: transform 0.2s ease;
+}
+
+.hero-banner__cta--ghost {
+  border: 1.5px solid color-mix(in srgb, var(--aloha-green) 45%, transparent);
+  background: #fff;
+  color: var(--aloha-green-dark);
+  backdrop-filter: none;
+}
+
+.hero-banner__cta--ghost:hover {
+  transform: translateY(-3px);
+  border-color: var(--aloha-green);
+  background: var(--aloha-cream-light, #ffffff);
+}
+
+.hero-banner__trust {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 1rem;
+  margin: 1.15rem 0 0;
+  padding: 0;
+  list-style: none;
+  animation: hero-rise 0.85s 0.2s ease both;
+}
+
+.hero-banner__trust li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--aloha-muted);
+}
+
+.hero-banner__trust li svg {
+  color: var(--aloha-green);
+}
+
+.hero-banner__media {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  min-width: 0;
+  animation: hero-rise 0.75s 0.1s ease both;
+}
+
+.hero-banner__showcase {
+  position: relative;
+}
+
+.hero-banner__chip {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  right: auto;
+  bottom: 1.1rem;
+  transform: translateX(-50%);
+  max-width: 12rem;
+  padding: 0.5rem 1.15rem;
+  border-radius: 999px;
+  background: var(--aloha-green-dark);
+  border: 1px solid color-mix(in srgb, var(--aloha-green) 40%, #fff);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--aloha-green-dark) 28%, transparent);
+  animation: hero-chip-in 0.4s ease both;
+}
+
+.hero-banner__stage {
+  position: relative;
+  padding: 0.65rem 0 0.35rem;
+}
+
+.hero-banner__stage::before {
+  content: "";
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: 0.15rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--aloha-ink) 18%, transparent);
+  filter: blur(14px);
+  pointer-events: none;
+}
+
+.embla--hero {
+  overflow: hidden;
+}
+
+.embla--hero .embla__container {
+  display: flex;
+  align-items: center;
+}
+
+.embla--hero .embla__slide {
+  flex: 0 0 88%;
+  min-width: 0;
+  padding: 0 0.45rem;
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.45s ease;
+  opacity: 0.42;
+  transform: scale(0.9) translateY(0.35rem);
+}
+
+.embla--hero .embla__slide.is-active {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+@media (min-width: 768px) {
+  .embla--hero .embla__slide {
+    flex: 0 0 76%;
+  }
+}
+
+.hero-banner__frame {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  aspect-ratio: 1 / 1;
+  border-radius: calc(var(--aloha-radius-lg) + 0.15rem);
+  border: 2px solid color-mix(in srgb, var(--aloha-green) 28%, #fff);
+  background:
+    linear-gradient(160deg, color-mix(in srgb, #fff 55%, transparent), transparent 40%),
+      var(--aloha-cream-light, #ffffff);
+  box-shadow:
+    0 18px 40px color-mix(in srgb, var(--aloha-green-dark) 14%, transparent),
+    0 0 0 1px var(--aloha-line);
+}
+
+.hero-banner__frame:hover .hero-banner__img {
+  transform: scale(1.06);
+}
+
+.hero-banner__shine {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.hero-banner__shine::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 38%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, #fff 40%, transparent),
+    transparent
+  );
+  opacity: 0;
+}
+
+.embla--hero .embla__slide.is-active .hero-banner__shine::before {
+  opacity: 1;
+  animation: hero-shine 1.4s 0.15s ease both;
+}
+
+.hero-banner__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  transition: transform 5.5s ease;
+  will-change: transform;
+}
+
+.embla--hero .embla__slide.is-active .hero-banner__img {
+  transform: scale(1.05);
+}

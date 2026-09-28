@@ -1,0 +1,73 @@
+/* Tab bar mobile sticky */
+:root {
+  --shop-mobile-tab-h: 0px;
+  --font-hero-script: "Great Vibes", "Segoe Script", "Apple Chancery", cursive;
+}
+
+@media (max-width: 1023px) {
+  :root {
+    --shop-mobile-tab-h: 3.35rem;
+  }
+
+  .shop-storefront-with-tabbar {
+    padding-bottom: calc(
+      var(--shop-mobile-tab-h) + 0.5rem + env(safe-area-inset-bottom, 0px)
+    );
+  }
+}
+
+.shop-mobile-tabbar {
+  /* ??m ?�y nh? + safe-area ? tr�nh d�nh s�t m�p m�n h�nh */
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -4px 18px rgba(41, 43, 39, 0.06);
+}
+
+.shop-mobile-tab {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  min-width: 0;
+  padding: 0.35rem 0.25rem;
+  color: #6b7280;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.1;
+  text-decoration: none;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.shop-mobile-tab.is-active {
+  color: var(--aloha-green, #2e7d32);
+  font-weight: 700;
+}
+
+@media (min-width: 1024px) {
+  .shop-pb-sticky {
+    padding-bottom: 0;
+  }
+
+  .shop-mobile-tabbar {
+    display: none;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.45s ease-out both;
+}

@@ -1,0 +1,310 @@
+/* Card danh s�ch b�i: khung nh? card SP ? contain ?? kh�ng c?t ch?/?nh */
+.article-card-cover {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background: var(--aloha-cream, #fffdd0);
+  flex-shrink: 0;
+}
+
+/* Trang ch? editorial: khung vu�ng + cover (ph? k�n, c?t vi?n tr?ng hai b�n n?u c�) */
+.article-card-cover--editorial {
+  aspect-ratio: 1 / 1;
+}
+
+.article-card-cover__img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+/* ?nh trong chi ti?t b�i: r?ng/cao theo l�c so?n (inline style); m?c ??nh height auto */
+.article-cover,
+.article-img-frame {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  background: var(--aloha-cream, #fffdd0);
+}
+
+.article-cover__img,
+.article-img-frame__img,
+.article-cover__fg,
+.article-img-frame__fg {
+  position: static;
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  object-fit: contain;
+  object-position: center;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+/* Khung c� chi?u cao c? ??nh (k�o gi?a c?nh ki?u Word) */
+.article-img-frame[style*="height:"] .article-img-frame__img {
+  height: 100%;
+  object-fit: fill;
+}
+
+.article-body .article-img-frame {
+  margin: 1.25rem 0;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px rgba(26, 46, 26, 0.06);
+  cursor: zoom-in;
+}
+
+/* T�n tr?ng c?n tr�i/gi?a/ph?i t? editor (margin auto) */
+.article-body .article-img-frame[style*="margin-left: auto"] {
+  margin-left: auto !important;
+}
+.article-body .article-img-frame[style*="margin-right: auto"] {
+  margin-right: auto !important;
+}
+.article-body .article-img-frame[style*="margin-right: 0"] {
+  margin-right: 0 !important;
+}
+.article-body p[style*="text-align: center"] .article-img-frame,
+.article-body p[style*="text-align:center"] .article-img-frame {
+  margin-left: auto;
+  margin-right: auto;
+}
+.article-body p[style*="text-align: right"] .article-img-frame,
+.article-body p[style*="text-align:right"] .article-img-frame {
+  margin-left: auto;
+  margin-right: 0;
+}
+
+.article-body .article-img-frame__img {
+  cursor: zoom-in;
+}
+
+/* ?nh l? ? t�n tr?ng width; kh�ng �p height n?u ?� set inline */
+.article-body > p > img,
+.article-body img:not(.article-img-frame__img):not(.article-cover__img) {
+  display: block;
+  box-sizing: border-box;
+  margin: 1.25rem 0;
+  max-width: 100% !important;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+  background: var(--aloha-cream, #fffdd0);
+  cursor: zoom-in;
+}
+
+.article-body p:has(> img),
+.article-body p:has(> a > img),
+.article-body p:has(> .article-img-frame) {
+  margin: 0;
+}
+
+/* Video YouTube/Vimeo trong b�i */
+.article-body .article-video,
+.article-body figure.article-video {
+  position: relative;
+  width: 100%;
+  margin: 1.25rem 0;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  background: #0f172a;
+  aspect-ratio: 16 / 9;
+}
+
+.article-body .article-video iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* Link n?i b?t ? ki?u TGD? */
+.article-body a.article-link,
+.article-body a:not(.article-hashtag) {
+  color: var(--aloha-green);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-word;
+}
+
+.article-body a.article-link:hover,
+.article-body a:not(.article-hashtag):hover {
+  opacity: 0.85;
+}
+
+/* Hashtag d?ng pill b?m ???c */
+.article-body a.article-hashtag {
+  display: inline-flex;
+  align-items: center;
+  margin: 0.2rem 0.35rem 0.2rem 0;
+  padding: 0.35rem 0.85rem;
+  border-radius: 9999px;
+  border: 1px solid #d8dee6;
+  background: #fff;
+  color: #1e293b;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.25;
+  text-decoration: none !important;
+  vertical-align: middle;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.article-body a.article-hashtag:hover {
+  border-color: var(--aloha-gold, #f59e0b);
+  background: #fff8db;
+  color: #1e293b;
+  opacity: 1;
+}
+
+/*
+ * Typo b�i vi?t ? kh?p app n?i b? (Be Vietnam Pro, KH�NG b? Tailwind preflight).
+ * Shop d�ng @import "tailwindcss" ? p/h*/ul b? margin:0 + list-style:none.
+ */
+.article-body {
+  font-family: var(
+    --aloha-font,
+    "Be Vietnam Pro",
+    "Segoe UI",
+    ui-sans-serif,
+    system-ui,
+    sans-serif
+  );
+  font-size: 15px;
+  line-height: 1.75;
+  color: #1e293b;
+  word-spacing: 0.02em;
+}
+
+.article-body p {
+  margin: 0.85rem 0;
+}
+
+.article-body h1,
+.article-body h2,
+.article-body h3,
+.article-body h4 {
+  color: #0f172a;
+  font-weight: 700;
+  line-height: 1.4;
+  margin: 1.35rem 0 0.65rem;
+}
+
+.article-body h1 {
+  font-size: 1.25rem;
+}
+
+.article-body h2 {
+  font-size: 1.125rem;
+}
+
+.article-body h3,
+.article-body h4 {
+  font-size: 1.05rem;
+}
+
+.article-body strong,
+.article-body b {
+  font-weight: 700;
+  letter-spacing: 0.015em;
+}
+
+/* Kho?ng c�ch sau nh�n ??m (T�n s?n ph?m: ?) ? tr�nh d�nh ch? */
+.article-body li > strong:first-child,
+.article-body p > strong:first-child {
+  margin-right: 0.15em;
+}
+
+.article-body ul {
+  list-style-type: disc;
+  list-style-position: outside;
+  padding-left: 1.5rem;
+  margin: 0.65rem 0 1rem;
+}
+
+.article-body ol {
+  list-style-type: decimal;
+  list-style-position: outside;
+  padding-left: 1.5rem;
+  margin: 0.65rem 0 1rem;
+}
+
+.article-body li {
+  margin: 0.35rem 0;
+  padding-left: 0.2rem;
+  line-height: 1.75;
+}
+
+.article-body li::marker {
+  color: #334155;
+}
+
+.article-body ul ul {
+  list-style-type: circle;
+  margin: 0.25rem 0;
+}
+
+.article-body ul ul ul {
+  list-style-type: square;
+}
+
+.article-body table {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 14px;
+  table-layout: auto;
+}
+
+.article-body table > thead,
+.article-body table > tbody,
+.article-body table > tfoot {
+  display: table;
+  width: 100%;
+  min-width: 36rem;
+  border-collapse: collapse;
+}
+
+.article-body th,
+.article-body td {
+  border: 1px solid #e2e8f0 !important;
+  padding: 0.5rem 0.75rem !important;
+  text-align: left;
+  vertical-align: top;
+  color: #1e293b !important;
+  background: #fff !important;
+}
+
+.article-body th {
+  background: #f8fafc !important;
+  font-weight: 700;
+}
+
+.article-body tbody tr:nth-child(even) td {
+  background: #fafbfc !important;
+}
+
+.article-body th p,
+.article-body td p {
+  margin: 0.15rem 0;
+}

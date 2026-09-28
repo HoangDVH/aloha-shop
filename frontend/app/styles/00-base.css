@@ -1,0 +1,51 @@
+:root {
+  /* Brand guide Aloha ? ?�ng 100% */
+  --aloha-green: #2e7d32;
+  --aloha-green-hover: #4caf50;
+  --aloha-green-mid: #2e7d32;
+  --aloha-green-dark: #1b5e20;
+  --aloha-green-light: #e8f5e9;
+  --aloha-green-bright: #4caf50;
+  --aloha-gold: #ff6800;
+  --aloha-terracotta: #ff6f61;
+  --aloha-terracotta-hover: #e85a4f;
+  --aloha-header: #ffffff;
+  --aloha-cream: #f1f8ef;
+  --aloha-cream-dark: #fff8e1;
+  --aloha-cream-light: #ffffff;
+  --aloha-surface: #ffffff;
+  --aloha-card: #ffffff;
+  --aloha-ink: #333333;
+  --aloha-muted: #6b7280;
+  --aloha-line: #e5e7eb;
+  --aloha-border-brown: #e8dcc6;
+  --aloha-shock: #ff6800;
+  --aloha-price: #ef4444;
+  --aloha-sale: #ef4444;
+  --aloha-error: #ef4444;
+  --aloha-success: #22c55e;
+  --aloha-info: #3b82f6;
+  --aloha-warning: #f59e0b;
+  --aloha-radius: 0.875rem;
+  --aloha-radius-lg: 1.25rem;
+  --aloha-shadow: 0 2px 14px rgba(46, 125, 50, 0.08);
+  --aloha-shadow-lg: 0 16px 40px rgba(46, 125, 50, 0.12);
+  --aloha-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --shop-chrome-h: 7.5rem;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Search dropdown m?: thanh danh m?c kh�ng nh?n click (tr�nh c??p h�ng SP ??u). */
+html[data-shop-search-open] header nav {
+  pointer-events: none !important;
+}
+
+body {
+  color: var(--aloha-ink);
+  background: var(--aloha-surface);
+  font-family: var(--aloha-font, "Segoe UI", ui-sans-serif, system-ui, sans-serif);
+  overflow-x: clip;
+}

@@ -1,0 +1,296 @@
+/* Hero full-bleed ? full ngang, cao 80svh?chrome; ?nh ?�ng t? l? khung + cover */
+.hero-banner--full {
+  color: var(--aloha-ink);
+  padding: 0;
+  background: var(--aloha-cream, #fffdd0);
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.hero-banner--full .hero-banner__full-inner {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+
+.hero-banner--full .hero-banner__stage {
+  position: relative;
+  padding: 0;
+  width: 100%;
+  /* Cùng tỉ lệ hero 01–03 (2170×725) — mọi slide cùng cao, USP vẫn trong khung nhìn */
+  aspect-ratio: 2170 / 725;
+  height: auto;
+  min-height: 160px;
+  max-height: min(42rem, calc(100svh - var(--shop-chrome-h, 7.5rem) - 6.5rem));
+  background: #f7faf5;
+}
+
+@media (max-width: 639px) {
+  .hero-banner--full .hero-banner__stage {
+    aspect-ratio: 16 / 8.5;
+    min-height: 175px;
+  }
+}
+
+.hero-banner--full .hero-banner__stage::before {
+  display: none;
+}
+
+.hero-banner--full .embla--hero {
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+}
+
+.hero-banner--full .embla--hero .embla__container {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+}
+
+.hero-banner--full .embla--hero .embla__slide {
+  flex: 0 0 100%;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  opacity: 1;
+  transform: none !important;
+  transition: none !important;
+}
+
+.hero-banner--full .embla--hero .embla__slide.is-active {
+  opacity: 1;
+  transform: none !important;
+}
+
+.hero-banner--full .hero-banner__frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  max-height: none;
+  border-radius: 0;
+  border: none;
+  background: #f7faf5;
+  box-shadow: none;
+  overflow: hidden;
+  transform: none !important;
+}
+
+.hero-banner--full .hero-banner__frame:hover .hero-banner__img {
+  transform: none !important;
+}
+
+.hero-banner--full .hero-banner__img,
+.hero-banner--full .embla--hero .embla__slide .hero-banner__img,
+.hero-banner--full .embla--hero .embla__slide.is-active .hero-banner__img {
+  width: 100%;
+  height: 100% !important;
+  max-width: 100%;
+  display: block;
+  object-fit: cover !important;
+  object-position: center center !important;
+  background: #f7faf5;
+  transition: none !important;
+  transform: none !important;
+  will-change: auto !important;
+  image-rendering: auto;
+}
+
+.hero-banner--full .hero-banner__copy-overlay {
+  position: absolute;
+  z-index: 2;
+  inset: 0 auto 0 0;
+  width: min(48%, 34rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(1.25rem, 4vw, 3rem) clamp(1rem, 3.5vw, 3.25rem);
+  pointer-events: none;
+}
+
+.hero-banner--full .hero-banner__copy-overlay a {
+  pointer-events: auto;
+}
+
+.hero-banner--full .hero-banner__eyebrow-script {
+  margin: 0 0 0.45rem;
+  font-family: var(--font-hero-script);
+  font-size: clamp(1.55rem, 3.4vw, 2.35rem);
+  font-style: normal;
+  font-weight: 400;
+  color: var(--aloha-green-dark, #1b5e20);
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  white-space: normal;
+}
+
+.hero-banner--full .hero-banner__headline-overlay {
+  margin: 0;
+  font-family: "Be Vietnam Pro", var(--aloha-font), "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(1.45rem, 3.2vw, 2.65rem);
+  font-weight: 800;
+  line-height: 1.22;
+  letter-spacing: -0.02em;
+  color: var(--aloha-ink);
+  word-break: keep-all;
+  overflow-wrap: normal;
+  text-wrap: pretty;
+  hyphens: none;
+}
+
+.hero-banner--full .hero-banner__desc-overlay {
+  margin: 0.85rem 0 0;
+  max-width: 28rem;
+  font-size: clamp(0.88rem, 1.35vw, 1.05rem);
+  line-height: 1.55;
+  color: var(--aloha-muted);
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+.hero-banner--full .hero-banner__copy-overlay .hero-banner__cta {
+  margin-top: 1.25rem;
+  align-self: flex-start;
+}
+
+.hero-banner--full .hero-banner__controls {
+  position: absolute;
+  z-index: 3;
+  left: auto;
+  right: clamp(1rem, 3.5vw, 3.25rem);
+  bottom: 1rem;
+  margin: 0;
+  gap: 0.65rem;
+  justify-content: flex-end;
+}
+
+@media (max-width: 1024px) {
+  .hero-banner--full .hero-banner__controls {
+    left: auto;
+    right: 1rem;
+    transform: none;
+  }
+}
+
+@media (max-width: 767px) {
+  /*
+   * Mobile: giữ cùng tỉ lệ khung mọi slide (tránh CTV phình cao đẩy mất USP).
+   */
+  .hero-banner--full .hero-banner__stage {
+    height: auto;
+    min-height: 0;
+    aspect-ratio: 2170 / 725;
+    max-height: min(22rem, calc(100svh - var(--shop-chrome-h, 7.5rem) - 5rem));
+  }
+
+  .hero-banner--full .hero-banner__img {
+    object-fit: cover !important;
+    object-position: center center !important;
+    width: 100%;
+    height: 100% !important;
+  }
+
+  .hero-banner--full .hero-banner__copy-overlay {
+    width: min(78%, 20rem);
+    padding: 0.55rem 0.85rem 3rem;
+    justify-content: flex-end;
+    align-items: flex-start;
+    background: none;
+  }
+
+  .hero-banner--full .hero-banner__eyebrow-script,
+  .hero-banner--full .hero-banner__desc-overlay {
+    display: none;
+  }
+
+  .hero-banner--full .hero-banner__headline-overlay {
+    font-size: clamp(0.95rem, 3.8vw, 1.2rem);
+    font-weight: 800;
+    line-height: 1.25;
+    max-width: 14rem;
+    text-shadow:
+      0 1px 2px rgba(255, 255, 255, 0.95),
+      0 0 12px rgba(255, 255, 255, 0.7);
+  }
+
+  .hero-banner--full .hero-banner__copy-overlay .hero-banner__cta {
+    margin-top: 0.45rem;
+    align-self: flex-start;
+    width: auto;
+    max-width: max-content;
+    flex: 0 0 auto;
+    min-height: 2.75rem;
+    padding: 0.45rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    gap: 0.3rem;
+    border-radius: 999px;
+    box-shadow:
+      0 1px 0 color-mix(in srgb, #fff 18%, transparent) inset,
+      0 4px 12px color-mix(in srgb, var(--aloha-green) 20%, transparent);
+  }
+
+  .hero-banner--full .hero-banner__copy-overlay .hero-banner__cta svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .hero-banner--full .hero-banner__frame {
+    background: #f7faf5;
+    height: 100%;
+  }
+
+  .hero-banner--full .hero-banner__controls {
+    left: auto;
+    right: 0.5rem;
+    transform: none;
+    bottom: 0.25rem;
+    gap: 0.15rem;
+  }
+
+  .hero-banner--full .hero-banner__nav {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .hero-banner--full .hero-banner__dot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    width: auto;
+    height: auto;
+    background: transparent;
+    overflow: visible;
+  }
+
+  .hero-banner--full .hero-banner__dot::before {
+    content: "";
+    display: block;
+    height: 0.38rem;
+    width: 0.38rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--aloha-green) 35%, transparent);
+  }
+
+  .hero-banner--full .hero-banner__dot.is-active {
+    width: auto;
+    background: transparent;
+  }
+
+  .hero-banner--full .hero-banner__dot.is-active::before {
+    width: 1.5rem;
+    background: var(--aloha-green);
+  }
+
+  .hero-banner--full .hero-banner__dot-progress {
+    display: none;
+  }
+}
