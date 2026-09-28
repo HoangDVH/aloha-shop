@@ -677,3 +677,182 @@ Các mục dưới đây bổ sung mục 14; chưa được coi là đã triển
 6. Ghi kết quả Đạt / Không đạt / Chưa hỗ trợ cùng bằng chứng. Không coi việc mô tả trong tài liệu là tính năng đã hoàn thành.
 
 Phạm vi cập nhật lần này: chỉ bổ sung tài liệu kế hoạch và các tình huống; chưa thay đổi code, database hoặc cấu hình ưu đãi thực tế.
+
+## 18. Đặc tả UI/UX thống nhất cho Shop, Admin và CTV
+
+### 18.1. Mục tiêu và cơ sở tham khảo
+
+Người lần đầu sử dụng phải nhận biết được: mình đang ở đâu, được lợi gì, cần bấm gì tiếp theo và số tiền đang xem là tạm tính hay đã chốt. Đây là mục tiêu phải kiểm thử với người dùng, không thể bảo đảm chỉ bằng việc chọn màu và bo góc.
+
+Tham khảo bổ sung từ nguồn chính thức:
+
+- [Shopify — Quản lý giảm giá](https://help.shopify.com/en/manual/discounts/managing-discounts): chỉnh sửa, nhân bản, tạm dừng và lọc chương trình. Áp dụng cho cách tổ chức công việc admin.
+- [Shopify — Thiết kế form](https://shopify.dev/docs/apps/design/user-experience/forms): hành vi lưu rõ ràng. Aloha giữ lưu nháp/kích hoạt tách biệt, không tự phát hành khi đang gõ.
+- [Amazon Associates — Báo cáo](https://affiliate-program.amazon.com/help/node/topic/GMWAK55DQX8JEK7C): trình bày lượt bấm, hàng đặt/giao và thu nhập, có thông tin thời điểm cập nhật.
+- [Amazon Associates — Khoản âm trong thu nhập](https://affiliate-program.amazon.com/help/node/topic/GF7VJDBPANJTKYQE): trả/hoàn có thể dẫn tới điều chỉnh hoa hồng. Aloha cần giải thích khoản điều chỉnh và liên kết giao dịch gốc.
+
+Kết hợp các nguồn Shopee, Tiki, KiotViet tại mục 2 và 5.5. Đây là tham khảo luồng sử dụng, không sao chép thương hiệu hoặc cam kết mọi sàn có cùng bố cục. Chưa đánh giá giao diện thực tế bằng trình duyệt ở lượt lập kế hoạch này.
+
+### 18.2. Ngôn ngữ thiết kế Aloha
+
+| Hạng mục | Đặc tả đề xuất |
+|---|---|
+| Phong cách | Sáng, thoáng, nền trung tính, thẻ trắng, đường viền nhẹ; ưu tiên số tiền và hành động |
+| Màu | Tái sử dụng token `--aloha-green`, `--aloha-ink`, `--aloha-muted`, `--aloha-price`, radius/shadow hiện có; không dựng bộ màu riêng cho ưu đãi |
+| Phân cấp | Tiêu đề trang 24–28px desktop/20–24px mobile; nội dung 14–16px; điều kiện quan trọng không dùng chữ nhỏ khó đọc |
+| Khoảng cách | Nhịp 4/8px; khoảng trong thẻ 16–24px, giữa các nhóm 16–24px; bố cục co theo màn hình |
+| Số tiền | Canh phải trong bảng, chữ số đều chiều rộng, định dạng VND thống nhất; không cắt cụt tổng tiền |
+| Nút | Mỗi khu vực có một hành động chính rõ nhất; nút phụ nhẹ hơn; icon phải có nhãn khi ý nghĩa chưa hiển nhiên |
+| Thẻ ưu đãi | Mức giảm → điều kiện chính → hạn → trạng thái/hành động; tên dài được xuống dòng |
+| Trạng thái | Nhãn chữ cộng màu/icon; xanh cho hợp lệ, vàng cho cần xử lý, đỏ cho lỗi, xám cho chưa khả dụng |
+| Chuyển động | Ngắn, phục vụ phản hồi; tôn trọng giảm chuyển động; không banner nhấp nháy/countdown giả |
+| Nhất quán | Dùng Ant Design trong admin/CTV theo hệ thống hiện tại; shop giữ phong cách hiện có; chia sẻ token và thuật ngữ |
+
+Không bắt buộc đổi framework hoặc đưa Polaris vào repo. Các kích thước là tiêu chí thiết kế đề xuất cần đối chiếu token hiện tại khi dựng prototype.
+
+### 18.3. Responsive theo nội dung
+
+| Màn hình | Shop | Admin | CTV |
+|---|---|---|---|
+| 320–767px | Một cột; thẻ ưu đãi hiện có; bảng chọn từ dưới; tổng/nút đặt hàng ở thanh đáy hiện có | Menu trong drawer; danh sách chương trình dạng thẻ; form một cột | Giữ menu mobile của portal; thẻ đơn và số dư; nút sao chép dễ chạm |
+| 768–1023px | Một hoặc hai cột nếu đủ chỗ; tránh ép ô nhập nhỏ | Form một cột chính, preview thu gọn; bộ lọc mở thành panel | KPI hai cột; danh sách thích ứng, chi tiết drawer |
+| Từ 1024px | Giỏ/nội dung trái, ưu đãi và bảng tiền phải; sticky không che footer | Sidebar hiện có; bảng danh sách; form và preview bên cạnh | Sidebar hiện có; bảng chuyển đổi; bộ lọc và chi tiết bên cạnh |
+
+Ở tablet, quyết định theo vùng nội dung còn lại chứ không chỉ độ rộng thiết bị. Tái sử dụng breakpoint dự án khi phù hợp.
+
+- Kiểm tra tối thiểu 320, 360, 390, 768, 1024, 1440px, cả xoay ngang và zoom 200%.
+- Không cuộn ngang toàn trang. Bảng tài chính chi tiết có thể cuộn trong vùng được chỉ dẫn; tác vụ chính và số tiền tổng không bị khuất.
+- Bảng chọn mobile tối đa khoảng 90% vùng nhìn thấy, có safe area và chiều cao thích ứng bàn phím. Khi nhập mã, ô nhập/lỗi/nút áp dụng vẫn tiếp cận được.
+- Không có hai thanh cố định đè nhau. Thêm khoảng đệm cuối trang bằng chiều cao thanh đáy thực tế.
+- Thông tin bị rút gọn trên thẻ phải mở được bằng “Xem chi tiết”, không phụ thuộc hover.
+
+### 18.4. Shop — khách nhìn thấy lợi ích ngay
+
+#### A. Trang sản phẩm
+
+Giữ ảnh, tên, giá và mua hàng là trọng tâm. Gần giá đặt một dòng ngắn như “Khách mua web lần đầu được giảm 10%” kèm điều kiện/trần thực tế và “Xem điều kiện”. Không ghi giá sau ưu đãi như giá chắc chắn nếu chưa xác minh khách.
+
+#### B. Giỏ và xác nhận đơn
+
+Dùng lại thẻ CheckoutSummaryAside theo mục 5.1.1. Trình tự đọc:
+
+1. Tiền hàng.
+2. Ưu đãi đã áp dụng, lý do và số giảm.
+3. Phí giao hàng hoặc trạng thái chờ xác định.
+4. Tổng tạm tính/tổng đã chốt đúng trạng thái đơn.
+5. Nút hành động chính theo quy trình hiện tại.
+
+Ví dụ thẻ sau khi áp dụng: **Đã giảm 80.000đ**; dòng phụ “Ưu đãi lần đầu · Tự áp dụng”; nút phụ **Xem/Đổi**. Khách không cần mở thẻ để nhận giảm.
+
+#### C. Bảng ưu đãi
+
+Thứ tự: tiêu đề “Ưu đãi cho đơn này” → mức tiết kiệm hiện tại → ô “Bạn có mã giảm giá?” → lựa chọn tự động → các mã có thể chọn → mã chưa đủ điều kiện có lý do. Mỗi mã có một nút rõ như “Áp dụng mã này”, không dùng biểu tượng khó đoán.
+
+Mã đủ điều kiện ở trên; trong chế độ tự chọn sắp theo lợi ích thực tế. Mã cá nhân một lần chỉ gợi ý. Chỉ gắn “Tiết kiệm nhất” trong phạm vi ứng viên đã giải thích ở mục 5.5.
+
+Nút mở điều kiện không thay lựa chọn; nút chọn mã không đóng ngay khi còn lỗi kiểm tra. Khi xác nhận thành công, đóng panel, trả focus về thẻ và cập nhật bảng tiền. Toast ngắn là phản hồi phụ; kết quả phải còn nhìn thấy trên trang.
+
+#### D. Sau đặt hàng
+
+Hiển thị tên ưu đãi, tiền giảm, tổng chốt và bước tiếp theo. Đơn chờ ảnh/báo giá dùng “Ưu đãi tạm tính” với giải thích ngắn. Khi tổng đổi, trình bày tiền trước/sau và nguyên nhân, không chỉ báo “Có lỗi”.
+
+### 18.5. Admin — tạo đúng ngay từ lần đầu
+
+#### A. Trang danh sách
+
+Header: “Ưu đãi” + mô tả một câu + nút **Tạo ưu đãi**. Dưới là các trạng thái có số lượng, ô tìm kiếm, bộ lọc. Bộ lọc đã chọn hiện thành nhãn có nút bỏ; có “Xóa bộ lọc”. Giữ bộ lọc và vị trí khi mở chi tiết rồi quay lại.
+
+Desktop ưu tiên cột: tên, cách áp dụng, giá trị, thời hạn, trạng thái, đã dùng/giới hạn. Tiền ngân sách và dữ liệu ít dùng mở trong chi tiết. Mobile mỗi chương trình thành thẻ cùng các thông tin này; không nhét nguyên bảng desktop vào màn hình nhỏ.
+
+#### B. Tạo và sửa
+
+Đầu tiên chọn mẫu: **Khách mua lần đầu**, **Đơn đạt ngưỡng**, **Mã giảm giá**. Mẫu chỉ điền cấu hình gợi ý và vẫn cho sửa; không tạo chương trình hoạt động ngay.
+
+Form chia nhóm theo thứ tự: thông tin → giá trị → điều kiện → khách/hàng → thời gian → giới hạn. Tùy chọn ít dùng trong “Thiết lập nâng cao”; điều kiện ảnh hưởng trực tiếp tiền không được giấu khó tìm.
+
+Mỗi trường có nhãn cố định, đơn vị %/đ rõ và ví dụ ngắn. Radio “Trên/Từ” đi kèm ví dụ đúng 1.000.000đ có được hưởng hay không. Không bắt admin nhập JSON hoặc tên trường kỹ thuật.
+
+Preview bên phải trên desktop; mobile có nút “Xem khách sẽ thấy gì”. Preview gồm thẻ ưu đãi, câu tóm tắt và một giỏ mẫu, được đánh dấu đang xem thử. Nếu preview lỗi/cũ, không trình bày như đã kiểm chứng.
+
+Thanh lưu hiện rõ “Có thay đổi chưa lưu”, **Lưu nháp** và **Kích hoạt/Lên lịch**. Khi lỗi, giữ dữ liệu, đưa focus tới nhóm lỗi đầu và có tóm tắt lỗi. Thoát khi chưa lưu có lựa chọn ở lại hoặc bỏ thay đổi. Xác nhận chỉ dùng cho thao tác có ảnh hưởng, không chặn mọi lần nhập.
+
+#### C. Chi tiết và vận hành
+
+Các tab: Thông tin / Mã / Lượt sử dụng / Lịch sử thay đổi. Mở dòng sử dụng xem đơn, tiền giảm và trạng thái giữ/đã dùng/giải phóng. Tab Voucher KiotViet có thời điểm đồng bộ và nút thử lại; nguồn dữ liệu được phân biệt rõ cho admin.
+
+Tạm dừng chương trình: hiển thị số đơn đang giữ và giải thích chỉ chặn lượt mới. Bản so sánh trước/sau khi sửa tập trung giá trị, ngưỡng và thời gian. Lỗi đồng bộ có hành động tiếp theo, không chỉ đổ thông báo kỹ thuật.
+
+### 18.6. CTV — biết chia sẻ gì và vì sao nhận số tiền đó
+
+Đã đọc source CtvPortalShell và ConversionsPanel: portal có Tổng quan, Báo cáo chuyển đổi, Thanh toán, Sản phẩm, Tài khoản; báo cáo đã có nhãn và giải thích trạng thái hoa hồng. Mở rộng các khu vực này trước khi thêm menu mới. Chưa khẳng định mọi màn hình hiện tại đã đạt responsive nếu chưa kiểm tra trình duyệt.
+
+| Màn hình | Nội dung chính | Hành động dễ nhận biết |
+|---|---|---|
+| Tổng quan | Hoa hồng tạm tính, chờ đối soát, có thể thanh toán, đã chi; kỳ thời gian và lần cập nhật | “Chọn sản phẩm để chia sẻ” và mở chi tiết từng số |
+| Sản phẩm | Ảnh/tên/giá, tỷ lệ, cơ sở tính hoa hồng, ưu đãi khách có thể hưởng và điều kiện | “Sao chép link”; “Xem như khách” là nút phụ |
+| Báo cáo chuyển đổi | Mã đơn, trạng thái đơn, tiền hàng được ghi nhận, giảm được phân bổ, tỷ lệ, hoa hồng | “Xem cách tính” |
+| Chi tiết hoa hồng | Dòng sản phẩm, snapshot tỷ lệ, phần giảm, tiền cơ sở, khoản điều chỉnh và lịch sử | Mở đơn được phép xem hoặc gửi yêu cầu đối soát |
+| Thanh toán | Số đủ điều kiện, kỳ thanh toán, đang xử lý, đã chi và điều chỉnh | Nút yêu cầu thanh toán chỉ nếu quy trình hiện tại hỗ trợ; không tự tạo nghiệp vụ mới |
+
+Tách ba loại trạng thái: đơn hàng, thanh toán của khách, hoa hồng. Ví dụ “Khách đã thanh toán” đi cùng “Hoa hồng chờ giao hàng”; không gộp thành một nhãn “Thành công” gây hiểu nhầm đã rút được tiền.
+
+Chi tiết ví dụ: “Tiền hàng thuộc bạn: 1.000.000đ → ưu đãi phân bổ: 100.000đ → tiền tính hoa hồng: 900.000đ × 5% → tạm tính: 45.000đ”. Hiển thị khoản trừ hoàn hàng riêng, có ngày/lý do/giao dịch gốc. Không xóa dòng cũ khiến CTV không hiểu vì sao số dư giảm.
+
+Trang sản phẩm chưa biết giỏ và khách cuối không được hứa chắc hoa hồng sau ưu đãi. Ghi “Ước tính theo giá hiện tại; thay đổi theo ưu đãi và đơn thực tế”. Link sản phẩm/toàn shop phải có nhãn phạm vi đúng khả năng đang hỗ trợ.
+
+Khi sao chép: thông báo “Đã sao chép link”, cho sao chép thủ công nếu trình duyệt từ chối. Chia sẻ nội dung phải kèm điều kiện ưu đãi, không hứa mọi khách đều giảm lần đầu. Xem như khách không tính lượt click thật hoặc tạo hoa hồng thử.
+
+Desktop báo cáo dạng bảng có lọc thời gian/trạng thái; mobile dạng thẻ đơn, tiền và trạng thái nổi bật, mở chi tiết theo dòng. Xuất báo cáo là thao tác phụ. Chỉ hiển thị dữ liệu và phần đơn thuộc CTV đó; che dữ liệu khách không cần thiết, không lộ hoa hồng CTV khác.
+
+### 18.7. Bộ trạng thái dùng chung
+
+| Trạng thái | Cách hiển thị | Hành động |
+|---|---|---|
+| Lần đầu chưa có dữ liệu | Giải thích một câu đúng vai trò | Shop tiếp tục mua; admin tạo ưu đãi; CTV chọn sản phẩm |
+| Đang tải lần đầu | Khung chờ có kích thước ổn định | Không hiện số 0 như dữ liệu thật |
+| Làm mới dữ liệu | Giữ dữ liệu cũ có nhãn đang cập nhật | Không chặn toàn trang; chặn hành động cần báo giá mới |
+| Lỗi mạng | Lý do dễ hiểu, giữ dữ liệu đã nhập | Thử lại; không gửi lặp khi chưa rõ kết quả |
+| Thành công | Thay đổi hiển thị ngay trong ngữ cảnh | Toast hỗ trợ, không là bằng chứng duy nhất |
+| Không đủ điều kiện | Lý do cụ thể trong phạm vi được phép tiết lộ | Mua thêm/xem hàng hợp lệ/chọn mã khác |
+| Không có quyền | Không cho sửa và giải thích phù hợp | Liên hệ quản lý nếu cần |
+| Dữ liệu cập nhật chậm | Thời điểm cập nhật và trạng thái đối soát | Làm mới; không hứa số tiền đã quyết toán |
+
+### 18.8. Khả năng tiếp cận và hiệu năng
+
+Mục tiêu thiết kế: vùng chạm 44×44px, tương phản chữ thường ít nhất 4,5:1; chữ lớn ít nhất 3:1. Đây là tiêu chí nghiệm thu của Aloha; chưa tuyên bố sản phẩm hiện tại đạt chứng nhận nào.
+
+Modal/drawer có tiêu đề, đóng bằng nút và bàn phím, quản lý focus và trả focus khi đóng. Lỗi gắn với trường nhập. Thay đổi số tiền được thông báo cho công cụ hỗ trợ nhưng không đọc lặp liên tục theo từng phím.
+
+Không dùng tooltip làm nơi duy nhất giải thích trần giảm hoặc trạng thái hoa hồng. Không chỉ gạch ngang/đổi màu để diễn đạt hết hạn. Nội dung Việt dài, số tiền lớn, tên sản phẩm nhiều dòng đều phải kiểm tra.
+
+Danh sách lớn phân trang phía server; tìm kiếm có debounce và hủy/bỏ kết quả cũ. Ảnh đúng kích thước, không tải toàn bộ ví mã hay báo cáo một lần. Không thêm thư viện biểu đồ nặng chỉ để trang trí; biểu đồ có số liệu tóm tắt thay thế.
+
+### 18.9. Bố cục tham chiếu để dựng prototype
+
+**Shop mobile:** sản phẩm → giao nhận → thẻ “Đã giảm … / Xem-Đổi” → điều kiện xác nhận; thanh đáy hiện có chứa tổng và đặt hàng. Panel ưu đãi mở trên cùng, không chồng thêm thanh đặt hàng vào panel.
+
+**Admin desktop:** sidebar hiện có | tiêu đề + Tạo ưu đãi | lọc | bảng; khi sửa: form 2/3 vùng nội dung và preview 1/3. Mobile chuyển một cột, preview mở theo yêu cầu.
+
+**CTV mobile:** tiêu đề/kỳ báo cáo → các số tiền theo trạng thái → nút chia sẻ → đơn gần đây → xem chi tiết cách tính. Giữ menu của portal; không tự thêm bottom navigation nếu gây trùng drawer hiện có.
+
+### 18.10. Kiểm thử người dùng lần đầu và tiêu chí bàn giao
+
+Trước triển khai đầy đủ, dựng prototype các màn hình: shop xác nhận đơn và bảng ưu đãi; admin danh sách/tạo/sửa/preview; CTV sản phẩm/báo cáo/chi tiết hoa hồng. Có bản mobile và desktop, kèm tải/rỗng/lỗi/mất điều kiện.
+
+Thử tối thiểu 5 người mỗi vai trò với nhiệm vụ phù hợp; đây là kiểm tra định tính ban đầu, không phải bằng chứng thống kê cho mọi người dùng. Không hướng dẫn trước vị trí nút.
+
+| Vai trò | Nhiệm vụ | Mục tiêu đề xuất |
+|---|---|---|
+| Khách | Chỉ ra đang giảm bao nhiêu và còn trả bao nhiêu | Tìm đúng trong 10 giây |
+| Khách | Đổi mã và giải thích vì sao mã khác chưa dùng được | Hoàn thành trong 30 giây sau khi trang tải |
+| Admin | Tạo nháp giảm lần đầu có trần/ngày và xem thử | Hoàn thành trong 3 phút, không kích hoạt nhầm |
+| Admin | Dừng chương trình và giải thích ảnh hưởng đơn cũ | Không hiểu nhầm là hủy mọi ưu đãi đã giữ |
+| CTV | Lấy link đúng sản phẩm để chia sẻ | Trong 20 giây |
+| CTV | Giải thích vì sao 1 triệu × 5% chỉ còn 45.000đ | Tìm được giảm 100.000đ và cơ sở 900.000đ |
+| CTV | Phân biệt tiền tạm tính và tiền được thanh toán | Không nhầm hai trạng thái |
+
+Mục tiêu đạt ít nhất 4/5 người mỗi nhóm hoàn thành không cần trợ giúp; mọi lỗi gây hiểu sai tiền, áp dụng mã ngoài ý muốn hoặc kích hoạt nhầm đều phải sửa dù đạt tỷ lệ. Đo lại sau sửa. Không ghi “dễ dùng ngay” chỉ dựa vào cảm nhận người thiết kế.
+
+Checklist bàn giao UI: dùng lại thẻ ưu đãi shop; giữ shell admin/CTV; bảng tiền và thuật ngữ thống nhất; trạng thái đầy đủ; responsive không che nội dung; bàn phím sử dụng được; chính sách ở mục 14/16 phản ánh đúng trong nhãn; không hiển thị nút chức năng backend chưa hỗ trợ.
+
+Phần này là đặc tả mở rộng cho các giai đoạn ở mục 12. Chưa tạo prototype, chưa sửa giao diện hay triển khai tính năng trong lần cập nhật kế hoạch này.
