@@ -6,12 +6,9 @@
  */
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { RefreshCw, Search, X, Lock, Unlock, Trash2, Settings2, UserPlus, Eye } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { toast } from "@/components/admin/toast";
-import { CtvPagination } from "./shared/CtvPagination";
-import { ThuMuaListPagination } from "@/components/admin/ui/ThuMuaListPagination";
 import {
-  AdminDateRangePicker,
   defaultThisMonthRange,
   type AdminDateRange,
 } from "@/components/admin/ui/AdminDateRangePicker";
@@ -19,118 +16,14 @@ import { AddCtvModal, type AddCtvFormValues } from "./AddCtvModal";
 import { CtvApplicationModal } from "./CtvApplicationModal";
 import { useCtvUiStore } from "./ctvUiStore";
 import {
-  AdminTableRowSkeleton,
-} from "@/components/admin/ui/AdminSkeleton";
-import { maskPhone } from "./shared/format";
-
-type ShopRole = "customer" | "ctv";
-type CtvStatus = "cho_duyet" | "active" | "khoa" | "tu_choi";
-
-type ShopAccount = {
-  id: string;
-  email: string;
-  phone: string | null;
-  fullName: string;
-  avatarUrl: string | null;
-  roles: ShopRole[];
-  ctvCode: string | null;
-  ctvStatus: CtvStatus | null;
-  active: boolean;
-  authProviders: string[];
-  createdAt: string | null;
-  lastLoginAt: string | null;
-  adminNote?: string | null;
-  commissionRate?: number | null;
-  zalo?: string | null;
-  addressText?: string | null;
-  referralChannel?: string | null;
-  channelUrl?: string | null;
-  referralSource?: string | null;
-  hasBusinessExp?: boolean | null;
-  businessExpNote?: string | null;
-  businessExpYears?: number | null;
-  ctvRejectReason?: string | null;
-};
-
-type Stats = {
-  total: number;
-  customers: number;
-  ctvTotal?: number;
-  ctvActive: number;
-  ctvPending: number;
-  locked: number;
-  ctvLocked?: number;
-  customerLocked?: number;
-};
-
-type TabId = "all" | "customer" | "ctv" | "active" | "pending" | "locked";
-type AccountsScope = "all" | "ctv" | "customers";
-
-async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
-    ...init,
-    credentials: "include",
-    headers: {
-      Accept: "application/json",
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
-      ...(init?.headers || {}),
-    },
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error((data as { error?: string }).error || `HTTP ${res.status}`);
-  return data as T;
-}
-
-function fmtDate(iso: string | null) {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleDateString("vi-VN");
-  } catch {
-    return "—";
-  }
-}
-
-function Chip({
-  children,
-  tone,
-}: {
-  children: React.ReactNode;
-  tone: "green" | "orange" | "gray" | "red";
-}) {
-  const cls =
-    tone === "green"
-      ? "bg-emerald-50 text-emerald-700"
-      : tone === "orange"
-        ? "bg-orange-50 text-orange-700"
-        : tone === "red"
-          ? "bg-red-50 text-red-700"
-          : "bg-slate-100 text-slate-600";
-  return (
-    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold ${cls}`}>
-      {children}
-    </span>
-  );
-}
-
-/** Nhãn trạng thái CTV — ghi rõ tiếng Việt như mockup */
-function ctvStatusChip(row: ShopAccount): {
-  label: string;
-  tone: "green" | "orange" | "red" | "gray";
-} {
-  if (!row.active || row.ctvStatus === "khoa") {
-    return { label: "Tạm dừng", tone: "red" };
-  }
-  if (row.ctvStatus === "active") {
-    return { label: "Hoạt động", tone: "green" };
-  }
-  if (row.ctvStatus === "cho_duyet") {
-    return { label: "Chờ duyệt", tone: "orange" };
-  }
-  if (row.ctvStatus === "tu_choi") {
-    return { label: "Từ chối", tone: "red" };
-  }
-  return { label: "Hoạt động", tone: "green" };
-}
+  api,
+  type AccountsScope,
+  type ShopAccount,
+  type Stats,
+  type TabId,
+} from "./accounts/accountsApi";
+import { AccountsToolbar } from "./accounts/AccountsToolbar";
+import { AccountsTable } from "./accounts/AccountsTable";
 
 export default function ShopAccountsAdmin({
   embedded = false,
@@ -493,448 +386,55 @@ export default function ShopAccountsAdmin({
         </div>
       ) : null}
 
+      <AccountsToolbar
+        scope={scope}
+        tab={tab}
+        setTab={setTab}
+        tabs={tabs}
+        statusOptions={statusOptions}
+        q={q}
+        setQ={setQ}
+        searchPlaceholder={searchPlaceholder}
+        dateRange={dateRange}
+        setDateRange={setDateRange}
+        onOpenAdd={() => setAddOpen(true)}
+        onConfigClick={onConfigClick}
+        configOpen={configOpen}
+        configPanel={configPanel}
+      />
+
       {scope === "ctv" ? (
-        <>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative min-w-[220px] flex-1 sm:max-w-md">
-              <Search
-                size={16}
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-              />
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder={searchPlaceholder}
-                className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-emerald-500"
-              />
-            </div>
-            <label className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] font-semibold text-slate-600">
-              <span className="text-slate-400">Trạng thái:</span>
-              <select
-                value={tab}
-                onChange={(e) => setTab(e.target.value as TabId)}
-                className="border-0 bg-transparent pr-1 font-bold text-[#1a2e1a] outline-none"
-                aria-label="Lọc trạng thái"
-              >
-                {statusOptions.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <AdminDateRangePicker
-              value={dateRange}
-              allowClear
-              onChange={setDateRange}
-              placeholder="Thời gian: Tất cả"
-            />
-            <button
-              type="button"
-              onClick={() => setAddOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[#2D5A27] px-3 py-2 text-[13px] font-semibold text-white shadow-sm hover:bg-[#244a20]"
-            >
-              <UserPlus size={15} />
-              Thêm cộng tác viên
-            </button>
-            {onConfigClick ? (
-              <button
-                type="button"
-                onClick={onConfigClick}
-                className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[13px] font-semibold ${
-                  configOpen
-                    ? "border-emerald-600 bg-emerald-700 text-white"
-                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                }`}
-              >
-                <Settings2 size={15} />
-                Cấu hình CTV
-              </button>
-            ) : null}
-          </div>
-          {configPanel}
-          <AddCtvModal
-            open={addOpen}
-            busy={addBusy}
-            onClose={() => !addBusy && setAddOpen(false)}
-            onSubmit={createCtv}
-          />
-        </>
-      ) : (
-        <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-2">
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTab(t.id)}
-              className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
-                tab === t.id
-                  ? "bg-emerald-700 text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
-            >
-              {t.label}
-              {t.count != null ? <span className="ml-1 opacity-80">({t.count})</span> : null}
-            </button>
-          ))}
-          <div className="relative ml-auto min-w-[220px] flex-1 sm:max-w-xs">
-            <Search
-              size={16}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder={searchPlaceholder}
-              className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm outline-none focus:border-emerald-500"
-            />
-          </div>
-        </div>
-      )}
+        <AddCtvModal
+          open={addOpen}
+          busy={addBusy}
+          onClose={() => !addBusy && setAddOpen(false)}
+          onSubmit={createCtv}
+        />
+      ) : null}
 
-      <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-slate-200 bg-white">
-        <table className="w-full min-w-[720px] text-left text-sm">
-          <thead className="sticky top-0 z-10 bg-slate-50 text-xs font-semibold uppercase text-slate-500">
-            <tr>
-              <th className="px-4 py-3">Họ tên</th>
-              {scope === "all" ? <th className="px-3 py-3">Loại</th> : null}
-              <th className="px-3 py-3">Liên hệ</th>
-              {showCtvColumns ? <th className="px-3 py-3">Mã CTV</th> : null}
-              <th className="px-3 py-3">Trạng thái</th>
-              <th className="px-3 py-3">Ngày tạo</th>
-              <th className="px-3 py-3 text-right">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && !items.length ? (
-              <>
-                {Array.from({ length: 8 }, (_, i) => (
-                  <AdminTableRowSkeleton key={i} cols={colSpan} />
-                ))}
-              </>
-            ) : !items.length ? (
-              <tr>
-                <td colSpan={colSpan} className="px-4 py-12 text-center text-slate-400">
-                  {scope === "customers"
-                    ? "Chưa có khách hàng"
-                    : scope === "ctv"
-                      ? "Chưa có cộng tác viên"
-                      : "Chưa có tài khoản"}
-                </td>
-              </tr>
-            ) : (
-              items.map((row) => {
-                const open = expandedId === row.id;
-                const detail = open ? expanded || row : null;
-                return (
-                  <React.Fragment key={row.id}>
-                    <tr
-                      onClick={() => {
-                        if (scope === "ctv" && row.ctvCode) {
-                          openCtvDetail(row);
-                          return;
-                        }
-                        toggleExpand(row.id);
-                      }}
-                      className={`cursor-pointer border-b border-[#eef1f5] transition-colors ${
-                        open ? "bg-[#E8EFE4]" : "hover:bg-[#f5f7f5]"
-                      }`}
-                    >
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          {row.avatarUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={row.avatarUrl}
-                              alt=""
-                              className="h-8 w-8 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-600">
-                              {(row.fullName || "?").slice(0, 1).toUpperCase()}
-                            </div>
-                          )}
-                          <div>
-                            <div className="font-semibold text-slate-800">
-                              {row.fullName || "—"}
-                            </div>
-                            <div className="text-xs text-slate-400">
-                              {row.authProviders.join(", ")}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      {scope === "all" ? (
-                        <td className="px-3 py-3">
-                          <div className="flex flex-wrap gap-1">
-                            {row.roles.includes("customer") ? (
-                              <Chip tone="green">Khách</Chip>
-                            ) : null}
-                            {row.roles.includes("ctv") ? (
-                              <Chip tone="orange">CTV</Chip>
-                            ) : null}
-                          </div>
-                        </td>
-                      ) : null}
-                      <td className="px-3 py-3">
-                        <div className="text-slate-700">{row.email}</div>
-                        <div className="text-xs text-slate-400">{maskPhone(row.phone)}</div>
-                      </td>
-                      {showCtvColumns ? (
-                        <td className="px-3 py-3 font-mono text-xs">{row.ctvCode || "—"}</td>
-                      ) : null}
-                      <td className="px-3 py-3">
-                        {scope === "customers" ? (
-                          !row.active ? (
-                            <Chip tone="red">Tạm dừng</Chip>
-                          ) : (
-                            <Chip tone="green">Hoạt động</Chip>
-                          )
-                        ) : row.roles.includes("ctv") ? (
-                          (() => {
-                            const st = ctvStatusChip(row);
-                            return <Chip tone={st.tone}>{st.label}</Chip>;
-                          })()
-                        ) : !row.active ? (
-                          <Chip tone="red">Tạm dừng</Chip>
-                        ) : (
-                          <Chip tone="gray">Hoạt động</Chip>
-                        )}
-                      </td>
-                      <td className="px-3 py-3 text-slate-500">{fmtDate(row.createdAt)}</td>
-                      <td
-                        className="px-3 py-3 text-right"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div className="inline-flex gap-1">
-                          {scope !== "customers" &&
-                          row.roles.includes("ctv") &&
-                          row.ctvStatus === "cho_duyet" ? (
-                            <button
-                              type="button"
-                              disabled={busyId === row.id}
-                              title="Xem hồ sơ đăng ký"
-                              onClick={() => setReviewAccountId(row.id)}
-                              className="rounded-md border border-slate-200 bg-white p-1.5 text-slate-700 hover:bg-slate-50"
-                            >
-                              <Eye size={14} />
-                            </button>
-                          ) : null}
-                          <button
-                            type="button"
-                            disabled={busyId === row.id}
-                            title={row.active ? "Khóa" : "Mở khóa"}
-                            onClick={() => void patchAccount(row.id, { active: !row.active })}
-                            className="rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50"
-                          >
-                            {row.active ? <Lock size={14} /> : <Unlock size={14} />}
-                          </button>
-                          <button
-                            type="button"
-                            disabled={busyId === row.id}
-                            title="Xóa thành viên"
-                            onClick={() => void deleteAccount(row)}
-                            className="rounded-md border border-rose-200 p-1.5 text-rose-600 hover:bg-rose-50"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-
-                    {open && detail ? (
-                      <tr className="bg-white">
-                        <td
-                          colSpan={colSpan}
-                          className="border-b border-[#d0e8f8] p-0"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <div className="mx-3 mb-3 overflow-hidden rounded-md border border-[#cfe8f7] bg-white shadow-sm">
-                            <div className="flex items-center justify-between gap-3 border-b border-[#e8ecf0] bg-[#FFFCF6] px-4 py-2.5">
-                              <div className="min-w-0">
-                                <div className="truncate text-[15px] font-bold text-slate-800">
-                                  {detail.fullName}
-                                </div>
-                                <div className="truncate text-xs text-slate-500">
-                                  {detail.email}
-                                </div>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => setExpandedId(null)}
-                                className="rounded p-1 text-slate-500 hover:bg-slate-100"
-                                title="Đóng"
-                              >
-                                <X size={18} />
-                              </button>
-                            </div>
-
-                            <div className="grid gap-4 p-4 text-sm md:grid-cols-2 lg:grid-cols-3">
-                              <div>
-                                <div className="mb-1.5 text-xs font-bold uppercase tracking-wide text-slate-400">
-                                  Hồ sơ
-                                </div>
-                                <div className="space-y-1 text-slate-700">
-                                  <div>SĐT: {maskPhone(detail.phone)}</div>
-                                  <div>
-                                    Đăng nhập: {detail.authProviders.join(", ") || "—"}
-                                  </div>
-                                  <div>Tạo: {fmtDate(detail.createdAt)}</div>
-                                  <div>
-                                    Đăng nhập gần nhất: {fmtDate(detail.lastLoginAt)}
-                                  </div>
-                                  <div className="flex flex-wrap gap-1 pt-1">
-                                    {detail.roles.includes("customer") ? (
-                                      <Chip tone="green">Khách</Chip>
-                                    ) : null}
-                                    {detail.roles.includes("ctv") ? (
-                                      <Chip tone="orange">CTV</Chip>
-                                    ) : null}
-                                    {!detail.active ? <Chip tone="red">Đã khóa</Chip> : null}
-                                  </div>
-                                </div>
-                              </div>
-
-                              {scope !== "customers" && detail.roles.includes("ctv") ? (
-                                <div>
-                                  <div className="mb-1.5 text-xs font-bold uppercase tracking-wide text-slate-400">
-                                    Cộng tác viên
-                                  </div>
-                                  <div className="space-y-2 text-slate-700">
-                                    <div>
-                                      Mã CTV:{" "}
-                                      <span className="font-mono font-bold">
-                                        {detail.ctvCode || "—"}
-                                      </span>
-                                    </div>
-                                    <div>
-                                      Trạng thái:{" "}
-                                      <strong>
-                                        {ctvStatusChip(detail).label}
-                                      </strong>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                      {detail.ctvStatus === "cho_duyet" ? (
-                                        <button
-                                          type="button"
-                                          disabled={busyId === detail.id}
-                                          onClick={() => setReviewAccountId(detail.id)}
-                                          className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-bold text-white"
-                                        >
-                                          <Eye size={14} />
-                                          Xem hồ sơ / Duyệt
-                                        </button>
-                                      ) : null}
-                                      <button
-                                        type="button"
-                                        disabled={busyId === detail.id}
-                                        onClick={() =>
-                                          void patchAccount(detail.id, {
-                                            ctvStatus:
-                                              detail.ctvStatus === "khoa" ? "active" : "khoa",
-                                          })
-                                        }
-                                        className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold"
-                                      >
-                                        {detail.ctvStatus === "khoa" ? "Mở CTV" : "Khóa CTV"}
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-                              ) : null}
-                              {scope === "all" && !detail.roles.includes("ctv") ? (
-                                <div>
-                                  <div className="mb-1.5 text-xs font-bold uppercase tracking-wide text-slate-400">
-                                    Cộng tác viên
-                                  </div>
-                                  <p className="text-slate-500">Chưa đăng ký CTV</p>
-                                </div>
-                              ) : null}
-
-                              <div>
-                                <div className="mb-1.5 text-xs font-bold uppercase tracking-wide text-slate-400">
-                                  Ghi chú nội bộ
-                                </div>
-                                <textarea
-                                  value={note}
-                                  onChange={(e) => setNote(e.target.value)}
-                                  rows={3}
-                                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                                  placeholder="Ghi chú…"
-                                />
-                                <div className="mt-2 flex flex-wrap gap-2">
-                                  <button
-                                    type="button"
-                                    disabled={busyId === detail.id}
-                                    onClick={() =>
-                                      void patchAccount(detail.id, { adminNote: note })
-                                    }
-                                    className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-bold text-white"
-                                  >
-                                    Lưu ghi chú
-                                  </button>
-                                  <button
-                                    type="button"
-                                    disabled={busyId === detail.id}
-                                    onClick={() =>
-                                      void patchAccount(detail.id, {
-                                        active: !detail.active,
-                                      })
-                                    }
-                                    className={`rounded-lg px-3 py-1.5 text-xs font-bold text-white ${
-                                      detail.active
-                                        ? "bg-red-600 hover:bg-red-700"
-                                        : "bg-emerald-600 hover:bg-emerald-700"
-                                    }`}
-                                  >
-                                    {detail.active ? "Khóa tài khoản" : "Mở khóa tài khoản"}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    disabled={busyId === detail.id}
-                                    onClick={() => void deleteAccount(detail)}
-                                    className="rounded-lg border border-rose-300 px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-50"
-                                  >
-                                    Xóa thành viên
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : null}
-                  </React.Fragment>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-
-        {scope === "ctv" || scope === "customers" ? (
-          <CtvPagination
-            page={page}
-            pageSize={pageSize}
-            total={total}
-            onPageChange={setPage}
-            itemLabel={
-              scope === "customers" ? "khách" : scope === "ctv" ? "CTV" : "tài khoản"
-            }
-          />
-        ) : (
-          <ThuMuaListPagination
-            page={page}
-            pageSize={pageSize}
-            total={total}
-            onPageChange={setPage}
-            onPageSizeChange={(n) => {
-              setPageSize(n);
-              setPage(1);
-            }}
-            itemLabel="tài khoản"
-          />
-        )}
-      </div>
+      <AccountsTable
+        items={items}
+        loading={loading}
+        scope={scope}
+        showCtvColumns={showCtvColumns}
+        colSpan={colSpan}
+        expandedId={expandedId}
+        expanded={expanded}
+        toggleExpand={toggleExpand}
+        openCtvDetail={openCtvDetail}
+        busyId={busyId}
+        patchAccount={patchAccount}
+        deleteAccount={deleteAccount}
+        setReviewAccountId={setReviewAccountId}
+        note={note}
+        setNote={setNote}
+        setExpandedId={setExpandedId}
+        page={page}
+        pageSize={pageSize}
+        total={total}
+        setPage={setPage}
+        setPageSize={setPageSize}
+      />
 
       <CtvApplicationModal
         onDone={() => {
