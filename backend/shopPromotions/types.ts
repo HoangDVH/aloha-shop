@@ -117,6 +117,10 @@ export interface EvaluatedCandidate {
   calculatedDiscount: number;
   code?: string;
   isPublic?: boolean;
+  scope?: PromotionScope;
+  targetCustomer?: TargetCustomer;
+  endDate?: string;
+  description?: string;
 }
 
 export interface PromotionQuoteResult {

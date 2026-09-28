@@ -180,6 +180,10 @@ export function evaluatePromotions(args: {
       ineligibleReason: eligible ? undefined : ineligibleReason,
       calculatedDiscount,
       isPublic: promo.isPublic !== false,
+      scope: promo.scope,
+      targetCustomer: promo.targetCustomer,
+      endDate: promo.endDate,
+      description: promo.description,
     });
   }
 
