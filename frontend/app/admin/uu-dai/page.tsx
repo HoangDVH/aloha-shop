@@ -964,6 +964,13 @@ export default function AdminPromotionsPage() {
           fetchPromotions();
           fetchReport();
         }}
+        onSuccessAndCreateCode={(createdPromo) => {
+          setFormOpen(false);
+          fetchPromotions();
+          fetchReport();
+          setCodeModalItem(createdPromo);
+          setCodeModalOpen(true);
+        }}
         editingItem={editingItem}
       />
 
