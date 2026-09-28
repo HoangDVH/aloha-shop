@@ -24,6 +24,7 @@ import {
   combineLocalToIso,
   emptyPopup,
   ensureCoreHomeProductBlocks,
+  formatScheduleVi,
   newId,
   splitLocalFromIso,
 } from "./editorUtils";
@@ -209,7 +210,7 @@ export function ShopAppearanceEditor() {
       setScheduleTime(split.time);
       toast.success(
         r.scheduledPublishAt
-          ? `Đã hẹn — web shop chỉ đổi lúc ${split.date} ${split.time} (chưa đổi ngay)`
+          ? `Đã hẹn — web shop chỉ đổi lúc ${formatScheduleVi(r.scheduledPublishAt)} (chưa đổi ngay)`
           : "Đã hủy hẹn giờ áp dụng"
       );
       void load();

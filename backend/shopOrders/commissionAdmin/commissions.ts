@@ -366,11 +366,9 @@ export function registerCommissions(app: Express, ctx: CommissionAdminCtx) {
                     ctvCode,
                     $or: [
                       { billingPeriod: period },
-                      { status: { $in: ["billed", "paid_out"] }, billingPeriod: period },
                       {
-                        status: "eligible",
                         billingPeriod: { $in: [null, ""] },
-                        ...eligibleQuery,
+                        eligibleAt: { $gte: pStart, $lt: pEnd },
                       },
                       ...(cycle === "K2"
                         ? [

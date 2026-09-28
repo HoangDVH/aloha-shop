@@ -179,7 +179,7 @@ export function registerAffiliateDetail(app: Express, ctx: CommissionAdminCtx) {
           const ma = String(d?.productCode || d?.ma || "")
             .trim()
             .toUpperCase();
-          if (!ma) needMas.add(ma);
+          if (ma) needMas.add(ma);
         }
       }
       for (const c of commissions) {
