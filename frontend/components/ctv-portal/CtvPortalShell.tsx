@@ -178,15 +178,28 @@ export function CtvPortalShell({ children }: { children: ReactNode }) {
         ) : null}
 
         <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-[#e8eaed] bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
-            <button
-              type="button"
-              className="rounded-lg p-2 text-slate-600 hover:bg-[#F3F7F2]"
-              onClick={() => setDrawer(true)}
-              aria-label="Mở menu"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
+          <header className="sticky top-0 z-20 flex items-center justify-between border-b border-[#e8eaed] bg-white/95 px-4 py-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] backdrop-blur lg:hidden">
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                className="rounded-lg p-2 text-slate-600 hover:bg-[#F3F7F2]"
+                onClick={() => setDrawer(true)}
+                aria-label="Mở menu"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+              <div className="flex flex-col">
+                <span className="text-xs font-bold uppercase tracking-wider text-[var(--aloha-green)]">ALOHA CTV</span>
+                {user?.ctvCode ? (
+                  <span className="text-[11px] font-semibold text-slate-500">Mã: {user.ctvCode}</span>
+                ) : null}
+              </div>
+            </div>
+            {user?.fullName ? (
+              <span className="max-w-[130px] truncate text-xs font-medium text-slate-700 sm:max-w-[200px]">
+                {user.fullName}
+              </span>
+            ) : null}
           </header>
           <main className="min-w-0 flex-1 bg-[#F7F8FA]">
             <div className="mx-auto h-full w-full max-w-[1400px] px-4 py-5 sm:px-6 lg:px-8">

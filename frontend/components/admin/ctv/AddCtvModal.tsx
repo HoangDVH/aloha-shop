@@ -143,7 +143,7 @@ export function AddCtvModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-6">
+    <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-6">
       <button
         type="button"
         className="absolute inset-0 bg-black/40"
@@ -157,7 +157,7 @@ export function AddCtvModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-ctv-title"
-        className="relative z-10 flex max-h-[min(920px,92vh)] w-full max-w-[920px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+        className="relative z-10 flex max-h-[92vh] sm:max-h-[min(920px,92vh)] w-full max-w-[920px] flex-col overflow-hidden rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl"
       >
         <div className="flex items-center justify-between border-b border-[#eef2ee] px-5 py-4">
           <h2
@@ -366,7 +366,7 @@ export function AddCtvModal({
           </aside>
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-[#eef2ee] px-5 py-[14px]">
+        <div className="flex justify-end gap-2 border-t border-[#eef2ee] px-5 py-[14px] pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:pb-[14px]">
           <button
             type="button"
             disabled={busy}

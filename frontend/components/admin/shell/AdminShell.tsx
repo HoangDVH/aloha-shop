@@ -38,12 +38,12 @@ export function AdminShell({ children }: { children: ReactNode }) {
     <AdminAntdProvider>
       <AdminOpsSync enabled />
       <div className="flex min-h-screen bg-[#F7F8FA] text-[var(--aloha-ink)]">
-        <div className="hidden md:block"><AdminSidebar /></div>
+        <div className="hidden lg:block"><AdminSidebar /></div>
         <Drawer open={menuOpen} onClose={() => setMenuOpen(false)} placement="left" title="Điều hướng" size={248} styles={{ body: { padding: 0 } }} destroyOnHidden>
           <div className="h-full [&>aside]:h-full"><AdminSidebar /></div>
         </Drawer>
         <main className="min-h-screen min-w-0 flex-1 bg-[#F7F8FA]">
-          <div className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 md:hidden">
+          <div className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:hidden">
             <Button aria-label="Mở menu quản trị" icon={<Menu size={18} />} onClick={() => setMenuOpen(true)} />
             <span className="text-sm font-semibold text-[#2D5A27]">ALOHA Admin</span>
           </div>

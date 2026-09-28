@@ -442,30 +442,32 @@ export default function CtvDetailPanel({
               <Empty description="Chưa có đơn trong kỳ" />
             </div>
           ) : (
-            <table className="w-full text-left text-sm">
-              <thead className="bg-[#F9FBF9] text-[11px] font-bold uppercase text-slate-500">
-                <tr>
-                  <th className="px-4 py-3">Mã đơn</th>
-                  <th className="px-3 py-3">Trạng thái</th>
-                  <th className="px-3 py-3">Ngày</th>
-                  <th className="px-3 py-3 text-right">Giá trị</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.orders.map((o) => (
-                  <tr key={o.code} className="border-t border-[#f0f3ef]">
-                    <td className="px-4 py-3 font-semibold text-[#1a2e1a]">
-                      #{o.displayCode || o.code}
-                    </td>
-                    <td className="px-3 py-3 text-slate-600">{o.orderStatus || "—"}</td>
-                    <td className="px-3 py-3 text-slate-500">{fmtDate(o.createdAt)}</td>
-                    <td className="px-3 py-3 text-right font-bold text-[#1a2e1a]">
-                      {formatVnd(o.total)}
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[500px] text-left text-sm">
+                <thead className="bg-[#F9FBF9] text-[11px] font-bold uppercase text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3">Mã đơn</th>
+                    <th className="px-3 py-3">Trạng thái</th>
+                    <th className="px-3 py-3">Ngày</th>
+                    <th className="px-3 py-3 text-right">Giá trị</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {data.orders.map((o) => (
+                    <tr key={o.code} className="border-t border-[#f0f3ef]">
+                      <td className="px-4 py-3 font-semibold text-[#1a2e1a]">
+                        #{o.displayCode || o.code}
+                      </td>
+                      <td className="px-3 py-3 text-slate-600">{o.orderStatus || "—"}</td>
+                      <td className="px-3 py-3 text-slate-500">{fmtDate(o.createdAt)}</td>
+                      <td className="px-3 py-3 text-right font-bold text-[#1a2e1a]">
+                        {formatVnd(o.total)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
       ) : null}
@@ -477,37 +479,39 @@ export default function CtvDetailPanel({
               <Empty description="Chưa có hoa hồng trong kỳ" />
             </div>
           ) : (
-            <table className="w-full text-left text-sm">
-              <thead className="bg-[#F9FBF9] text-[11px] font-bold uppercase text-slate-500">
-                <tr>
-                  <th className="px-4 py-3">Sản phẩm / đơn</th>
-                  <th className="px-3 py-3">Trạng thái</th>
-                  <th className="px-3 py-3">Ngày</th>
-                  <th className="px-3 py-3 text-right">Hoa hồng</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.commissions.map((c) => (
-                  <tr key={c.id} className="border-t border-[#f0f3ef]">
-                    <td className="px-4 py-3">
-                      <div className="font-semibold text-[#1a2e1a]">{c.productName}</div>
-                      <div className="text-[12px] text-slate-400">
-                        {c.displayOrderCode || c.orderCode
-                          ? `#${c.displayOrderCode || c.orderCode}`
-                          : c.ma}
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 text-slate-600">
-                      {COMMISSION_STATUS_LABEL[c.status] || c.status}
-                    </td>
-                    <td className="px-3 py-3 text-slate-500">{fmtDate(c.createdAt)}</td>
-                    <td className="px-3 py-3 text-right font-bold text-[#2D5A27]">
-                      {formatVnd(c.amount)}
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[520px] text-left text-sm">
+                <thead className="bg-[#F9FBF9] text-[11px] font-bold uppercase text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3">Sản phẩm / đơn</th>
+                    <th className="px-3 py-3">Trạng thái</th>
+                    <th className="px-3 py-3">Ngày</th>
+                    <th className="px-3 py-3 text-right">Hoa hồng</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {data.commissions.map((c) => (
+                    <tr key={c.id} className="border-t border-[#f0f3ef]">
+                      <td className="px-4 py-3">
+                        <div className="font-semibold text-[#1a2e1a]">{c.productName}</div>
+                        <div className="text-[12px] text-slate-400">
+                          {c.displayOrderCode || c.orderCode
+                            ? `#${c.displayOrderCode || c.orderCode}`
+                            : c.ma}
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 text-slate-600">
+                        {COMMISSION_STATUS_LABEL[c.status] || c.status}
+                      </td>
+                      <td className="px-3 py-3 text-slate-500">{fmtDate(c.createdAt)}</td>
+                      <td className="px-3 py-3 text-right font-bold text-[#2D5A27]">
+                        {formatVnd(c.amount)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
       ) : null}
@@ -519,30 +523,32 @@ export default function CtvDetailPanel({
               <Empty description="Chưa có kỳ thanh toán gắn CTV này" />
             </div>
           ) : (
-            <table className="w-full text-left text-sm">
-              <thead className="bg-[#F9FBF9] text-[11px] font-bold uppercase text-slate-500">
-                <tr>
-                  <th className="px-4 py-3">Kỳ</th>
-                  <th className="px-3 py-3">Trạng thái</th>
-                  <th className="px-3 py-3">Đơn</th>
-                  <th className="px-3 py-3 text-right">Số tiền</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.payouts.map((p) => (
-                  <tr key={p.period} className="border-t border-[#f0f3ef]">
-                    <td className="px-4 py-3 font-semibold text-[#1a2e1a]">
-                      {formatPeriodLabel(p.period)} ({p.period})
-                    </td>
-                    <td className="px-3 py-3 text-slate-600">{p.status}</td>
-                    <td className="px-3 py-3 text-slate-500">{p.orderCount}</td>
-                    <td className="px-3 py-3 text-right font-bold text-[#2D5A27]">
-                      {formatVnd(p.amount)}
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[480px] text-left text-sm">
+                <thead className="bg-[#F9FBF9] text-[11px] font-bold uppercase text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3">Kỳ</th>
+                    <th className="px-3 py-3">Trạng thái</th>
+                    <th className="px-3 py-3">Đơn</th>
+                    <th className="px-3 py-3 text-right">Số tiền</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {data.payouts.map((p) => (
+                    <tr key={p.period} className="border-t border-[#f0f3ef]">
+                      <td className="px-4 py-3 font-semibold text-[#1a2e1a]">
+                        {formatPeriodLabel(p.period)} ({p.period})
+                      </td>
+                      <td className="px-3 py-3 text-slate-600">{p.status}</td>
+                      <td className="px-3 py-3 text-slate-500">{p.orderCount}</td>
+                      <td className="px-3 py-3 text-right font-bold text-[#2D5A27]">
+                        {formatVnd(p.amount)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
       ) : null}

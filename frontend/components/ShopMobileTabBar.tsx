@@ -9,8 +9,12 @@ import { useCart } from "@/lib/cart";
 const OPEN_CATS = "aloha:open-mobile-cats";
 
 function shouldHideTabBar(pathname: string) {
-  // Giữ tab bar trên giỏ hàng; chỉ ẩn khi checkout / chi tiết đơn (có sticky riêng).
+  // Chuẩn TMĐT lớn (Shopee/Tiki/Lazada): ẩn tab bar điều hướng chung khi xem PDP, Giỏ hàng, Checkout và Đơn hàng
+  // vì các trang này đã có thanh hành động Sticky riêng bám sát đáy màn hình.
   return (
+    pathname.startsWith("/sp") ||
+    (pathname.startsWith("/c/") && pathname.includes("/p/")) ||
+    pathname.startsWith("/gio-hang") ||
     pathname.startsWith("/xac-nhan-don-hang") ||
     pathname.startsWith("/don-hang")
   );

@@ -565,14 +565,16 @@ export function ShopAppearanceEditor() {
           ) : null}
         </div>
 
-        <WbIconSegment
-          value={device}
-          onChange={setDevice}
-          options={[
-            { id: "desktop", title: "Desktop", Icon: Monitor },
-            { id: "mobile", title: "Mobile", Icon: Smartphone },
-          ]}
-        />
+        <div className="hidden md:block">
+          <WbIconSegment
+            value={device}
+            onChange={setDevice}
+            options={[
+              { id: "desktop", title: "Desktop", Icon: Monitor },
+              { id: "mobile", title: "Mobile", Icon: Smartphone },
+            ]}
+          />
+        </div>
 
         <div className="flex flex-1 items-center justify-end gap-1.5">
           <div ref={toolsRef} className="relative">

@@ -509,7 +509,7 @@ function ConversionCard({ clicks, orders }: { clicks: number; orders: number }) 
 
   return (
     <div className="flex h-full flex-col items-stretch justify-center gap-5">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row items-center gap-4">
         <div className="relative shrink-0" style={{ width: size, height: size }}>
           <svg width={size} height={size} className="-rotate-90">
             {/* phần chưa chuyển đổi — xám trung tính */}
@@ -543,7 +543,7 @@ function ConversionCard({ clicks, orders }: { clicks: number; orders: number }) 
           </div>
         </div>
 
-        <div className="min-w-0 flex-1 space-y-3">
+        <div className="w-full min-w-0 sm:flex-1 space-y-3">
           <div>
             <div className="mb-1 flex items-center justify-between gap-2 text-[12px]">
               <span className="inline-flex items-center gap-1.5 font-semibold text-slate-500">
@@ -1032,46 +1032,88 @@ function OrdersPanel() {
         <Empty description="Chưa có đơn hàng gắn cộng tác viên" />
       ) : (
         <>
-          <Table
-            size="middle"
-            rowKey={(r) => `${r.orderCode}-${r.ctvCode}`}
-            dataSource={pageRows}
-            pagination={false}
-            columns={[
-              {
-                title: "#",
-                width: 48,
-                render: (_: unknown, __: unknown, i: number) =>
-                  (page - 1) * pageSize + i + 1,
-              },
-              {
-                title: "Đơn hàng",
-                dataIndex: "orderCode",
-                render: (v: string) => (
-                  <span className="font-bold text-[#2D5A27]">#{v}</span>
-                ),
-              },
-              { title: "CTV", dataIndex: "ctvCode" },
-              { title: "Số dòng HH", dataIndex: "n", width: 100 },
-              {
-                title: "Doanh thu",
-                dataIndex: "lineTotal",
-                render: (v: number) => formatVnd(v),
-              },
-              {
-                title: "Hoa hồng",
-                dataIndex: "amount",
-                render: (v: number) => (
-                  <span className="font-bold">{formatVnd(v)}</span>
-                ),
-              },
-              {
-                title: "Trạng thái",
-                dataIndex: "status",
-                render: (s: string) => statusTag(s),
-              },
-            ]}
-          />
+          {/* Mobile Card Feed (< md) */}
+          <div className="space-y-3 md:hidden">
+            {pageRows.map((r, i) => (
+              <div
+                key={`${r.orderCode}-${r.ctvCode}`}
+                className="rounded-xl border border-[#e8ece8] bg-white p-3.5 shadow-sm"
+              >
+                <div className="flex items-center justify-between gap-2 border-b border-[#f1f4f1] pb-2">
+                  <div className="flex items-center gap-1.5 font-bold text-[#2D5A27]">
+                    <span className="text-xs text-slate-400">#{(page - 1) * pageSize + i + 1}</span>
+                    <span>#{r.orderCode}</span>
+                  </div>
+                  {statusTag(r.status)}
+                </div>
+                <div className="mt-2.5 grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-slate-500">CTV:</span>{" "}
+                    <span className="font-semibold text-slate-800">{r.ctvCode}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Số dòng HH:</span>{" "}
+                    <span className="font-semibold text-slate-800">{r.n}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Doanh thu:</span>{" "}
+                    <span className="font-semibold text-slate-800">{formatVnd(r.lineTotal)}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Hoa hồng:</span>{" "}
+                    <span className="font-bold text-[#2D5A27]">{formatVnd(r.amount)}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop Table (>= md) */}
+          <div className="hidden md:block">
+            <Table
+              size="middle"
+              rowKey={(r) => `${r.orderCode}-${r.ctvCode}`}
+              dataSource={pageRows}
+              pagination={false}
+              scroll={{ x: 720 }}
+              columns={[
+                {
+                  title: "#",
+                  width: 48,
+                  fixed: "left" as const,
+                  render: (_: unknown, __: unknown, i: number) =>
+                    (page - 1) * pageSize + i + 1,
+                },
+                {
+                  title: "Đơn hàng",
+                  dataIndex: "orderCode",
+                  fixed: "left" as const,
+                  render: (v: string) => (
+                    <span className="font-bold text-[#2D5A27]">#{v}</span>
+                  ),
+                },
+                { title: "CTV", dataIndex: "ctvCode" },
+                { title: "Số dòng HH", dataIndex: "n", width: 100 },
+                {
+                  title: "Doanh thu",
+                  dataIndex: "lineTotal",
+                  render: (v: number) => formatVnd(v),
+                },
+                {
+                  title: "Hoa hồng",
+                  dataIndex: "amount",
+                  render: (v: number) => (
+                    <span className="font-bold">{formatVnd(v)}</span>
+                  ),
+                },
+                {
+                  title: "Trạng thái",
+                  dataIndex: "status",
+                  render: (s: string) => statusTag(s),
+                },
+              ]}
+            />
+          </div>
           <CtvPagination
             page={page}
             pageSize={pageSize}
@@ -1391,6 +1433,7 @@ function CommissionsHub({
                   pagination={false}
                   rowKey={(r: any) => String(r.ctvCode || "")}
                   dataSource={tableLines}
+                  scroll={{ x: 680 }}
                   onRow={(r: any) => ({
                     onClick: () => {
                       const code = String(r.ctvCode || "").trim();
@@ -2594,6 +2637,7 @@ function FraudPanel() {
             rowKey={(r) => String(r.id)}
             dataSource={paged}
             pagination={false}
+            scroll={{ x: 1050 }}
             columns={[
               {
                 title: "#",

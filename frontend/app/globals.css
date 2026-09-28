@@ -99,15 +99,13 @@ body {
 
 /* Sticky bottom bars (PDP / gi? / checkout) ? ??m ?�y + safe-area; nh?c l�n tr�n tab bar mobile */
 .shop-sticky-bottom {
-  bottom: calc(
-    var(--shop-mobile-tab-h, 0px) + 0.5rem + env(safe-area-inset-bottom, 0px)
-  ) !important;
-  padding-bottom: 0.625rem;
+  bottom: 0 !important;
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
 }
 
 .shop-pb-sticky {
   padding-bottom: calc(
-    11rem + var(--shop-mobile-tab-h, 0px) + 0.5rem + env(safe-area-inset-bottom, 0px)
+    5.5rem + env(safe-area-inset-bottom, 0px)
   );
 }
 
@@ -785,9 +783,16 @@ body {
   /* Cùng tỉ lệ hero 01–03 (2170×725) — mọi slide cùng cao, USP vẫn trong khung nhìn */
   aspect-ratio: 2170 / 725;
   height: auto;
-  min-height: 0;
+  min-height: 160px;
   max-height: min(42rem, calc(100svh - var(--shop-chrome-h, 7.5rem) - 6.5rem));
   background: #f7faf5;
+}
+
+@media (max-width: 639px) {
+  .hero-banner--full .hero-banner__stage {
+    aspect-ratio: 16 / 8.5;
+    min-height: 175px;
+  }
 }
 
 .hero-banner--full .hero-banner__stage::before {
@@ -2115,4 +2120,19 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* Chuẩn mobile big-tech: Chống tự động zoom lố trên iOS Safari khi focus input/select/textarea (< 16px) */
+@media screen and (max-width: 767px) {
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }

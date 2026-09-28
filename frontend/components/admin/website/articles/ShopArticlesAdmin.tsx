@@ -507,7 +507,7 @@ export function ShopArticlesAdmin() {
         : "";
 
     return (
-      <div className="relative px-4 pb-28 pt-4 sm:px-5 sm:pb-8 sm:pt-20" style={{ background: "#F3F4F6" }}>
+      <div className="relative px-4 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] pt-4 sm:px-5 sm:pb-8 sm:pt-20" style={{ background: "#F3F4F6" }}>
         {/* Thanh Lưu cố định viewport — không bị kéo theo khi cuộn (sticky hỏng khi cha có overflow) */}
         {typeof document !== "undefined"
           ? createPortal(
@@ -540,7 +540,7 @@ export function ShopArticlesAdmin() {
                 </div>
 
                 <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[100] sm:hidden">
-                  <div className="pointer-events-auto border-t border-slate-200 bg-white/95 p-3 shadow-[0_-4px_16px_rgba(15,23,42,0.08)] backdrop-blur">
+                  <div className="pointer-events-auto border-t border-slate-200 bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_16px_rgba(15,23,42,0.08)] backdrop-blur">
                     <div className="mx-auto flex max-w-5xl items-center gap-2">
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[13px] font-bold text-slate-900">

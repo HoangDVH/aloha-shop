@@ -17,6 +17,8 @@ import {
   UserRound,
   FileText,
   ChevronRight,
+  Home,
+  Sparkles,
 } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { fetchCategoryTreeCached, shopApiBase, type ShopCategoryNavNode } from "@/lib/api";
@@ -100,6 +102,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
   const [nav, setNav] = useState<NavConfig | null>(null);
   const [theme, setTheme] = useState<AppearanceTheme | null>(null);
   const [mobileNav, setMobileNav] = useState(false);
+  const [mobileNavTab, setMobileNavTab] = useState<"cats" | "pages">("cats");
   const chromeRef = useRef<HTMLElement | null>(null);
 
   const navActiveKey = useMemo(() => {
@@ -119,7 +122,10 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
 
   /** Tab bar mobile «Danh mục» → mở drawer danh mục. */
   useEffect(() => {
-    const onOpen = () => setMobileNav(true);
+    const onOpen = () => {
+      setMobileNavTab("cats");
+      setMobileNav(true);
+    };
     window.addEventListener(SHOP_OPEN_MOBILE_CATS, onOpen);
     return () => window.removeEventListener(SHOP_OPEN_MOBILE_CATS, onOpen);
   }, []);
@@ -216,15 +222,15 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
     >
       {/* Hàng logo + search — kem ấm #FDF6E3 */}
       <div className="border-b border-[var(--aloha-border-brown)]/40 bg-[#FDF6E3]">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-2 gap-y-2 px-3 py-2 sm:gap-x-3 sm:px-4 sm:py-2.5 lg:flex-nowrap lg:gap-5">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-2 gap-y-2 px-3 py-2 sm:gap-x-3 sm:px-4 sm:py-2.5 md:flex-nowrap md:gap-4 lg:gap-5">
           <AlohaLogo
             onNavigate={closeMenus}
             logoUrl={theme?.logoUrl}
             siteName={theme?.siteName}
           />
 
-          {/* Mobile/tablet: hàng riêng full ngang (kiểu Shopee/Tiki). Desktop: giữa logo và icon. */}
-          <div className="order-last w-full basis-full lg:order-none lg:min-w-0 lg:flex-1 lg:basis-auto">
+          {/* Mobile (< 768px): hàng riêng full ngang. Tablet (≥ 768px) & Desktop: cùng hàng giữa logo và icon. */}
+          <div className="order-last w-full basis-full md:order-none md:min-w-0 md:flex-1 md:basis-auto">
             <HeaderSearch onSubmitExtra={closeMenus} />
           </div>
 
@@ -357,16 +363,42 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
         <div className="fixed inset-0 z-[60] lg:hidden">
           <button
             type="button"
-            className="absolute inset-0 bg-black/45"
+            className="absolute inset-0 bg-black/45 backdrop-blur-[1px] transition-opacity"
             aria-label="Đóng menu"
             onClick={closeMenus}
           />
-          <div className="absolute inset-0 flex flex-col bg-white shadow-2xl">
-            <div className="flex shrink-0 items-center justify-between border-b border-[#eee] px-4 py-3">
-              <span className="text-[15px] font-bold text-[#222]">Danh mục sản phẩm</span>
+          <div className="absolute inset-x-0 bottom-0 top-0 flex min-h-0 flex-col bg-white shadow-2xl">
+            {/* Header drawer có 2 tab chuyển đổi */}
+            <div className="flex shrink-0 items-center justify-between border-b border-[#eee] bg-[#fafafa] px-3 py-2.5">
+              <div className="flex items-center gap-1 rounded-xl bg-slate-200/70 p-1">
+                <button
+                  type="button"
+                  onClick={() => setMobileNavTab("cats")}
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                    mobileNavTab === "cats"
+                      ? "bg-white text-[var(--aloha-green)] shadow-sm"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <LayoutGrid size={14} />
+                  <span>Danh mục</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMobileNavTab("pages")}
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                    mobileNavTab === "pages"
+                      ? "bg-white text-[var(--aloha-green)] shadow-sm"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <Sparkles size={14} />
+                  <span>Khám phá & Tiện ích</span>
+                </button>
+              </div>
               <button
                 type="button"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#f3f4f6] text-[#666] hover:bg-[#e8e8e8]"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-500 shadow-sm hover:bg-slate-100"
                 onClick={closeMenus}
                 aria-label="Đóng"
               >
@@ -374,7 +406,163 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
               </button>
             </div>
 
-            <CategoryMobileNav tree={navApplied.tree} onNavigate={closeMenus} />
+            {mobileNavTab === "cats" ? (
+              <CategoryMobileNav tree={navApplied.tree} onNavigate={closeMenus} />
+            ) : (
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 pb-[max(2rem,env(safe-area-inset-bottom))]">
+                <div className="space-y-4">
+                  <div>
+                    <p className="px-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                      Khám phá ALOHA
+                    </p>
+                    <div className="mt-2 divide-y divide-slate-100 rounded-2xl border border-slate-100 bg-white shadow-sm">
+                      <Link
+                        href="/"
+                        onClick={closeMenus}
+                        className="flex items-center justify-between p-3.5 transition hover:bg-[var(--aloha-cream)]/50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-[var(--aloha-green)]">
+                            <Home size={18} />
+                          </span>
+                          <div>
+                            <p className="text-sm font-bold text-[var(--aloha-ink)]">Trang chủ</p>
+                            <p className="text-xs text-slate-500">Mua sắm, cây mới & khuyến mãi</p>
+                          </div>
+                        </div>
+                        <ChevronRight size={16} className="text-slate-400" />
+                      </Link>
+
+                      <Link
+                        href="/tim?badge=noi_bat&inStock=1"
+                        onClick={closeMenus}
+                        className="flex items-center justify-between p-3.5 transition hover:bg-[var(--aloha-cream)]/50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                            <BadgePercent size={18} />
+                          </span>
+                          <div>
+                            <p className="text-sm font-bold text-[var(--aloha-ink)]">Ưu đãi nổi bật</p>
+                            <p className="text-xs text-slate-500">Sản phẩm giá tốt, sẵn hàng giao ngay</p>
+                          </div>
+                        </div>
+                        <ChevronRight size={16} className="text-slate-400" />
+                      </Link>
+
+                      <Link
+                        href="/bai-viet"
+                        onClick={closeMenus}
+                        className="flex items-center justify-between p-3.5 transition hover:bg-[var(--aloha-cream)]/50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                            <FileText size={18} />
+                          </span>
+                          <div>
+                            <p className="text-sm font-bold text-[var(--aloha-ink)]">Bài viết & Cẩm nang</p>
+                            <p className="text-xs text-slate-500">Mẹo chăm sóc cây, phối chậu đẹp</p>
+                          </div>
+                        </div>
+                        <ChevronRight size={16} className="text-slate-400" />
+                      </Link>
+
+                      <Link
+                        href="/ve-aloha"
+                        onClick={closeMenus}
+                        className="flex items-center justify-between p-3.5 transition hover:bg-[var(--aloha-cream)]/50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                            <Leaf size={18} />
+                          </span>
+                          <div>
+                            <p className="text-sm font-bold text-[var(--aloha-ink)]">Về ALOHA</p>
+                            <p className="text-xs text-slate-500">Thế giới chậu cây & câu chuyện thương hiệu</p>
+                          </div>
+                        </div>
+                        <ChevronRight size={16} className="text-slate-400" />
+                      </Link>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="px-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                      Hợp tác & Dịch vụ
+                    </p>
+                    <div className="mt-2 divide-y divide-slate-100 rounded-2xl border border-slate-100 bg-white shadow-sm">
+                      <a
+                        href="/dang-ky-si"
+                        onClick={closeMenus}
+                        className="flex items-center justify-between p-3.5 transition hover:bg-[var(--aloha-cream)]/50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
+                            <BadgePercent size={18} />
+                          </span>
+                          <div>
+                            <p className="text-sm font-bold text-[var(--aloha-ink)]">Đăng ký mua sỉ (B2B)</p>
+                            <p className="text-xs text-slate-500">Chính sách giá sỉ ưu đãi đặc biệt</p>
+                          </div>
+                        </div>
+                        <ChevronRight size={16} className="text-slate-400" />
+                      </a>
+
+                      <Link
+                        href="/tuyen-ctv"
+                        onClick={closeMenus}
+                        className="flex items-center justify-between p-3.5 transition hover:bg-[var(--aloha-cream)]/50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
+                            <UserRound size={18} />
+                          </span>
+                          <div>
+                            <p className="text-sm font-bold text-[var(--aloha-ink)]">Tuyển Cộng tác viên (CTV)</p>
+                            <p className="text-xs text-slate-500">Kiếm thêm thu nhập hoa hồng cùng Aloha</p>
+                          </div>
+                        </div>
+                        <ChevronRight size={16} className="text-slate-400" />
+                      </Link>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="px-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                      Hỗ trợ trực tiếp 24/7
+                    </p>
+                    <div className="mt-2 grid grid-cols-2 gap-2.5">
+                      <a
+                        href={`tel:${theme?.footer?.phone || DEFAULT_FOOTER.phone}`}
+                        className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 p-3 text-slate-700 transition hover:bg-slate-100"
+                      >
+                        <Phone size={16} className="text-[var(--aloha-green)]" />
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold">Hotline</p>
+                          <p className="truncate text-xs font-bold text-[var(--aloha-ink)]">
+                            {theme?.footer?.phone || DEFAULT_FOOTER.phone}
+                          </p>
+                        </div>
+                      </a>
+                      <a
+                        href={wholesaleZaloUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2.5 rounded-xl border border-blue-200 bg-blue-50/50 p-3 text-blue-900 transition hover:bg-blue-100/50"
+                      >
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-[10px] font-black text-white">
+                          Z
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold">Chat Zalo</p>
+                          <p className="truncate text-xs font-bold text-blue-700">Tư vấn ngay</p>
+                        </div>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ) : null}

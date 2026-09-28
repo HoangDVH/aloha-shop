@@ -21,7 +21,7 @@ export function ConversionCard({ clicks, orders }: { clicks: number; orders: num
 
   return (
     <div className="flex h-full flex-col items-stretch justify-center gap-5">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row items-center gap-4">
         <div className="relative shrink-0" style={{ width: size, height: size }}>
           <svg width={size} height={size} className="-rotate-90">
             {/* phần chưa chuyển đổi — xám trung tính */}
@@ -55,7 +55,7 @@ export function ConversionCard({ clicks, orders }: { clicks: number; orders: num
           </div>
         </div>
 
-        <div className="min-w-0 flex-1 space-y-3">
+        <div className="w-full min-w-0 sm:flex-1 space-y-3">
           <div>
             <div className="mb-1 flex items-center justify-between gap-2 text-[12px]">
               <span className="inline-flex items-center gap-1.5 font-semibold text-slate-500">

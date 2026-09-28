@@ -35,7 +35,7 @@ export function CheckoutStickyBar({
 
   const bar = (
     <div
-      className="shop-sticky-bottom fixed inset-x-0 bottom-0 z-[60] border-t border-[var(--aloha-line)] bg-white px-3 pt-3 shadow-[0_-8px_28px_rgba(0,0,0,0.1)] lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-[60] border-t border-[var(--aloha-line)] bg-white px-3 pt-3 pb-[max(0.85rem,env(safe-area-inset-bottom))] shadow-[0_-4px_24px_rgba(0,0,0,0.1)] lg:hidden"
       style={{ position: "fixed" }}
     >
       <div className="mx-auto max-w-7xl space-y-2.5">

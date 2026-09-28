@@ -343,7 +343,7 @@ export default function CartPage() {
       </div>
 
       {lines.length > 0 ? (
-        <div className="shop-sticky-bottom fixed inset-x-0 bottom-0 z-40 border-t border-[var(--aloha-line)] bg-white/95 px-3 pt-2.5 shadow-[0_-8px_24px_rgba(0,0,0,0.08)] backdrop-blur lg:hidden">
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--aloha-line)] bg-white/95 px-3 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(0,0,0,0.08)] backdrop-blur lg:hidden">
           <div className="mx-auto flex max-w-7xl items-center gap-3">
             <label className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-slate-600">
               <input

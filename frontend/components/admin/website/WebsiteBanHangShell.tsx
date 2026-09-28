@@ -60,27 +60,29 @@ export default function WebsiteBanHangShell() {
           </div>
         ) : null}
 
-        <div className="inline-flex rounded-xl border border-[#e2ddd2] bg-white/70 p-1">
-          {TABS.map(({ id, label, Icon, hint }) => {
-            const active = sub === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                title={hint}
-                onClick={() => setSub(id)}
-                className={`inline-flex h-9 items-center gap-2 rounded-lg border-0 px-3.5 text-[13px] font-semibold transition ${
-                  active
-                    ? "bg-[var(--aloha-green)] text-white shadow-sm"
-                    : "bg-transparent text-slate-600 hover:bg-[var(--aloha-green-light)] hover:text-[var(--aloha-ink)]"
-                }`}
-                style={{ border: "none" }}
-              >
-                <Icon className="h-4 w-4" />
-                {label}
-              </button>
-            );
-          })}
+        <div className="flex max-w-full overflow-x-auto pb-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <div className="inline-flex shrink-0 rounded-xl border border-[#e2ddd2] bg-white/70 p-1">
+            {TABS.map(({ id, label, Icon, hint }) => {
+              const active = sub === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  title={hint}
+                  onClick={() => setSub(id)}
+                  className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border-0 px-3.5 text-[13px] font-semibold transition ${
+                    active
+                      ? "bg-[var(--aloha-green)] text-white shadow-sm"
+                      : "bg-transparent text-slate-600 hover:bg-[var(--aloha-green-light)] hover:text-[var(--aloha-ink)]"
+                  }`}
+                  style={{ border: "none" }}
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </header>
 

@@ -290,73 +290,137 @@ export function PayoutPanel() {
           <div className="flex justify-center py-16">
             <Spin />
           </div>
+        ) : !filteredBills.length ? (
+          <div className="py-8 text-center text-sm text-slate-500">
+            Chưa có lịch sử thanh toán trong khoảng thời gian này
+          </div>
         ) : (
-          <Table
-            rowKey={(r) => r.period}
-            dataSource={filteredBills}
-            pagination={false}
-            scroll={{ x: 720 }}
-            columns={[
-              {
-                title: "Kỳ hoa hồng",
-                dataIndex: "period",
-                render: (p: string) => {
-                  const lab = formatPeriodLabel(p);
-                  return (
-                    <div>
-                      <div className="font-bold">{lab.title}</div>
-                      <div className="text-[11px] text-slate-500">{lab.range}</div>
+          <>
+            {/* Mobile Card Feed (< md) */}
+            <div className="space-y-3 p-3.5 md:hidden">
+              {filteredBills.map((r) => {
+                const lab = formatPeriodLabel(r.period);
+                const paid = r.billStatus === "paid" || r.paidAt;
+                const label = paid
+                  ? CTV_COMMISSION_UX.paid_out.label
+                  : r.billStatus === "locked"
+                    ? CTV_COMMISSION_UX.billed.label
+                    : r.billStatus || "—";
+                const color = paid
+                  ? "cyan"
+                  : r.billStatus === "locked"
+                    ? "blue"
+                    : "default";
+                return (
+                  <div
+                    key={r.period}
+                    className="rounded-xl border border-[#e8ece8] bg-white p-3.5 shadow-sm"
+                  >
+                    <div className="flex items-center justify-between gap-2 border-b border-[#f1f4f1] pb-2">
+                      <div>
+                        <div className="font-bold text-slate-800">{lab.title}</div>
+                        <div className="text-[11px] text-slate-500">{lab.range}</div>
+                      </div>
+                      <Tag color={color}>{label}</Tag>
                     </div>
-                  );
-                },
-              },
-              {
-                title: "Tháng đơn",
-                dataIndex: "period",
-                render: (p: string) => p,
-              },
-              {
-                title: "Hoa hồng (₫)",
-                dataIndex: "gross",
-                align: "right",
-                render: (_: number, r: BillRow) =>
-                  formatVnd(r.gross ?? r.net),
-              },
-              {
-                title: "Thực nhận (₫)",
-                dataIndex: "net",
-                align: "right",
-                render: (v: number) => formatVnd(v),
-              },
-              {
-                title: "Trạng thái",
-                dataIndex: "billStatus",
-                render: (s: string, r: BillRow) => {
-                  const paid = s === "paid" || r.paidAt;
-                  const label = paid
-                    ? CTV_COMMISSION_UX.paid_out.label
-                    : s === "locked"
-                      ? CTV_COMMISSION_UX.billed.label
-                      : s || "—";
-                  const color = paid
-                    ? "cyan"
-                    : s === "locked"
-                      ? "blue"
-                      : "default";
-                  return <Tag color={color}>{label}</Tag>;
-                },
-              },
-              {
-                title: "Thao tác",
-                key: "act",
-                render: (_: unknown, r: BillRow) => (
-                  <Button type="link" size="small" onClick={() => setBillDetail(r)}>
-                    Chi tiết
-                  </Button>
-                ),
-              },
-            ]}
-          />
+                    <div className="mt-2.5 grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-slate-500">Hoa hồng:</span>{" "}
+                        <span className="font-semibold text-slate-800">
+                          {formatVnd(r.gross ?? r.net)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Thực nhận:</span>{" "}
+                        <span className="font-bold text-[#2D5A27]">{formatVnd(r.net)}</span>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex justify-end border-t border-[#f1f4f1] pt-2">
+                      <Button
+                        type="link"
+                        size="small"
+                        className="p-0 font-semibold text-[#2D5A27]"
+                        onClick={() => setBillDetail(r)}
+                      >
+                        Xem chi tiết →
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop Table (>= md) */}
+            <div className="hidden md:block">
+              <Table
+                rowKey={(r) => r.period}
+                dataSource={filteredBills}
+                pagination={false}
+                scroll={{ x: 720 }}
+                columns={[
+                  {
+                    title: "Kỳ hoa hồng",
+                    dataIndex: "period",
+                    fixed: "left" as const,
+                    render: (p: string) => {
+                      const lab = formatPeriodLabel(p);
+                      return (
+                        <div>
+                          <div className="font-bold">{lab.title}</div>
+                          <div className="text-[11px] text-slate-500">{lab.range}</div>
+                        </div>
+                      );
+                    },
+                  },
+                  {
+                    title: "Tháng đơn",
+                    dataIndex: "period",
+                    render: (p: string) => p,
+                  },
+                  {
+                    title: "Hoa hồng (₫)",
+                    dataIndex: "gross",
+                    align: "right",
+                    render: (_: number, r: BillRow) =>
+                      formatVnd(r.gross ?? r.net),
+                  },
+                  {
+                    title: "Thực nhận (₫)",
+                    dataIndex: "net",
+                    align: "right",
+                    render: (v: number) => formatVnd(v),
+                  },
+                  {
+                    title: "Trạng thái",
+                    dataIndex: "billStatus",
+                    render: (s: string, r: BillRow) => {
+                      const paid = s === "paid" || r.paidAt;
+                      const label = paid
+                        ? CTV_COMMISSION_UX.paid_out.label
+                        : s === "locked"
+                          ? CTV_COMMISSION_UX.billed.label
+                          : s || "—";
+                      const color = paid
+                        ? "cyan"
+                        : s === "locked"
+                          ? "blue"
+                          : "default";
+                      return <Tag color={color}>{label}</Tag>;
+                    },
+                  },
+                  {
+                    title: "Thao tác",
+                    key: "act",
+                    render: (_: unknown, r: BillRow) => (
+                      <Button type="link" size="small" onClick={() => setBillDetail(r)}>
+                        Chi tiết
+                      </Button>
+                    ),
+                  },
+                ]}
+              />
+            </div>
+          </>
         )}
       </Card>
 

@@ -1017,7 +1017,7 @@ export function CatalogLayout({
             role="dialog"
             aria-modal="true"
             aria-labelledby="catalog-filter-title"
-            className="shop-sticky-bottom relative z-10 flex max-h-[92vh] w-full max-w-3xl flex-col rounded-t-2xl bg-white shadow-2xl sm:max-h-[85vh] sm:rounded-2xl"
+            className="relative z-10 flex max-h-[92vh] w-full max-w-3xl flex-col rounded-t-2xl bg-white shadow-2xl sm:max-h-[85vh] sm:rounded-2xl"
           >
             <div className="flex shrink-0 items-center justify-between border-b border-[var(--aloha-line)] px-4 py-3">
               <h2
@@ -1037,7 +1037,7 @@ export function CatalogLayout({
               </button>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">{filterPanel}</div>
-            <div className="flex shrink-0 gap-2 border-t border-[var(--aloha-line)] bg-white px-4 py-3">
+            <div className="flex shrink-0 gap-2 border-t border-[var(--aloha-line)] bg-white px-4 pt-3 pb-[max(0.85rem,env(safe-area-inset-bottom))]">
               <button
                 type="button"
                 onClick={clearDraftSecondary}

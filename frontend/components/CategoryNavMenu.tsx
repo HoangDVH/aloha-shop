@@ -800,7 +800,7 @@ export function CategoryMobileNav({
     <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-[#F3F4F6]">
       {/* Rail trái — ~28%, xám / trắng khi chọn (TGDĐ) */}
       <nav
-        className="w-[28%] max-w-[6.75rem] shrink-0 overflow-y-auto overscroll-contain"
+        className="w-[28%] max-w-[6.75rem] shrink-0 overflow-y-auto overscroll-contain pb-4"
         aria-label="Nhóm hàng"
       >
         {roots.map((node) => {

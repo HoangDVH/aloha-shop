@@ -138,7 +138,7 @@ export default function CustomerDirectory() {
         pagination={{ current: page, pageSize, total: list.data?.total || 0, showSizeChanger: true, pageSizeOptions: [15, 30, 50],
           onChange: (next, size) => { setPage(size !== pageSize ? 1 : next); setPageSize(size); }, showTotal: total => `${total.toLocaleString("vi-VN")} khách hàng` }}
         columns={[
-          { title: "Khách hàng", key: "name", width: 260, render: (_, row) => <button type="button" onClick={() => setSelectedId(row.id)} className="flex w-full items-center gap-3 rounded-lg text-left focus-visible:outline-2 focus-visible:outline-green-700">
+          { title: "Khách hàng", key: "name", width: 260, fixed: "left" as const, render: (_, row) => <button type="button" onClick={() => setSelectedId(row.id)} className="flex w-full items-center gap-3 rounded-lg text-left focus-visible:outline-2 focus-visible:outline-green-700">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#edf4e9] font-semibold text-[#456b3c]">{(row.fullName || row.email || "?").slice(0, 1).toUpperCase()}</span>
             <span className="min-w-0"><span className="block font-semibold text-slate-800">{row.fullName || "Chưa có tên"}</span><span className="block max-w-[210px] truncate text-xs text-slate-500">{row.email || "Chưa có email"}</span></span>
           </button> },
