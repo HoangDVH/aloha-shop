@@ -8,8 +8,9 @@ import { WEB_BADGE_VALUES } from "../backend/shopCatalog/webBadge.js";
 
 // Execute the actual revenue route branch, with only DB/pricing adapters mocked.
 // This catches pagination/query mistakes that testing the pin helper alone misses.
-const source = readFileSync(new URL("../backend/shopCatalog/register.ts", import.meta.url), "utf8");
-const ast = ts.createSourceFile("register.ts", source, ts.ScriptTarget.Latest, true);
+const productsRouteUrl = new URL("../backend/shopCatalog/routes/products.routes.ts", import.meta.url);
+const source = readFileSync(productsRouteUrl, "utf8");
+const ast = ts.createSourceFile("products.routes.ts", source, ts.ScriptTarget.Latest, true);
 let branch: ts.Block | undefined;
 function visit(node: ts.Node) {
   if (ts.isIfStatement(node) && node.expression.getText(ast) === "rankedMas.length") {
