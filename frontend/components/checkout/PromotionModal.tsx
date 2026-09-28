@@ -1,21 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
-  Ticket,
   Check,
   X,
-  Sparkles,
   AlertCircle,
   Tag,
   Calendar,
   ShoppingCart,
   Percent,
-  ChevronRight,
   Package,
-  Layers,
   Leaf,
-  Info,
 } from "lucide-react";
 import { formatVnd } from "@/lib/api";
 import dayjs from "dayjs";
@@ -80,12 +76,34 @@ export function PromotionModal({
   onSelectAutoMode,
   onRemoveDiscount,
 }: Props) {
+  const [mounted, setMounted] = useState(false);
   const [inputCode, setInputCode] = useState(selectedCode || "");
   const [submittingCode, setSubmittingCode] = useState(false);
   const [filterType, setFilterType] = useState<"all" | "code" | "product">("all");
   const [viewDetailCand, setViewDetailCand] = useState<EvaluatedCandidateUI | null>(null);
 
-  if (!open) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Sync input when selectedCode prop changes
+  useEffect(() => {
+    if (selectedCode) {
+      setInputCode(selectedCode);
+    }
+  }, [selectedCode]);
+
+  // Freeze background scrolling when modal is open (chuẩn TikTok Shop / E-Commerce)
+  useEffect(() => {
+    if (!open) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [open]);
+
+  if (!open || !mounted) return null;
 
   const applied = quote?.applied;
   const candidates = quote?.candidates || [];
@@ -118,7 +136,6 @@ export function PromotionModal({
     if (c.discountType === "percentage") {
       return `${c.discountValue}%`;
     }
-    // Fixed amount in K format (VD: 30000 -> 30K, 100000 -> 100K)
     const val = Number(c.discountValue) || 0;
     if (val >= 1000) {
       return `${Math.round(val / 1000)}K`;
@@ -126,22 +143,36 @@ export function PromotionModal({
     return formatVnd(val);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4 animate-fade-in backdrop-blur-xs">
+  const modalContent = (
+    <div
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-2xs transition-opacity duration-300"
+      onClick={onClose}
+    >
       <div
-        className="flex max-h-[92vh] w-full max-w-[500px] flex-col rounded-t-[28px] sm:rounded-[28px] bg-[#FAF8F5] shadow-2xl transition-all overflow-hidden border border-emerald-900/10"
+        onClick={(e) => e.stopPropagation()}
+        className="relative flex w-full flex-col bg-[#FAF8F5] shadow-2xl transition-transform duration-300 ease-out
+                   /* Mobile: TikTok Shop bottom-sheet style (hiện từ dưới lên, bo góc trên) */
+                   max-h-[85vh] h-[82vh] rounded-t-[24px] rounded-b-none border-t border-slate-200/90
+                   /* Desktop: Centered modal */
+                   sm:h-auto sm:max-h-[88vh] sm:max-w-[490px] sm:rounded-[28px] sm:border sm:border-emerald-900/10
+                   overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95"
         role="dialog"
         aria-modal="true"
       >
+        {/* TikTok Shop Mobile Drag Handle Indicator */}
+        <div className="pt-2.5 pb-1 sm:hidden flex justify-center shrink-0 bg-[#FAF8F5]">
+          <div className="h-1.5 w-10 rounded-full bg-slate-300/90" />
+        </div>
+
         {/* ========================================================================= */}
-        {/* 1. HEADER CHUẨN DESIGN: % Icon badge + Title + Decorative Leaf            */}
+        {/* 1. HEADER CHUẨN DESIGN: % Icon badge + Title + Close Button               */}
         {/* ========================================================================= */}
-        <div className="relative flex items-center justify-between border-b border-slate-200/60 bg-[#FAF8F5] px-5 pt-4 pb-3 shrink-0">
+        <div className="relative flex items-center justify-between border-b border-slate-200/60 bg-[#FAF8F5] px-5 pt-3 pb-3 shrink-0">
           <div className="flex items-center gap-3">
             {/* Soft Green Round Badge with Coupon Icon */}
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#EAF2E9] text-[#2E5B32] shadow-2xs">
-              <div className="flex items-center justify-center border-2 border-dashed border-[#2E5B32]/40 rounded-lg w-7 h-7">
-                <Percent size={15} strokeWidth={2.6} />
+            <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-2xl bg-[#EAF2E9] text-[#2E5B32] shadow-2xs shrink-0">
+              <div className="flex items-center justify-center border-2 border-dashed border-[#2E5B32]/40 rounded-lg w-6 h-6 sm:w-7 sm:h-7">
+                <Percent size={14} strokeWidth={2.6} />
               </div>
             </div>
 
@@ -156,7 +187,7 @@ export function PromotionModal({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Decorative leaf top right */}
+            {/* Decorative leaf top right on desktop */}
             <div className="hidden sm:block text-[#4A6B4C]/20 pointer-events-none">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22l1-2.3A4.49 4.49 0 0 0 8 20C19 20 22 3 22 3c-1 2-8 2.52-11 4 2 2 4 4 6 1z" />
@@ -166,7 +197,7 @@ export function PromotionModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 transition"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200/50 text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition cursor-pointer"
               aria-label="Đóng"
             >
               <X size={18} />
@@ -175,9 +206,9 @@ export function PromotionModal({
         </div>
 
         {/* ========================================================================= */}
-        {/* 2. BODY CONTENT (SCROLLABLE): Ô nhập mã, Tự động tốt nhất, Danh sách vé   */}
+        {/* 2. BODY CONTENT (SCROLLABLE): Ô nhập mã, Danh mục bộ lọc, Danh sách vé    */}
         {/* ========================================================================= */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3.5 bg-[#FAF8F5]">
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-5 py-3.5 space-y-3.5 bg-[#FAF8F5]">
           {/* Ô nhập mã ưu đãi / voucher */}
           <form onSubmit={handleApplyInput} className="flex gap-2 items-center">
             <div className="relative flex-1">
@@ -196,57 +227,18 @@ export function PromotionModal({
             <button
               type="submit"
               disabled={!inputCode.trim() || submittingCode}
-              className="rounded-xl bg-[#3B653D] hover:bg-[#2E5B32] px-5 py-2.5 text-sm font-bold text-white transition disabled:bg-slate-200 disabled:text-slate-400 shadow-2xs cursor-pointer shrink-0"
+              className="rounded-xl bg-[#3B653D] hover:bg-[#2E5B32] active:scale-95 px-5 py-2.5 text-sm font-bold text-white transition disabled:bg-slate-200 disabled:text-slate-400 shadow-2xs cursor-pointer shrink-0"
             >
               {submittingCode ? "..." : "Áp dụng"}
             </button>
           </form>
 
-          {/* Banner: Tự động chọn ưu đãi tốt nhất (Chuẩn viền xanh và icon lá như ảnh) */}
-          <div
-            onClick={onSelectAutoMode}
-            className={`relative flex cursor-pointer items-center justify-between rounded-2xl p-3.5 border-2 transition shadow-2xs overflow-hidden ${
-              autoMode
-                ? "border-[#3B653D] bg-white ring-1 ring-[#3B653D]/10"
-                : "border-slate-200/80 bg-white hover:border-slate-300"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div
-                className={`flex h-6 w-6 items-center justify-center rounded-full transition shrink-0 ${
-                  autoMode
-                    ? "bg-[#3B653D] text-white"
-                    : "border-2 border-slate-300 bg-white"
-                }`}
-              >
-                {autoMode ? <Check size={14} strokeWidth={3} /> : null}
-              </div>
-
-              <div>
-                <p className="text-sm font-bold text-slate-800 flex items-center gap-1.5 leading-tight">
-                  <Sparkles size={14} className="text-amber-500" />
-                  Tự động chọn ưu đãi tốt nhất
-                </p>
-                <p className="text-[12px] text-slate-500 mt-0.5">
-                  Hệ thống tự tính và trừ khoản giảm lớn nhất hợp lệ
-                </p>
-              </div>
-            </div>
-
-            {/* Decorative Botanical Leaf */}
-            <div className="text-[#3B653D]/30 shrink-0 pl-2">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22l1-2.3A4.49 4.49 0 0 0 8 20C19 20 22 3 22 3c-1 2-8 2.52-11 4 2 2 4 4 6 1z" />
-              </svg>
-            </div>
-          </div>
-
           {/* Category Filter Pills (Tất cả • Mã giảm giá • Ưu đãi sản phẩm) */}
-          <div className="flex items-center gap-2 pt-0.5">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 shrink-0">
             <button
               type="button"
               onClick={() => setFilterType("all")}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer shrink-0 ${
                 filterType === "all"
                   ? "bg-[#E6EFE4] text-[#2E5B32] border border-[#3B653D]/30 shadow-2xs"
                   : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
@@ -259,7 +251,7 @@ export function PromotionModal({
             <button
               type="button"
               onClick={() => setFilterType("code")}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer shrink-0 ${
                 filterType === "code"
                   ? "bg-[#E6EFE4] text-[#2E5B32] border border-[#3B653D]/30 shadow-2xs"
                   : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
@@ -272,7 +264,7 @@ export function PromotionModal({
             <button
               type="button"
               onClick={() => setFilterType("product")}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer shrink-0 ${
                 filterType === "product"
                   ? "bg-[#E6EFE4] text-[#2E5B32] border border-[#3B653D]/30 shadow-2xs"
                   : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
@@ -302,8 +294,8 @@ export function PromotionModal({
 
                   // Màu cuống vé (Ticket Stub Colors)
                   let stubBg = "bg-[#D7ECDA] text-emerald-950"; // Mặc định xanh pastel
-                  let isNewWeb = cand.targetCustomer === "new_web";
-                  let isFixedVnd = cand.discountType === "fixed";
+                  const isNewWeb = cand.targetCustomer === "new_web";
+                  const isFixedVnd = cand.discountType === "fixed";
 
                   if (isNewWeb) {
                     stubBg = "bg-[#FFE8DE] text-amber-950"; // Cam đào cho khách mới
@@ -322,7 +314,7 @@ export function PromotionModal({
                     >
                       {/* Cuống vé đục lỗ (Ticket Stub) */}
                       <div
-                        className={`relative w-[92px] sm:w-[96px] ${stubBg} flex flex-col items-center justify-center p-2 text-center shrink-0 border-r border-dashed border-slate-300/80`}
+                        className={`relative w-[86px] sm:w-[96px] ${stubBg} flex flex-col items-center justify-center p-2 text-center shrink-0 border-r border-dashed border-slate-300/80`}
                       >
                         {/* Vết cắt tròn 2 bên (Ticket notches) */}
                         <div className="absolute -left-2 top-1/2 -mt-2 h-4 w-4 rounded-full bg-[#FAF8F5] border-r border-slate-200/80" />
@@ -334,21 +326,21 @@ export function PromotionModal({
                           </span>
                         ) : null}
 
-                        <span className="text-xl font-black tracking-tight leading-tight">
+                        <span className="text-lg sm:text-xl font-black tracking-tight leading-tight">
                           {getStubValue(cand)}
                         </span>
 
                         {cand.maxDiscountVnd && cand.discountType === "percentage" ? (
-                          <span className="text-[9px] font-bold text-slate-600 uppercase tracking-tight mt-0.5">
+                          <span className="text-[8px] sm:text-[9px] font-bold text-slate-600 uppercase tracking-tight mt-0.5">
                             TỐI ĐA {Math.round(cand.maxDiscountVnd / 1000)}K
                           </span>
                         ) : null}
                       </div>
 
                       {/* Thân vé (Ticket Body) */}
-                      <div className="p-3 sm:p-3.5 flex-1 flex items-center justify-between gap-3 min-w-0 bg-white">
+                      <div className="p-3 sm:p-3.5 flex-1 flex items-center justify-between gap-2.5 min-w-0 bg-white">
                         <div className="space-y-1 min-w-0 flex-1">
-                          <h4 className="text-xs sm:text-sm font-bold text-slate-800 leading-snug truncate">
+                          <h4 className="text-xs sm:text-sm font-bold text-slate-800 leading-snug line-clamp-1">
                             {cand.title}
                           </h4>
 
@@ -366,18 +358,24 @@ export function PromotionModal({
                             <span>HSD: {formatHsd(cand.endDate)}</span>
                           </div>
 
-                          <span className="inline-block text-[10px] font-medium bg-slate-100 text-slate-600 rounded px-1.5 py-0.5 max-w-[200px] truncate">
-                            {cand.scope === "product" ? "Sản phẩm chỉ định" : "Áp dụng cho toàn bộ sản phẩm"}
+                          <span className="inline-block text-[10px] font-medium bg-slate-100 text-slate-600 rounded px-1.5 py-0.5 max-w-[190px] truncate">
+                            {cand.scope === "product" ? "Sản phẩm chỉ định" : "Toàn bộ sản phẩm"}
                           </span>
                         </div>
 
                         {/* Nút thao tác bên phải */}
                         <div className="flex flex-col items-end gap-1.5 shrink-0">
                           {isCurrent ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-[#D7ECDA] px-3.5 py-1.5 text-xs font-bold text-[#204E25] shadow-2xs">
-                              <Check size={12} strokeWidth={3} />
-                              Đã chọn
-                            </span>
+                            <button
+                              type="button"
+                              onClick={onRemoveDiscount}
+                              className="inline-flex items-center gap-1 rounded-full bg-[#D7ECDA] px-3.5 py-1.5 text-xs font-bold text-[#204E25] shadow-2xs hover:bg-rose-50 hover:text-rose-700 hover:ring-1 hover:ring-rose-200 transition cursor-pointer group"
+                              title="Bấm để bỏ chọn ưu đãi này"
+                            >
+                              <Check size={12} strokeWidth={3} className="group-hover:hidden" />
+                              <span className="group-hover:hidden">Đã chọn</span>
+                              <span className="hidden group-hover:inline">Bỏ chọn</span>
+                            </button>
                           ) : (
                             <button
                               type="button"
@@ -388,7 +386,7 @@ export function PromotionModal({
                                   onSelectAutoMode();
                                 }
                               }}
-                              className="rounded-full bg-[#3B653D] hover:bg-[#2E5B32] px-4 py-1.5 text-xs font-bold text-white transition shadow-2xs cursor-pointer"
+                              className="rounded-full bg-[#3B653D] hover:bg-[#2E5B32] active:scale-95 px-4 py-1.5 text-xs font-bold text-white transition shadow-2xs cursor-pointer"
                             >
                               Áp dụng
                             </button>
@@ -397,7 +395,7 @@ export function PromotionModal({
                           <button
                             type="button"
                             onClick={() => setViewDetailCand(cand)}
-                            className="text-[11px] text-slate-500 hover:text-slate-800 transition flex items-center"
+                            className="text-[11px] text-slate-500 hover:text-slate-800 transition flex items-center cursor-pointer"
                           >
                             Xem điều kiện ›
                           </button>
@@ -434,25 +432,25 @@ export function PromotionModal({
                     className="relative flex items-stretch rounded-2xl bg-white transition shadow-2xs overflow-hidden border border-slate-200/60 opacity-80"
                   >
                     {/* Cuống vé xám (Disabled stub) */}
-                    <div className="relative w-[92px] sm:w-[96px] bg-[#ECEEEF] text-slate-400 flex flex-col items-center justify-center p-2 text-center shrink-0 border-r border-dashed border-slate-300">
+                    <div className="relative w-[86px] sm:w-[96px] bg-[#ECEEEF] text-slate-400 flex flex-col items-center justify-center p-2 text-center shrink-0 border-r border-dashed border-slate-300">
                       <div className="absolute -left-2 top-1/2 -mt-2 h-4 w-4 rounded-full bg-[#FAF8F5] border-r border-slate-200" />
                       <div className="absolute -right-2 top-1/2 -mt-2 h-4 w-4 rounded-full bg-white border-l border-slate-200" />
 
-                      <span className="text-xl font-black tracking-tight leading-tight">
+                      <span className="text-lg sm:text-xl font-black tracking-tight leading-tight">
                         {getStubValue(cand)}
                       </span>
 
                       {cand.maxDiscountVnd && cand.discountType === "percentage" ? (
-                        <span className="text-[9px] font-bold uppercase tracking-tight mt-0.5">
+                        <span className="text-[8px] sm:text-[9px] font-bold uppercase tracking-tight mt-0.5">
                           TỐI ĐA {Math.round(cand.maxDiscountVnd / 1000)}K
                         </span>
                       ) : null}
                     </div>
 
                     {/* Thân vé xám */}
-                    <div className="p-3 sm:p-3.5 flex-1 flex items-center justify-between gap-3 min-w-0 bg-white">
+                    <div className="p-3 sm:p-3.5 flex-1 flex items-center justify-between gap-2.5 min-w-0 bg-white">
                       <div className="space-y-1 min-w-0 flex-1">
-                        <h4 className="text-xs sm:text-sm font-bold text-slate-600 leading-snug truncate">
+                        <h4 className="text-xs sm:text-sm font-bold text-slate-600 leading-snug line-clamp-1">
                           {cand.title}
                         </h4>
 
@@ -471,7 +469,7 @@ export function PromotionModal({
                         </div>
 
                         {cand.ineligibleReason ? (
-                          <span className="inline-block text-[10px] font-medium bg-amber-50 text-amber-800 rounded px-1.5 py-0.5 max-w-[220px] truncate">
+                          <span className="inline-block text-[10px] font-medium bg-amber-50 text-amber-800 rounded px-1.5 py-0.5 max-w-[200px] truncate">
                             {cand.ineligibleReason}
                           </span>
                         ) : null}
@@ -486,7 +484,7 @@ export function PromotionModal({
                         <button
                           type="button"
                           onClick={() => setViewDetailCand(cand)}
-                          className="text-[11px] text-slate-400 hover:text-slate-600 transition flex items-center"
+                          className="text-[11px] text-slate-400 hover:text-slate-600 transition flex items-center cursor-pointer"
                         >
                           Xem điều kiện ›
                         </button>
@@ -500,25 +498,26 @@ export function PromotionModal({
         </div>
 
         {/* ========================================================================= */}
-        {/* 5. FOOTER CHUẨN DESIGN: % Icon + Đã giảm + Nút Xong                       */}
+        {/* 5. FOOTER CHUẨN DESIGN & TIKTOK SHOP MOBILE: % Icon + Đã giảm + Nút Xong  */}
+        {/* Cực kỳ thông thoáng trên mobile, có safe-area padding chống bị dính đáy    */}
         {/* ========================================================================= */}
-        <div className="relative border-t border-slate-200/80 px-6 py-3.5 flex items-center justify-between bg-white rounded-b-[28px] shrink-0 shadow-lg">
+        <div className="relative border-t border-slate-200/90 px-5 pt-3.5 pb-[max(1rem,env(safe-area-inset-bottom))] flex items-center justify-between bg-white shrink-0 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] rounded-b-none sm:rounded-b-[28px]">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EEF5ED] text-[#3B653D]">
-              <Percent size={16} strokeWidth={2.6} />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EEF5ED] text-[#3B653D] shrink-0">
+              <Percent size={18} strokeWidth={2.6} />
             </div>
 
             <div>
               <span className="text-[11px] text-slate-500 font-medium block leading-none">
                 Đã giảm:
               </span>
-              <p className="text-xl font-black text-slate-900 tabular-nums leading-tight mt-0.5">
+              <p className="text-xl sm:text-2xl font-black text-slate-900 tabular-nums leading-tight mt-0.5">
                 {formatVnd(quote?.discountTotal || 0)}
               </p>
             </div>
           </div>
 
-          {/* Decorative leaf bottom */}
+          {/* Decorative leaf bottom on desktop */}
           <div className="hidden sm:block text-[#3B653D]/20 pointer-events-none">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
               <path d="M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22l1-2.3A4.49 4.49 0 0 0 8 20C19 20 22 3 22 3c-1 2-8 2.52-11 4 2 2 4 4 6 1z" />
@@ -528,7 +527,7 @@ export function PromotionModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl bg-[#3B653D] hover:bg-[#2E5B32] px-8 py-2.5 text-sm font-bold text-white shadow-xs transition cursor-pointer"
+            className="rounded-xl bg-[#3B653D] hover:bg-[#2E5B32] active:scale-95 px-7 sm:px-8 py-2.5 sm:py-3 text-sm font-bold text-white shadow-xs transition cursor-pointer"
           >
             Xong
           </button>
@@ -538,7 +537,7 @@ export function PromotionModal({
         {/* 6. POPUP XEM CHI TIẾT ĐIỀU KIỆN KHI BẤM "Xem điều kiện ›"                  */}
         {/* ========================================================================= */}
         {viewDetailCand ? (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 p-4 backdrop-blur-2xs animate-fade-in">
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50 p-4 backdrop-blur-2xs animate-in fade-in duration-200">
             <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl space-y-3 border border-slate-200">
               <div className="flex items-start justify-between gap-2">
                 <div>
@@ -552,7 +551,7 @@ export function PromotionModal({
                 <button
                   type="button"
                   onClick={() => setViewDetailCand(null)}
-                  className="text-slate-400 hover:text-slate-600 p-1"
+                  className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
                 >
                   <X size={16} />
                 </button>
@@ -615,7 +614,7 @@ export function PromotionModal({
               <button
                 type="button"
                 onClick={() => setViewDetailCand(null)}
-                className="w-full rounded-xl bg-slate-100 hover:bg-slate-200 py-2 text-xs font-bold text-slate-700 transition cursor-pointer"
+                className="w-full rounded-xl bg-slate-100 hover:bg-slate-200 py-2.5 text-xs font-bold text-slate-700 transition cursor-pointer"
               >
                 Đóng
               </button>
@@ -625,4 +624,6 @@ export function PromotionModal({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }
