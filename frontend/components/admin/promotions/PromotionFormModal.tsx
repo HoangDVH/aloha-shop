@@ -11,10 +11,8 @@ import {
   DatePicker,
   Button,
   message,
-  Tabs,
-  Space,
-  Card,
-  Tag,
+  Segmented,
+  Tooltip,
   Divider,
 } from "antd";
 import {
@@ -26,6 +24,14 @@ import {
   Layers,
   DollarSign,
   UserCheck,
+  CheckCircle2,
+  Info,
+  ChevronRight,
+  Percent,
+  X,
+  ShieldCheck,
+  Tag as TagIcon,
+  Store,
 } from "lucide-react";
 import dayjs from "dayjs";
 import { formatVnd } from "@/lib/api";
@@ -132,7 +138,7 @@ export function PromotionFormModal({
     setPreviewValues(allValues);
   };
 
-  const applyTemplate = (tpl: "first10" | "bigOrder" | "coupon") => {
+  const applyTemplate = (tpl: "first10" | "bigOrder" | "coupon" | "fixedSmall") => {
     if (tpl === "first10") {
       const v = {
         name: "Ưu đãi khách mới 10%",
@@ -184,6 +190,24 @@ export function PromotionFormModal({
         targetCustomer: "all",
         status: "active",
         priority: 1,
+      };
+      form.setFieldsValue(v);
+      setPreviewValues(v as any);
+    } else if (tpl === "fixedSmall") {
+      const v = {
+        name: "Khuyến mại đơn 200k",
+        title: "Giảm 20.000đ cho đơn từ 200.000đ",
+        description: "Ưu đãi tự động cho mọi khách hàng khi đơn đạt 200k",
+        type: "auto",
+        discountType: "fixed",
+        discountValue: 20000,
+        maxDiscountVnd: undefined,
+        minOrderThreshold: 200000,
+        thresholdOperator: ">=",
+        scope: "all",
+        targetCustomer: "all",
+        status: "active",
+        priority: 2,
       };
       form.setFieldsValue(v);
       setPreviewValues(v as any);
@@ -264,360 +288,574 @@ export function PromotionFormModal({
     <Modal
       open={open}
       onCancel={onClose}
-      width={880}
-      title={
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--aloha-green-light)] text-[var(--aloha-green)]">
-            <Ticket size={18} />
-          </div>
-          <div>
-            <h3 className="text-base font-bold text-[var(--aloha-ink)]">
-              {editingItem ? "Chỉnh sửa chương trình ưu đãi" : "Tạo chương trình ưu đãi mới"}
-            </h3>
-            <p className="text-xs text-slate-500 font-normal">
-              Cấu hình điều kiện, mức giảm và thời gian tự động áp dụng
-            </p>
-          </div>
-        </div>
-      }
+      width={1060}
+      centered
+      style={{ top: 20 }}
+      closable={false}
       footer={null}
       destroyOnClose
+      styles={{
+        body: {
+          padding: 0,
+        },
+      }}
+      className="[&_.ant-modal-content]:!p-0 [&_.ant-modal-content]:!rounded-2xl [&_.ant-modal-content]:!overflow-hidden"
     >
-      {!editingItem ? (
-        <div className="mb-4 mt-2 rounded-xl bg-slate-50 p-3 border border-slate-200/80">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-            Mẫu ưu đãi phổ biến:
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              size="small"
-              icon={<Sparkles size={14} className="text-emerald-600" />}
-              onClick={() => applyTemplate("first10")}
+      <div className="flex flex-col max-h-[90vh]">
+        {/* ========================================================================= */}
+        {/* 1. HEADER CHUẨN KIOTVIET: Rõ ràng, Chuyên nghiệp, Tích hợp Quick Presets */}
+        {/* ========================================================================= */}
+        <div className="px-6 py-4 border-b border-slate-200 bg-linear-to-r from-slate-50 via-white to-slate-50 shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-700 text-white shadow-xs">
+                <Ticket size={22} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-bold text-slate-900">
+                    {editingItem ? "Cập nhật chương trình khuyến mại" : "Thêm mới chương trình khuyến mại"}
+                  </h3>
+                  <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800 border border-emerald-200">
+                    KiotViet Ready
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Thiết lập chiết khấu đơn hàng tự động hoặc mã voucher áp dụng trên Website Aloha
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+              aria-label="Đóng"
             >
-              Khách mới web (10%)
-            </Button>
-            <Button
-              size="small"
-              icon={<DollarSign size={14} className="text-blue-600" />}
-              onClick={() => applyTemplate("bigOrder")}
-            >
-              Đơn lớn (&gt; 1 triệu)
-            </Button>
-            <Button
-              size="small"
-              icon={<Ticket size={14} className="text-amber-600" />}
-              onClick={() => applyTemplate("coupon")}
-            >
-              Mã giảm giá chiến dịch
-            </Button>
+              <X size={20} />
+            </button>
           </div>
+
+          {/* Thanh mẫu gợi ý thiết lập nhanh */}
+          {!editingItem ? (
+            <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between gap-2 flex-wrap">
+              <span className="text-[12px] font-semibold text-slate-600 flex items-center gap-1.5">
+                <Sparkles size={14} className="text-amber-500" />
+                Mẫu thiết lập nhanh (KiotViet Presets):
+              </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => applyTemplate("first10")}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition"
+                >
+                  <Sparkles size={12} className="text-emerald-600" />
+                  Khách mới 10%
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyTemplate("bigOrder")}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition"
+                >
+                  <DollarSign size={12} className="text-blue-600" />
+                  Đơn lớn &gt; 1tr (Giảm 100k)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyTemplate("coupon")}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 transition"
+                >
+                  <TagIcon size={12} className="text-purple-600" />
+                  Mã giảm giá 50k
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyTemplate("fixedSmall")}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition"
+                >
+                  <Percent size={12} className="text-amber-600" />
+                  Giảm 20k đơn 200k
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
-      ) : null}
 
-      <div className="grid gap-6 md:grid-cols-[1fr_300px] pt-1">
-        {/* Cột trái: Form cấu hình */}
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleFinish}
-          onValuesChange={handleValuesChange}
-          requiredMark={false}
-        >
-          <div className="space-y-4">
-            {/* Thông tin cơ bản */}
-            <div className="rounded-xl border border-slate-100 p-4 bg-white shadow-xs">
-              <h4 className="text-sm font-bold text-[var(--aloha-ink)] mb-3 flex items-center gap-1.5">
-                <Ticket size={16} className="text-[var(--aloha-green)]" />
-                Thông tin chương trình
-              </h4>
-              <Form.Item
-                name="name"
-                label={<span className="font-semibold text-xs">Tên nội bộ (Admin quản lý)</span>}
-                rules={[{ required: true, message: "Nhập tên chương trình" }]}
+        {/* ========================================================================= */}
+        {/* 2. BODY CHUẨN KIOTVIET: 2 Cột Độc Lập - Cột trái cuộn, Cột phải cố định  */}
+        {/* ========================================================================= */}
+        <div className="p-6 bg-slate-50/50 flex-1">
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={handleFinish}
+            onValuesChange={handleValuesChange}
+            requiredMark={false}
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* ==================== CỘT TRÁI: FORM CẤU HÌNH (7 COLS, CUỘN ĐỘC LẬP) ==================== */}
+              <div
+                id="promotion-form-left-col"
+                className="lg:col-span-7 space-y-4 overflow-y-auto pr-3"
+                style={{ maxHeight: "calc(88vh - 180px)" }}
               >
-                <Input placeholder="VD: Khuyến mại ra mắt web - 10%" />
-              </Form.Item>
-              <Form.Item
-                name="title"
-                label={<span className="font-semibold text-xs">Tiêu đề khách thấy trên web</span>}
-                rules={[{ required: true, message: "Nhập tiêu đề hiển thị" }]}
-              >
-                <Input placeholder="VD: Giảm 10% cho khách mua web lần đầu" />
-              </Form.Item>
-              <Form.Item
-                name="description"
-                label={<span className="font-semibold text-xs">Mô tả chi tiết</span>}
-              >
-                <Input.TextArea
-                  rows={2}
-                  placeholder="Mô tả điều kiện hoặc ghi chú ngắn..."
-                />
-              </Form.Item>
-              <Form.Item
-                name="type"
-                label={<span className="font-semibold text-xs">Cách áp dụng</span>}
-              >
-                <Radio.Group buttonStyle="solid">
-                  <Radio.Button value="auto">Tự động (Không cần mã)</Radio.Button>
-                  <Radio.Button value="code">Mã ưu đãi (Nhập hoặc chọn mã)</Radio.Button>
-                </Radio.Group>
-              </Form.Item>
-            </div>
-
-            {/* Mức giảm giá & Ngưỡng */}
-            <div className="rounded-xl border border-slate-100 p-4 bg-white shadow-xs">
-              <h4 className="text-sm font-bold text-[var(--aloha-ink)] mb-3 flex items-center gap-1.5">
-                <DollarSign size={16} className="text-[var(--aloha-green)]" />
-                Mức giảm giá & Điều kiện đơn
-              </h4>
-              <div className="grid grid-cols-2 gap-3">
-                <Form.Item
-                  name="discountType"
-                  label={<span className="font-semibold text-xs">Hình thức giảm</span>}
-                >
-                  <Select
-                    options={[
-                      { label: "Giảm theo %", value: "percentage" },
-                      { label: "Giảm số tiền cố định (VND)", value: "fixed" },
-                    ]}
-                  />
-                </Form.Item>
-                <Form.Item
-                  name="discountValue"
-                  label={
-                    <span className="font-semibold text-xs">
-                      {discountType === "fixed" ? "Mức giảm (VND)" : "Mức giảm (%)"}
+                {/* Khối 1: Thông tin cơ bản */}
+                <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs">
+                  <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 text-slate-800 font-bold text-sm">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 text-xs font-extrabold">
+                      1
                     </span>
-                  }
-                  rules={[{ required: true, message: "Nhập mức giảm" }]}
-                >
-                  <InputNumber
-                    className="w-full"
-                    min={1}
-                    max={discountType === "fixed" ? 50000000 : 100}
-                    formatter={(v) => (discountType === "fixed" ? `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",") : `${v}`)}
-                  />
-                </Form.Item>
+                    Thông tin chương trình & Hình thức áp dụng
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Form.Item
+                      name="name"
+                      label={
+                        <span className="text-xs font-semibold text-slate-700">
+                          Tên chương trình nội bộ <span className="text-red-500">*</span>
+                        </span>
+                      }
+                      rules={[{ required: true, message: "Vui lòng nhập tên chương trình" }]}
+                      className="!mb-3"
+                    >
+                      <Input placeholder="VD: Khuyến mại ra mắt web - 10%" className="!rounded-lg !h-9" />
+                    </Form.Item>
+
+                    <Form.Item
+                      name="type"
+                      label={<span className="text-xs font-semibold text-slate-700">Cách thức áp dụng</span>}
+                      className="!mb-3"
+                    >
+                      <Select
+                        className="w-full !h-9"
+                        options={[
+                          { label: "⚡ Tự động (Hệ thống tự tính khi đủ ĐK)", value: "auto" },
+                          { label: "🎟️ Theo mã (Khách nhập mã Voucher)", value: "code" },
+                        ]}
+                      />
+                    </Form.Item>
+                  </div>
+
+                  <Form.Item
+                    name="title"
+                    label={
+                      <span className="text-xs font-semibold text-slate-700">
+                        Tiêu đề hiển thị cho khách thấy trên Web <span className="text-red-500">*</span>
+                      </span>
+                    }
+                    rules={[{ required: true, message: "Vui lòng nhập tiêu đề hiển thị" }]}
+                    className="!mb-3"
+                  >
+                    <Input placeholder="VD: Giảm 10% tối đa 200k cho khách mua web lần đầu" className="!rounded-lg !h-9 font-medium text-slate-800" />
+                  </Form.Item>
+
+                  <Form.Item
+                    name="description"
+                    label={<span className="text-xs font-semibold text-slate-700">Mô tả điều kiện ngắn</span>}
+                    className="!mb-1"
+                  >
+                    <Input.TextArea
+                      rows={2}
+                      placeholder="VD: Áp dụng cho đơn hàng đầu tiên chưa từng đặt trên website..."
+                      className="!rounded-lg"
+                    />
+                  </Form.Item>
+                </div>
+
+                {/* Khối 2: Mức chiết khấu & Điều kiện giá trị đơn */}
+                <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs">
+                  <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 text-slate-800 font-bold text-sm">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 text-xs font-extrabold">
+                      2
+                    </span>
+                    Mức giảm giá & Điều kiện giá trị đơn
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Form.Item
+                      name="discountType"
+                      label={<span className="text-xs font-semibold text-slate-700">Hình thức giảm giá</span>}
+                      className="!mb-3"
+                    >
+                      <Select
+                        className="w-full !h-9"
+                        options={[
+                          { label: "Giảm theo phần trăm (%)", value: "percentage" },
+                          { label: "Giảm số tiền cố định (VNĐ)", value: "fixed" },
+                        ]}
+                      />
+                    </Form.Item>
+
+                    <Form.Item
+                      name="discountValue"
+                      label={
+                        <span className="text-xs font-semibold text-slate-700">
+                          {discountType === "fixed" ? "Số tiền giảm (VNĐ)" : "Tỷ lệ giảm (%)"}{" "}
+                          <span className="text-red-500">*</span>
+                        </span>
+                      }
+                      rules={[{ required: true, message: "Vui lòng nhập mức giảm" }]}
+                      className="!mb-3"
+                    >
+                      <InputNumber
+                        className="w-full !rounded-lg !h-9 font-semibold text-emerald-800"
+                        min={1}
+                        max={discountType === "fixed" ? 50000000 : 100}
+                        addonAfter={discountType === "fixed" ? "đ" : "%"}
+                        formatter={(v) => (discountType === "fixed" ? `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",") : `${v}`)}
+                      />
+                    </Form.Item>
+                  </div>
+
+                  {discountType === "percentage" ? (
+                    <Form.Item
+                      name="maxDiscountVnd"
+                      label={
+                        <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                          Mức trần giảm tối đa (VNĐ)
+                          <Tooltip title="Khuyên dùng để tránh thất thoát ngân sách khi đơn hàng có giá trị rất lớn">
+                            <Info size={13} className="text-slate-400 cursor-pointer" />
+                          </Tooltip>
+                        </span>
+                      }
+                      className="!mb-3"
+                    >
+                      <InputNumber
+                        className="w-full !rounded-lg !h-9"
+                        min={0}
+                        step={10000}
+                        placeholder="VD: 200,000 (để trống nếu không giới hạn trần)"
+                        addonAfter="đ"
+                        formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                      />
+                    </Form.Item>
+                  ) : null}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                    <div className="sm:col-span-5">
+                      <Form.Item
+                        name="thresholdOperator"
+                        label={<span className="text-xs font-semibold text-slate-700">Điều kiện giá trị đơn</span>}
+                        className="!mb-1"
+                      >
+                        <Select
+                          className="w-full !h-9"
+                          options={[
+                            { label: "Đơn hàng trên (>)", value: ">" },
+                            { label: "Đơn hàng từ (>=)", value: ">=" },
+                          ]}
+                        />
+                      </Form.Item>
+                    </div>
+
+                    <div className="sm:col-span-7">
+                      <Form.Item
+                        name="minOrderThreshold"
+                        label={<span className="text-xs font-semibold text-slate-700">Giá trị đơn hàng tối thiểu</span>}
+                        className="!mb-1"
+                      >
+                        <InputNumber
+                          className="w-full !rounded-lg !h-9"
+                          min={0}
+                          step={50000}
+                          placeholder="0 là áp dụng cho mọi đơn"
+                          addonAfter="đ"
+                          formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                        />
+                      </Form.Item>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Khối 3: Đối tượng & Phạm vi áp dụng */}
+                <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs">
+                  <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 text-slate-800 font-bold text-sm">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 text-xs font-extrabold">
+                      3
+                    </span>
+                    Đối tượng khách hàng & Phạm vi sản phẩm
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Form.Item
+                      name="targetCustomer"
+                      label={<span className="text-xs font-semibold text-slate-700">Khách hàng áp dụng</span>}
+                      className="!mb-3"
+                    >
+                      <Select
+                        className="w-full !h-9"
+                        options={[
+                          { label: "⭐ Khách mua lần đầu trên Web (New Web)", value: "new_web" },
+                          { label: "👤 Khách mua lẻ (Retail)", value: "retail" },
+                          { label: "💼 Khách đại lý / Sỉ (Wholesale)", value: "wholesale" },
+                          { label: "🌐 Toàn bộ khách hàng (All)", value: "all" },
+                        ]}
+                      />
+                    </Form.Item>
+
+                    <Form.Item
+                      name="scope"
+                      label={<span className="text-xs font-semibold text-slate-700">Phạm vi sản phẩm</span>}
+                      className="!mb-3"
+                    >
+                      <Select
+                        className="w-full !h-9"
+                        options={[
+                          { label: "📦 Toàn bộ sản phẩm trên Website", value: "all" },
+                          { label: "🏷️ Chỉ định danh sách SKU cụ thể", value: "product" },
+                        ]}
+                      />
+                    </Form.Item>
+                  </div>
+
+                  {scope === "product" ? (
+                    <Form.Item
+                      name="productMasText"
+                      label={<span className="text-xs font-semibold text-slate-700">Danh sách SKU áp dụng (cách nhau bởi dấu phẩy)</span>}
+                      className="!mb-3"
+                    >
+                      <Input placeholder="VD: CHAU_SU_01, CHAU_DAT_NUNG_02" className="!rounded-lg !h-9" />
+                    </Form.Item>
+                  ) : null}
+
+                  <Form.Item
+                    name="excludedProductMasText"
+                    label={<span className="text-xs font-semibold text-slate-700">Sản phẩm loại trừ (SKU không áp dụng giảm)</span>}
+                    className="!mb-1"
+                  >
+                    <Input placeholder="VD: CAY_CANH_VIP_01, PHU_KIEN_DAI_LY (để trống nếu không loại trừ)" className="!rounded-lg !h-9" />
+                  </Form.Item>
+                </div>
+
+                {/* Khối 4: Thời gian, Giới hạn & Trạng thái */}
+                <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs">
+                  <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 text-slate-800 font-bold text-sm">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 text-xs font-extrabold">
+                      4
+                    </span>
+                    Thời gian hiệu lực & Ngân sách chương trình
+                  </div>
+
+                  <Form.Item
+                    name="timeRange"
+                    label={<span className="text-xs font-semibold text-slate-700">Thời gian hiệu lực (Để trống nếu chạy vô thời hạn)</span>}
+                    className="!mb-3"
+                  >
+                    <DatePicker.RangePicker
+                      showTime
+                      className="w-full !rounded-lg !h-9"
+                      format="DD/MM/YYYY HH:mm"
+                      placeholder={["Từ ngày", "Đến ngày"]}
+                    />
+                  </Form.Item>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Form.Item
+                      name="usageLimitTotal"
+                      label={<span className="text-xs font-semibold text-slate-700">Tổng lượt dùng tối đa</span>}
+                      className="!mb-3"
+                    >
+                      <InputNumber className="w-full !rounded-lg !h-9" min={1} placeholder="Không giới hạn" />
+                    </Form.Item>
+
+                    <Form.Item
+                      name="budgetTotal"
+                      label={<span className="text-xs font-semibold text-slate-700">Tổng ngân sách khuyến mại (VNĐ)</span>}
+                      className="!mb-3"
+                    >
+                      <InputNumber
+                        className="w-full !rounded-lg !h-9"
+                        min={0}
+                        step={500000}
+                        placeholder="Không giới hạn"
+                        addonAfter="đ"
+                        formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                      />
+                    </Form.Item>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Form.Item
+                      name="status"
+                      label={<span className="text-xs font-semibold text-slate-700">Trạng thái phát hành</span>}
+                      className="!mb-1"
+                    >
+                      <Select
+                        className="w-full !h-9"
+                        options={[
+                          { label: "🟢 Đang áp dụng (Active)", value: "active" },
+                          { label: "🟡 Bản nháp (Draft)", value: "draft" },
+                          { label: "🔴 Tạm dừng (Paused)", value: "paused" },
+                        ]}
+                      />
+                    </Form.Item>
+
+                    <Form.Item
+                      name="priority"
+                      label={
+                        <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                          Độ ưu tiên (Số càng cao càng ưu tiên)
+                          <Tooltip title="Khi có nhiều ưu đãi tự động cùng thỏa mãn, chương trình có số ưu tiên cao hơn sẽ được hệ thống áp dụng">
+                            <Info size={13} className="text-slate-400 cursor-pointer" />
+                          </Tooltip>
+                        </span>
+                      }
+                      className="!mb-1"
+                    >
+                      <InputNumber className="w-full !rounded-lg !h-9" placeholder="0" min={0} max={100} />
+                    </Form.Item>
+                  </div>
+                </div>
               </div>
 
-              {discountType === "percentage" ? (
-                <Form.Item
-                  name="maxDiscountVnd"
-                  label={<span className="font-semibold text-xs">Trần giảm tối đa (VND) — Bắt buộc nếu giảm %</span>}
-                >
-                  <InputNumber
-                    className="w-full"
-                    min={0}
-                    step={10000}
-                    placeholder="VD: 200,000đ (để trống nếu không giới hạn trần)"
-                    formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
-                  />
-                </Form.Item>
-              ) : null}
+              {/* ==================== CỘT PHẢI: LIVE PREVIEW STOREFRONT (5 COLS) ==================== */}
+              <div className="lg:col-span-5 space-y-4">
+                <div className="sticky top-0 space-y-4">
+                  <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-sm">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <Eye size={16} className="text-emerald-700" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                          Xem trước hiển thị Storefront
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-slate-400 font-medium">Khách hàng sẽ thấy</span>
+                    </div>
 
-              <div className="grid grid-cols-[130px_1fr] gap-3">
-                <Form.Item
-                  name="thresholdOperator"
-                  label={<span className="font-semibold text-xs">Toán tử ngưỡng</span>}
-                >
-                  <Select
-                    options={[
-                      { label: "Trên (>)", value: ">" },
-                      { label: "Từ (>=)", value: ">=" },
-                    ]}
-                  />
-                </Form.Item>
-                <Form.Item
-                  name="minOrderThreshold"
-                  label={<span className="font-semibold text-xs">Giá trị đơn tối thiểu (VND)</span>}
-                >
-                  <InputNumber
-                    className="w-full"
-                    min={0}
-                    step={100000}
-                    placeholder="0 là không giới hạn ngưỡng"
-                    formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
-                  />
-                </Form.Item>
+                    {/* Thẻ Voucher mô phỏng trực quan */}
+                    <div className="mt-4 relative overflow-hidden rounded-xl border-2 border-dashed border-emerald-300 bg-linear-to-br from-emerald-50/90 via-white to-emerald-50/40 p-4 shadow-2xs">
+                      {/* Vết cắt tròn 2 bên kiểu phiếu giảm giá (Ticket notch) */}
+                      <div className="absolute -left-3 top-1/2 -mt-2.5 h-5 w-5 rounded-full bg-slate-50 border-r-2 border-dashed border-emerald-300" />
+                      <div className="absolute -right-3 top-1/2 -mt-2.5 h-5 w-5 rounded-full bg-slate-50 border-l-2 border-dashed border-emerald-300" />
+
+                      <div className="pl-2">
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider ${
+                              previewValues.type === "code"
+                                ? "bg-purple-100 text-purple-700 border border-purple-200"
+                                : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                            }`}
+                          >
+                            <Ticket size={11} />
+                            {previewValues.type === "code" ? "Mã giảm giá" : "Ưu đãi tự động"}
+                          </span>
+
+                          <span className="text-[11px] font-semibold text-slate-400">
+                            Aloha Shop
+                          </span>
+                        </div>
+
+                        <h4 className="text-sm font-extrabold text-slate-900 leading-snug">
+                          {previewValues.title || "Tiêu đề chương trình hiển thị"}
+                        </h4>
+
+                        <p className="mt-1 text-xs text-slate-600 line-clamp-2">
+                          {previewValues.description || "Tự động trừ trực tiếp vào giỏ hàng khi đủ điều kiện..."}
+                        </p>
+
+                        <div className="mt-3.5 pt-3 border-t border-dashed border-emerald-200/80 space-y-1.5 text-xs">
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-500">Mức giảm:</span>
+                            <span className="font-extrabold text-base text-red-600">
+                              {previewValues.discountType === "percentage"
+                                ? `${previewValues.discountValue || 0}% ${
+                                    previewValues.maxDiscountVnd
+                                      ? `(tối đa ${formatVnd(previewValues.maxDiscountVnd)})`
+                                      : ""
+                                  }`
+                                : formatVnd(previewValues.discountValue || 0)}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-500">Đơn hàng tối thiểu:</span>
+                            <span className="font-semibold text-slate-800">
+                              {previewValues.minOrderThreshold
+                                ? `${previewValues.thresholdOperator === ">=" ? "Từ" : "Trên"} ${formatVnd(
+                                    previewValues.minOrderThreshold
+                                  )}`
+                                : "Mọi đơn hàng"}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-500">Đối tượng:</span>
+                            <span className="font-semibold text-slate-800">
+                              {previewValues.targetCustomer === "new_web"
+                                ? "Khách mua web lần đầu"
+                                : previewValues.targetCustomer === "wholesale"
+                                ? "Khách đại lý sỉ"
+                                : previewValues.targetCustomer === "retail"
+                                ? "Khách mua lẻ"
+                                : "Tất cả khách hàng"}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-500">Phạm vi:</span>
+                            <span className="font-semibold text-slate-800">
+                              {previewValues.scope === "product" ? "Sản phẩm chỉ định" : "Toàn bộ cửa hàng"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Hướng dẫn nghiệp vụ & KiotViet */}
+                    <div className="mt-4 rounded-xl bg-amber-50/70 p-3.5 border border-amber-200/80 text-xs text-amber-950 space-y-1.5">
+                      <div className="font-bold flex items-center gap-1.5 text-amber-900">
+                        <Store size={14} className="text-amber-700" />
+                        Đồng bộ hóa đơn KiotViet:
+                      </div>
+                      <p className="leading-relaxed text-slate-600">
+                        • Giảm giá được phân bổ vào trường <strong className="text-slate-800">Chiết khấu HĐ</strong> khi tạo đơn hàng KiotViet, đảm bảo kế toán doanh thu và thuế chính xác 100%.
+                      </p>
+                      <p className="leading-relaxed text-slate-600">
+                        • Không tạo mã rác trên KiotViet — Giữ danh mục khuyến mại POS luôn sạch sẽ.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Đối tượng & Phạm vi */}
-            <div className="rounded-xl border border-slate-100 p-4 bg-white shadow-xs">
-              <h4 className="text-sm font-bold text-[var(--aloha-ink)] mb-3 flex items-center gap-1.5">
-                <UserCheck size={16} className="text-[var(--aloha-green)]" />
-                Đối tượng khách hàng & Phạm vi sản phẩm
-              </h4>
-              <Form.Item
-                name="targetCustomer"
-                label={<span className="font-semibold text-xs">Đối tượng được hưởng</span>}
-              >
-                <Radio.Group>
-                  <Radio value="retail">Khách lẻ</Radio>
-                  <Radio value="new_web">Khách mua lần đầu trên web</Radio>
-                  <Radio value="wholesale">Khách sỉ</Radio>
-                  <Radio value="all">Tất cả</Radio>
-                </Radio.Group>
-              </Form.Item>
+            {/* Nút submit ẩn cho form */}
+            <button id="promotion-form-submit-btn" type="submit" className="hidden" />
+          </Form>
+        </div>
 
-              <Form.Item
-                name="scope"
-                label={<span className="font-semibold text-xs">Phạm vi sản phẩm áp dụng</span>}
-              >
-                <Radio.Group>
-                  <Radio value="all">Toàn bộ sản phẩm</Radio>
-                  <Radio value="product">Sản phẩm cụ thể</Radio>
-                </Radio.Group>
-              </Form.Item>
-
-              {scope === "product" ? (
-                <Form.Item
-                  name="productMasText"
-                  label={<span className="font-semibold text-xs">Mã SKU sản phẩm áp dụng (phân cách bằng dấu phẩy)</span>}
-                >
-                  <Input placeholder="VD: CHAU_SU_01, CHAU_XI_MANG_02" />
-                </Form.Item>
-              ) : null}
-
-              <Form.Item
-                name="excludedProductMasText"
-                label={<span className="font-semibold text-xs">Sản phẩm loại trừ (không áp dụng giảm)</span>}
-              >
-                <Input placeholder="VD: SP_DAC_BIET_01, CAY_CANH_VIP" />
-              </Form.Item>
-            </div>
-
-            {/* Thời gian & Giới hạn */}
-            <div className="rounded-xl border border-slate-100 p-4 bg-white shadow-xs">
-              <h4 className="text-sm font-bold text-[var(--aloha-ink)] mb-3 flex items-center gap-1.5">
-                <Calendar size={16} className="text-[var(--aloha-green)]" />
-                Thời gian & Giới hạn ngân sách
-              </h4>
-              <Form.Item
-                name="timeRange"
-                label={<span className="font-semibold text-xs">Thời gian hiệu lực</span>}
-              >
-                <DatePicker.RangePicker showTime className="w-full" format="YYYY-MM-DD HH:mm" />
-              </Form.Item>
-
-              <div className="grid grid-cols-2 gap-3">
-                <Form.Item
-                  name="usageLimitTotal"
-                  label={<span className="font-semibold text-xs">Tổng lượt dùng</span>}
-                >
-                  <InputNumber className="w-full" min={1} placeholder="Không giới hạn" />
-                </Form.Item>
-                <Form.Item
-                  name="budgetTotal"
-                  label={<span className="font-semibold text-xs">Tổng ngân sách (VND)</span>}
-                >
-                  <InputNumber
-                    className="w-full"
-                    min={0}
-                    step={500000}
-                    placeholder="Không giới hạn"
-                    formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
-                  />
-                </Form.Item>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <Form.Item
-                  name="status"
-                  label={<span className="font-semibold text-xs">Trạng thái</span>}
-                >
-                  <Select
-                    options={[
-                      { label: "Đang áp dụng (Active)", value: "active" },
-                      { label: "Bản nháp (Draft)", value: "draft" },
-                      { label: "Tạm dừng (Paused)", value: "paused" },
-                    ]}
-                  />
-                </Form.Item>
-                <Form.Item
-                  name="priority"
-                  label={<span className="font-semibold text-xs">Độ ưu tiên (Auto-best)</span>}
-                >
-                  <InputNumber className="w-full" placeholder="0" />
-                </Form.Item>
-              </div>
-            </div>
+        {/* ========================================================================= */}
+        {/* 3. FOOTER CỐ ĐỊNH CHUẨN KIOTVIET (ALWAYS VISIBLE STICKY FOOTER)           */}
+        {/* ========================================================================= */}
+        <div className="px-6 py-3.5 border-t border-slate-200 bg-white flex items-center justify-between shrink-0">
+          <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500">
+            <ShieldCheck size={16} className="text-emerald-700" />
+            <span>Chương trình tự động kiểm tra xung đột và tối ưu mức giảm tốt nhất cho khách.</span>
           </div>
 
-          <div className="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-4">
-            <Button onClick={onClose}>Hủy bỏ</Button>
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+            <Button
+              onClick={onClose}
+              disabled={submitting}
+              className="!h-9 !px-4 !rounded-lg !font-medium"
+            >
+              Hủy bỏ (Bỏ qua)
+            </Button>
+
             <Button
               type="primary"
-              htmlType="submit"
               loading={submitting}
-              className="!bg-[var(--aloha-green)] hover:!bg-[var(--aloha-green-hover)] font-bold px-6"
+              onClick={() => {
+                const submitBtn = document.getElementById("promotion-form-submit-btn");
+                submitBtn?.click();
+              }}
+              className="!h-9 !px-6 !rounded-lg !bg-emerald-700 hover:!bg-emerald-800 !font-bold flex items-center gap-1.5 shadow-xs"
             >
-              {editingItem ? "Lưu thay đổi" : "Tạo chương trình"}
+              <CheckCircle2 size={16} />
+              {editingItem ? "Lưu thay đổi" : "Lưu chương trình"}
             </Button>
-          </div>
-        </Form>
-
-        {/* Cột phải: Thẻ Xem trước (Live Preview) */}
-        <div>
-          <div className="sticky top-4 space-y-3">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <Eye size={14} /> Khách sẽ thấy:
-            </p>
-
-            {/* Thẻ mô phỏng Storefront */}
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 shadow-sm">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--aloha-green)] text-white">
-                  <Ticket size={14} />
-                </div>
-                <span className="text-xs font-extrabold text-[var(--aloha-green)] uppercase">
-                  {previewValues.type === "code" ? "Mã giảm giá" : "Ưu đãi tự động"}
-                </span>
-              </div>
-              <h5 className="text-sm font-bold text-slate-800 leading-snug">
-                {previewValues.title || "Tiêu đề ưu đãi"}
-              </h5>
-              <p className="mt-1 text-xs text-slate-600 line-clamp-2">
-                {previewValues.description || "Mô tả điều kiện ưu đãi"}
-              </p>
-
-              <div className="mt-3 pt-3 border-t border-emerald-200/60 space-y-1 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Mức giảm:</span>
-                  <span className="font-bold text-[var(--aloha-price)]">
-                    {previewValues.discountType === "percentage"
-                      ? `${previewValues.discountValue || 0}% ${previewValues.maxDiscountVnd ? `(tối đa ${formatVnd(previewValues.maxDiscountVnd)})` : ""}`
-                      : formatVnd(previewValues.discountValue || 0)}
-                  </span>
-                </div>
-                {previewValues.minOrderThreshold ? (
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Đơn tối thiểu:</span>
-                    <span className="font-medium text-slate-700">
-                      {previewValues.thresholdOperator === ">=" ? "Từ" : "Trên"}{" "}
-                      {formatVnd(previewValues.minOrderThreshold)}
-                    </span>
-                  </div>
-                ) : null}
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Đối tượng:</span>
-                  <span className="font-medium text-slate-700">
-                    {previewValues.targetCustomer === "new_web"
-                      ? "Khách mua lần đầu"
-                      : previewValues.targetCustomer === "wholesale"
-                        ? "Khách sỉ"
-                        : "Khách lẻ"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-lg bg-amber-50/80 p-3 border border-amber-200/60 text-xs text-amber-900 leading-relaxed">
-              <strong className="block font-semibold mb-0.5">Lưu ý nghiệp vụ:</strong>
-              • Ưu đãi tự động sẽ được hệ thống tự tính và trừ vào đơn hàng khi thỏa điều kiện mà không cần khách bấm mã.
-              <br />
-              • Tiền xét ngưỡng là tiền hàng sau giảm từng sản phẩm, trước phí ship.
-            </div>
           </div>
         </div>
       </div>
