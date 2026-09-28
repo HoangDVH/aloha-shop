@@ -1,0 +1,113 @@
+
+> aloha-shop-standalone@1.0.0 typecheck
+> npm run typecheck:api && npm run typecheck:web
+
+
+> aloha-shop-standalone@1.0.0 typecheck:api
+> tsc -p tsconfig.backend.json
+
+backend/shopAppearance/productsAdmin.ts(11,33): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+backend/shopAppearance/productsAdmin.ts(483,11): error TS2353: Object literal may only specify known properties, and 'banChaySapHet' does not exist in type '{ ids?: string[]; }'.
+backend/shopAuth/routes.ts(215,55): error TS2339: Property 'error' does not exist on type '{ ok: true; fields: CtvApplicationFields; } | { ok: false; error: string; }'.
+  Property 'error' does not exist on type '{ ok: true; fields: CtvApplicationFields; }'.
+backend/shopAuth/routes.ts(463,55): error TS2339: Property 'error' does not exist on type '{ ok: true; fields: CtvApplicationFields; } | { ok: false; error: string; }'.
+  Property 'error' does not exist on type '{ ok: true; fields: CtvApplicationFields; }'.
+backend/shopCatalog/categoryMeta.ts(11,8): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+backend/shopCatalog/categoryQueryFilter.ts(13,8): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+backend/shopCatalog/register.ts(17,8): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+backend/shopCatalog/register.ts(19,33): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+backend/shopCatalog/register.ts(58,8): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+backend/shopCatalog/syncCatalogFromOps.ts(16,45): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+backend/shopOrders/adminRoutes.ts(186,66): error TS2339: Property 'error' does not exist on type 'MarkPaidResult'.
+  Property 'error' does not exist on type '{ ok: true; alreadyPaid?: boolean; order: Record<string, unknown>; shortfall?: string[]; }'.
+backend/shopOrders/adminRoutes.ts(186,86): error TS2339: Property 'code' does not exist on type 'MarkPaidResult'.
+  Property 'code' does not exist on type '{ ok: true; alreadyPaid?: boolean; order: Record<string, unknown>; shortfall?: string[]; }'.
+backend/shopOrders/commission.ts(629,51): error TS2339: Property 'error' does not exist on type '{ ok: true; preview: EligiblePeriodPreview; } | { ok: false; error: string; }'.
+  Property 'error' does not exist on type '{ ok: true; preview: EligiblePeriodPreview; }'.
+backend/shopOrders/commissionAdminRoutes.ts(1779,64): error TS2353: Object literal may only specify known properties, and 'ctvCode' does not exist in type '{ ids?: string[]; }'.
+backend/shopOrders/kvPaymentReconcile.ts(114,65): error TS2339: Property 'error' does not exist on type 'MarkPaidResult'.
+  Property 'error' does not exist on type '{ ok: true; alreadyPaid?: boolean; order: Record<string, unknown>; shortfall?: string[]; }'.
+backend/shopOrders/orderCreateRoutes.ts(178,55): error TS2339: Property 'error' does not exist on type '{ ok: true; details: ShopOrderDetail[]; } | { ok: false; error: string; }'.
+  Property 'error' does not exist on type '{ ok: true; details: ShopOrderDetail[]; }'.
+backend/shopOrders/orderCreateRoutes.ts(209,60): error TS2339: Property 'error' does not exist on type '{ ok: true; details: ShopOrderDetail[]; } | { ok: false; error: string; }'.
+  Property 'error' does not exist on type '{ ok: true; details: ShopOrderDetail[]; }'.
+backend/shopOrders/orderCreateRoutes.ts(331,54): error TS2339: Property 'error' does not exist on type '{ ok: true; } | { ok: false; error: string; }'.
+  Property 'error' does not exist on type '{ ok: true; }'.
+backend/shopOrders/orderCustomerActionRoutes.ts(100,54): error TS2339: Property 'error' does not exist on type '{ ok: true; } | { ok: false; error: string; }'.
+  Property 'error' does not exist on type '{ ok: true; }'.
+backend/shopOrders/paymentRoutes.ts(211,56): error TS2339: Property 'error' does not exist on type 'MarkPaidResult'.
+  Property 'error' does not exist on type '{ ok: true; alreadyPaid?: boolean; order: Record<string, unknown>; shortfall?: string[]; }'.
+backend/shopOrders/paymentRoutes.ts(213,67): error TS2339: Property 'error' does not exist on type 'MarkPaidResult'.
+  Property 'error' does not exist on type '{ ok: true; alreadyPaid?: boolean; order: Record<string, unknown>; shortfall?: string[]; }'.
+backend/shopOrders/stockApply.ts(101,21): error TS2322: Type '{ ok: true; displayTon: number; } | { ok: false; error: string; }' is not assignable to type '{ ok: true; details: ShopOrderDetail[]; } | { ok: false; error: string; }'.
+  Type '{ ok: true; displayTon: number; }' is not assignable to type '{ ok: true; details: ShopOrderDetail[]; } | { ok: false; error: string; }'.
+    Property 'details' is missing in type '{ ok: true; displayTon: number; }' but required in type '{ ok: true; details: ShopOrderDetail[]; }'.
+backend/shopShipping/routes.ts(109,69): error TS2339: Property 'error' does not exist on type '{ ok: true; details: ShopOrderDetail[]; } | { ok: false; error: string; }'.
+  Property 'error' does not exist on type '{ ok: true; details: ShopOrderDetail[]; }'.
+backend/shopWholesale/quote.ts(19,67): error TS2339: Property 'error' does not exist on type '{ ok: true; details: ShopOrderDetail[]; } | { ok: false; error: string; }'.
+  Property 'error' does not exist on type '{ ok: true; details: ShopOrderDetail[]; }'.
+backend/shopWholesale/routes.ts(222,39): error TS2559: Type 'WithId<Document>' has no properties in common with type '{ phone?: unknown; phoneNorm?: unknown; }'.
+backend/utils/chungTuSpreadsheet.ts(24,17): error TS2307: Cannot find module 'xlsx' or its corresponding type declarations.
+backend/utils/combosFromProducts.ts(5,42): error TS2307: Cannot find module '../services/database' or its corresponding type declarations.
+backend/utils/excel.ts(1,30): error TS2307: Cannot find module '../services/database' or its corresponding type declarations.
+backend/utils/excel.ts(4,29): error TS2307: Cannot find module 'xlsx' or its corresponding type declarations.
+backend/utils/excel.ts(51,29): error TS2307: Cannot find module 'xlsx' or its corresponding type declarations.
+backend/utils/excel.ts(72,15): error TS2307: Cannot find module 'xlsx' or its corresponding type declarations.
+backend/utils/fetchProductDetail.ts(5,30): error TS2307: Cannot find module '../services/database' or its corresponding type declarations.
+backend/utils/fetchProductDetail.ts(6,49): error TS2307: Cannot find module '../services/database' or its corresponding type declarations.
+backend/utils/fetchProductDetail.ts(7,34): error TS2307: Cannot find module '../services/kiotviet' or its corresponding type declarations.
+backend/utils/fetchProductDetail.ts(8,33): error TS2307: Cannot find module '../services/alohaApi' or its corresponding type declarations.
+backend/utils/kiotvietOutbound.ts(8,42): error TS2307: Cannot find module '../services/database' or its corresponding type declarations.
+backend/utils/lazyWithRetry.ts(5,68): error TS2307: Cannot find module 'react' or its corresponding type declarations.
+backend/utils/priceChungTuApply.ts(1,47): error TS2307: Cannot find module '../services/database' or its corresponding type declarations.
+backend/utils/priceListExportPrint.ts(16,8): error TS2307: Cannot find module '../components/ui/PriceListExportPrintButtons' or its corresponding type declarations.
+backend/utils/printBarcodeLabels.ts(11,20): error TS2307: Cannot find module 'qrcode' or its corresponding type declarations.
+backend/utils/printBarcodeLabels.ts(12,30): error TS2307: Cannot find module '../services/database' or its corresponding type declarations.
+backend/utils/printPriceLabels.ts(6,20): error TS2307: Cannot find module 'qrcode' or its corresponding type declarations.
+backend/utils/printPriceLabels.ts(7,30): error TS2307: Cannot find module '../services/database' or its corresponding type declarations.
+backend/utils/printReceipt80mm.ts(4,20): error TS2307: Cannot find module 'qrcode' or its corresponding type declarations.
+backend/utils/printReceipt80mm.ts(5,30): error TS2307: Cannot find module '../services/database' or its corresponding type declarations.
+backend/utils/productBarcodeValue.ts(5,30): error TS2307: Cannot find module '../services/database' or its corresponding type declarations.
+backend/utils/productBarcodeValue.ts(6,31): error TS2307: Cannot find module '../services/database' or its corresponding type declarations.
+backend/utils/productBarcodeValue.ts(7,36): error TS2307: Cannot find module '../services/alohaApi' or its corresponding type declarations.
+backend/utils/productionExcelImport.ts(6,68): error TS2307: Cannot find module '../types/production' or its corresponding type declarations.
+backend/utils/productionExcelImport.ts(9,17): error TS2307: Cannot find module 'xlsx' or its corresponding type declarations.
+backend/utils/productSearch.ts(8,78): error TS2307: Cannot find module '../services/alohaApi' or its corresponding type declarations.
+backend/utils/productSearch.ts(9,34): error TS2307: Cannot find module '../services/database' or its corresponding type declarations.
+backend/utils/productSearch.ts(10,62): error TS2307: Cannot find module '../services/kiotviet' or its corresponding type declarations.
+backend/utils/scanProductQr.ts(7,65): error TS2307: Cannot find module '@zxing/browser' or its corresponding type declarations.
+backend/utils/scanProductQr.ts(8,47): error TS2307: Cannot find module '@zxing/library' or its corresponding type declarations.
+backend/utils/scanProductQr.ts(122,41): error TS2307: Cannot find module '@zxing/browser' or its corresponding type declarations.
+backend/utils/scanProductQr.ts(123,28): error TS2307: Cannot find module 'jsqr' or its corresponding type declarations.
+backend/utils/scanProductQr.ts(165,44): error TS2307: Cannot find module '@zxing/browser' or its corresponding type declarations.
+backend/utils/scanProductQr.ts(171,26): error TS2307: Cannot find module 'jsqr' or its corresponding type declarations.
+backend/utils/scanProductQr.ts(1200,26): error TS2345: Argument of type 'HTMLCanvasElement' is not assignable to parameter of type 'HTMLVideoElement'.
+  Type 'HTMLCanvasElement' is missing the following properties from type 'HTMLVideoElement': disablePictureInPicture, onenterpictureinpicture, onleavepictureinpicture, playsInline, and 56 more.
+backend/utils/scanProductQr.ts(1474,28): error TS2307: Cannot find module 'html5-qrcode' or its corresponding type declarations.
+backend/utils/scanProductQr.ts(1921,11): error TS1470: The 'import.meta' meta-property is not allowed in files which will build into CommonJS output.
+backend/utils/scanProductQr.ts(1921,23): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+backend/utils/tabPrefetch.ts(8,22): error TS2834: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Consider adding an extension to the import path.
+backend/utils/tabPrefetch.ts(9,22): error TS2834: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Consider adding an extension to the import path.
+backend/utils/tabPrefetch.ts(10,22): error TS2834: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Consider adding an extension to the import path.
+backend/utils/tabPrefetch.ts(11,22): error TS2834: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Consider adding an extension to the import path.
+backend/utils/tabPrefetch.ts(12,23): error TS2834: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Consider adding an extension to the import path.
+backend/utils/tabPrefetch.ts(13,22): error TS2834: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Consider adding an extension to the import path.
+backend/utils/tabPrefetch.ts(14,22): error TS2834: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Consider adding an extension to the import path.
+backend/utils/tabPrefetch.ts(15,22): error TS2834: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Consider adding an extension to the import path.
+backend/utils/tabPrefetch.ts(16,23): error TS2834: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Consider adding an extension to the import path.
+backend/utils/tabPrefetch.ts(17,28): error TS2834: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Consider adding an extension to the import path.
+backend/utils/tabPrefetch.ts(18,31): error TS2834: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Consider adding an extension to the import path.
+backend/utils/tabPrefetch.ts(20,26): error TS2834: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Consider adding an extension to the import path.
+backend/utils/tabPrefetch.ts(21,23): error TS2834: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Consider adding an extension to the import path.
+backend/utils/tabPrefetch.ts(22,28): error TS2834: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Consider adding an extension to the import path.
+backend/utils/tabPrefetch.ts(23,23): error TS2834: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Consider adding an extension to the import path.
+backend/utils/tabPrefetch.ts(24,24): error TS2834: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Consider adding an extension to the import path.
+backend/utils/tabPrefetch.ts(25,26): error TS2834: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Consider adding an extension to the import path.
+backend/utils/tabPrefetch.ts(26,30): error TS2834: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Consider adding an extension to the import path.
+backend/utils/tabPrefetch.ts(27,34): error TS2834: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Consider adding an extension to the import path.
+backend/utils/tabPrefetch.ts(29,26): error TS2834: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Consider adding an extension to the import path.
+backend/utils/tabPrefetch.ts(30,23): error TS2834: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Consider adding an extension to the import path.
+backend/utils/tabPrefetch.ts(31,27): error TS2834: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Consider adding an extension to the import path.
+backend/utils/tabPrefetch.ts(32,30): error TS2834: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Consider adding an extension to the import path.
+backend/utils/tabPrefetch.ts(33,36): error TS2834: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Consider adding an extension to the import path.
+backend/utils/tabPrefetch.ts(35,12): error TS2834: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Consider adding an extension to the import path.
