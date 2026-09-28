@@ -4,6 +4,8 @@ Ngày lập: 28/09/2026. Trạng thái: đề xuất để triển khai, chưa v
 
 ## 1. Mục tiêu và quyết định kiến trúc
 
+Ràng buộc triển khai: sử dụng công nghệ và thành phần sẵn có đã kiểm tra tại mục 19. Các đề xuất dữ liệu, UI và API trong tài liệu phải được triển khai theo bản đồ đó; không mặc định đưa thêm framework hoặc dịch vụ mới.
+
 Cho phép chủ shop tự tạo, điều chỉnh, lên lịch và dừng ưu đãi trong admin; website tự tính theo cấu hình. “Tự động điều chỉnh” được hiểu là admin đổi cấu hình và hệ thống áp dụng tự động, không phải thuật toán tự đổi mức giảm theo doanh thu.
 
 Hai nhu cầu ban đầu: khách mua web lần đầu giảm 10%; đơn trên một triệu được giảm theo mức cấu hình. Mức “10$” trong yêu cầu chưa rõ đơn vị, chưa được chuyển thành giá trị mặc định.
@@ -856,3 +858,100 @@ Mục tiêu đạt ít nhất 4/5 người mỗi nhóm hoàn thành không cần
 Checklist bàn giao UI: dùng lại thẻ ưu đãi shop; giữ shell admin/CTV; bảng tiền và thuật ngữ thống nhất; trạng thái đầy đủ; responsive không che nội dung; bàn phím sử dụng được; chính sách ở mục 14/16 phản ánh đúng trong nhãn; không hiển thị nút chức năng backend chưa hỗ trợ.
 
 Phần này là đặc tả mở rộng cho các giai đoạn ở mục 12. Chưa tạo prototype, chưa sửa giao diện hay triển khai tính năng trong lần cập nhật kế hoạch này.
+
+## 19. Áp dụng công nghệ và thành phần sẵn có của dự án
+
+### 19.1. Phạm vi xác minh
+
+Đã đọc package.json gốc/frontend cùng source của shell, checkout, query/store CTV, provider giao diện, Redis, sync bus và ví dụ test ngày 28/09/2026. Phiên bản dưới đây là dải khai báo trong manifest, không khẳng định là phiên bản đã cài hoặc đang chạy production. Chưa kiểm tra kết nối Redis, topology MongoDB hoặc hệ thống triển khai thực tế.
+
+### 19.2. Bản đồ công nghệ → tính năng
+
+| Công nghệ có sẵn | Bằng chứng | Áp dụng trong kế hoạch |
+|---|---|---|
+| Next.js ^15.5.2, React ^19.2.6, TypeScript | frontend/package.json; frontend/app | Giữ App Router; thêm trang ưu đãi admin trong cây route hiện tại; thành phần tương tác dùng client component đúng phạm vi |
+| Tailwind CSS ^4.1.14 và token Aloha | frontend/package.json; CheckoutSummaryAside | Responsive shop, màu/radius/shadow hiện có; không thêm bộ CSS độc lập |
+| Ant Design ^6.6.4 | AdminAntdProvider, AdminShell, CtvPortalShell | Table/Card/Form controls/Drawer/Modal/Tag trong admin và CTV; theme/locale Việt sẵn có |
+| Lucide React, @ant-design/icons | Manifest, các shell | Dùng icon cùng bộ với khu vực hiện tại; Ticket cho ưu đãi, nhãn chữ cho hành động |
+| React Hook Form ^7.86.0, resolvers ^5.9.1, Zod 4 | PayoutPanel, AccountPanel, form admin/si | Form cấu hình chương trình, mã và preview; validate trường, lỗi theo nhóm, dữ liệu bẩn chưa lưu |
+| TanStack React Query ^5.90.2 | ctvPortalQueries, query admin | Danh sách/chi tiết/báo cáo, mutation và invalidation; cache theo khách, quyền, bộ lọc |
+| Zustand ^5.0.14 | ctvPortalUiStore | Trạng thái UI: bộ lọc, tab, chế độ chọn; không là nguồn xác nhận tiền/lượt |
+| Sonner ^2.0.8 | Shell và provider hiện tại | Toast lưu thành công/sao chép; lỗi quan trọng vẫn nằm tại form/thẻ |
+| Express ^4.21.2, TypeScript, tsx ^4.21.0 | package.json, backend/shop_standalone_server.ts | Module backend/shopPromotions theo cách đăng ký route hiện có; bộ tính dùng lại cho preview và checkout |
+| MongoDB driver ^7.5.0 | package.json, các collection shopOrders | Lưu cấu hình, phiên bản, snapshot, sổ lượt, audit và công việc đồng bộ bền vững |
+| Redis ^4.7.1 | backend/redis.ts | Cache, khóa có owner/TTL khi phù hợp, pub/sub và hỗ trợ hạn chế tần suất; không thay sổ tiền MongoDB |
+| SSE + syncBus + Redis pub/sub | backend/syncBus.ts, AdminOpsSync, CtvMeStreamSync | Báo thay đổi sau commit để client làm mới dữ liệu theo quyền |
+| JWT, cookie-parser và xác thực shop/admin hiện có | Manifest; middleware/shell hiện tại | Tái sử dụng phiên và quyền; không tạo hệ đăng nhập riêng cho ưu đãi |
+| ExcelJS ^4.4.0; exportCsv hiện có | Manifest gốc; shared/format CTV | CSV cho báo cáo đơn giản, Excel khi thật sự cần; giới hạn quyền và dữ liệu xuất |
+| node:test, node:assert, tsx, TypeScript | tests/checkout-submit.test.ts và manifest | Kiểm thử bộ tính/trạng thái và tích hợp theo cách repo đang dùng |
+
+Không nâng dependency chỉ vì có tính năng mới. Zod backend/frontend đang có dải phiên bản khác nhau; hợp đồng payload cần tương thích và được kiểm thử, không giả định cài đặt giống hệt.
+
+### 19.3. Tái sử dụng frontend theo từng vai trò
+
+**Shop:** giữ route xác nhận đơn `frontend/app/(storefront)/xac-nhan-don-hang/page.tsx`, CheckoutSummaryAside và CheckoutStickyBar. Thêm thành phần hiển thị/chọn ưu đãi nhỏ dùng chung với giỏ; nhận kết quả báo giá đã kiểm chứng. Dùng formatVnd hiện có. Bảng chọn có thể dùng primitive sẵn có phù hợp storefront; phải kiểm tra provider/theme trước khi đưa Ant Design vào shop, không kéo toàn bộ shell admin vào checkout.
+
+**Admin:** route `/admin/uu-dai` chạy trong AdminShell; bổ sung AdminSidebar; dùng AdminAntdProvider để thống nhất theme. Tái sử dụng AdminDateRangePicker và các mẫu tìm kiếm/phân trang hiện có nếu hợp đồng phù hợp. Form phức tạp dùng React Hook Form + Zod; Ant Design cung cấp control/layout. Không để Antd Form và React Hook Form cùng sở hữu hai bản giá trị của một trường.
+
+**CTV:** mở rộng các panel tại `frontend/components/ctv-portal/panels/`: ProductsPanel, OverviewPanel, ConversionsPanel, PayoutPanel. Giữ CtvPortalShell, ctvPortalFetch, query keys có định danh khách và bộ lọc thời gian. Dùng `CTV_COMMISSION_UX`, `resolveCtvCommissionStatus`, `ctvCommissionHint` trong shared/format làm điểm thống nhất nhãn; bổ sung mapping khi có trạng thái mới thay vì tạo bộ nhãn thứ hai.
+
+Các biểu đồ nhỏ ưu tiên mẫu DailySpark/ConversionCard sẵn có. Không thêm thư viện biểu đồ chỉ để minh họa vài số tổng.
+
+### 19.4. Phân chia trạng thái và luồng dữ liệu
+
+| Loại trạng thái | Nơi quản lý | Quy tắc |
+|---|---|---|
+| Cấu hình/lượt/ngân sách/đơn thật | Backend và MongoDB | Nguồn quyết định cuối cùng |
+| Danh sách, báo cáo, báo giá nhận từ server | React Query hoặc cơ chế fetch hiện có được tích hợp nhất quán | Query key bao gồm khách và đầu vào ảnh hưởng kết quả; phản hồi cũ không thay phản hồi mới |
+| Form đang sửa | React Hook Form | Default values rõ; phát hiện revision khi lưu |
+| Panel mở, filter, chế độ tự động/thủ công | Local state hoặc Zustand khi cần chia sẻ | Không persist token, dữ liệu khách hoặc số tiền đã tính như dữ liệu đáng tin |
+| Trạng thái cập nhật thời gian thực | SSE → invalidate query → fetch | Sự kiện là tín hiệu làm mới, không là chứng từ đã thu tiền |
+
+Admin lưu → backend xác thực và commit → publish thay đổi → client invalidate cấu hình/báo giá liên quan. Checkout đã chốt vẫn dùng snapshot. SSE bị mất kết nối thì refetch khi focus hoặc polling theo `visibleRefetchInterval`; lần đặt hàng luôn kiểm tra lại ở server.
+
+Không cập nhật lạc quan số tiền đã được giữ/đã dùng hoặc số dư CTV trước khi server xác nhận. Logout/đổi tài khoản phải xóa cache và lựa chọn riêng của khách cũ. Mã cá nhân không persist ở store chung không gắn định danh.
+
+### 19.5. Backend, khóa và lưu trữ
+
+Giữ Express và MongoDB native driver; không đưa ORM mới vào module ưu đãi. Tách evaluator thuần, validation, repository, reservation, route và mapping KiotViet để kiểm thử độc lập.
+
+Tái sử dụng middleware xác thực/role hiện có và `shopRateLimitOrReject` sau khi đọc hành vi fallback. Hạn chế thử mã theo định danh phù hợp, không chỉ theo IP dùng chung. Payload client chỉ nêu giỏ và lựa chọn, không quyết định tiền giảm hoặc quyền CTV.
+
+Redis hiện có `redisAcquireLock`, `redisRenewLock`, `redisReleaseLock`: có thể tái sử dụng cho giảm tranh chấp, phải giữ owner token và xử lý mất khóa. Redis offline hoặc TTL hết không được cho hai đơn vượt ngân sách. Ràng buộc duy nhất và cập nhật có điều kiện trong MongoDB vẫn bắt buộc.
+
+Chưa xác minh MongoDB hỗ trợ transaction ở môi trường thật. Trước triển khai phải kiểm tra topology; nếu dùng transaction, thiết kế ranh giới đơn + lượt + ngân sách + công việc đồng bộ. Nếu không có, cần phương án atomic/bù/đối soát được test; không tuyên bố khóa Redis tự giải quyết transaction nhiều tài liệu.
+
+Đọc stockHold để học vòng đời giữ/giải phóng, không dùng chung collection/key với ưu đãi và không sao chép mọi ngữ nghĩa TTL. TTL chỉ dọn dữ liệu phụ sau lưu lịch sử cần thiết; việc hoàn ngân sách thực hiện bằng chuyển trạng thái có điều kiện.
+
+### 19.6. KiotViet, thanh toán và công việc nền
+
+Tiếp tục dùng lớp kết nối hiện có trong shopOrders/kvPush, kvOrderMoneySync, kvPaymentReconcile cùng luồng markPaid/completeDelivered. Đọc đầy đủ từng adapter trước mở rộng. Không dựng đường gọi KiotViet riêng bỏ qua cấu hình, xác thực, kiểm soát retry và quy trình thanh toán hiện tại.
+
+Sổ công việc đồng bộ trong MongoDB là phần sẽ bổ sung theo thiết kế, chưa phải queue đã xác minh tồn tại. Dùng cơ chế tác vụ nền hiện có nếu phù hợp; nếu nhiều instance phải claim công việc nguyên tử, có thời hạn xử lý và retry. Không bắt buộc thêm BullMQ, Kafka hay dịch vụ mới khi chưa chứng minh nhu cầu.
+
+SSE/pub-sub có thể mất sự kiện, nên không dùng làm hàng đợi giao dịch bền vững. Các việc giải phóng lượt, trả tiền và retry KiotViet phải khôi phục được từ dữ liệu đã lưu.
+
+Định dạng giờ dùng tiện ích ngày sẵn có và khả năng Intl của nền tảng khi đủ; nhập/hiển thị Asia/Ho_Chi_Minh, lưu thời điểm UTC. Không thêm thư viện ngày chỉ cho hiển thị đơn giản; kiểm tra cách date picker chuyển đổi trước chốt triển khai.
+
+### 19.7. Kiểm thử và lệnh kiểm tra sẵn có
+
+- Backend: `npm run typecheck:api` sử dụng tsconfig.backend.json.
+- Frontend: `npm run typecheck:web`; script frontend có tên lint nhưng thực tế chạy `tsc --noEmit`, không phải ESLint.
+- Cả hai: `npm run typecheck`.
+- Kiểm thử logic mới theo node:test/assert và cách chạy TypeScript hiện có trong repo; phải kiểm tra lệnh runner trước dùng, không giả định có npm test.
+- Build frontend khi đã thay UI: `npm run build --prefix frontend`.
+- Manifest đã đọc chưa khai báo Playwright/Cypress/Vitest/Jest. Các yêu cầu E2E ở mục 12–13 là mục tiêu kiểm chứng, chưa được coi là đã có framework. Kiểm tra script/tooling thực tế rồi chọn kiểm tra trình duyệt hoặc đề xuất dependency cần thiết riêng.
+- Test concurrency thật cần MongoDB/Redis phù hợp môi trường thử, không thể thay hoàn toàn bằng mock bộ nhớ. Không chạy thử ghi tiền/đơn trên production.
+
+Lượt này chỉ cập nhật Markdown, không chạy build/test ứng dụng hoặc cài package.
+
+### 19.8. Checklist trước khi bắt đầu code theo kế hoạch
+
+1. Đọc lại module vì kế hoạch tách file có thể đã đổi vị trí; dùng tên hàm/route để tìm.
+2. Kiểm tra lockfile, phiên bản thực tế và provider của vùng UI được mở rộng.
+3. Xác định một nguồn form, một nguồn báo giá và một cơ chế phân quyền cho mỗi luồng.
+4. Xác minh transaction MongoDB, Redis fallback, công việc nền, SSE và khả năng retry KiotViet.
+5. Tái sử dụng giao diện/tiện ích được liệt kê trước khi tạo bản khác; thêm module nghiệp vụ mới khi trách nhiệm thật sự mới.
+6. Bất kỳ dependency mới nào phải nêu khoảng trống mà công nghệ hiện có chưa đáp ứng, tác động vận hành và cách kiểm thử. Phạm vi cơ bản ưu đãi web dự kiến dùng stack hiện tại.
+
+Đây là ràng buộc công nghệ cho toàn bộ kế hoạch, không phải thay đổi phần mềm đã thực hiện. Các công nghệ chỉ mới có trong manifest được phân biệt với khả năng đã thấy dùng trong source và khả năng production còn cần xác minh.
