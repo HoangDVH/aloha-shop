@@ -955,3 +955,3054 @@ Lượt này chỉ cập nhật Markdown, không chạy build/test ứng dụng 
 6. Bất kỳ dependency mới nào phải nêu khoảng trống mà công nghệ hiện có chưa đáp ứng, tác động vận hành và cách kiểm thử. Phạm vi cơ bản ưu đãi web dự kiến dùng stack hiện tại.
 
 Đây là ràng buộc công nghệ cho toàn bộ kế hoạch, không phải thay đổi phần mềm đã thực hiện. Các công nghệ chỉ mới có trong manifest được phân biệt với khả năng đã thấy dùng trong source và khả năng production còn cần xác minh.
+
+## 20. Kế hoạch QA/QC và quy tắc thực thi test
+
+### 20.1. Mục tiêu, phạm vi và giới hạn
+
+Bộ test dưới đây ánh xạ đầy đủ 142 tình huống mục 15 thành 142 test case riêng, cộng 42 test case bổ sung về bảo mật, validation, khôi phục, hiệu năng, UI và E2E: **184 test case cấp cao**. Một case có nhiều bộ dữ liệu phải chạy từng bộ riêng; số lần chạy thực tế lớn hơn 184.
+
+Không có bộ test hữu hạn bao phủ mọi sự cố. Đây là bộ kiểm thử theo rủi ro của Aloha, không phải chứng nhận “chuẩn mọi công ty” hoặc bằng chứng phần mềm đang hoạt động đúng. Tất cả hiện là **Not run — Chưa chạy**. Các ví dụ/tỷ lệ ở đây chỉ là fixture thử, không cấu hình production.
+
+Phạm vi theo giai đoạn mục 12: ưu đãi web trước; mã mở rộng/voucher nguồn sau. Chức năng ngoài đợt phát hành đánh dấu Out of scope với lý do và chủ sở hữu; không ghi Pass. Chính sách chưa duyệt hoặc môi trường chưa có phải ghi Blocked khi chuẩn bị chạy.
+
+### 20.2. Vai trò và quy trình
+
+- Chủ sản phẩm/chủ shop: duyệt quy tắc tiền, link CTV, hoàn và các điểm mục 14/16.
+- QA: kiểm tra yêu cầu có đo được, phân tích rủi ro, dữ liệu thử, truy vết và kế hoạch.
+- Developer: kiểm thử bộ tính, trạng thái, idempotency; cung cấp điểm chèn lỗi ở môi trường thử và hợp đồng API.
+- QC/Tester: chạy test, so kết quả thực tế với kỳ vọng, lưu bằng chứng và báo lỗi; QA/QC có thể cùng người nhưng trách nhiệm rõ.
+- Người phụ trách vận hành: kiểm chứng đối soát, khôi phục và quyền xử lý ngoại lệ.
+- Chủ nghiệp vụ nghiệm thu UAT: chạy luồng shop/admin/CTV và duyệt chính sách; kiểm thử kỹ thuật không thay quyết định này.
+
+### 20.3. Điều kiện vào test
+
+1. Có build/commit cụ thể, phạm vi và chính sách đã duyệt; hợp đồng request/response/status code được ghi rõ.
+2. Môi trường riêng, dữ liệu tổng hợp, không khách thật; KiotViet dùng gian hàng thử được phép ghi hoặc mock được ghi rõ.
+3. Bộ seed/reset fixture độc lập; khóa đồng hồ cho test biên; giữ timezone Việt Nam. Không dùng chờ nhiều ngày thật.
+4. Có tài khoản đúng vai trò: khách mới/cũ/sỉ, hai CTV, admin sửa và admin chỉ xem.
+5. Có cách xem snapshot, sổ giữ/used/released, counters, công việc nguồn, giao dịch thu/hoàn và audit bằng quyền kiểm thử.
+6. Các test cạnh tranh chạy ít nhất hai instance API nếu kiến trúc triển khai hỗ trợ; test Redis lỗi không làm ảnh hưởng hệ khác.
+7. Không áp dụng lỗi mạng/dừng DB/worker vào production. Test runner phù hợp stack mục 19; tài liệu này chưa tạo script seed hoặc test.
+
+### 20.4. Fixture và phép tính chuẩn
+
+| Fixture | Giá trị dùng trong test |
+|---|---|
+| U_NEW | Khách lẻ đã xác minh, không đơn web thành công, không lượt giữ |
+| U_OLD | Khách lẻ đã có đơn web thành công; không còn quyền lần đầu |
+| U_STORE | Chỉ có giao dịch cửa hàng thành công; không lịch sử web |
+| U_OTHER, U_NEW1, U_NEW2 | Các định danh độc lập; dùng khi cần kiểm tra quyền hoặc tranh lượt |
+| U_SI | Khách sỉ đang hoạt động; giá riêng theo ca |
+| G800 | Hàng đủ điều kiện 800.000đ, ship 30.000đ |
+| G1000 | Hàng đủ điều kiện 1.000.000đ; ship 0 nếu ca không ghi khác |
+| GXY | X=600.000đ, Y=400.000đ; ship 0; A/X 5%, B/Y 8% khi cần CTV |
+| FIRST10 | Tự động 10%, trần 200.000đ, lần đầu web, không cộng ưu đãi toàn đơn |
+| BIG100 | Tự động giảm 100.000đ, >1.000.000đ; ca ghi >= hoặc trần khác sẽ ghi đè |
+| FIX100 | Mã chọn tay giảm 100.000đ, không ngưỡng, phạm vi toàn bộ hàng đủ điều kiện |
+| PRIVATE | Mã cá nhân thuộc người được chỉ định, một lần; giá trị ghi tại từng ca |
+| T0/T1 | Bắt đầu/kết thúc; đề xuất khoảng [T0,T1), cần duyệt làm hợp đồng thời gian |
+| K1/K2, PAY1, R1 | Khóa đặt đơn, mã giao dịch thu và mã hoàn độc lập trong mỗi test |
+| Ưu tiên khi bằng giảm | Priority được cấu hình, sau đó ID ổn định; cần cố định quy tắc trong evaluator |
+
+Reset riêng trước mỗi test. Chỉ bật chương trình được nêu trong case, tránh FIRST10/BIG100 vô tình ảnh hưởng mã khác. Không tạo fixture này thành chương trình thật. Nếu feature đang dùng review-first, thao tác “đặt và trả” phải qua bước shop xác nhận ảnh/báo giá và khách xác nhận cuối; không bỏ qua luồng đó.
+
+Quy tắc số thử: VND nguyên; số giảm tổng làm tròn half-up với số không âm, phân bổ phần dư lớn nhất theo tỷ trọng dòng hợp lệ, khi bằng nhau theo ID dòng ổn định. Đây là đề xuất cụ thể hóa mục 6; nếu chọn thuật toán khác phải duyệt và sửa kỳ vọng GH18 cùng các ca hoàn trước chạy.
+
+### 20.5. Bất biến phải kiểm tra ở mọi ca tiền
+
+- Tổng giảm hàng không âm, không vượt tiền hàng đủ điều kiện; tổng phân bổ dòng bằng tổng giảm.
+- Tổng đơn = hàng sau giảm + ship sau giảm + khoản thuế/phụ thu riêng nếu có; không cộng thuế đã nằm trong giá lần nữa.
+- Tiền còn thu = max(0, giá trị đơn - tổng phương thức thanh toán được công nhận); trả dư ghi riêng.
+- Giữ + đã dùng không vượt hạn/ngân sách; giải phóng/thu/hoàn và hoa hồng có đúng một hiệu lực cho mỗi idempotency.
+- Đơn chốt giữ phiên bản, tỷ lệ CTV và nguồn giới thiệu; cấu hình mới không viết lại lịch sử.
+- Tổng đã hoàn từng dòng không vượt số lượng/tiền thực trả có thể hoàn; điều chỉnh CTV theo đúng phần ghi nhận.
+- UI desktop/mobile, API, DB và KiotViet cùng ngữ nghĩa; không xem toast hoặc HTTP 200 là bằng chứng duy nhất.
+- Request bị từ chối không để lại đơn/lượt/tiền mồ côi. Kết quả nguồn chưa rõ thì chờ đối soát, không tự coi chưa từng thành công.
+
+### 20.6. Mức ưu tiên, lớp kiểm thử và bằng chứng
+
+P0: sai tiền, thu/hoàn trùng, vượt quyền/ngân sách, lộ dữ liệu hoặc sai CTV. P1: luồng chính và quản trị. P2: tiện ích, trình bày ít ảnh hưởng tiền. Priority của test khác Severity của lỗi; lỗi mới phải đánh giá mức ảnh hưởng thực tế.
+
+Mỗi test case bên dưới gồm tiền điều kiện/dữ liệu, bước chạy, kỳ vọng và hậu kiểm. Lớp kiểm thử: logic/API cho công thức và quyền; tích hợp DB/nguồn cho đồng thời/đối soát; E2E trình duyệt cho luồng và UI. Mock không được tính là đã xác nhận hợp đồng KiotViet thật.
+
+Phiếu chạy bắt buộc: Run ID, Test ID, bộ dữ liệu, policy version, build/commit, môi trường/trình duyệt/viewport, người chạy, thời gian, Actual Result, Status, evidence và Defect ID. Trạng thái cho phép: Not run, Pass, Fail, Blocked, Out of scope. Hiện mọi test dưới đây mặc định Not run; không có Actual Result hoặc evidence vì chưa chạy.
+
+Bằng chứng tối thiểu: ảnh/video UI nếu liên quan; request/response đã che bí mật; ID đơn/lượt/giao dịch/job; snapshot và counters trước/sau; audit và log correlation ID. Các ca tiền cần đối chiếu phép tính độc lập, không lấy cùng hàm đang kiểm thử để sinh kỳ vọng.
+
+Sau mỗi ca: lưu bằng chứng trước; reset dữ liệu thử theo danh sách ID; khôi phục đồng hồ/cờ lỗi/quyền. Với giao dịch nguồn đã tạo, đóng/hoàn theo quy trình sandbox có audit, không xóa tùy tiện để che trạng thái.
+
+## 21. Test case chi tiết cho 142 tình huống đã liệt kê
+
+Mã TC-<mã tình huống> ánh xạ trực tiếp tới mục 15. Mỗi bước ngăn bằng dấu chấm phẩy trong dữ liệu gốc được chuyển thành bước riêng bên dưới. Phần kỳ vọng nghiệp vụ dẫn chiếu là yêu cầu cần đối chiếu, không phải kết quả chạy.
+
+### Nhóm KH — Khách và lịch sử mua
+
+#### TC-KH01 — Chưa từng mua web, đã xác minh định danh
+
+- **Truy vết:** KH01, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_NEW, G800, chỉ FIRST10 hoạt động.
+
+**Bước thực hiện:**
+
+1. Đăng nhập U_NEW.
+2. mở xác nhận không bấm thẻ ưu đãi.
+3. đặt đơn K1.
+
+**Kết quả mong đợi:** Giảm 80.000đ, tổng 750.000đ; đúng một lượt giữ 80.000đ.
+
+**Đối chiếu nghiệp vụ/UI:** Cho ưu đãi lần đầu nếu đủ điều kiện khác; giữ quyền khi đặt. Số tiền giảm và điều kiện.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-KH02 — Đã mua cửa hàng, lần đầu mua web
+
+- **Truy vết:** KH02, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_STORE có hóa đơn cửa hàng thành công nhưng không đơn web; G800.
+
+**Bước thực hiện:**
+
+1. Đăng nhập.
+2. xem giỏ.
+3. đặt K1.
+
+**Kết quả mong đợi:** Giảm 80.000đ, tổng 750.000đ; lịch sử cửa hàng không loại quyền web.
+
+**Đối chiếu nghiệp vụ/UI:** Vẫn đủ điều kiện lần đầu web. Ghi rõ “lần đầu trên website”.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-KH03 — Đã có đơn web thành công nhưng chưa từng dùng mã
+
+- **Truy vết:** KH03, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_OLD đã có đơn web thành công không mã; G800.
+
+**Bước thực hiện:**
+
+1. Đăng nhập.
+2. yêu cầu FIRST10 trên UI rồi gửi lại lựa chọn qua API.
+
+**Kết quả mong đợi:** FIRST10 bị loại; tổng 830.000đ; không có lượt giữ FIRST10.
+
+**Đối chiếu nghiệp vụ/UI:** Không còn quyền lần đầu. Giải thích dựa trên lần mua, không dựa trên lần dùng mã.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-KH04 — Chỉ có đơn đã hủy trước thanh toán
+
+- **Truy vết:** KH04, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_NEW từng giữ FIRST10 rồi hủy đơn chưa trả; lượt đã giải phóng.
+
+**Bước thực hiện:**
+
+1. Mở giỏ G800.
+2. đặt K2.
+3. đọc sổ lượt.
+
+**Kết quả mong đợi:** K2 giữ 80.000đ, tổng 750.000đ; lượt cũ vẫn có lịch sử giải phóng.
+
+**Đối chiếu nghiệp vụ/UI:** Được xét lại sau khi giải phóng lượt. Ưu đãi khả dụng trở lại.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-KH05 — Có đơn chuyển khoản đang giữ ưu đãi, đặt thêm đơn
+
+- **Truy vết:** KH05, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_NEW đang có K1 chuyển khoản giữ FIRST10; G800.
+
+**Bước thực hiện:**
+
+1. Mở tab khác.
+2. đặt K2 với khóa khác.
+3. xem K1.
+
+**Kết quả mong đợi:** K1 giữ nguyên; K2 không nhận FIRST10; phải xác nhận báo giá không giảm trước khi tạo nếu tiếp tục.
+
+**Đối chiếu nghiệp vụ/UI:** Không cấp quyền lần đầu cho đơn thứ hai. Đường dẫn đơn đang giữ; hướng dẫn tiếp tục hoặc hủy.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-KH06 — Có đơn COD đang giao
+
+- **Truy vết:** KH06, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** K1 COD đang giao giữ FIRST10.
+
+**Bước thực hiện:**
+
+1. Cho thời gian vượt TTL chuyển khoản.
+2. báo giá G800 trên đơn khác.
+
+**Kết quả mong đợi:** Không giải phóng lượt COD đang giao; không cấp lần đầu thêm.
+
+**Đối chiếu nghiệp vụ/UI:** Giữ quyền đến khi đơn kết thúc. Không hứa cấp lại vì khách chưa trả tiền.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-KH07 — Đã thanh toán rồi hoàn toàn bộ
+
+- **Truy vết:** KH07, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_OLD có FIRST10 đã thanh toán rồi hoàn toàn bộ.
+
+**Bước thực hiện:**
+
+1. Báo giá G800.
+2. nhập FIRST10.
+3. thử đặt.
+
+**Kết quả mong đợi:** Không cấp lại lần đầu; tổng 830.000đ; khoản hoàn không xóa dấu đã dùng.
+
+**Đối chiếu nghiệp vụ/UI:** Không tự khôi phục quyền lần đầu. Chính sách hoàn không cấp lại ưu đãi.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-KH08 — Hai tài khoản cùng số điện thoại đã xác minh
+
+- **Truy vết:** KH08, mục 15. **Ưu tiên:** P0. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Hai tài khoản thử A1/A2 liên kết cùng định danh đã xác minh; G800.
+
+**Bước thực hiện:**
+
+1. A1 đặt K1.
+2. A2 báo giá rồi đặt K2.
+
+**Kết quả mong đợi:** Tối đa một quyền đang giữ/đã dùng; A2 không thấy email/tên riêng A1.
+
+**Đối chiếu nghiệp vụ/UI:** Dùng chung định danh xét quyền; không phát sinh hai lượt. Admin có bằng chứng liên kết, không lộ tài khoản kia cho khách.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-KH09 — Khách đổi số điện thoại
+
+- **Truy vết:** KH09, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_OLD đã dùng FIRST10; có quy trình đổi số được duyệt.
+- **Điểm chặn:** duyệt chính sách hoặc khả năng tích hợp tương ứng ở mục 14/16 trước khi chấm Pass; chưa rõ thì Blocked.
+
+**Bước thực hiện:**
+
+1. Đổi và xác minh số mới.
+2. đăng nhập lại.
+3. báo giá G800.
+
+**Kết quả mong đợi:** Không trở thành khách mới; lịch sử liên kết còn truy vết.
+
+**Đối chiếu nghiệp vụ/UI:** Chuyển liên kết theo quy trình xác minh; giữ lịch sử quyền cũ. Không coi là khách mới chỉ vì đổi số.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-KH10 — Khách vãng lai chưa đăng nhập
+
+- **Truy vết:** KH10, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Phiên chưa đăng nhập; G800; FIRST10 công khai.
+
+**Bước thực hiện:**
+
+1. Mở checkout.
+2. mở điều kiện.
+3. đăng nhập U_NEW.
+4. báo giá lại.
+
+**Kết quả mong đợi:** Trước đăng nhập chưa trừ FIRST10; sau đăng nhập giảm 80.000đ, tổng 750.000đ.
+
+**Đối chiếu nghiệp vụ/UI:** Cho xem ưu đãi công khai; kiểm tra lần đầu sau đăng nhập. “Đăng nhập để kiểm tra ưu đãi”.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-KH11 — Mua hộ, số người nhận khác chủ tài khoản
+
+- **Truy vết:** KH11, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_OLD; người nhận có số khác chưa mua; G800.
+
+**Bước thực hiện:**
+
+1. Đổi tên/số giao hàng.
+2. tính lại.
+3. thử FIRST10.
+
+**Kết quả mong đợi:** Không cấp lại quyền theo người nhận; tổng 830.000đ.
+
+**Đối chiếu nghiệp vụ/UI:** Xét quyền theo người mua đã xác minh. Số nhận hàng không cấp thêm quyền.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-KH12 — Dữ liệu lịch sử cũ thiếu định danh
+
+- **Truy vết:** KH12, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Khách có đơn cũ không đủ định danh để ghép.
+- **Điểm chặn:** duyệt chính sách hoặc khả năng tích hợp tương ứng ở mục 14/16 trước khi chấm Pass; chưa rõ thì Blocked.
+
+**Bước thực hiện:**
+
+1. Đăng nhập.
+2. yêu cầu lần đầu.
+3. admin mở trạng thái hỗ trợ.
+
+**Kết quả mong đợi:** Không tự kết luận đủ quyền; thông báo cần xác minh; chưa giữ lượt cho tới quyết định có dấu vết.
+
+**Đối chiếu nghiệp vụ/UI:** Không suy ra khách mới chỉ từ việc thiếu dữ liệu; đối chiếu/mở xử lý thủ công. Trạng thái cần xác minh và quy trình hỗ trợ.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-KH13 — Tài khoản chuyển khách lẻ sang sỉ trước đặt
+
+- **Truy vết:** KH13, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_NEW giá lẻ G800 đang preview FIRST10; giá sỉ tổng 700.000đ.
+
+**Bước thực hiện:**
+
+1. Admin chuyển khách sang sỉ hợp lệ.
+2. khách bấm đặt với revision cũ.
+
+**Kết quả mong đợi:** Yêu cầu báo giá lại: tiền hàng 700.000đ, không FIRST10; với ship 30.000đ tổng 730.000đ.
+
+**Đối chiếu nghiệp vụ/UI:** Báo giá lại theo giá và phạm vi mới. Tổng tiền mới cần xác nhận.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-KH14 — Nhiều người chung địa chỉ/IP
+
+- **Truy vết:** KH14, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_NEW1/U_NEW2 định danh khác cùng IP/địa chỉ, không cờ rủi ro khác.
+
+**Bước thực hiện:**
+
+1. Mỗi khách đặt G800.
+2. kiểm tra kết quả độc lập.
+
+**Kết quả mong đợi:** Mỗi người nhận 80.000đ hợp lệ; không chặn chỉ vì chung IP.
+
+**Đối chiếu nghiệp vụ/UI:** Không tự từ chối chỉ do chung mạng/địa chỉ; kết hợp tín hiệu và xét duyệt. Không công khai cáo buộc gian lận.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+### Nhóm GH — Giỏ và phép tính
+
+#### TC-GH01 — Điều kiện “trên 1 triệu”, giỏ đúng 1 triệu
+
+- **Truy vết:** GH01, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_OLD; chỉ BIG100 điều kiện >1.000.000đ.
+
+**Bước thực hiện:**
+
+1. Lần lượt báo giá 999.999đ, 1.000.000đ, 1.000.001đ.
+2. ship 0.
+
+**Kết quả mong đợi:** Hai giỏ đầu giảm 0; giỏ cuối giảm 100.000đ, tổng 900.001đ.
+
+**Đối chiếu nghiệp vụ/UI:** Không đủ. Nếu toàn bộ hàng hợp lệ, thiếu ít nhất 1đ; nội dung tránh làm khách hiểu “từ”.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-GH02 — Điều kiện “từ 1 triệu”, giỏ đúng 1 triệu
+
+- **Truy vết:** GH02, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_OLD; BIG100 đổi thành >=1.000.000đ.
+
+**Bước thực hiện:**
+
+1. Lặp ba giá trị 999.999đ, 1.000.000đ, 1.000.001đ.
+
+**Kết quả mong đợi:** Giảm lần lượt 0/100.000/100.000đ; đúng ngưỡng tổng 900.000đ.
+
+**Đối chiếu nghiệp vụ/UI:** Đủ. Ghi đúng từ “từ”.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-GH03 — Tiền hàng 980.000đ, ship 30.000đ
+
+- **Truy vết:** GH03, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_OLD; BIG100 >=1 triệu; hàng 980.000đ, ship 30.000đ.
+
+**Bước thực hiện:**
+
+1. Báo giá.
+2. thử chọn BIG100.
+
+**Kết quả mong đợi:** Giảm 0; tổng 1.010.000đ; thiếu tiền hàng 20.000đ.
+
+**Đối chiếu nghiệp vụ/UI:** Không đạt ngưỡng một triệu. Ship không góp vào tiền xét ngưỡng.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-GH04 — Giỏ 1,2 triệu nhưng hàng đủ điều kiện chỉ 800.000đ
+
+- **Truy vết:** GH04, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_OLD; BIG100 >=1 triệu chỉ nhóm E; E=800.000đ, ngoài E=400.000đ.
+
+**Bước thực hiện:**
+
+1. Báo giá.
+2. mở lý do loại.
+
+**Kết quả mong đợi:** Tiền xét ngưỡng 800.000đ, thiếu 200.000đ; không giảm.
+
+**Đối chiếu nghiệp vụ/UI:** Xét ngưỡng trên 800.000đ. Chỉ rõ món không thuộc phạm vi.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-GH05 — Hàng đã giảm riêng từ 1,1 triệu còn 990.000đ
+
+- **Truy vết:** GH05, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_OLD; giá gốc 1.100.000đ, giá bán sau giảm sản phẩm 990.000đ.
+
+**Bước thực hiện:**
+
+1. Thêm hàng.
+2. báo giá BIG100 >=1 triệu.
+
+**Kết quả mong đợi:** Cơ sở 990.000đ; BIG100 giảm 0; không cộng giảm sản phẩm lần hai.
+
+**Đối chiếu nghiệp vụ/UI:** Xét trên 990.000đ theo chính sách đã chọn. Không dùng giá niêm yết để tăng ngưỡng.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-GH06 — Giảm 10% giỏ 2 triệu, trần 100.000đ
+
+- **Truy vết:** GH06, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** FIRST10 giới hạn trần 100.000đ; U_NEW; hàng 2 triệu, ship 0.
+
+**Bước thực hiện:**
+
+1. Báo giá.
+2. đặt.
+
+**Kết quả mong đợi:** Giảm 100.000đ, tổng 1.900.000đ, giữ ngân sách 100.000đ.
+
+**Đối chiếu nghiệp vụ/UI:** Giảm 100.000đ. “Đã áp dụng mức giảm tối đa”.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-GH07 — Mã giảm 100.000đ nhưng hàng hợp lệ 80.000đ
+
+- **Truy vết:** GH07, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** FIX100 không ngưỡng; hàng hợp lệ 80.000đ; ship 30.000đ.
+
+**Bước thực hiện:**
+
+1. Nhập mã.
+2. báo giá.
+3. đặt.
+
+**Kết quả mong đợi:** Giảm 80.000đ, tổng 30.000đ; không hoàn 20.000đ dư.
+
+**Đối chiếu nghiệp vụ/UI:** Giảm tối đa 80.000đ nếu không có ngưỡng khác. Không phát sinh số âm hoặc trả phần giảm dư bằng tiền.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-GH08 — Khách mới đủ cả 10% và giảm cố định
+
+- **Truy vết:** GH08, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_NEW; hàng 1,2 triệu; FIRST10 trần 200.000đ và BIG100 >1 triệu; ship 0.
+
+**Bước thực hiện:**
+
+1. Để tự động.
+2. báo giá và mở danh sách.
+
+**Kết quả mong đợi:** Chọn FIRST10 giảm 120.000đ; tổng 1.080.000đ; không giảm thành 220.000đ.
+
+**Đối chiếu nghiệp vụ/UI:** Chọn mức tiết kiệm lớn hơn trong nhóm loại trừ. Giỏ 1,2 triệu, 10% chưa chạm trần thắng 100.000đ.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-GH09 — Hai ưu đãi cho số tiền giảm bằng nhau
+
+- **Truy vết:** GH09, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Hai chương trình đều giảm 100.000đ, priority khác, cùng điều kiện.
+
+**Bước thực hiện:**
+
+1. Báo giá 5 lần.
+2. đổi thứ tự dữ liệu từ repository.
+3. báo giá lại.
+
+**Kết quả mong đợi:** Luôn cùng chương trình theo priority/ID đã chốt, giảm 100.000đ.
+
+**Đối chiếu nghiệp vụ/UI:** Giữ thứ tự ưu tiên ổn định. Không đổi tên ưu đãi liên tục khi tải lại.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-GH10 — Khách chủ động chọn mã kém lợi hơn
+
+- **Truy vết:** GH10, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Giỏ 1,2 triệu, tự động giảm 120.000đ; mã chọn tay FIX100.
+
+**Bước thực hiện:**
+
+1. Chọn FIX100.
+2. xác nhận.
+3. tải lại checkout.
+
+**Kết quả mong đợi:** Giảm 100.000đ, tổng 1,1 triệu; gợi ý tốt hơn 20.000đ; không thay lựa chọn im lặng.
+
+**Đối chiếu nghiệp vụ/UI:** Tôn trọng lựa chọn; gợi ý ưu đãi tốt hơn. Nút đổi, không tự ghi đè mã.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-GH11 — Xóa một món làm mất ngưỡng
+
+- **Truy vết:** GH11, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_OLD; BIG100 >=1 triệu; giỏ 1,2 triệu, ship 0.
+
+**Bước thực hiện:**
+
+1. Xóa món 300.000đ.
+2. đặt với báo giá trước khi xóa.
+
+**Kết quả mong đợi:** Báo giá mới 900.000đ, giảm 0; không chấp nhận báo giá cũ 1,1 triệu.
+
+**Đối chiếu nghiệp vụ/UI:** Tính lại; bỏ khoản giảm không còn hợp lệ. Nêu thay đổi trước đặt hàng.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-GH12 — Thêm số lượng vượt bậc giảm tiếp theo
+
+- **Truy vết:** GH12, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Bậc >=1 triệu giảm 100.000đ, >=2 triệu giảm 250.000đ.
+
+**Bước thực hiện:**
+
+1. Tăng giỏ từ 1,5 lên 2 triệu.
+2. tự chọn.
+
+**Kết quả mong đợi:** Mức giảm chuyển 100.000→250.000đ; tổng sau cùng 1.750.000đ khi ship 0.
+
+**Đối chiếu nghiệp vụ/UI:** Tính lại, tự chọn bậc tốt nhất trong chế độ tự động. Thể hiện số tiền tiết kiệm mới.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-GH13 — Mã giảm hàng và chính sách miễn ship cùng hợp lệ
+
+- **Truy vết:** GH13, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Hàng 1 triệu, giảm 100.000đ, ship 30.000đ; free ship đủ điều kiện.
+- **Điểm chặn:** duyệt chính sách hoặc khả năng tích hợp tương ứng ở mục 14/16 trước khi chấm Pass; chưa rõ thì Blocked.
+
+**Bước thực hiện:**
+
+1. Chạy cấu hình cho kết hợp.
+2. reset rồi chạy cấu hình không kết hợp.
+
+**Kết quả mong đợi:** Cho kết hợp tổng 900.000đ; không kết hợp dùng quy tắc đã duyệt, không tự cộng cả hai; lưu từng khoản.
+
+**Đối chiếu nghiệp vụ/UI:** Chỉ kết hợp nếu cấu hình cho phép; mỗi khoản một dòng. Không gọi giảm ship là giảm tiền hàng.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-GH14 — Địa chỉ mới làm tăng ship
+
+- **Truy vết:** GH14, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** G800 FIRST10; đổi địa chỉ làm ship 30.000→50.000đ.
+
+**Bước thực hiện:**
+
+1. Báo giá.
+2. đổi địa chỉ.
+3. chờ quote ship mới.
+
+**Kết quả mong đợi:** Giảm giữ 80.000đ; tổng 750.000→770.000đ; không giữ quote ship cũ.
+
+**Đối chiếu nghiệp vụ/UI:** Báo giá lại ship; giữ giảm hàng nếu điều kiện không đổi. Tổng mới và yêu cầu xác nhận nếu cần.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-GH15 — Sản phẩm bị ngừng bán/hết hàng trước đặt
+
+- **Truy vết:** GH15, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** G800 đã báo giá; sản phẩm sau đó hết hàng/ngừng bán.
+
+**Bước thực hiện:**
+
+1. Đặt đơn với báo giá cũ.
+
+**Kết quả mong đợi:** Không tạo đơn không hợp lệ hoặc giữ lượt mồ côi; hiển thị món cần sửa.
+
+**Đối chiếu nghiệp vụ/UI:** Kiểm tra lại hàng rồi tính ưu đãi. Không giữ ưu đãi cho đơn chưa tạo được.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-GH16 — Giỏ có hàng đặt trước và hàng có sẵn
+
+- **Truy vết:** GH16, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Giỏ hai món 600.000/400.000đ, một món đặt trước; giảm 100.000đ.
+- **Điểm chặn:** duyệt chính sách hoặc khả năng tích hợp tương ứng ở mục 14/16 trước khi chấm Pass; chưa rõ thì Blocked.
+
+**Bước thực hiện:**
+
+1. Tạo đơn chờ xác nhận.
+2. xác nhận giá cuối.
+3. chia giao.
+
+**Kết quả mong đợi:** Tổng hàng sau giảm 900.000đ; một lượt; các kiện không tự thêm giảm.
+
+**Đối chiếu nghiệp vụ/UI:** Xác định giá cuối, giao tách và điều kiện trước chốt. Không nhân đôi ưu đãi khi chia kiện.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-GH17 — Tổng bằng 0 sau giảm
+
+- **Truy vết:** GH17, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** FIX100, hàng 100.000đ, nhận tại cửa hàng, ship 0.
+- **Điểm chặn:** duyệt chính sách hoặc khả năng tích hợp tương ứng ở mục 14/16 trước khi chấm Pass; chưa rõ thì Blocked.
+
+**Bước thực hiện:**
+
+1. Áp dụng.
+2. đặt.
+3. kiểm tra quy trình đơn 0đ.
+
+**Kết quả mong đợi:** Nếu luồng được duyệt: tổng 0, không QR/COD thu 0đ; nếu chưa hỗ trợ: chặn rõ, không giả lập thanh toán.
+
+**Đối chiếu nghiệp vụ/UI:** Dùng luồng đơn 0đ đã kiểm chứng; không QR/thu COD 0đ. Không tự xác nhận thanh toán ngân hàng.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-GH18 — Tiền giảm có phần lẻ qua nhiều món
+
+- **Truy vết:** GH18, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Ba dòng giá 101/102/103đ, giảm 10%, ship 0.
+
+**Bước thực hiện:**
+
+1. Tính lại 5 lần.
+2. đặt.
+3. xem phân bổ và tổng.
+
+**Kết quả mong đợi:** Round half-up: giảm 31đ; phần dư lớn nhất phân bổ 10/10/11đ; tổng trả 275đ.
+
+**Đối chiếu nghiệp vụ/UI:** Làm tròn và phân bổ ổn định, tổng phân bổ đúng tổng giảm. Không lệch 1–2đ giữa web, đơn và hoàn hàng.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-GH19 — Giỏ chứa quà tặng hoặc sản phẩm 0đ
+
+- **Truy vết:** GH19, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Hàng trả tiền 900.000đ và quà 0đ; BIG100 >=1 triệu.
+
+**Bước thực hiện:**
+
+1. Thêm/tăng số quà trong giới hạn hợp lệ.
+2. báo giá.
+
+**Kết quả mong đợi:** Ngưỡng vẫn 900.000đ, không BIG100; quà không phát sinh CTV.
+
+**Đối chiếu nghiệp vụ/UI:** Không góp ngưỡng hoặc hoa hồng trừ chính sách rõ khác. Không dùng số lượng quà để mở thêm ưu đãi.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-GH20 — Khách sỉ nhận link ưu đãi khách lẻ
+
+- **Truy vết:** GH20, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_SI giá sỉ 700.000đ; FIRST10 chỉ khách lẻ.
+
+**Bước thực hiện:**
+
+1. Mở link ưu đãi.
+2. gửi yêu cầu áp dụng qua API.
+
+**Kết quả mong đợi:** Không giảm FIRST10; giá sỉ không bị đổi thành giá lẻ hoặc cộng thêm giảm.
+
+**Đối chiếu nghiệp vụ/UI:** Kiểm tra vai trò và giá phía server. Giải thích không thuộc đối tượng, giữ giá sỉ đúng.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+### Nhóm MA — Mã ưu đãi
+
+#### TC-MA01 — Nhập mã Aloha có dấu cách/chữ thường
+
+- **Truy vết:** MA01, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** FIX100 hợp lệ, G1000, ship 0.
+
+**Bước thực hiện:**
+
+1. Nhập khoảng trắng + fix100 chữ thường.
+2. áp dụng.
+
+**Kết quả mong đợi:** Chuẩn thành FIX100; giảm 100.000đ; một ứng viên mã.
+
+**Đối chiếu nghiệp vụ/UI:** Chuẩn hóa theo quy tắc mã Aloha rồi tra cứu. Mã chuẩn sau áp dụng.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-MA02 — Mã không tồn tại hoặc không thuộc khách
+
+- **Truy vết:** MA02, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Mã NONE không tồn tại và mã PRIVATE thuộc khách khác.
+
+**Bước thực hiện:**
+
+1. Lần lượt nhập bằng U_NEW.
+2. xem response và UI.
+
+**Kết quả mong đợi:** Không giảm; lỗi không lộ chủ mã hay thông tin tài khoản.
+
+**Đối chiếu nghiệp vụ/UI:** Trả lỗi chung phù hợp; không lộ chủ sở hữu. “Mã không hợp lệ hoặc không dành cho tài khoản này”.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-MA03 — Mã chưa bắt đầu/hết hạn
+
+- **Truy vết:** MA03, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Mã hiệu lực [T0,T1), đồng hồ server điều khiển được.
+
+**Bước thực hiện:**
+
+1. Thử T0-1ms, T0, T1-1ms, T1.
+
+**Kết quả mong đợi:** Không/được/được/không áp dụng; không dựa giờ thiết bị.
+
+**Đối chiếu nghiệp vụ/UI:** Không áp dụng. Thời gian hiệu lực theo giờ Việt Nam.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-MA04 — Mã hợp lệ nhưng hết lượt/ngân sách
+
+- **Truy vết:** MA04, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** FIX100; chạy riêng bộ hết tổng lượt và bộ hết ngân sách.
+
+**Bước thực hiện:**
+
+1. Nhập mã.
+2. đặt đồng thời với một lượt xem.
+
+**Kết quả mong đợi:** Không tạo giữ mới hoặc ngân sách âm; lý do đúng từng bộ.
+
+**Đối chiếu nghiệp vụ/UI:** Không giữ thêm. Lý do rõ và ưu đãi thay thế nếu có.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-MA05 — Mã dùng một lần đã dùng ở đơn thành công
+
+- **Truy vết:** MA05, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Mã ONE1 một lần đã tiêu thụ trên đơn thành công của U_OLD.
+
+**Bước thực hiện:**
+
+1. Nhập lại.
+2. gửi API đặt lại.
+
+**Kết quả mong đợi:** Không tiêu thụ lần hai; lịch sử chỉ hiện đơn của người đang đăng nhập.
+
+**Đối chiếu nghiệp vụ/UI:** Không áp dụng lại. Liên kết lịch sử đơn của chính khách.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-MA06 — Mã đang giữ ở đơn khác
+
+- **Truy vết:** MA06, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** ONE1 đang giữ ở K1 chưa trả.
+
+**Bước thực hiện:**
+
+1. Đặt K2 bằng ONE1.
+
+**Kết quả mong đợi:** Không thêm giữ; khách xem/tiếp tục K1 hoặc hủy theo quy trình.
+
+**Đối chiếu nghiệp vụ/UI:** Không cấp đồng thời. Cho xem đơn đang chờ.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-MA07 — Khách lưu mã nhưng chưa đặt
+
+- **Truy vết:** MA07, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** ONE1 còn lượt, chưa giữ.
+
+**Bước thực hiện:**
+
+1. Lưu vào ví.
+2. tải lại.
+3. xem counters.
+
+**Kết quả mong đợi:** Ví có mã; held/used/budget không đổi.
+
+**Đối chiếu nghiệp vụ/UI:** Chỉ lưu vào ví, không giữ lượt/ngân sách. “Áp dụng khi còn lượt và đủ điều kiện”.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-MA08 — Mã bị tạm dừng sau khi khách lưu
+
+- **Truy vết:** MA08, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Khách đã lưu ONE1, chưa đặt.
+
+**Bước thực hiện:**
+
+1. Admin dừng chương trình.
+2. khách mở ví và thử dùng.
+
+**Kết quả mong đợi:** Đánh dấu tạm dừng, không giảm/giữ mới; cache không cho vượt kiểm tra server.
+
+**Đối chiếu nghiệp vụ/UI:** Ví cập nhật trạng thái. Không tiếp tục quảng cáo là dùng được.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-MA09 — Mã riêng bị chia sẻ cho người khác
+
+- **Truy vết:** MA09, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** PRIVATE thuộc U_NEW; U_OTHER biết chuỗi.
+
+**Bước thực hiện:**
+
+1. U_OTHER nhập mã và sửa request ownerId thành U_NEW.
+
+**Kết quả mong đợi:** Backend dùng danh tính phiên, từ chối; không đọc dữ liệu chủ mã.
+
+**Đối chiếu nghiệp vụ/UI:** Kiểm tra khách sở hữu phía server. Không chỉ dựa vào biết chuỗi mã.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-MA10 — Thử mã liên tục để dò mã
+
+- **Truy vết:** MA10, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Môi trường test cấu hình hạn L lần/cửa sổ W.
+
+**Bước thực hiện:**
+
+1. Gửi L+1 lần thử sai theo cùng định danh.
+2. đợi W.
+3. thử mã hợp lệ.
+
+**Kết quả mong đợi:** Chặn phần vượt với thời gian thử lại; sau cửa sổ dùng được; không lộ mã.
+
+**Đối chiếu nghiệp vụ/UI:** Giới hạn tần suất, theo dõi bất thường. Cho thử lại sau; không khóa vô thời hạn do một lỗi gõ.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-MA11 — Import mã có trùng và dòng lỗi
+
+- **Truy vết:** MA11, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** File có NEW1 hợp lệ, DUP đã có, hai dòng SAME, một mã sai định dạng.
+- **Điểm chặn:** duyệt chính sách hoặc khả năng tích hợp tương ứng ở mục 14/16 trước khi chấm Pass; chưa rõ thì Blocked.
+
+**Bước thực hiện:**
+
+1. Upload.
+2. xem preview.
+3. chạy theo chế độ import đã duyệt.
+
+**Kết quả mong đợi:** Mỗi dòng có kết quả; không mã trùng; tổng thành công/thất bại khớp; chính sách toàn bộ/từng phần phải chốt trước chấm.
+
+**Đối chiếu nghiệp vụ/UI:** Xem trước kết quả, xác định rõ nhập toàn bộ hay phần hợp lệ. Số tạo/thất bại và lý do theo dòng.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-MA12 — Một mã kích hoạt chương trình đã sửa
+
+- **Truy vết:** MA12, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Mã FIX trỏ v1 giảm 50.000đ; một đơn đã chốt; v2 giảm 100.000đ.
+
+**Bước thực hiện:**
+
+1. Sửa/kích hoạt v2.
+2. báo giá và đặt đơn mới.
+3. mở đơn cũ.
+
+**Kết quả mong đợi:** Đơn mới giảm 100.000đ; đơn cũ 50.000đ, giữ version chính xác.
+
+**Đối chiếu nghiệp vụ/UI:** Mã trỏ chương trình; đơn mới dùng phiên bản hiện hành. Điều kiện ví đồng bộ với phiên bản mới.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-MA13 — Mã chung còn lượt nhưng khách hết hạn mức cá nhân
+
+- **Truy vết:** MA13, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** FIX100 còn 10 lượt toàn cục; U_OLD hết 1 lượt/khách; U_NEW chưa dùng.
+
+**Bước thực hiện:**
+
+1. Hai khách lần lượt báo giá mã.
+
+**Kết quả mong đợi:** U_OLD bị loại theo hạn cá nhân; U_NEW dùng được; không báo hết toàn chương trình.
+
+**Đối chiếu nghiệp vụ/UI:** Từ chối riêng khách đó. Không hiển thị sai là toàn chương trình hết lượt.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-MA14 — Mã web trùng chuỗi mã KiotViet
+
+- **Truy vết:** MA14, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Chuỗi SAME tồn tại ở Aloha và voucher KV.
+
+**Bước thực hiện:**
+
+1. Nhập SAME.
+2. chọn nguồn rõ ràng.
+3. xác nhận một nguồn.
+
+**Kết quả mong đợi:** Chỉ thao tác nguồn đã chọn; không giảm và thanh toán hai lần vì trùng tên.
+
+**Đối chiếu nghiệp vụ/UI:** Phân biệt nguồn ở bước tra cứu/chọn. Không tự tiêu thụ cả hai hoặc đoán nguồn.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+### Nhóm CT — Giới thiệu và hoa hồng CTV
+
+#### TC-CT01 — Khách mới mua qua link A, hưởng giảm lần đầu
+
+- **Truy vết:** CT01, mục 15. **Ưu tiên:** P0. **Lớp:** Logic + API + tích hợp báo cáo. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_NEW; G1000; FIRST10; link A cho cả hàng thử, rate 5%; ship 0.
+
+**Bước thực hiện:**
+
+1. Vào link.
+2. đặt.
+3. đọc chi tiết hoa hồng.
+
+**Kết quả mong đợi:** Giảm 100.000đ; tổng 900.000đ; A tạm tính 45.000đ.
+
+**Đối chiếu nghiệp vụ/UI:** A nhận theo tiền hàng sau giảm nếu link hợp lệ. Hàng 1 triệu, giảm 100.000đ, tỷ lệ 5% → 45.000đ.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-CT02 — Lần hai tiếp tục vào link A
+
+- **Truy vết:** CT02, mục 15. **Ưu tiên:** P0. **Lớp:** Logic + API + tích hợp báo cáo. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_OLD; G1000; không chương trình giảm; A 5%.
+
+**Bước thực hiện:**
+
+1. Vào lại link A hợp lệ.
+2. đặt.
+
+**Kết quả mong đợi:** Không FIRST10; A tạm tính 50.000đ.
+
+**Đối chiếu nghiệp vụ/UI:** Có lượt mới hợp lệ; A được ghi nhận; không giảm lần đầu. Hàng 1 triệu, không giảm, 5% → 50.000đ.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-CT03 — Lần hai vào trực tiếp, lượt A còn hạn
+
+- **Truy vết:** CT03, mục 15. **Ưu tiên:** P0. **Lớp:** Logic + API + tích hợp báo cáo. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_OLD; G1000; link A còn hạn; FIX100 đã chọn.
+- **Điểm chặn:** duyệt chính sách hoặc khả năng tích hợp tương ứng ở mục 14/16 trước khi chấm Pass; chưa rõ thì Blocked.
+
+**Bước thực hiện:**
+
+1. Quay lại trực tiếp.
+2. đặt.
+
+**Kết quả mong đợi:** A tạm tính 45.000đ; giảm 100.000đ; không cần bấm link lại trong hạn giả định.
+
+**Đối chiếu nghiệp vụ/UI:** Giữ A trong phạm vi đã được giới thiệu. Nếu giảm đơn lớn 100.000đ, hoa hồng còn 45.000đ.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-CT04 — Lần hai vào trực tiếp, lượt A hết hạn
+
+- **Truy vết:** CT04, mục 15. **Ưu tiên:** P0. **Lớp:** Logic + API + tích hợp báo cáo. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_OLD; G1000; link A hết hạn; không link khác.
+- **Điểm chặn:** duyệt chính sách hoặc khả năng tích hợp tương ứng ở mục 14/16 trước khi chấm Pass; chưa rõ thì Blocked.
+
+**Bước thực hiện:**
+
+1. Vào trực tiếp.
+2. đặt.
+
+**Kết quả mong đợi:** Không hoa hồng A; tổng theo ưu đãi độc lập.
+
+**Đối chiếu nghiệp vụ/UI:** Không tự phát sinh hoa hồng A. Lịch sử khách cũ không tự tạo quyền hưởng.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-CT05 — Khách bấm A rồi B trước đặt
+
+- **Truy vết:** CT05, mục 15. **Ưu tiên:** P0. **Lớp:** Logic + API + tích hợp báo cáo. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** G1000; A 5%, B 8%; cùng phạm vi, A t0 rồi B t1>t0.
+- **Điểm chặn:** duyệt chính sách hoặc khả năng tích hợp tương ứng ở mục 14/16 trước khi chấm Pass; chưa rõ thì Blocked.
+
+**Bước thực hiện:**
+
+1. Bấm A rồi B.
+2. đặt không giảm.
+
+**Kết quả mong đợi:** B 80.000đ, A 0; lưu bằng chứng thời điểm server.
+
+**Đối chiếu nghiệp vụ/UI:** B thắng trên các dòng B có phạm vi hợp lệ. Lưu bằng chứng chọn B, không chỉ ghi tên người thắng.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-CT06 — Khách bấm link B sau khi đơn đã chốt
+
+- **Truy vết:** CT06, mục 15. **Ưu tiên:** P0. **Lớp:** Logic + API + tích hợp báo cáo. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Đơn G1000 chốt A 5%.
+
+**Bước thực hiện:**
+
+1. Bấm link B sau đặt.
+2. mở đơn cũ.
+
+**Kết quả mong đợi:** Đơn vẫn A 50.000đ; không thay snapshot.
+
+**Đối chiếu nghiệp vụ/UI:** Không đổi CTV của đơn cũ. Có thể tác động đơn mới đủ điều kiện.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-CT07 — A giới thiệu món X, B giới thiệu món Y trong cùng giỏ
+
+- **Truy vết:** CT07, mục 15. **Ưu tiên:** P0. **Lớp:** Logic + API + tích hợp báo cáo. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** GXY, A cho X 5%, B cho Y 8%, giảm 100.000đ.
+
+**Bước thực hiện:**
+
+1. Bấm hai link.
+2. đặt.
+3. đăng nhập xem báo cáo từng CTV.
+
+**Kết quả mong đợi:** A 27.000đ; B 28.800đ; không lộ phần riêng CTV kia.
+
+**Đối chiếu nghiệp vụ/UI:** Ghi nhận từng dòng X/A, Y/B nếu cả hai lượt hợp lệ. Mỗi CTV chỉ thấy phần quyền lợi của mình.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-CT08 — Chỉ có link A cho X, khách mua thêm Y
+
+- **Truy vết:** CT08, mục 15. **Ưu tiên:** P0. **Lớp:** Logic + API + tích hợp báo cáo. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** GXY, link A chỉ X, không B, không giảm.
+
+**Bước thực hiện:**
+
+1. Vào link X rồi thêm Y.
+2. đặt.
+
+**Kết quả mong đợi:** A nhận 600.000×5%=30.000đ; Y không nhận CTV.
+
+**Đối chiếu nghiệp vụ/UI:** Y không tự thuộc A nếu link chỉ bao phủ X. Phạm vi link phải rõ trên công cụ chia sẻ.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-CT09 — Khách vào link toàn shop B sau link món X của A
+
+- **Truy vết:** CT09, mục 15. **Ưu tiên:** P0. **Lớp:** Logic + API + tích hợp báo cáo. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** GXY; A link X trước, B toàn shop sau.
+- **Điểm chặn:** duyệt chính sách hoặc khả năng tích hợp tương ứng ở mục 14/16 trước khi chấm Pass; chưa rõ thì Blocked.
+
+**Bước thực hiện:**
+
+1. Bấm theo thứ tự.
+2. đặt không giảm.
+
+**Kết quả mong đợi:** Theo chính sách đề xuất B 8% nhận 80.000đ cả giỏ; blocked nếu loại link/chính sách chưa duyệt.
+
+**Đối chiếu nghiệp vụ/UI:** Theo đề xuất lượt hợp lệ gần nhất, B có thể thắng cả X. Cần duyệt chính sách link toàn shop trước bật.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-CT10 — CTV bị khóa trước khách đặt
+
+- **Truy vết:** CT10, mục 15. **Ưu tiên:** P0. **Lớp:** Logic + API + tích hợp báo cáo. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** A đang có hoa hồng cũ đủ điều kiện và lượt giới thiệu mới; sau đó bị khóa.
+- **Điểm chặn:** duyệt chính sách hoặc khả năng tích hợp tương ứng ở mục 14/16 trước khi chấm Pass; chưa rõ thì Blocked.
+
+**Bước thực hiện:**
+
+1. Khóa A.
+2. khách mới vào link và đặt.
+3. xem hoa hồng cũ.
+
+**Kết quả mong đợi:** Không cấp quyền mới; hoa hồng cũ không bị xóa tự động; xử lý giữ/chi theo chính sách khóa đã duyệt.
+
+**Đối chiếu nghiệp vụ/UI:** Không tạo quyền mới; xử lý quyền cũ theo chính sách khóa. Không tự xóa hoa hồng đã đủ điều kiện nếu chưa có kết luận vi phạm.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-CT11 — Khách nhập mã giảm giá của chiến dịch B sau link A
+
+- **Truy vết:** CT11, mục 15. **Ưu tiên:** P0. **Lớp:** Logic + API + tích hợp báo cáo. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** G1000, link A 5%, mã chiến dịch tên B giảm 100.000đ không chức năng referral.
+
+**Bước thực hiện:**
+
+1. Nhập mã B.
+2. đặt.
+
+**Kết quả mong đợi:** A vẫn nhận 45.000đ; không gán CTV theo tên mã.
+
+**Đối chiếu nghiệp vụ/UI:** Mã giảm giá không tự thay người giới thiệu. Nếu mã có ghi nhận CTV phải có loại riêng và thứ tự ưu tiên đã chốt.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-CT12 — CTV tự mua hoặc tạo tài khoản có liên hệ để hưởng hoa hồng
+
+- **Truy vết:** CT12, mục 15. **Ưu tiên:** P0. **Lớp:** Logic + API + tích hợp báo cáo. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** CTV A mua bằng tài khoản mình hoặc tài khoản liên kết theo quy tắc rủi ro thử.
+- **Điểm chặn:** duyệt chính sách hoặc khả năng tích hợp tương ứng ở mục 14/16 trước khi chấm Pass; chưa rõ thì Blocked.
+
+**Bước thực hiện:**
+
+1. Đặt qua link A.
+2. xem duyệt hoa hồng.
+
+**Kết quả mong đợi:** Không tự chi trước kết luận; điều kiện ưu đãi khách được xét riêng; policy self-buy chưa duyệt thì blocked.
+
+**Đối chiếu nghiệp vụ/UI:** Đánh dấu xét duyệt theo chính sách tự mua; không tự trả. Ưu đãi khách và hoa hồng là hai quyết định riêng.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-CT13 — Khách đổi máy/xóa cookie trước đặt
+
+- **Truy vết:** CT13, mục 15. **Ưu tiên:** P0. **Lớp:** Logic + API + tích hợp báo cáo. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Hai thiết bị; bộ 1 referral đã liên kết server, bộ 2 chỉ có phiên ẩn danh.
+- **Điểm chặn:** duyệt chính sách hoặc khả năng tích hợp tương ứng ở mục 14/16 trước khi chấm Pass; chưa rõ thì Blocked.
+
+**Bước thực hiện:**
+
+1. Bấm link máy 1.
+2. mua máy 2 với cùng tài khoản ở bộ 1.
+3. lặp bộ 2.
+
+**Kết quả mong đợi:** Bộ 1 giữ nếu hợp lệ; bộ 2 không tự tạo bằng chứng; không hứa chắc ghi nhận khi thiếu dữ liệu.
+
+**Đối chiếu nghiệp vụ/UI:** Chỉ giữ ghi nhận nếu đã liên kết hợp lệ phía server. Không hứa theo dõi mọi thiết bị khi chưa nhận diện được khách.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-CT14 — Nhiều khách dùng chung trình duyệt
+
+- **Truy vết:** CT14, mục 15. **Ưu tiên:** P0. **Lớp:** Logic + API + tích hợp báo cáo. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Thiết bị chung; khách U1 đã gắn referral, khách U2 độc lập.
+
+**Bước thực hiện:**
+
+1. U1 logout.
+2. U2 login không bấm link.
+3. đặt.
+
+**Kết quả mong đợi:** Không chuyển referral cá nhân/cache riêng của U1 sang U2.
+
+**Đối chiếu nghiệp vụ/UI:** Không để ghi nhận cá nhân của khách trước tự sang khách sau. Tách phiên và định danh.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-CT15 — Client sửa ctvCode hoặc thời điểm link
+
+- **Truy vết:** CT15, mục 15. **Ưu tiên:** P0. **Lớp:** Logic + API + tích hợp báo cáo. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** G1000; không bằng chứng link A hợp lệ.
+
+**Bước thực hiện:**
+
+1. Sửa ctvCode, timestamp và scope trong request.
+2. đặt.
+
+**Kết quả mong đợi:** Không cấp hoa hồng giả; dữ liệu giả bị từ chối/bỏ theo hợp đồng, có dấu vết xử lý.
+
+**Đối chiếu nghiệp vụ/UI:** Backend từ chối bằng chứng không hợp lệ. Log sự kiện an toàn, không tin dữ liệu tự khai.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-CT16 — Admin đổi tỷ lệ từ 5% lên 7% sau chốt
+
+- **Truy vết:** CT16, mục 15. **Ưu tiên:** P0. **Lớp:** Logic + API + tích hợp báo cáo. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** G1000 chốt A 5%; sau đó config A 7%.
+
+**Bước thực hiện:**
+
+1. Sửa tỷ lệ.
+2. hoàn tất đơn cũ.
+3. tạo đơn mới hợp lệ không giảm.
+
+**Kết quả mong đợi:** Cũ 50.000đ; mới 70.000đ; không tính lại cũ thành 70.000đ.
+
+**Đối chiếu nghiệp vụ/UI:** Đơn cũ dùng tỷ lệ 5% đã lưu; đơn mới theo chính sách mới. Hiển thị tỷ lệ và nguồn tại đơn.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-CT17 — Lượt giới thiệu hết hạn sau khi đã chốt đơn
+
+- **Truy vết:** CT17, mục 15. **Ưu tiên:** P0. **Lớp:** Logic + API + tích hợp báo cáo. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Đơn chốt A trong hạn; giao khi referral đã hết hạn.
+- **Điểm chặn:** duyệt chính sách hoặc khả năng tích hợp tương ứng ở mục 14/16 trước khi chấm Pass; chưa rõ thì Blocked.
+
+**Bước thực hiện:**
+
+1. Đẩy đồng hồ qua hạn link.
+2. giao thành công.
+
+**Kết quả mong đợi:** Giữ hoa hồng snapshot; hết hạn link không hủy đơn đã ghi nhận.
+
+**Đối chiếu nghiệp vụ/UI:** Giữ CTV của đơn; không mất hoa hồng chỉ vì giao hàng muộn. Thời điểm chốt làm căn cứ.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-CT18 — Hai tab có link CTV khác nhau, khách đặt từ một tab
+
+- **Truy vết:** CT18, mục 15. **Ưu tiên:** P0. **Lớp:** Logic + API + tích hợp báo cáo. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Hai tab có A/B cùng phạm vi; cố ý trì hoãn response A.
+- **Điểm chặn:** duyệt chính sách hoặc khả năng tích hợp tương ứng ở mục 14/16 trước khi chấm Pass; chưa rõ thì Blocked.
+
+**Bước thực hiện:**
+
+1. Ghi nhận A rồi B ở server.
+2. cho response A về muộn.
+3. đặt.
+
+**Kết quả mong đợi:** Chọn B theo thứ tự server đã ghi, không theo response cuối trình duyệt.
+
+**Đối chiếu nghiệp vụ/UI:** Chọn theo bằng chứng hợp lệ server và chính sách thời điểm, không theo phản hồi mạng về cuối. Lưu thứ tự sự kiện; kiểm thử tránh race.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-CT19 — Đơn dùng mã giảm sâu khiến lợi nhuận thấp
+
+- **Truy vết:** CT19, mục 15. **Ưu tiên:** P0. **Lớp:** Logic + API + tích hợp báo cáo. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** G1000 giảm 500.000đ hợp lệ; A 5%; biên lợi nhuận thấp.
+
+**Bước thực hiện:**
+
+1. Preview.
+2. chốt.
+3. admin xem lợi nhuận thấp sau đó.
+
+**Kết quả mong đợi:** Hoa hồng 25.000đ theo snapshot; không tự cắt còn 0.
+
+**Đối chiếu nghiệp vụ/UI:** Áp dụng tỷ lệ và cơ sở đã cấu hình trước; không tự cắt sau chốt. Admin preview tổng chi phí ưu đãi cộng hoa hồng.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-CT20 — Thanh toán đủ nhưng chưa giao
+
+- **Truy vết:** CT20, mục 15. **Ưu tiên:** P0. **Lớp:** Logic + API + tích hợp báo cáo. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** CT01 đã trả đủ, chưa giao.
+
+**Bước thực hiện:**
+
+1. Mở portal.
+2. thử yêu cầu chi nếu có API.
+
+**Kết quả mong đợi:** 45.000đ ở trạng thái chờ; chưa vào số có thể thanh toán.
+
+**Đối chiếu nghiệp vụ/UI:** Hoa hồng chờ hoàn tất, chưa chi. Tạm tính / Chờ đối soát / Được thanh toán / Đã chi.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+### Nhóm TT — Đặt đơn và thanh toán
+
+#### TC-TT01 — Nhấn đặt hàng hai lần/retry do mạng
+
+- **Truy vết:** TT01, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_NEW G800, khóa K1.
+
+**Bước thực hiện:**
+
+1. Gửi hai request đồng thời cùng K1 và retry sau mất response.
+
+**Kết quả mong đợi:** Cùng một đơn; một giữ 80.000đ; một công việc KV; không hai hoa hồng.
+
+**Đối chiếu nghiệp vụ/UI:** Cùng idempotency trả lại cùng đơn và lượt giữ. Không hai QR, hai lượt, hai hoa hồng.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-TT02 — Hai tab đặt hai đơn dùng quyền lần đầu
+
+- **Truy vết:** TT02, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_NEW G800, hai khóa K1/K2.
+
+**Bước thực hiện:**
+
+1. Dùng barrier gửi đồng thời.
+2. đợi hoàn tất.
+
+**Kết quả mong đợi:** Chỉ một quyền FIRST10; yêu cầu thua không tự tạo đơn giá cao hơn khi chưa xác nhận.
+
+**Đối chiếu nghiệp vụ/UI:** Chỉ một đơn giữ thành công bằng ràng buộc DB. Đơn còn lại nhận lý do và báo giá mới.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-TT03 — Hai khách tranh lượt cuối
+
+- **Truy vết:** TT03, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Hai khách mới, chương trình còn một lượt.
+
+**Bước thực hiện:**
+
+1. Gửi đồng thời request đặt hai khách.
+
+**Kết quả mong đợi:** Chỉ một giữ; tổng held+used không vượt một; khách thua có lý do.
+
+**Đối chiếu nghiệp vụ/UI:** Chỉ một khách giữ thành công. Khách còn lại xác nhận lại tổng, không tự thu cao hơn.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-TT04 — Còn ngân sách 50.000đ, ưu đãi dự kiến 80.000đ
+
+- **Truy vết:** TT04, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** G800 FIRST10, ngân sách còn 50.000đ.
+
+**Bước thực hiện:**
+
+1. Báo giá rồi đặt.
+
+**Kết quả mong đợi:** Không giữ 80.000đ, không tự cắt giảm thành 50.000đ; báo giá khác cần xác nhận.
+
+**Đối chiếu nghiệp vụ/UI:** Không áp dụng chương trình đó; không tự giảm xuống 50.000đ. Có thể chọn ưu đãi khác nếu hợp lệ.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-TT05 — Giữ lượt thành công nhưng lưu đơn lỗi
+
+- **Truy vết:** TT05, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** G800 FIRST10; điểm chèn lỗi sau giữ trước lưu đơn.
+
+**Bước thực hiện:**
+
+1. Gây lỗi.
+2. retry cùng khóa.
+3. chạy đối soát.
+
+**Kết quả mong đợi:** Hoặc một đơn hợp lệ với một giữ, hoặc không đơn và không giữ ròng; không kẹt ngân sách.
+
+**Đối chiếu nghiệp vụ/UI:** Rollback hoặc bù có kiểm soát; không treo quyền. Theo dõi lỗi, retry không tạo giữ mới.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-TT06 — Chuyển khoản đúng và trong hạn
+
+- **Truy vết:** TT06, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** K1 tổng 750.000đ, giữ 80.000đ.
+
+**Bước thực hiện:**
+
+1. Gửi sự kiện thu 750.000đ hợp lệ trước hạn.
+
+**Kết quả mong đợi:** Đã trả 750.000đ, còn thu 0; held chuyển used 80.000đ; CTV chưa được chi nếu chưa giao.
+
+**Đối chiếu nghiệp vụ/UI:** Chuyển giữ thành đã dùng, vẫn chờ giao để chi CTV. Tổng đã trả khớp số cần trả.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-TT07 — Chuyển khoản thiếu
+
+- **Truy vết:** TT07, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** K1 tổng 750.000đ.
+
+**Bước thực hiện:**
+
+1. Gửi thu 700.000đ.
+2. sau đó thêm 50.000đ giao dịch khác.
+
+**Kết quả mong đợi:** Sau lần 1 còn 50.000đ chưa đủ; sau lần 2 đủ 750.000đ, tiêu thụ một lượt.
+
+**Đối chiếu nghiệp vụ/UI:** Giữ trạng thái chưa đủ, tính số còn thiếu. Không tính là đã hoàn tất chỉ vì có giao dịch.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-TT08 — Chuyển khoản thừa
+
+- **Truy vết:** TT08, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** K1 tổng 750.000đ; A hưởng trên hàng sau giảm 720.000đ.
+
+**Bước thực hiện:**
+
+1. Gửi thu 800.000đ.
+
+**Kết quả mong đợi:** Dư 50.000đ có đối soát; CTV vẫn 36.000đ với 5%, không dựa 800.000đ.
+
+**Đối chiếu nghiệp vụ/UI:** Ghi dư và quy trình hoàn/đối soát riêng. Không tăng hoa hồng theo tiền khách chuyển thừa.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-TT09 — Hết hạn chưa nhận tiền
+
+- **Truy vết:** TT09, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** K1 chưa trả, hết hạn T1.
+
+**Bước thực hiện:**
+
+1. Chạy hết hạn hai lần.
+2. tạo báo giá mới.
+
+**Kết quả mong đợi:** Giải phóng 80.000đ một lần; K1 hết hạn; đơn mới theo phiên bản hiện hành.
+
+**Đối chiếu nghiệp vụ/UI:** Hủy/hết hạn theo quy trình, giải phóng một lần. Khách đặt lại được kiểm tra theo ưu đãi hiện hành.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-TT10 — Tiền tới sau hết hạn và quyền đã giải phóng
+
+- **Truy vết:** TT10, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** K1 đã hết hạn, quyền được đơn K2 giữ.
+
+**Bước thực hiện:**
+
+1. Gửi thu muộn cho K1.
+
+**Kết quả mong đợi:** Đưa đối soát; không tiêu thụ quyền đang thuộc K2 hoặc tự chi CTV.
+
+**Đối chiếu nghiệp vụ/UI:** Đối soát thủ công hoặc luồng khôi phục có kiểm tra. Không âm thầm tạo đơn giá cũ hoặc chi hoa hồng.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-TT11 — Webhook thanh toán bị gửi lặp
+
+- **Truy vết:** TT11, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** K1, giao dịch PAY1=750.000đ.
+
+**Bước thực hiện:**
+
+1. Gửi cùng PAY1 10 lần gồm song song.
+
+**Kết quả mong đợi:** Tổng đã trả 750.000đ; đúng một chuyển lượt; không 7,5 triệu.
+
+**Đối chiếu nghiệp vụ/UI:** Xử lý idempotent theo giao dịch. Không tăng tiền đã trả/tiêu thụ mã hai lần.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-TT12 — Webhook hủy và thanh toán đến sai thứ tự
+
+- **Truy vết:** TT12, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** K1; sự kiện hủy và thu tiền thực tế cùng thời điểm.
+
+**Bước thực hiện:**
+
+1. Chạy hai thứ tự và đồng thời trong ba lần reset.
+
+**Kết quả mong đợi:** Không mất ghi nhận tiền; trạng thái cần đối soát khi xung đột; không giải phóng rồi cấp trùng quyền.
+
+**Đối chiếu nghiệp vụ/UI:** Kiểm tra trạng thái và giao dịch thực tế; đưa tranh chấp vào đối soát. Không ghi “chưa trả” khi tiền đã nhận.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-TT13 — COD giao thành công
+
+- **Truy vết:** TT13, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** K1 COD tổng 750.000đ, giữ FIRST10.
+- **Điểm chặn:** duyệt chính sách hoặc khả năng tích hợp tương ứng ở mục 14/16 trước khi chấm Pass; chưa rõ thì Blocked.
+
+**Bước thực hiện:**
+
+1. Gửi giao thành công.
+2. gửi lại.
+3. đối soát thu hộ theo quy trình.
+
+**Kết quả mong đợi:** Tiêu thụ một lần; đủ điều kiện chi chỉ sau thời hạn đối soát đã duyệt.
+
+**Đối chiếu nghiệp vụ/UI:** Tiêu thụ lượt, ghi nhận thu tiền theo quy trình vận chuyển. Hoa hồng chờ hết thời gian đối soát.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-TT14 — COD từ chối nhận/giao thất bại kết thúc
+
+- **Truy vết:** TT14, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** K1 COD đang giao rồi hoàn về kết thúc chưa thành công.
+
+**Bước thực hiện:**
+
+1. Gửi thất bại kết thúc.
+2. chạy lại sự kiện.
+
+**Kết quả mong đợi:** Giải phóng một lần; hoa hồng về hủy; chi phí giao không tăng hoa hồng.
+
+**Đối chiếu nghiệp vụ/UI:** Hủy hoa hồng, giải phóng ưu đãi chưa thành công. Phí giao thất bại là khoản riêng theo chính sách.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-TT15 — Khách đổi COD sang chuyển khoản
+
+- **Truy vết:** TT15, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** K1 COD chưa thu, tổng 750.000đ.
+
+**Bước thực hiện:**
+
+1. Đổi Transfer.
+2. mở QR.
+3. thử retry đổi phương thức.
+
+**Kết quả mong đợi:** Cùng đơn/lượt; QR 750.000đ; không tạo đơn COD thứ hai.
+
+**Đối chiếu nghiệp vụ/UI:** Cập nhật cùng đơn, giữ cùng lượt; tạo QR đúng tiền còn phải thu. Không nhân đôi ưu đãi.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-TT16 — Có thanh toán một phần rồi yêu cầu hủy
+
+- **Truy vết:** TT16, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** K1 tổng 750.000đ, đã thu 200.000đ.
+
+**Bước thực hiện:**
+
+1. Yêu cầu hủy.
+2. xác nhận hoàn hợp lệ.
+3. retry.
+
+**Kết quả mong đợi:** Có khoản hoàn 200.000đ đúng một lần; không đóng như chưa từng nhận tiền.
+
+**Đối chiếu nghiệp vụ/UI:** Hoàn/đối soát tiền trước khi đóng trạng thái. Chỉ giải phóng quyền khi trạng thái giao dịch được xác định.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-TT17 — Đơn đã giữ trước giờ chương trình hết hạn
+
+- **Truy vết:** TT17, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** K1 tạo T1-1 phút, hạn thanh toán T1+9 phút.
+
+**Bước thực hiện:**
+
+1. Đợi qua T1.
+2. trả đủ trong hạn.
+3. khách khác tạo đơn mới.
+
+**Kết quả mong đợi:** K1 giữ giá cũ; đơn mới không nhận chương trình hết hạn.
+
+**Đối chiếu nghiệp vụ/UI:** Giữ giá trong hạn thanh toán đã hứa. Tạo đơn mới sau hết hạn không được hưởng.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-TT18 — Hệ thống khởi động lại sau giữ lượt
+
+- **Truy vết:** TT18, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Đã commit đơn/lượt nhưng tiến trình dừng trước response.
+
+**Bước thực hiện:**
+
+1. Khởi động lại.
+2. retry K1.
+3. chạy job đối soát.
+
+**Kết quả mong đợi:** Khôi phục một đơn/một giữ; không phụ thuộc dữ liệu RAM.
+
+**Đối chiếu nghiệp vụ/UI:** Khôi phục từ DB, tác vụ đối soát sửa giữ mồ côi. Không dựa vào bộ nhớ tiến trình.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+### Nhóm DH — Sửa, hủy, đổi và hoàn
+
+#### TC-DH01 — Shop bỏ món trước thanh toán làm rớt ngưỡng
+
+- **Truy vết:** DH01, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_OLD giỏ 1,2 triệu BIG100>=1 triệu chưa trả.
+
+**Bước thực hiện:**
+
+1. Shop bỏ món 300.000đ.
+2. gửi báo giá cuối.
+
+**Kết quả mong đợi:** Giảm về 0, tổng hàng 900.000đ; giải phóng giữ BIG100; khách xác nhận.
+
+**Đối chiếu nghiệp vụ/UI:** Báo giá lại, điều chỉnh lượt giữ/ngân sách nguyên tử. Tính lại hoa hồng tạm tính; khách xác nhận.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-DH02 — Shop thêm món sau khách đã trả
+
+- **Truy vết:** DH02, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Đơn đã trả đủ 900.000đ sau giảm.
+
+**Bước thực hiện:**
+
+1. Shop đề nghị thêm món 200.000đ không ưu đãi.
+2. khách xác nhận.
+
+**Kết quả mong đợi:** Tạo điều chỉnh cần thu 200.000đ; chứng từ cũ không bị ghi đè; không tự gán CTV món mới.
+
+**Đối chiếu nghiệp vụ/UI:** Lập thay đổi có chênh lệch cần thu; không ghi đè đơn đã trả. Không tự mở rộng phạm vi CTV cho món thêm.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-DH03 — Đổi sang món cùng giá trước thanh toán
+
+- **Truy vết:** DH03, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** X và Z cùng giá 600.000đ; X đủ ưu đãi/referral, Z không.
+
+**Bước thực hiện:**
+
+1. Đổi X→Z trước thanh toán.
+2. báo giá lại.
+
+**Kết quả mong đợi:** Không giữ giảm/referral của X trên Z chỉ vì bằng giá.
+
+**Đối chiếu nghiệp vụ/UI:** Kiểm tra phạm vi ưu đãi và CTV của món mới. Giá bằng nhau không có nghĩa điều kiện giống nhau.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-DH04 — Shop tự hết hàng sau chốt
+
+- **Truy vết:** DH04, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Đơn chốt; shop phát hiện thiếu hàng.
+- **Điểm chặn:** duyệt chính sách hoặc khả năng tích hợp tương ứng ở mục 14/16 trước khi chấm Pass; chưa rõ thì Blocked.
+
+**Bước thực hiện:**
+
+1. Đánh dấu thiếu.
+2. gửi phương án xử lý theo chính sách được duyệt.
+
+**Kết quả mong đợi:** Không tự thu thêm; lưu xác nhận khách và lý do; blocked phần tiền cụ thể nếu chính sách chưa chốt.
+
+**Đối chiếu nghiệp vụ/UI:** Đề xuất giữ quyền lợi đã cam kết trên phần giao được khi phù hợp, hoặc báo giá lại được khách đồng ý. Chính sách thiếu hàng do shop cần chốt; không tự truy thu.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-DH05 — Một đơn giao nhiều kiện
+
+- **Truy vết:** DH05, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** GXY giảm 100.000đ, giao hai kiện.
+
+**Bước thực hiện:**
+
+1. Gửi cập nhật từng kiện và lặp sự kiện.
+
+**Kết quả mong đợi:** Tổng giảm 100.000đ, một lượt; tổng hoa hồng 55.800đ, không nhân hai.
+
+**Đối chiếu nghiệp vụ/UI:** Một ưu đãi và một lượt sử dụng theo đơn gốc. Không tạo hoa hồng lặp theo kiện.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-DH06 — Tách một đơn thành nhiều đơn con
+
+- **Truy vết:** DH06, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** GXY đã chốt giảm 100.000đ.
+- **Điểm chặn:** duyệt chính sách hoặc khả năng tích hợp tương ứng ở mục 14/16 trước khi chấm Pass; chưa rõ thì Blocked.
+
+**Bước thực hiện:**
+
+1. Tách X/Y thành hai đơn con qua chức năng được hỗ trợ.
+
+**Kết quả mong đợi:** Giảm con 60.000/40.000đ, tổng 100.000đ; hoa hồng 27.000/28.800đ; không FIRST10 mới.
+
+**Đối chiếu nghiệp vụ/UI:** Phân bổ snapshot gốc, liên kết gốc/con, bảo toàn tổng. Đơn con không được tự nhận thêm ưu đãi lần đầu.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-DH07 — Gộp hai đơn đã chốt
+
+- **Truy vết:** DH07, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Hai đơn đã chốt độc lập.
+- **Điểm chặn:** duyệt chính sách hoặc khả năng tích hợp tương ứng ở mục 14/16 trước khi chấm Pass; chưa rõ thì Blocked.
+
+**Bước thực hiện:**
+
+1. Yêu cầu gộp.
+2. kiểm tra giao diện/API.
+
+**Kết quả mong đợi:** Không tự gộp nếu chưa hỗ trợ; nếu hỗ trợ phải bảo toàn chứng từ/lượt và có phương án duyệt.
+
+**Đối chiếu nghiệp vụ/UI:** Không tự gộp ưu đãi; xử lý điều chỉnh có kiểm soát. Tránh dùng hai lượt lần đầu cho một khách.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-DH08 — Hủy toàn bộ trước thành công
+
+- **Truy vết:** DH08, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** K1 G800 chưa trả và đang giữ.
+
+**Bước thực hiện:**
+
+1. Khách hủy.
+2. retry hủy.
+3. xem ledger.
+
+**Kết quả mong đợi:** Giữ 80.000đ giải phóng một lần, hoa hồng tạm hủy; không phiếu hoàn khi chưa thu.
+
+**Đối chiếu nghiệp vụ/UI:** Giải phóng lượt/ngân sách đủ điều kiện; hoàn tiền nếu có. Hủy hoa hồng tạm tính.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-DH09 — Hoàn toàn bộ sau giao thành công
+
+- **Truy vết:** DH09, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Đơn G1000 giảm 100.000đ, ship 0, đã trả/giao, CTV 45.000đ.
+
+**Bước thực hiện:**
+
+1. Hoàn toàn bộ.
+2. chạy sự kiện lặp.
+
+**Kết quả mong đợi:** Hoàn 900.000đ một lần; CTV đảo 45.000đ; lần đầu không cấp lại.
+
+**Đối chiếu nghiệp vụ/UI:** Hoàn phần thực trả theo chính sách; không cấp lại lần đầu. Void/điều chỉnh hoa hồng; ship xử lý riêng.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-DH10 — Hoàn X trong ví dụ mục 15.6
+
+- **Truy vết:** DH10, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** GXY đã trả/giao, giảm 100.000đ.
+
+**Bước thực hiện:**
+
+1. Hoàn riêng X.
+2. mở báo cáo A/B.
+
+**Kết quả mong đợi:** Hoàn 540.000đ; A giảm 27.000đ; B còn 28.800đ.
+
+**Đối chiếu nghiệp vụ/UI:** Hoàn tiền hàng X tối đa 540.000đ, không phải 600.000đ. Giảm hoa hồng A 27.000đ; B giữ 28.800đ.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-DH11 — Hoàn một trong nhiều đơn vị cùng dòng
+
+- **Truy vết:** DH11, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Một dòng 3 đơn vị giá 101đ, tổng 303đ; giảm 10%=30đ.
+
+**Bước thực hiện:**
+
+1. Hoàn từng đơn vị qua ba yêu cầu.
+2. thử yêu cầu thứ tư.
+
+**Kết quả mong đợi:** Theo phân bổ đều mỗi đơn vị net 91đ: tổng hoàn 273đ; lần 4 bị từ chối.
+
+**Đối chiếu nghiệp vụ/UI:** Phân bổ phần giảm theo đơn vị với quy tắc phần dư ổn định. Không để tổng nhiều lần hoàn vượt dòng gốc.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-DH12 — Hoàn làm tiền hàng còn lại thấp hơn ngưỡng
+
+- **Truy vết:** DH12, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** GXY sau giảm 900.000đ; ngưỡng gốc 1 triệu.
+
+**Bước thực hiện:**
+
+1. Hoàn X.
+2. kiểm tra giá Y giữ lại.
+
+**Kết quả mong đợi:** Hoàn 540.000đ; Y giữ net 360.000đ; không truy thu 40.000đ ưu đãi của Y.
+
+**Đối chiếu nghiệp vụ/UI:** Mặc định không tính lại giá món giữ; hoàn theo snapshot đã phân bổ. Nếu muốn thu hồi ưu đãi theo ngưỡng phải thiết kế chính sách riêng trước chạy.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-DH13 — Hoa hồng đã chi rồi mới hoàn
+
+- **Truy vết:** DH13, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** CT01 hoa hồng 45.000đ đã chi.
+- **Điểm chặn:** duyệt chính sách hoặc khả năng tích hợp tương ứng ở mục 14/16 trước khi chấm Pass; chưa rõ thì Blocked.
+
+**Bước thực hiện:**
+
+1. Hoàn toàn đơn.
+2. tạo kỳ kế tiếp.
+3. mở chứng từ gốc.
+
+**Kết quả mong đợi:** Điều chỉnh -45.000đ liên kết khoản chi; không xóa khoản đã chi.
+
+**Đối chiếu nghiệp vụ/UI:** Ghi điều chỉnh kỳ sau với liên kết đơn hoàn. Không xóa phiếu chi; nêu rõ khoản bị trừ.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-DH14 — Một yêu cầu hoàn được gửi lại nhiều lần
+
+- **Truy vết:** DH14, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** DH10 với mã hoàn R1.
+
+**Bước thực hiện:**
+
+1. Gửi R1 5 lần song song.
+2. tra tiền và CTV.
+
+**Kết quả mong đợi:** Chỉ hoàn 540.000đ và đảo 27.000đ một lần.
+
+**Đối chiếu nghiệp vụ/UI:** Duy nhất theo mã yêu cầu; kiểm tra số lượng còn hoàn được. Không hoàn tiền/thu hồi hoa hồng lặp.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-DH15 — Đổi hàng sau giao
+
+- **Truy vết:** DH15, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Đơn đã giao, khách đổi món giá trị khác.
+- **Điểm chặn:** duyệt chính sách hoặc khả năng tích hợp tương ứng ở mục 14/16 trước khi chấm Pass; chưa rõ thì Blocked.
+
+**Bước thực hiện:**
+
+1. Tạo yêu cầu đổi.
+2. xác nhận chênh lệch theo chính sách.
+
+**Kết quả mong đợi:** Có chứng từ trước/sau và phân bổ rõ; không dùng chương trình mới tự sửa giá cũ; blocked nếu quy tắc chưa chốt.
+
+**Đối chiếu nghiệp vụ/UI:** Ghi giao dịch đổi/hoàn và chênh lệch; không dùng ưu đãi mới để sửa giá cũ tùy tiện. Tính hoa hồng điều chỉnh theo hàng giữ/thay và chính sách đã chốt.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-DH16 — Tranh chấp tự mua/đơn giả sau giao
+
+- **Truy vết:** DH16, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Đơn nghi tự mua, đã giao chưa chi.
+- **Điểm chặn:** duyệt chính sách hoặc khả năng tích hợp tương ứng ở mục 14/16 trước khi chấm Pass; chưa rõ thì Blocked.
+
+**Bước thực hiện:**
+
+1. Mở tranh chấp.
+2. thử chi.
+3. admin kết luận có lý do.
+
+**Kết quả mong đợi:** Khoản liên quan bị giữ theo policy; không ảnh hưởng CTV khác; lịch sử người xử lý đầy đủ.
+
+**Đối chiếu nghiệp vụ/UI:** Tạm giữ phần hoa hồng cần xét duyệt; tiền khách theo quy trình riêng. Nhật ký kết luận, người xử lý và lý do.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+### Nhóm KV — Hợp đồng KiotViet
+
+#### TC-KV01 — Đợt và mã đọc được nhưng thiếu điều kiện
+
+- **Truy vết:** KV01, mục 15. **Ưu tiên:** P0. **Lớp:** Tích hợp hợp đồng nguồn + đối soát. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Mock/fixture đợt thiếu điều kiện hoặc schema mới.
+
+**Bước thực hiện:**
+
+1. Đồng bộ.
+2. xem admin.
+3. thử dùng checkout.
+
+**Kết quả mong đợi:** Chưa xác nhận khả dụng; không coi thiếu trường là miễn điều kiện.
+
+**Đối chiếu nghiệp vụ/UI:** Không mặc định là dùng tự do; xác minh trước áp dụng. Hiển thị chưa đủ thông tin.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-KV02 — Cache còn mã, POS vừa dùng xong
+
+- **Truy vết:** KV02, mục 15. **Ưu tiên:** P0. **Lớp:** Tích hợp hợp đồng nguồn + đối soát. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Cache voucher usable; nguồn KV đã used.
+
+**Bước thực hiện:**
+
+1. Khách áp dụng rồi xác nhận.
+
+**Kết quả mong đợi:** Nguồn từ chối; không ghi thanh toán thành công; giải thích và báo lại số còn thu.
+
+**Đối chiếu nghiệp vụ/UI:** Kiểm tra/tiêu thụ ở nguồn; chấp nhận nguồn từ chối. Không ghi nhận thành công chỉ vì cache báo còn.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-KV03 — Website và POS dùng cùng mã đồng thời
+
+- **Truy vết:** KV03, mục 15. **Ưu tiên:** P0. **Lớp:** Tích hợp hợp đồng nguồn + đối soát. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Một voucher khả dụng ở gian hàng thử, hai kênh POS/web.
+- **Điểm chặn:** duyệt chính sách hoặc khả năng tích hợp tương ứng ở mục 14/16 trước khi chấm Pass; chưa rõ thì Blocked.
+
+**Bước thực hiện:**
+
+1. Đồng thời xác nhận cùng mã trên hai kênh.
+
+**Kết quả mong đợi:** Tối đa một tiêu thụ ở nguồn; nếu không chứng minh được thì chặn phát hành tích hợp chung kênh.
+
+**Đối chiếu nghiệp vụ/UI:** Phụ thuộc bảo đảm chống dùng trùng của KiotViet; chưa kiểm chứng thì chưa mở. Khóa Aloha không bảo vệ được POS.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-KV04 — KiotViet nhận đơn nhưng trả lời timeout
+
+- **Truy vết:** KV04, mục 15. **Ưu tiên:** P0. **Lớp:** Tích hợp hợp đồng nguồn + đối soát. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Mock KV nhận request/ghi giao dịch rồi ngắt response.
+
+**Bước thực hiện:**
+
+1. Retry công việc.
+2. tra theo liên kết.
+
+**Kết quả mong đợi:** Một giao dịch nguồn; không dùng voucher lần hai; nếu chưa xác định thì chờ đối soát.
+
+**Đối chiếu nghiệp vụ/UI:** Tra cứu bằng liên kết ổn định trước retry. Không tạo hóa đơn hoặc tiêu thụ voucher lần hai.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-KV05 — KiotViet trả tổng khác web
+
+- **Truy vết:** KV05, mục 15. **Ưu tiên:** P0. **Lớp:** Tích hợp hợp đồng nguồn + đối soát. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Web tổng 930.000đ, KV cố ý trả 940.000đ.
+
+**Bước thực hiện:**
+
+1. Đồng bộ và yêu cầu QR/COD.
+
+**Kết quả mong đợi:** Báo lệch 10.000đ; không phát hành hướng dẫn thu sai; có dữ liệu đối soát.
+
+**Đối chiếu nghiệp vụ/UI:** Chặn bước xác nhận số tiền thanh toán, đối soát mapping. Ghi tiền dự kiến/thực tế/chênh lệch.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-KV06 — Đồng bộ ngược đơn có giảm toàn đơn
+
+- **Truy vết:** KV06, mục 15. **Ưu tiên:** P0. **Lớp:** Tích hợp hợp đồng nguồn + đối soát. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Đơn hàng 1 triệu, giảm đơn 100.000đ, ship 30.000đ.
+
+**Bước thực hiện:**
+
+1. Nhận đồng bộ KV hai lần.
+
+**Kết quả mong đợi:** Tổng vẫn 930.000đ, không thành 1.030.000đ; không giảm lặp xuống 830.000đ.
+
+**Đối chiếu nghiệp vụ/UI:** Đọc giảm đầy đủ, bảo toàn snapshot/đánh dấu thay đổi. Không cộng dòng và ship rồi bỏ giảm.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-KV07 — Nhân viên thêm giảm giá trên KiotViet
+
+- **Truy vết:** KV07, mục 15. **Ưu tiên:** P0. **Lớp:** Tích hợp hợp đồng nguồn + đối soát. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Đơn chưa trả rồi đơn đã trả; nhân viên thêm giảm 50.000đ ở KV.
+
+**Bước thực hiện:**
+
+1. Chạy riêng hai bộ và nhận đồng bộ.
+
+**Kết quả mong đợi:** Chưa trả yêu cầu báo giá/xác nhận mới; đã trả vào điều chỉnh; không tự cộng giảm web lần nữa.
+
+**Đối chiếu nghiệp vụ/UI:** Nhận diện thay đổi; xử lý theo trạng thái trả tiền. Không tự cộng chồng ưu đãi web lần nữa.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-KV08 — Mã voucher hết hạn giữa báo giá và xác nhận
+
+- **Truy vết:** KV08, mục 15. **Ưu tiên:** P0. **Lớp:** Tích hợp hợp đồng nguồn + đối soát. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Voucher hết hạn giữa quote và xác nhận.
+
+**Bước thực hiện:**
+
+1. Dừng đồng hồ tại hạn.
+2. xác nhận.
+
+**Kết quả mong đợi:** Không tiêu thụ hoặc ghi đã trả voucher; tổng mới phải được khách xác nhận.
+
+**Đối chiếu nghiệp vụ/UI:** Không tiêu thụ; báo tổng mới để khách quyết định. Không âm thầm thu phần thiếu.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-KV09 — Đã dùng voucher rồi hủy hóa đơn
+
+- **Truy vết:** KV09, mục 15. **Ưu tiên:** P0. **Lớp:** Tích hợp hợp đồng nguồn + đối soát. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Voucher đã dùng; hóa đơn nguồn bị hủy.
+- **Điểm chặn:** duyệt chính sách hoặc khả năng tích hợp tương ứng ở mục 14/16 trước khi chấm Pass; chưa rõ thì Blocked.
+
+**Bước thực hiện:**
+
+1. Đọc trạng thái nguồn sau hủy.
+2. đồng bộ lại.
+
+**Kết quả mong đợi:** Chỉ phản ánh trạng thái thực; chưa có hợp đồng khôi phục thì không hứa mã dùng lại.
+
+**Đối chiếu nghiệp vụ/UI:** Xác minh cơ chế hoàn mã của nguồn trước khi hứa khôi phục. Không tự sửa cache thành “chưa dùng”.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-KV10 — Voucher lớn hơn tiền còn cần thanh toán
+
+- **Truy vết:** KV10, mục 15. **Ưu tiên:** P0. **Lớp:** Tích hợp hợp đồng nguồn + đối soát. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Tiền còn thu 100.000đ, voucher mệnh giá 200.000đ.
+- **Điểm chặn:** duyệt chính sách hoặc khả năng tích hợp tương ứng ở mục 14/16 trước khi chấm Pass; chưa rõ thì Blocked.
+
+**Bước thực hiện:**
+
+1. Thử áp dụng trong sandbox.
+
+**Kết quả mong đợi:** Kết quả theo hợp đồng phần dư đã duyệt; không mặc định trả 100.000đ tiền mặt; blocked trước khi chốt.
+
+**Đối chiếu nghiệp vụ/UI:** Chỉ hỗ trợ sau khi chốt quy tắc dùng dư/số dư ở nguồn. Không tự trả phần dư bằng tiền mặt.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-KV11 — Đơn vừa giảm 100.000đ vừa trả voucher 200.000đ
+
+- **Truy vết:** KV11, mục 15. **Ưu tiên:** P0. **Lớp:** Tích hợp hợp đồng nguồn + đối soát. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Hàng 1 triệu, discount 100.000đ, voucher payment 200.000đ, ship 0, A 5%.
+
+**Bước thực hiện:**
+
+1. Xác nhận voucher.
+2. thu phần còn lại.
+3. đối soát.
+
+**Kết quả mong đợi:** Giá trị đơn 900.000đ; voucher trả 200.000đ; còn thu 700.000đ; A 45.000đ.
+
+**Đối chiếu nghiệp vụ/UI:** Hàng 1 triệu → giá trị sau giảm 900.000đ → còn trả 700.000đ, chưa tính ship. CTV 5% trên 900.000đ = 45.000đ nếu voucher là phương thức trả tiền.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-KV12 — Voucher được tặng để marketing thay vì bán
+
+- **Truy vết:** KV12, mục 15. **Ưu tiên:** P0. **Lớp:** Tích hợp hợp đồng nguồn + đối soát. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Voucher tặng 200.000đ, hàng 1 triệu, không discount.
+- **Điểm chặn:** duyệt chính sách hoặc khả năng tích hợp tương ứng ở mục 14/16 trước khi chấm Pass; chưa rõ thì Blocked.
+
+**Bước thực hiện:**
+
+1. Preview với chính sách hoa hồng được duyệt.
+
+**Kết quả mong đợi:** Không tự đổi voucher thành discount; số hoa hồng phụ thuộc policy tài trợ đã duyệt, ghi blocked nếu chưa có.
+
+**Đối chiếu nghiệp vụ/UI:** Cần chính sách tài trợ/hoa hồng riêng nếu shop muốn trừ chi phí đó. Không tự đồng nhất mọi voucher với giảm giá.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-KV13 — Hoàn đơn đã trả bằng tiền và voucher
+
+- **Truy vết:** KV13, mục 15. **Ưu tiên:** P0. **Lớp:** Tích hợp hợp đồng nguồn + đối soát. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** KV11 đã trả thêm tiền mặt/chuyển khoản 700.000đ.
+- **Điểm chặn:** duyệt chính sách hoặc khả năng tích hợp tương ứng ở mục 14/16 trước khi chấm Pass; chưa rõ thì Blocked.
+
+**Bước thực hiện:**
+
+1. Hoàn toàn bộ/hoàn một phần trong hai bộ thử.
+
+**Kết quả mong đợi:** Tổng giá trị hoàn không vượt đã trả; phân nguồn theo hợp đồng duyệt; không hoàn mặc định 900.000đ tiền mặt.
+
+**Đối chiếu nghiệp vụ/UI:** Phân bổ hoàn theo nguồn và khả năng API đã xác minh. Không hoàn hết bằng tiền mặt tùy tiện.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-KV14 — Token hết hạn/mạng lỗi khi kiểm tra mã
+
+- **Truy vết:** KV14, mục 15. **Ưu tiên:** P0. **Lớp:** Tích hợp hợp đồng nguồn + đối soát. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Token nguồn hết hạn, bộ lỗi mạng và bộ refresh thành công.
+
+**Bước thực hiện:**
+
+1. Kiểm tra mã.
+2. giả lập refresh/retry.
+
+**Kết quả mong đợi:** Retry hữu hạn; không thành công giả; không lộ credential trong response/log.
+
+**Đối chiếu nghiệp vụ/UI:** Retry xác thực phù hợp; trạng thái chờ, không thành công giả. Không lộ token hoặc lỗi kỹ thuật cho khách.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-KV15 — Ship vừa là dòng dịch vụ vừa là phí giao hàng
+
+- **Truy vết:** KV15, mục 15. **Ưu tiên:** P0. **Lớp:** Tích hợp hợp đồng nguồn + đối soát. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Hàng net 900.000đ, ship 30.000đ xuất hiện ở hai biểu diễn nguồn.
+
+**Bước thực hiện:**
+
+1. Mapping gửi/nhận.
+2. đối soát.
+
+**Kết quả mong đợi:** Tổng 930.000đ, không 960.000đ.
+
+**Đối chiếu nghiệp vụ/UI:** Mapping chỉ tính đúng một lần. Kiểm thử riêng đơn có/không ship.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-KV16 — Giảm dòng quantity > 1 khác ngữ nghĩa hai hệ thống
+
+- **Truy vết:** KV16, mục 15. **Ưu tiên:** P0. **Lớp:** Tích hợp hợp đồng nguồn + đối soát. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Một sản phẩm qty 3, giá 100.000đ, tổng giảm mong muốn 30.000đ.
+
+**Bước thực hiện:**
+
+1. Gửi theo adapter đã kiểm chứng.
+2. đọc lại tổng/chi tiết.
+
+**Kết quả mong đợi:** Tiền dòng 270.000đ; không 210.000đ hoặc 290.000đ vì nhầm đơn vị.
+
+**Đối chiếu nghiệp vụ/UI:** Kiểm chứng hợp đồng, chuyển đổi rõ đơn vị/toàn dòng. Không lấy tên discount làm bằng chứng công thức.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+### Nhóm AD — Quản trị
+
+#### TC-AD01 — Admin sửa 10% thành 15% khi khách đang checkout
+
+- **Truy vết:** AD01, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** G800 đã quote v1 10%, đơn khác đã chốt v1; v2=15% trần đủ.
+
+**Bước thực hiện:**
+
+1. Admin kích hoạt v2.
+2. đặt bằng quote v1.
+3. mở đơn cũ.
+
+**Kết quả mong đợi:** Giỏ mới giảm 120.000đ/tổng 710.000đ; đơn cũ giảm 80.000đ/tổng 750.000đ.
+
+**Đối chiếu nghiệp vụ/UI:** Giỏ chưa chốt báo giá lại; đơn chốt giữ snapshot. Khách xác nhận tổng thay đổi.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-AD02 — Admin tạm dừng chương trình đang có lượt giữ
+
+- **Truy vết:** AD02, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Một đơn giữ FIRST10 và một giỏ chưa chốt.
+
+**Bước thực hiện:**
+
+1. Dừng chương trình.
+2. hoàn tất đơn giữ.
+3. đặt giỏ mới.
+
+**Kết quả mong đợi:** Đơn giữ vẫn được hưởng trong hạn; giỏ mới không giữ thêm.
+
+**Đối chiếu nghiệp vụ/UI:** Ngăn lượt mới, giữ cam kết đơn cũ. Số đơn đang giữ và ảnh hưởng thao tác.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-AD03 — Hai admin lưu cùng chương trình
+
+- **Truy vết:** AD03, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Hai admin mở revision 1.
+
+**Bước thực hiện:**
+
+1. Admin A lưu.
+2. admin B lưu dữ liệu cũ.
+
+**Kết quả mong đợi:** A thành revision 2; B nhận xung đột, không ghi đè hoặc mất dữ liệu nhập.
+
+**Đối chiếu nghiệp vụ/UI:** Dùng revision, báo xung đột. So sánh thay đổi, không last-write-wins im lặng.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-AD04 — Giảm ngân sách thấp hơn đã dùng + đang giữ
+
+- **Truy vết:** AD04, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Ngân sách đã dùng 100.000đ, giữ 80.000đ.
+
+**Bước thực hiện:**
+
+1. Thử đặt tổng ngân sách 179.999đ rồi 180.000đ.
+
+**Kết quả mong đợi:** 179.999 bị từ chối; 180.000 được nếu chính sách cho bằng, còn khả dụng 0.
+
+**Đối chiếu nghiệp vụ/UI:** Từ chối cấu hình không hợp lệ. Nêu ngân sách tối thiểu hiện tại.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-AD05 — Admin xóa chương trình đã phát sinh giao dịch
+
+- **Truy vết:** AD05, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Chương trình có đơn và mã đã dùng.
+
+**Bước thực hiện:**
+
+1. Yêu cầu xóa qua UI/API.
+
+**Kết quả mong đợi:** Lưu trữ hoặc từ chối hard delete; đơn cũ đọc được snapshot/lịch sử.
+
+**Đối chiếu nghiệp vụ/UI:** Chuyển lưu trữ, giữ lịch sử. Không mất điều kiện cũ trên đơn.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-AD06 — Nhân bản chương trình đang chạy
+
+- **Truy vết:** AD06, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Chương trình active có mã và số lượt.
+
+**Bước thực hiện:**
+
+1. Nhân bản.
+2. kiểm tra list và checkout.
+
+**Kết quả mong đợi:** Bản mới draft, chưa giảm; không sao chép lượt đã dùng thành quyền hoạt động.
+
+**Đối chiếu nghiệp vụ/UI:** Tạo bản nháp với mã mới. Không vô tình chạy hai chương trình.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-AD07 — Tác vụ lên lịch bị trễ
+
+- **Truy vết:** AD07, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Chương trình [T0,T1), tác vụ lịch dừng.
+
+**Bước thực hiện:**
+
+1. Đặt ở T0 và T1 với đồng hồ server.
+
+**Kết quả mong đợi:** T0 cho phép; T1 từ chối dù nhãn job chưa cập nhật.
+
+**Đối chiếu nghiệp vụ/UI:** Backend vẫn kiểm tra thời gian mỗi lần tính. Trạng thái UI lấy từ thời gian thực.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-AD08 — Thiết bị khách sai giờ
+
+- **Truy vết:** AD08, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Thiết bị lệch +24h và -24h.
+
+**Bước thực hiện:**
+
+1. Báo giá cùng giỏ tại cùng giờ server.
+
+**Kết quả mong đợi:** Kết quả điều kiện thời gian giống nhau; hiển thị theo timezone cấu hình.
+
+**Đối chiếu nghiệp vụ/UI:** Dùng giờ server. Giờ hiển thị thống nhất Việt Nam.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-AD09 — Preview admin làm nhiều lần
+
+- **Truy vết:** AD09, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Counters ban đầu 0; preview G800 U_NEW.
+
+**Bước thực hiện:**
+
+1. Chạy preview 20 lần.
+2. đọc DB/jobs.
+
+**Kết quả mong đợi:** Counters vẫn 0; không đơn, công việc thu tiền hoặc ghi KV.
+
+**Đối chiếu nghiệp vụ/UI:** Không tăng lượt hoặc gọi API tạo giao dịch. Kết quả có dấu “Xem thử”.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-AD10 — Nhân viên chỉ có quyền xem gọi API sửa
+
+- **Truy vết:** AD10, mục 15. **Ưu tiên:** P0. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Tài khoản chỉ xem; có URL và ID chương trình.
+
+**Bước thực hiện:**
+
+1. Gửi trực tiếp create/update/activate/export không được cấp.
+
+**Kết quả mong đợi:** Backend từ chối, dữ liệu không đổi; quyền export kiểm tra riêng.
+
+**Đối chiếu nghiệp vụ/UI:** Backend từ chối. Kiểm thử quyền trực tiếp qua API.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-AD11 — Banner còn mã nhưng chương trình đã dừng
+
+- **Truy vết:** AD11, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Banner trỏ chương trình active, sau đó pause.
+
+**Bước thực hiện:**
+
+1. Dừng.
+2. nhận SSE hoặc refetch.
+3. mở banner ở cache cũ.
+
+**Kết quả mong đợi:** Không hứa dùng được; checkout server vẫn từ chối lượt mới.
+
+**Đối chiếu nghiệp vụ/UI:** Banner dùng trạng thái chương trình hoặc tự ẩn. Không để mã hiển thị tách rời hiệu lực.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-AD12 — Hoàn đơn làm báo cáo doanh thu giảm
+
+- **Truy vết:** AD12, mục 15. **Ưu tiên:** P1. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** GXY hoàn riêng X.
+
+**Bước thực hiện:**
+
+1. Xem báo cáo kỳ gốc và kỳ hoàn, lọc chương trình.
+
+**Kết quả mong đợi:** Doanh thu hàng sau giảm 900.000đ, hoàn 540.000đ, còn 360.000đ; lịch sử dùng không biến mất.
+
+**Đối chiếu nghiệp vụ/UI:** Ghi riêng hoàn, không xóa lượt lịch sử. Định nghĩa rõ doanh thu sau giảm và sau hoàn.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+### Nhóm UX — Trải nghiệm
+
+#### TC-UX01 — Giỏ thay đổi liên tục, phản hồi cũ về sau
+
+- **Truy vết:** UX01, mục 15. **Ưu tiên:** P1. **Lớp:** E2E giao diện. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Giỏ revision R1 rồi R2; API R1 chậm hơn.
+
+**Bước thực hiện:**
+
+1. Thay số lượng hai lần.
+2. cho R2 về trước R1.
+
+**Kết quả mong đợi:** Màn hình và request đặt dùng R2; R1 không ghi đè.
+
+**Đối chiếu nghiệp vụ/UI:** Chỉ hiển thị báo giá của revision mới nhất. Không nhảy ngược tổng tiền.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-UX02 — Mất mạng khi áp dụng mã
+
+- **Truy vết:** UX02, mục 15. **Ưu tiên:** P1. **Lớp:** E2E giao diện. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Nhập FIX100, mạng bị ngắt trước response.
+
+**Bước thực hiện:**
+
+1. Áp dụng.
+2. thử lại sau nối mạng.
+
+**Kết quả mong đợi:** Giữ nội dung nhập; không hiện đã áp dụng khi chưa rõ; không submit báo giá cũ.
+
+**Đối chiếu nghiệp vụ/UI:** Giữ đầu vào, báo lỗi, cho thử lại. Không báo đã áp dụng nếu chưa có kết quả.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-UX03 — Người dùng đóng/mở bảng chọn mã
+
+- **Truy vết:** UX03, mục 15. **Ưu tiên:** P1. **Lớp:** E2E giao diện. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** FIX100 đã xác nhận; trong panel chọn PRIVATE nhưng chưa xác nhận.
+
+**Bước thực hiện:**
+
+1. Đóng rồi mở lại panel.
+
+**Kết quả mong đợi:** FIX100 vẫn là lựa chọn xác nhận; PRIVATE chưa bị dùng/giữ.
+
+**Đối chiếu nghiệp vụ/UI:** Giữ lựa chọn đã xác nhận; thay đổi chưa xác nhận có thể hủy. Nút áp dụng/hủy rõ.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-UX04 — Mã không đủ ngưỡng
+
+- **Truy vết:** UX04, mục 15. **Ưu tiên:** P1. **Lớp:** E2E giao diện. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Giỏ nhóm E=800.000đ, ngoài E=400.000đ; ngưỡng E=1 triệu.
+
+**Bước thực hiện:**
+
+1. Mở mã.
+2. xem lời nhắc mua thêm.
+
+**Kết quả mong đợi:** Thiếu 200.000đ hàng E; không hiển thị đã đủ do tổng giỏ 1,2 triệu.
+
+**Đối chiếu nghiệp vụ/UI:** Hiển thị lý do và phần tiền thiếu của hàng hợp lệ. Không tính cả món ngoài phạm vi vào gợi ý.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-UX05 — Mã riêng của khách khác có trong URL chia sẻ
+
+- **Truy vết:** UX05, mục 15. **Ưu tiên:** P1. **Lớp:** E2E giao diện. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_OTHER mở link chứa PRIVATE của U_NEW.
+
+**Bước thực hiện:**
+
+1. Xem panel và network response.
+
+**Kết quả mong đợi:** Không tên/email/số điện thoại chủ mã; chỉ thông báo không hợp lệ theo quyền.
+
+**Đối chiếu nghiệp vụ/UI:** Không liệt kê thông tin cá nhân. Thông báo chung, có thể chọn mã công khai khác.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-UX06 — Khách dùng bàn phím/trình đọc màn hình
+
+- **Truy vết:** UX06, mục 15. **Ưu tiên:** P1. **Lớp:** E2E giao diện. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Bàn phím, trình đọc màn hình trong môi trường kiểm thử.
+
+**Bước thực hiện:**
+
+1. Tab mở thẻ.
+2. chọn mã.
+3. gây lỗi.
+4. Escape đóng.
+5. kiểm tra focus.
+
+**Kết quả mong đợi:** Không kẹt focus; nhãn/lỗi/tiền mới được thông báo; focus trở về nơi mở.
+
+**Đối chiếu nghiệp vụ/UI:** Focus đúng, nhãn rõ, đọc được tiền thay đổi. Không dùng màu đơn thuần để báo lỗi.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-UX07 — Mobile màn hình nhỏ, nhiều mã
+
+- **Truy vết:** UX07, mục 15. **Ưu tiên:** P1. **Lớp:** E2E giao diện. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Viewport 320/360/390px, 30 mã, bàn phím ảo bật.
+
+**Bước thực hiện:**
+
+1. Mở panel.
+2. nhập mã.
+3. cuộn.
+4. xác nhận.
+
+**Kết quả mong đợi:** Ô nhập/lỗi/nút tiếp cận được; không tràn trang; không chồng thanh đặt hàng.
+
+**Đối chiếu nghiệp vụ/UI:** Bảng cuộn, nút xác nhận luôn tiếp cận được. Không che tổng tiền hoặc nội dung điều kiện.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-UX08 — Không có chương trình nào
+
+- **Truy vết:** UX08, mục 15. **Ưu tiên:** P1. **Lớp:** E2E giao diện. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Không chương trình active.
+
+**Bước thực hiện:**
+
+1. Mở giỏ.
+2. đặt đơn giá thường.
+
+**Kết quả mong đợi:** Thông báo ngắn; không yêu cầu bắt buộc mã; tổng hàng+ship đúng.
+
+**Đối chiếu nghiệp vụ/UI:** Hiển thị ngắn, cho thanh toán tiếp. Không tạo cảm giác bắt buộc có mã.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+### Nhóm VH — Vận hành
+
+#### TC-VH01 — Tắt tính năng sau khi phát hiện lỗi
+
+- **Truy vết:** VH01, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Một đơn giữ và một giỏ mới; cờ tính năng đang bật.
+
+**Bước thực hiện:**
+
+1. Tắt cờ.
+2. thử hai luồng.
+
+**Kết quả mong đợi:** Ngăn lượt mới; đơn cũ vẫn đối soát/tiêu thụ/hoàn đúng.
+
+**Đối chiếu nghiệp vụ/UI:** Ngăn lượt mới, tiếp tục đối soát đơn cũ. Không xóa giữ lượt đang gắn thanh toán.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-VH02 — Tác vụ giải phóng chạy lại
+
+- **Truy vết:** VH02, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** K1 hết hạn có giữ 80.000đ.
+
+**Bước thực hiện:**
+
+1. Hai worker chạy giải phóng cùng lúc rồi chạy lại.
+
+**Kết quả mong đợi:** Ngân sách hoàn 80.000đ đúng một lần; sổ không có hai hiệu lực giải phóng.
+
+**Đối chiếu nghiệp vụ/UI:** Chuyển trạng thái có điều kiện, duy nhất. Không cộng ngân sách hai lần.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-VH03 — Log/báo cáo lỗi chứa mã riêng
+
+- **Truy vết:** VH03, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Lỗi có request chứa private code/token.
+
+**Bước thực hiện:**
+
+1. Gây lỗi.
+2. đọc log ứng dụng và export theo các quyền.
+
+**Kết quả mong đợi:** Che credential/mã riêng theo chính sách; còn correlation ID phục vụ điều tra.
+
+**Đối chiếu nghiệp vụ/UI:** Che dữ liệu nhạy cảm và giới hạn quyền xem. Giữ ID phục vụ điều tra thay cho toàn bộ mã.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+#### TC-VH04 — Số lượt tổng lệch với sổ giao dịch
+
+- **Truy vết:** VH04, mục 15. **Ưu tiên:** P0. **Lớp:** API + tích hợp DB + E2E. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Fixture counters lệch so với ledger một khoản 80.000đ.
+
+**Bước thực hiện:**
+
+1. Chạy báo cáo đối soát.
+2. thực hiện sửa được cấp quyền.
+
+**Kết quả mong đợi:** Phát hiện chênh lệch; sửa theo ledger có audit; không tăng hạn mức chương trình.
+
+**Đối chiếu nghiệp vụ/UI:** Rà soát sổ giữ/tiêu thụ/giải phóng, sửa có nhật ký. Không tự tăng hạn mức để che sai lệch.
+
+**Hậu kiểm:** kiểm tra các bất biến áp dụng tại mục 20.5; lưu bằng chứng theo mục 20.6. Không có thao tác thu/giữ trong case thì xác nhận counters không thay đổi ngoài dự kiến.
+
+## 22. Test case bổ sung cho rủi ro kỹ thuật và luồng xuyên suốt
+
+Các case dưới đây bổ sung các khoảng trống ngoài 142 tình huống mục 15. Chính sách và khả năng chưa duyệt vẫn áp dụng quy tắc Blocked; không được suy diễn kết quả tiền của bên thứ ba.
+
+### TC-SEC01 — IDOR khách xem đơn/lượt của người khác
+
+- **Truy vết:** mục 8–9, 19 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U1/U2 có đơn riêng.
+
+**Bước thực hiện:**
+
+1. U1 thay orderId/redemptionId thành của U2 trên GET/POST.
+2. thử tải chứng từ.
+
+**Kết quả mong đợi:** Từ chối theo hợp đồng 403/404; không trả payload riêng và không đổi dữ liệu U2.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-SEC02 — CTV đọc báo cáo CTV khác
+
+- **Truy vết:** mục 8–9, 19 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** A/B có hoa hồng riêng.
+
+**Bước thực hiện:**
+
+1. A sửa ctvId/query/export sang B.
+2. mở link chi tiết của B.
+
+**Kết quả mong đợi:** Chỉ dữ liệu A hoặc từ chối; không lọt dữ liệu B trong tổng/bảng/file.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-SEC03 — Phiên hết hạn giữa lúc lưu
+
+- **Truy vết:** mục 8–9, 19 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Admin đã mở form, token sau đó hết hạn.
+
+**Bước thực hiện:**
+
+1. Sửa form.
+2. gửi lưu.
+3. đăng nhập lại.
+
+**Kết quả mong đợi:** 401 theo hợp đồng; chưa lưu nhầm; giữ nháp UI an toàn để người dùng quyết định gửi lại; không tự kích hoạt.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-SEC04 — CSRF trên thao tác quản trị
+
+- **Truy vết:** mục 8–9, 19 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Môi trường xác thực cookie thực tế, origin khác.
+
+**Bước thực hiện:**
+
+1. Gửi thao tác pause/create từ origin không được phép theo cơ chế cookie đang dùng.
+
+**Kết quả mong đợi:** Bị chặn bởi bảo vệ hiện có/được thiết kế; không chỉ dựa vào ẩn nút hoặc CORS để bảo vệ mutation.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-SEC05 — XSS trong tên/mô tả chương trình
+
+- **Truy vết:** mục 8–9, 19 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Chuỗi thử chứa thẻ script, thuộc tính onerror và HTML.
+
+**Bước thực hiện:**
+
+1. Lưu qua API.
+2. xem shop/admin/CTV và export.
+
+**Kết quả mong đợi:** Hiển thị như nội dung an toàn hoặc từ chối; không thực thi script, không lấy cookie.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-SEC06 — NoSQL injection/ép kiểu
+
+- **Truy vết:** mục 8–9, 19 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Payload code chứa object $ne; percent là object; customerId mảng.
+
+**Bước thực hiện:**
+
+1. Gửi API preview/apply/create từng bộ.
+
+**Kết quả mong đợi:** Schema từ chối kiểu sai; không biến thành query mở rộng; không có giữ/ghi ngoài ý muốn.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-SEC07 — Sửa số tiền từ client
+
+- **Truy vết:** mục 8–9, 19 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** G800; thêm discount=999999,total=1,rate=100 vào request.
+
+**Bước thực hiện:**
+
+1. Gọi đặt đơn trực tiếp và qua trình duyệt.
+
+**Kết quả mong đợi:** Giá/giảm/CTV tính từ nguồn server; không chấp nhận total=1 hoặc rate giả.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-SEC08 — CSV formula injection
+
+- **Truy vết:** mục 8–9, 19 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Tên chương trình bắt đầu =,+,-,@ với biểu thức thử.
+
+**Bước thực hiện:**
+
+1. Xuất CSV.
+2. mở bằng bảng tính môi trường cách ly.
+
+**Kết quả mong đợi:** Nội dung người dùng không chạy như công thức; số tiền âm hợp lệ vẫn được xuất đúng kiểu.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-SEC09 — Rò cache khi đổi tài khoản
+
+- **Truy vết:** mục 8–9, 19 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U1 có PRIVATE và báo cáo riêng.
+
+**Bước thực hiện:**
+
+1. U1 logout.
+2. U2 login cùng trình duyệt.
+3. back/reload.
+4. kiểm tra query cache.
+
+**Kết quả mong đợi:** Không thấy mã hoặc báo cáo U1; query theo định danh; request server kiểm tra quyền.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-VAL01 — Giá trị phần trăm ngoài miền
+
+- **Truy vết:** mục 8–9, 19 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Admin form chương trình %.
+
+**Bước thực hiện:**
+
+1. Nhập -1,0,0.01,100,100.01 rồi gửi API tương ứng.
+
+**Kết quả mong đợi:** Chỉ miền >0 và <=100 hợp lệ theo độ chính xác được hỗ trợ; không NaN/Infinity; lỗi từng trường.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-VAL02 — VND/số lượng không nguyên hoặc quá lớn
+
+- **Truy vết:** mục 8–9, 19 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Form và API cấu hình.
+
+**Bước thực hiện:**
+
+1. Thử -1,0,1.5,chuỗi chữ,giá trị vượt Number.MAX_SAFE_INTEGER.
+
+**Kết quả mong đợi:** Từ chối ngoài miền VND nguyên/giới hạn đã chốt; không tràn hay âm; biên tối đa hỗ trợ phải có hợp đồng trước test.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-VAL03 — Ngày kết thúc bằng/trước bắt đầu
+
+- **Truy vết:** mục 8–9, 19 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Form nháp với T0.
+
+**Bước thực hiện:**
+
+1. Thử end=T0, end<T0, end>T0.
+
+**Kết quả mong đợi:** Hai trường hợp đầu không kích hoạt; cuối cho qua khi điều kiện khác đủ.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-VAL04 — Idempotency cùng khóa khác nội dung
+
+- **Truy vết:** mục 8–9, 19 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** K1 đã tạo cho G800.
+
+**Bước thực hiện:**
+
+1. Retry K1 với giỏ/khách/phương thức khác.
+
+**Kết quả mong đợi:** Không âm thầm tái sử dụng kết quả cho nội dung khác; xung đột được báo; không thêm đơn hoặc sửa đơn gốc.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-VAL05 — Điều kiện hàng vừa chọn vừa loại trừ
+
+- **Truy vết:** mục 8–9, 19 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** X thuộc nhóm E được chọn và danh sách loại trừ.
+
+**Bước thực hiện:**
+
+1. Preview rồi đặt chỉ X.
+2. sau đó X+Y hợp lệ.
+
+**Kết quả mong đợi:** Loại trừ thắng; X không góp ngưỡng/nhận giảm; kết quả đúng giải thích form.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-REL01 — Redis ngừng hoạt động lúc đặt
+
+- **Truy vết:** mục 8–9, 19 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Hai instance API, một lượt/ngân sách cuối.
+
+**Bước thực hiện:**
+
+1. Dừng Redis trong môi trường thử.
+2. gửi 20 yêu cầu đặt đồng thời.
+
+**Kết quả mong đợi:** Không vượt quyền/ngân sách; fallback MongoDB an toàn hoặc từ chối tạm; không mặc định cho qua.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-REL02 — Khóa Redis hết TTL giữa giao dịch
+
+- **Truy vết:** mục 8–9, 19 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Worker A đang xử lý, worker B chờ cùng khách.
+
+**Bước thực hiện:**
+
+1. Giữ A lâu hơn TTL.
+2. B lấy khóa.
+3. cho A tiếp tục.
+
+**Kết quả mong đợi:** DB vẫn ngăn hai hiệu lực; A không xóa khóa owner B; không âm thầm commit khi mất quyền cần thiết.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-REL03 — MongoDB lỗi giữa commit/response
+
+- **Truy vết:** mục 8–9, 19 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Fixture hỗ trợ lỗi kết nối/commit không rõ kết quả.
+
+**Bước thực hiện:**
+
+1. Gây lỗi.
+2. retry cùng khóa.
+3. chạy reconcile.
+
+**Kết quả mong đợi:** Tra cứu kết quả bền vững; không khẳng định thất bại để cấp lại quyền nếu commit đã xảy ra.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-REL04 — Worker bị dừng sau gọi KV trước ghi trạng thái
+
+- **Truy vết:** mục 8–9, 19 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Nguồn thử đã nhận giao dịch.
+
+**Bước thực hiện:**
+
+1. Dừng worker đúng điểm.
+2. restart.
+3. retry.
+
+**Kết quả mong đợi:** Tra giao dịch nguồn trước tạo lại; một giao dịch và một tiêu thụ; trạng thái local khớp sau đối soát.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-REL05 — SSE mất sự kiện hoặc gửi lặp
+
+- **Truy vết:** mục 8–9, 19 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Admin đổi chương trình khi shop/CTV mất stream.
+
+**Bước thực hiện:**
+
+1. Chặn stream.
+2. đổi.
+3. nối lại.
+4. refocus.
+5. gửi sự kiện trùng.
+
+**Kết quả mong đợi:** Refetch khôi phục; sự kiện không cộng tiền/counters; đặt đơn luôn kiểm tra server.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-REL06 — Phân trang dữ liệu nguồn nhiều trang
+
+- **Truy vết:** mục 8–9, 19 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Fixture 250 voucher, có trùng ở biên trang.
+
+**Bước thực hiện:**
+
+1. Đồng bộ đầy đủ rồi incremental.
+2. ngắt giữa trang.
+
+**Kết quả mong đợi:** Không thiếu hoặc tạo trùng ID; checkpoint an toàn; lần cập nhật chỉ hoàn tất khi đủ trang.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-REL07 — Schema nguồn thay đổi/status chưa biết
+
+- **Truy vết:** mục 8–9, 19 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Response KV thêm trường và status mới.
+
+**Bước thực hiện:**
+
+1. Đồng bộ.
+2. xem admin.
+3. thử dùng mã.
+
+**Kết quả mong đợi:** Trường thêm không làm sập; status không biết không coi là usable; cảnh báo có thể đối soát.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-REL08 — Backup/restore và công việc còn dang dở
+
+- **Truy vết:** mục 8–9, 19 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Snapshot môi trường thử chứa đơn/lượt/job đang xử lý.
+
+**Bước thực hiện:**
+
+1. Khôi phục DB thử.
+2. chạy reconcile và kiểm tra nguồn giao dịch.
+
+**Kết quả mong đợi:** Không phát lại thu/hoàn thiếu kiểm soát; xác định chênh lệch sau snapshot trước tiếp tục; ghi thời gian phục hồi.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-PER01 — Tải đồng thời trên bộ tính báo giá
+
+- **Truy vết:** mục 8–9, 19 và bất biến mục 20.5. **Ưu tiên:** P1. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Dữ liệu đại diện được duyệt: 50 dòng/giỏ, 100 chương trình, 50 client.
+
+**Bước thực hiện:**
+
+1. Chạy tải 10 phút.
+2. thu p50/p95/error và theo dõi tiền.
+
+**Kết quả mong đợi:** Không sai tiền hoặc ghi lượt khi quote; p95 mục tiêu thử <=1s cho xử lý quote không tính API ngoài, lỗi ngoài dự kiến <1%; duyệt lại mục tiêu theo hạ tầng.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-PER02 — Duyệt báo cáo lớn
+
+- **Truy vết:** mục 8–9, 19 và bất biến mục 20.5. **Ưu tiên:** P1. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** 10.000 lượt thử và bộ lọc có index.
+
+**Bước thực hiện:**
+
+1. Mở trang, đổi lọc, next/back, export quyền hợp lệ.
+
+**Kết quả mong đợi:** Phân trang server; không tải hết vào browser; tổng và trang khớp; đo latency/memory thay vì chỉ cảm nhận.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-UI01 — Tự giảm không cần bấm
+
+- **Truy vết:** mục 18 và bất biến mục 20.5. **Ưu tiên:** P1. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_NEW G800 FIRST10.
+
+**Bước thực hiện:**
+
+1. Không mở panel.
+2. đi giỏ→xác nhận→đặt.
+
+**Kết quả mong đợi:** Vẫn giảm 80.000đ; tổng 750.000đ; không bắt lưu/nhận mã.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-UI02 — Mã cá nhân tốt hơn nhưng chưa chọn
+
+- **Truy vết:** mục 18 và bất biến mục 20.5. **Ưu tiên:** P1. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Giỏ tự giảm 80.000đ, PRIVATE giảm 100.000đ.
+
+**Bước thực hiện:**
+
+1. Chỉ mở trang không chọn PRIVATE.
+2. sau đó chủ động chọn.
+
+**Kết quả mong đợi:** Trước chọn PRIVATE không bị giữ/dùng; sau chọn giảm 100.000đ nếu hợp lệ, tổng 730.000đ.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-UI03 — Responsive cả ba vai trò
+
+- **Truy vết:** mục 18 và bất biến mục 20.5. **Ưu tiên:** P1. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Fixture shop/admin/CTV có tên dài, tiền lớn.
+
+**Bước thực hiện:**
+
+1. Kiểm tra 320/360/390/768/1024/1440px, zoom 200%, xoay ngang.
+
+**Kết quả mong đợi:** Không tràn toàn trang, số tiền không cắt, nút không che; bảng chi tiết cuộn vùng có chỉ dẫn.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-UI04 — Xem trước là preview không phát hành
+
+- **Truy vết:** mục 18 và bất biến mục 20.5. **Ưu tiên:** P1. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Admin mẫu lần đầu chưa lưu.
+
+**Bước thực hiện:**
+
+1. Mở preview mobile/desktop.
+2. đóng.
+3. xem shop thật.
+
+**Kết quả mong đợi:** Chỉ preview; không active, mã/lượt/job mới; trạng thái nháp rõ.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-UI05 — Nháp chưa lưu và điều hướng
+
+- **Truy vết:** mục 18 và bất biến mục 20.5. **Ưu tiên:** P1. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Admin đã sửa form hợp lệ.
+
+**Bước thực hiện:**
+
+1. Bấm rời trang rồi chọn ở lại.
+2. lặp và bỏ thay đổi.
+
+**Kết quả mong đợi:** Ở lại giữ dữ liệu; bỏ hủy thay đổi chưa lưu; không auto activate.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-UI06 — Lọc báo cáo và quay lại
+
+- **Truy vết:** mục 18 và bất biến mục 20.5. **Ưu tiên:** P1. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** CTV lọc kỳ, trạng thái; admin lọc chương trình.
+
+**Bước thực hiện:**
+
+1. Mở chi tiết rồi back.
+2. refresh theo chính sách persist.
+
+**Kết quả mong đợi:** Giữ bộ lọc đúng người; không reset gây hiểu sai tổng; xóa lọc trả đúng phạm vi mặc định.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-E2E01 — Khách mới từ link đến CTV đủ điều kiện
+
+- **Truy vết:** mục 6–10, 15–16 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_NEW G1000 FIRST10 A 5%, ship 0.
+
+**Bước thực hiện:**
+
+1. Bấm link→checkout→đặt→trả 900.000đ→giao→qua thời gian đối soát.
+
+**Kết quả mong đợi:** Một đơn/ưu đãi 100.000đ; một hoa hồng 45.000đ; chỉ đủ chi ở bước cuối; KV khớp.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-E2E02 — Mua lại và đổi người giới thiệu
+
+- **Truy vết:** mục 6–10, 15–16 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_OLD sau E2E01; không ưu đãi; link B 8% hợp lệ.
+
+**Bước thực hiện:**
+
+1. Vào B→đặt G1000→giao thành công→đối soát.
+
+**Kết quả mong đợi:** Không FIRST10; B 80.000đ; đơn cũ A 45.000đ không đổi.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-E2E03 — Hoàn sau chi xuyên suốt
+
+- **Truy vết:** mục 6–10, 15–16 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** GXY đã chốt và chi A/B theo 15.6.
+
+**Bước thực hiện:**
+
+1. Hoàn X→đối soát KV→xem shop/admin/A/B→kỳ chi tiếp.
+
+**Kết quả mong đợi:** Khách hoàn 540.000đ; A điều chỉnh -27.000đ; B không đổi 28.800đ; tổng báo cáo sau hoàn 360.000đ.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-E2E04 — Thay cấu hình khi đang xác nhận
+
+- **Truy vết:** mục 6–10, 15–16 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Khách G800 quote FIRST10 v1; admin sửa v2=15%.
+
+**Bước thực hiện:**
+
+1. Khách gửi quote cũ→xác nhận quote mới→đặt→trả tiền.
+
+**Kết quả mong đợi:** Giảm 120.000đ, tổng 710.000đ với ship 30.000đ; snapshot v2; không giữ v1 rồi cộng thêm v2.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-E2E05 — Lỗi mạng và retry toàn luồng
+
+- **Truy vết:** mục 6–10, 15–16 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** G800, K1, nguồn KV thử.
+
+**Bước thực hiện:**
+
+1. Mất response sau lưu đơn/nguồn nhận→retry→thanh toán webhook lặp→restart.
+
+**Kết quả mong đợi:** Một đơn, một nguồn, một khoản trả 750.000đ, một lượt used 80.000đ; không giữ mồ côi.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-E2E06 — Lần đầu thành công dùng ưu đãi khác
+
+- **Truy vết:** mục 6–10, 15–16 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_NEW G1000, mã FIX150 được chọn, FIRST10 vẫn tồn tại.
+
+**Bước thực hiện:**
+
+1. Đặt giảm 150.000đ→trả 850.000đ→tạo giỏ G800 mới.
+
+**Kết quả mong đợi:** Lần mua sau không đủ FIRST10 dù chưa từng dùng mã đó; quyền khách mới dựa lịch sử mua thành công.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-E2E07 — Khách tắt ưu đãi nhưng mua thành công
+
+- **Truy vết:** mục 6–10, 15–16 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** U_NEW G800.
+
+**Bước thực hiện:**
+
+1. Chọn không dùng ưu đãi→trả 830.000đ→mua lại.
+
+**Kết quả mong đợi:** Đơn đầu giảm 0; lần sau không được FIRST10; trạng thái không ưu đãi được tôn trọng.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-SEC10 — Webhook thanh toán không xác thực
+
+- **Truy vết:** mục 8–9, 19 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Payload giả giống PAY1, thiếu/sai xác thực theo tích hợp hiện có.
+
+**Bước thực hiện:**
+
+1. Gửi vào endpoint công khai.
+2. thử payload sửa số tiền trên sự kiện hợp lệ.
+
+**Kết quả mong đợi:** Không cập nhật paid/used/hoa hồng từ sự kiện không hợp lệ; có log không lộ secret.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-VAL06 — Giỏ rỗng, quantity âm/0/lẻ vượt quy tắc
+
+- **Truy vết:** mục 8–9, 19 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Gửi cart rỗng và từng bộ quantity sai trực tiếp API.
+
+**Bước thực hiện:**
+
+1. Quote rồi đặt từng payload.
+
+**Kết quả mong đợi:** Từ chối theo schema hàng; không đơn, giữ lượt hay tổng âm; loại hàng cho số lượng lẻ phải có hợp đồng riêng.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-REL09 — Thu hồi quyền admin khi form đang mở
+
+- **Truy vết:** mục 8–9, 19 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Admin có quyền sửa mở form, sau đó bị thu hồi quyền.
+
+**Bước thực hiện:**
+
+1. Gửi lưu/kích hoạt bằng phiên cũ.
+
+**Kết quả mong đợi:** Backend kiểm tra quyền còn hiệu lực theo cơ chế đã thiết kế, không chỉ UI; thay đổi bị từ chối và có audit.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-UI07 — CTV hiểu số tiền được chi
+
+- **Truy vết:** mục 18 và bất biến mục 20.5. **Ưu tiên:** P1. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Fixture 45.000đ tạm, 30.000đ đủ chi, 20.000đ đã chi, -5.000đ điều chỉnh.
+
+**Bước thực hiện:**
+
+1. Mở overview→chi tiết→thanh toán.
+2. kiểm tra tổng từng nhóm.
+
+**Kết quả mong đợi:** Các nhóm có định nghĩa, không cộng tất cả thành tiền có thể rút; khoản âm liên kết nguồn; số được yêu cầu đúng chính sách kỳ chi.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+### TC-REL10 — Backfill lịch sử và đơn cũ chưa có snapshot
+
+- **Truy vết:** mục 8–9, 19 và bất biến mục 20.5. **Ưu tiên:** P0. **Trạng thái:** Not run.
+- **Tiền điều kiện/dữ liệu:** Fixture đơn trước tính năng không discount snapshot.
+
+**Bước thực hiện:**
+
+1. Bật feature flag thử→đọc/sync/hoàn đơn cũ→rollback flag.
+
+**Kết quả mong đợi:** Không tự áp chương trình mới cho đơn cũ; mapping mặc định có kiểm chứng; lịch sử không mất và không cấp lại lần đầu sai.
+
+**Hậu kiểm/bằng chứng:** lưu theo mục 20.6; reset fixture và gỡ mọi điểm chèn lỗi. Ca không được phép ghi phải chứng minh DB/nguồn không đổi.
+
+## 23. Bộ chạy, báo lỗi và điều kiện phát hành
+
+### 23.1. Bộ chạy theo rủi ro
+
+| Bộ | Test bắt buộc | Khi chạy |
+|---|---|---|
+| Smoke | KH01, KH03, GH08, CT01, TT01, TT06, AD09, UI01, SEC01 | Mỗi build đủ điều kiện thử |
+| Tính tiền/hoàn/CTV | Toàn bộ GH, CT, DH; KV05, KV06, KV11, KV15, KV16 | Khi đổi giá, discount, mapping hoặc commission |
+| Cạnh tranh/khôi phục | TT01–TT05, TT10–TT12, TT18, VH02, REL01–REL05 | Khi đổi DB, khóa, webhook, worker hoặc deployment nhiều instance |
+| Quyền và dữ liệu | Toàn bộ SEC, AD10, MA09, UX05, REL09 | Mỗi đợt phát hành liên quan xác thực/API |
+| Responsive và trải nghiệm | Toàn bộ UX, UI; ca người mới ở mục 18.10 | Khi đổi UI hoặc breakpoint |
+| KiotViet thật | Toàn bộ KV trong phạm vi; REL04, REL06, REL07 | Trước mở tích hợp và khi nguồn thay hợp đồng |
+| Hồi quy phát hành | Toàn bộ ca thuộc phạm vi phiên bản, gồm E2E01–E2E07 | Trước phát hành rộng |
+
+Test tham chiếu trong bảng dùng cùng tiền tố TC-. Không chạy ca ngoài phạm vi vào nguồn thật khi chưa có quyền/môi trường. Bộ smoke qua không thay thế toàn bộ hồi quy tài chính.
+
+### 23.2. Mẫu báo lỗi
+
+- Defect ID, Test ID, Run ID, tiêu đề với trigger và hành vi sai.
+- Build/commit, môi trường, policy version, tài khoản thử đã ẩn danh.
+- Tiền điều kiện, dữ liệu, bước tái hiện tối thiểu.
+- Expected / Actual riêng; ghi chênh lệch tiền cụ thể nếu có.
+- Severity, Priority, tần suất tái hiện, phạm vi ảnh hưởng.
+- Evidence và correlation ID, người phụ trách, trạng thái sửa/retest.
+- Kết quả retest cùng test và các test hồi quy liên quan; không đóng lỗi chỉ vì đã merge code.
+
+Ví dụ báo lỗi: “TC-KV06: đồng bộ đơn có giảm 100.000đ làm tổng tăng từ 930.000đ lên 1.030.000đ”. Gắn request nguồn, snapshot trước/sau và log; không chỉ ghi “voucher lỗi”.
+
+### 23.3. Điều kiện kết thúc kiểm thử
+
+1. Mọi yêu cầu trong phạm vi có ít nhất một test và kết quả chạy; 142 mã mục 15 không bị bỏ sót.
+2. 100% P0/P1 trong phạm vi đạt; mọi bộ dữ liệu biên trong một case đều đạt trước đánh dấu Pass.
+3. Không còn lỗi mở nghiêm trọng về sai tiền, thu/hoàn trùng, lộ dữ liệu, mất quyền và chi hoa hồng sai.
+4. Blocked do chính sách/API phải giải quyết hoặc chính thức loại chức năng khỏi phiên bản và tắt đường dùng; không chuyển thành Pass.
+5. Sai lệch đối soát ròng và giữ lượt mồ côi bằng 0 trong dữ liệu thử; ghi rõ thời hạn cho phép job bù hoàn tất theo cấu hình được duyệt.
+6. Các yêu cầu responsive, khả năng tiếp cận và người dùng lần đầu có bằng chứng; vấn đề ít nghiêm trọng còn lại có người nhận rủi ro.
+7. Typecheck/test/build phù hợp đã qua theo mục 19; số lượng Pass/Fail/Blocked/Not run/Out of scope báo cáo đầy đủ, không chỉ phần trăm trên các ca đã chạy.
+8. Diễn tập tắt tính năng và xử lý đơn đang giữ đạt; có giám sát chênh lệch tiền, lỗi source, retry và số dư bất thường.
+9. Chủ nghiệp vụ duyệt chính sách/UAT, người phụ trách kỹ thuật và QC xác nhận kết quả; đây là bước trước phát hành thật, không phải yêu cầu xin phép để viết tài liệu.
+
+### 23.4. Hạng mục cần cụ thể hóa trước viết automation
+
+- API path/schema và response code cuối cùng; tên collection/trường trạng thái thực tế.
+- Thời hạn link CTV, đối soát/chi, giữ đơn review-first, chính sách self-buy và thiếu hàng do shop.
+- Thuật toán làm tròn/phần dư, phạm vi thuế/phụ phí, tổng 0, hoàn theo nguồn voucher.
+- Ngưỡng rate limit, SLO và tải mục tiêu dựa hạ tầng; PER01 là mục tiêu thử đề xuất, chưa phải cam kết production.
+- Hợp đồng sandbox KiotViet, cách xác thực webhook và khả năng transaction MongoDB.
+- Cơ chế quan sát/khôi phục: metric, audit, correlation ID và thời hạn job bù.
+
+Trạng thái tài liệu: đã thiết kế test case, chưa viết test tự động, chưa thực thi, chưa chứng nhận chức năng đạt. Sau triển khai phải dùng kết quả thực tế để quyết định phát hành.
+
