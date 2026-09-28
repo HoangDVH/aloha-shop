@@ -46,7 +46,6 @@ import {
   type PromotionItem,
 } from "@/components/admin/promotions/PromotionFormModal";
 import { PromotionCodeModal } from "@/components/admin/promotions/PromotionCodeModal";
-import { PromotionPreviewModal } from "@/components/admin/promotions/PromotionPreviewModal";
 
 interface RedemptionLog {
   _id: string;
@@ -91,9 +90,6 @@ export default function AdminPromotionsPage() {
   // Modals state
   const [formOpen, setFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<PromotionItem | null>(null);
-
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewItem, setPreviewItem] = useState<PromotionItem | null>(null);
 
   const [codeModalOpen, setCodeModalOpen] = useState(false);
   const [codeModalItem, setCodeModalItem] = useState<PromotionItem | null>(null);
@@ -402,17 +398,6 @@ export default function AdminPromotionsPage() {
             />
           </Tooltip>
 
-          <Tooltip title="Mô phỏng tính tiền với giỏ mẫu">
-            <Button
-              size="small"
-              icon={<Eye size={13} />}
-              onClick={() => {
-                setPreviewItem(record);
-                setPreviewOpen(true);
-              }}
-            />
-          </Tooltip>
-
           {record.status === "active" ? (
             <Tooltip title="Tạm dừng áp dụng">
               <Button
@@ -616,28 +601,17 @@ export default function AdminPromotionsPage() {
         title="Ưu đãi & Voucher"
         description="Quản lý chính sách ưu đãi tự động, chiến dịch mã giảm giá và cơ chế phân bổ chiết khấu trên website Aloha."
         actions={
-          <Space>
-            <Button
-              icon={<Play size={14} className="text-emerald-700" />}
-              onClick={() => {
-                setPreviewItem(promotions[0] || null);
-                setPreviewOpen(true);
-              }}
-            >
-              Mô phỏng tính tiền
-            </Button>
-            <Button
-              type="primary"
-              className="bg-[var(--aloha-green)] hover:!bg-[var(--aloha-green-hover)]"
-              icon={<Plus size={15} />}
-              onClick={() => {
-                setEditingItem(null);
-                setFormOpen(true);
-              }}
-            >
-              Tạo ưu đãi mới
-            </Button>
-          </Space>
+          <Button
+            type="primary"
+            className="bg-[var(--aloha-green)] hover:!bg-[var(--aloha-green-hover)] font-bold"
+            icon={<Plus size={15} />}
+            onClick={() => {
+              setEditingItem(null);
+              setFormOpen(true);
+            }}
+          >
+            Tạo ưu đãi mới
+          </Button>
         }
       />
 
@@ -972,12 +946,6 @@ export default function AdminPromotionsPage() {
           setCodeModalOpen(true);
         }}
         editingItem={editingItem}
-      />
-
-      <PromotionPreviewModal
-        open={previewOpen}
-        onClose={() => setPreviewOpen(false)}
-        promotion={previewItem}
       />
 
       <PromotionCodeModal
