@@ -2,28 +2,14 @@
 
 import { useSearchParams, usePathname } from "next/navigation";
 import { useShopRouter } from "@/lib/useShopRouter";
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  SlidersHorizontal,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
-} from "lucide-react";
-import {
-  fetchCategoryTreeCached,
-  fetchProducts,
   fetchShopFacets,
-  formatVnd,
-  type ShopCategoryNavNode,
   type ShopFacets,
 } from "@/lib/api";
 import { clearAttrDvtParams } from "@/lib/parseShopFilters";
-import { CatalogFilterPanel } from "@/components/catalog/CatalogFilterPanel";
-import { CatalogSubcatBar } from "@/components/catalog/CatalogSubcatBar";
 import {
   PIN_CATALOG_KEY,
-  SORT_TOOLBAR,
   markPinCatalog,
   scrollToCatalog,
   leafLabel,
@@ -32,6 +18,16 @@ import {
   isCategoryCatalogPath,
   normalizeCatalogSort,
 } from "@/components/catalog/catalogLayoutUtils";
+import {
+  draftFromUrl,
+  useDraftPreviewTotal,
+  type DraftState,
+} from "@/components/catalog/draft";
+import { CatalogToolbar } from "@/components/catalog/CatalogToolbar";
+import { CatalogPagination } from "@/components/catalog/CatalogPagination";
+import { CatalogFilterModal } from "@/components/catalog/CatalogFilterModal";
+import { useCategoryScope } from "@/components/catalog/useCategoryScope";
+import { useActiveFilters } from "@/components/catalog/useActiveFilters";
 
 type Props = {
   total: number;
@@ -43,26 +39,6 @@ type Props = {
   filtersOnly?: boolean;
   hideFilters?: boolean;
 };
-
-type DraftState = {
-  nhoms: string[];
-  attrs: string[];
-  dvts: string[];
-  minPrice: string;
-  maxPrice: string;
-  inStock: boolean;
-};
-
-function draftFromUrl(sp: URLSearchParams, selectedNhoms: string[]): DraftState {
-  return {
-    nhoms: [...selectedNhoms],
-    attrs: sp.getAll("attr").filter(Boolean),
-    dvts: sp.getAll("dvt").filter(Boolean),
-    minPrice: sp.get("minPrice") || "",
-    maxPrice: sp.get("maxPrice") || "",
-    inStock: sp.get("inStock") === "1",
-  };
-}
 
 export function CatalogLayout({
   total,
@@ -82,10 +58,7 @@ export function CatalogLayout({
   const [facets, setFacets] = useState<ShopFacets>({ attributes: {}, dvt: [] });
   const [facetsLoading, setFacetsLoading] = useState(false);
   const [draft, setDraft] = useState<DraftState | null>(null);
-  const [draftTotal, setDraftTotal] = useState<number | null>(null);
-  const [draftTotalLoading, setDraftTotalLoading] = useState(false);
   const facetReqRef = useRef(0);
-  const draftCountRef = useRef(0);
   const FILTER_SHEET_KEY = "aloha_filter_sheet_open";
   const categoryLocked = isCategoryCatalogPath(pathname);
 
@@ -99,7 +72,6 @@ export function CatalogLayout({
     }
     if (!v) {
       setDraft(null);
-      setDraftTotal(null);
     }
   };
 
@@ -151,83 +123,13 @@ export function CatalogLayout({
   const inStock = sp.get("inStock") === "1";
   const sort = normalizeCatalogSort(sp.get("sort") || (homeMode ? "ban_chay" : null));
   const allProductsPage = !homeMode && pathname === "/tim";
-  const [categoryIdNhoms, setCategoryIdNhoms] = useState<string[]>([]);
-  /** Resolve categoryId từ /danh-muc/{slug} khi URL sạch không có ?categoryId= */
-  const [slugCategoryIds, setSlugCategoryIds] = useState<number[]>([]);
 
-  useEffect(() => {
-    if (!categoryLocked) {
-      setSlugCategoryIds([]);
-      return;
-    }
-    const m = pathname.match(/^\/danh-muc\/([^/?#]+)/);
-    if (!m) {
-      setSlugCategoryIds([]);
-      return;
-    }
-    let slug = m[1];
-    try {
-      slug = decodeURIComponent(slug);
-    } catch {
-      /* keep */
-    }
-    let cancelled = false;
-    void fetchCategoryTreeCached()
-      .then((items) => {
-        if (cancelled) return;
-        const want = slug.toLowerCase();
-        const find = (nodes: ShopCategoryNavNode[]): number | null => {
-          for (const n of nodes) {
-            if (String(n.slug || "").toLowerCase() === want) return Number(n.id) || null;
-            const hit = find(n.subs || []);
-            if (hit) return hit;
-          }
-          return null;
-        };
-        const id = find(items);
-        setSlugCategoryIds(id && id > 0 ? [id] : []);
-      })
-      .catch(() => {
-        if (!cancelled) setSlugCategoryIds([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [categoryLocked, pathname]);
-
-  const effectiveCategoryIds =
-    selectedCategoryIds.length > 0 ? selectedCategoryIds : slugCategoryIds;
-
-  useEffect(() => {
-    if (selectedNhoms.length || !effectiveCategoryIds.length) {
-      setCategoryIdNhoms([]);
-      return;
-    }
-    let cancelled = false;
-    void fetchCategoryTreeCached()
-      .then((items) => {
-        if (cancelled) return;
-        const want = new Set(effectiveCategoryIds);
-        const paths: string[] = [];
-        const walk = (nodes: ShopCategoryNavNode[]) => {
-          for (const n of nodes) {
-            const id = Number(n.id) || 0;
-            if (id > 0 && want.has(id) && n.path) paths.push(normPath(n.path));
-            if (n.subs?.length) walk(n.subs);
-          }
-        };
-        walk(items);
-        setCategoryIdNhoms([...new Set(paths.filter(Boolean))]);
-      })
-      .catch(() => {
-        if (!cancelled) setCategoryIdNhoms([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedNhoms.join("|"), effectiveCategoryIds.join(",")]);
-
-  const filterNhoms = selectedNhoms.length ? selectedNhoms : categoryIdNhoms;
+  const { effectiveCategoryIds, filterNhoms } = useCategoryScope(
+    pathname,
+    categoryLocked,
+    selectedNhoms,
+    selectedCategoryIds
+  );
 
   useEffect(() => {
     if (hideFilters) {
@@ -311,17 +213,6 @@ export function CatalogLayout({
     navigateQs(next);
   };
 
-  const toggleMulti = (key: "attr" | "dvt", value: string) => {
-    const next = new URLSearchParams(sp.toString());
-    const cur = next.getAll(key);
-    next.delete(key);
-    const has = cur.some((x) => x === value);
-    const rest = has ? cur.filter((x) => x !== value) : [...cur, value];
-    for (const v of rest) next.append(key, v);
-    next.delete("page");
-    navigateQs(next);
-  };
-
   const removeAttr = (value: string) => {
     const next = new URLSearchParams(sp.toString());
     const rest = next.getAll("attr").filter((x) => x !== value);
@@ -345,7 +236,6 @@ export function CatalogLayout({
     const next = new URLSearchParams((base || sp).toString());
     if (!categoryLocked) {
       next.delete("nhom");
-      // không xóa categoryId trên /tim nếu có (hiếm)
     }
     next.delete("minPrice");
     next.delete("maxPrice");
@@ -404,81 +294,18 @@ export function CatalogLayout({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // Preview total theo draft
-  useEffect(() => {
-    if (!open || !draft) return;
-    const reqId = ++draftCountRef.current;
-    const abortController = new AbortController();
-    setDraftTotalLoading(true);
-    const t = window.setTimeout(() => {
-      void (async () => {
-        try {
-          const res = await fetchProducts({
-            q: q || undefined,
-            nhom:
-              categoryLocked
-                ? selectedNhoms.length
-                  ? selectedNhoms
-                  : filterNhoms.length
-                    ? filterNhoms
-                    : undefined
-                : draft.nhoms.length
-                  ? draft.nhoms
-                  : undefined,
-            categoryId: effectiveCategoryIds.length ? effectiveCategoryIds : undefined,
-            attr: draft.attrs.length ? draft.attrs : undefined,
-            dvt: draft.dvts.length ? draft.dvts : undefined,
-            minPrice: draft.minPrice ? Number(draft.minPrice) : undefined,
-            maxPrice: draft.maxPrice ? Number(draft.maxPrice) : undefined,
-            inStock: draft.inStock || undefined,
-            badge: (badge || undefined) as
-              | "ban_chay_sap_het"
-              | "giam_gia"
-              | "dat_truoc"
-              | "moi"
-              | "noi_bat"
-              | "ban_chay"
-              | undefined,
-            maxTon: maxTon ? Number(maxTon) : undefined,
-            sort,
-            page: 1,
-            limit: 1,
-            signal: abortController.signal,
-          });
-          if (reqId !== draftCountRef.current) return;
-          setDraftTotal(res.total);
-        } catch (err: any) {
-          if (err?.name === "AbortError" || abortController.signal.aborted) {
-            return;
-          }
-          if (reqId !== draftCountRef.current) return;
-          setDraftTotal(null);
-        } finally {
-          if (reqId === draftCountRef.current) setDraftTotalLoading(false);
-        }
-      })();
-    }, 280);
-    return () => {
-      window.clearTimeout(t);
-      abortController.abort();
-    };
-  }, [
+  const { draftTotal, setDraftTotal, draftTotalLoading } = useDraftPreviewTotal({
     open,
-    draft?.nhoms.join("|"),
-    draft?.attrs.join("|"),
-    draft?.dvts.join("|"),
-    draft?.minPrice,
-    draft?.maxPrice,
-    draft?.inStock,
+    draft,
     q,
     badge,
     maxTon,
     sort,
     categoryLocked,
-    selectedNhoms.join("|"),
-    effectiveCategoryIds.join(","),
-    filterNhoms.join("|"),
-  ]);
+    selectedNhoms,
+    effectiveCategoryIds,
+    filterNhoms,
+  });
 
   const commitDraft = () => {
     if (!draft) {
@@ -544,7 +371,6 @@ export function CatalogLayout({
       if (t?.closest?.("[data-price-sort-menu]")) return;
       setPriceMenuOpen(false);
     };
-    // click (không mousedown) — tránh đóng ngay khi vừa mở
     const t = window.setTimeout(() => {
       document.addEventListener("click", onDoc);
     }, 0);
@@ -561,93 +387,19 @@ export function CatalogLayout({
         ? leafLabel(filterNhoms[0])
         : `${filterNhoms.length} nhóm hàng`;
 
-  const attrMap = useMemo(() => facets.attributes || {}, [facets]);
-
-  const secondaryFilterCount = useMemo(() => {
-    let n = 0;
-    if (!categoryLocked && selectedNhoms.length) n += selectedNhoms.length;
-    n += selectedAttrs.length;
-    n += selectedDvts.length;
-    if (minPrice || maxPrice) n += 1;
-    if (inStock) n += 1;
-    return n;
-  }, [
+  const { secondaryFilterCount, activeFilters } = useActiveFilters({
     categoryLocked,
-    selectedNhoms.length,
-    selectedAttrs.length,
-    selectedDvts.length,
-    minPrice,
-    maxPrice,
-    inStock,
-  ]);
-
-  const activeFilters = useMemo(() => {
-    const tags: { key: string; label: string; clear: () => void }[] = [];
-    // q / badge sticky — hiện chip nhưng không clear (hoặc clear q trên /tim sạch? plan: sticky)
-    if (!categoryLocked && selectedNhoms.length === 1) {
-      tags.push({
-        key: "nhom",
-        label: leafLabel(selectedNhoms[0]),
-        clear: () => pushNhoms([]),
-      });
-    } else if (!categoryLocked && selectedNhoms.length > 1) {
-      selectedNhoms.forEach((p, i) => {
-        tags.push({
-          key: `nhom-${i}`,
-          label: leafLabel(p),
-          clear: () => pushNhoms(selectedNhoms.filter((_, j) => j !== i)),
-        });
-      });
-    }
-    for (const a of selectedAttrs) {
-      const [name, ...rest] = a.split(":");
-      const v = rest.join(":") || a;
-      tags.push({
-        key: `attr-${a}`,
-        label: name && rest.length ? `${name}: ${v}` : a,
-        clear: () => removeAttr(a),
-      });
-    }
-    for (const d of selectedDvts) {
-      tags.push({
-        key: `dvt-${d}`,
-        label: `ĐVT: ${d}`,
-        clear: () => removeDvt(d),
-      });
-    }
-    if (minPrice || maxPrice) {
-      const minL = minPrice ? formatVnd(Number(minPrice) || 0) : "0đ";
-      const maxL = maxPrice ? formatVnd(Number(maxPrice) || 0) : "∞";
-      tags.push({
-        key: "price",
-        label: `Giá ${minL}–${maxL}`,
-        clear: () => pushParams({ minPrice: null, maxPrice: null }),
-      });
-    }
-    if (inStock) {
-      tags.push({ key: "stock", label: "Còn hàng", clear: () => pushParams({ inStock: null }) });
-    }
-    return tags;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    categoryLocked,
-    selectedNhoms.join("|"),
+    selectedNhoms,
     selectedAttrs,
     selectedDvts,
     minPrice,
     maxPrice,
     inStock,
-  ]);
-
-  const pageNums = useMemo(() => {
-    const maxBtn = 5;
-    let start = Math.max(1, page - Math.floor(maxBtn / 2));
-    let end = Math.min(pages, start + maxBtn - 1);
-    start = Math.max(1, end - maxBtn + 1);
-    const arr: number[] = [];
-    for (let i = start; i <= end; i++) arr.push(i);
-    return arr;
-  }, [page, pages]);
+    pushNhoms,
+    removeAttr,
+    removeDvt,
+    pushParams,
+  });
 
   const heading =
     title ||
@@ -661,58 +413,6 @@ export function CatalogLayout({
             : sort === "giam_gia"
               ? "Sản phẩm giảm giá"
               : "Tất cả sản phẩm"));
-
-  const activeDraft = draft;
-
-  const filterPanel =
-    activeDraft && open ? (
-      <CatalogFilterPanel
-        embedded
-        hideClearButton
-        selectedNhoms={categoryLocked ? filterNhoms : activeDraft.nhoms}
-        onNhomsChange={(paths) => {
-          if (categoryLocked) return;
-          setDraft((d) => (d ? { ...d, nhoms: paths.map(normPath).filter(Boolean), attrs: [], dvts: [] } : d));
-        }}
-        dvtItems={facets.dvt}
-        selectedDvts={activeDraft.dvts}
-        onToggleDvt={(k) =>
-          setDraft((d) => {
-            if (!d) return d;
-            const has = d.dvts.includes(k);
-            return { ...d, dvts: has ? d.dvts.filter((x) => x !== k) : [...d.dvts, k] };
-          })
-        }
-        attributes={attrMap}
-        selectedAttrs={activeDraft.attrs}
-        onToggleAttr={(token) =>
-          setDraft((d) => {
-            if (!d) return d;
-            const has = d.attrs.includes(token);
-            return { ...d, attrs: has ? d.attrs.filter((x) => x !== token) : [...d.attrs, token] };
-          })
-        }
-        facetsLoading={facetsLoading}
-        q={q}
-        homeMode={homeMode}
-        allProductsPage={allProductsPage}
-        hasCategoryScope={effectiveCategoryIds.length > 0 || categoryLocked}
-        lockCategory={categoryLocked}
-        categoryIds={effectiveCategoryIds}
-        categoryLockLabel={nhomTitle ? `Danh mục: ${nhomTitle}` : "Đang lọc trong danh mục này"}
-        minPrice={activeDraft.minPrice}
-        maxPrice={activeDraft.maxPrice}
-        onPricePreset={(min, max) =>
-          setDraft((d) => (d ? { ...d, minPrice: min, maxPrice: max || "" } : d))
-        }
-        onMinPriceBlur={(v) => setDraft((d) => (d ? { ...d, minPrice: v || "" } : d))}
-        onMaxPriceBlur={(v) => setDraft((d) => (d ? { ...d, maxPrice: v || "" } : d))}
-        inStock={activeDraft.inStock}
-        onInStockChange={(checked) => setDraft((d) => (d ? { ...d, inStock: checked } : d))}
-        onClearFilters={clearDraftSecondary}
-        onClose={closeFilterModal}
-      />
-    ) : null;
 
   if (hideFilters) {
     return (
@@ -741,188 +441,22 @@ export function CatalogLayout({
         </div>
       ) : null}
 
-      {/* Toolbar: Lọc + L1/L2/L3 (TGDĐ) · Sort */}
-      {!filtersOnly ? (
-        <div className="flex flex-col gap-2.5">
-          {categoryLocked || allProductsPage ? (
-            <CatalogSubcatBar
-              categoryIds={effectiveCategoryIds}
-              showRootL1={allProductsPage}
-              filterResultChips={
-                activeFilters.length ? (
-                  <>
-                    {activeFilters.map((t) => (
-                      <button
-                        key={t.key}
-                        type="button"
-                        onClick={t.clear}
-                        className="inline-flex h-9 max-w-[200px] shrink-0 items-center gap-1.5 truncate rounded-md border border-[var(--aloha-line)] bg-white px-2.5 text-xs font-semibold text-slate-700"
-                      >
-                        <span className="truncate">{t.label}</span>
-                        <X size={14} className="shrink-0 text-slate-400" />
-                      </button>
-                    ))}
-                  </>
-                ) : null
-              }
-              filterButton={
-                <button
-                  type="button"
-                  onClick={openFilterModal}
-                  className={`inline-flex h-10 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm font-bold transition ${
-                    secondaryFilterCount > 0
-                      ? "border-[var(--aloha-green)] bg-[var(--aloha-green-light)] text-[var(--aloha-green)]"
-                      : "rounded-xl border-stone-200 bg-white text-stone-700 hover:bg-stone-50 sm:rounded-md sm:border-[var(--aloha-green)] sm:text-[var(--aloha-green)]"
-                  }`}
-                >
-                  <span className="relative">
-                    <SlidersHorizontal size={16} />
-                    {secondaryFilterCount > 0 ? (
-                      <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-orange-500" />
-                    ) : null}
-                  </span>
-                  Lọc
-                </button>
-              }
-            />
-          ) : (
-            <div className="flex min-w-0 items-center gap-2">
-              <button
-                type="button"
-                onClick={openFilterModal}
-                className={`inline-flex h-10 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm font-bold transition ${
-                  secondaryFilterCount > 0
-                    ? "border-[var(--aloha-green)] bg-[var(--aloha-green)] text-white"
-                    : "rounded-xl border-stone-200 bg-white text-stone-700 hover:bg-stone-50 sm:rounded-md sm:border-[var(--aloha-green)] sm:text-[var(--aloha-green)]"
-                }`}
-              >
-                <SlidersHorizontal size={16} />
-                Lọc
-                {secondaryFilterCount > 0 ? (
-                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 px-1.5 text-[11px] font-black">
-                    {secondaryFilterCount}
-                  </span>
-                ) : null}
-              </button>
-              <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {activeFilters.map((t) => (
-                  <button
-                    key={t.key}
-                    type="button"
-                    onClick={t.clear}
-                    className="inline-flex h-10 max-w-[200px] shrink-0 items-center gap-1.5 truncate rounded-md border border-[var(--aloha-line)] bg-white px-3 text-xs font-semibold text-slate-700"
-                  >
-                    <span className="truncate">{t.label}</span>
-                    <X size={14} className="shrink-0 text-slate-400" />
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Sort — khoảng cách đều kiểu TGDĐ */}
-          <div className="-mx-4 border-y border-[#eee] bg-white sm:mx-0 sm:border-0 sm:bg-transparent">
-            <div className="flex w-full items-center justify-between gap-3 overflow-x-auto px-3 [scrollbar-width:none] sm:justify-start sm:gap-8 sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden">
-              <span className="hidden shrink-0 text-sm font-semibold text-slate-500 sm:inline">
-                Sắp xếp theo:
-              </span>
-              {SORT_TOOLBAR.map((o) => {
-                const isPrice = o.value === "price";
-                const active = isPrice
-                  ? sort === "price_asc" || sort === "price_desc"
-                  : sort === o.value;
-                return (
-                  <span key={o.value} className="inline-flex shrink-0 items-center">
-                    {isPrice ? (
-                      <div className="relative shrink-0" data-price-sort-menu>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onSortClick("price");
-                          }}
-                          className={`inline-flex h-10 items-center gap-0.5 px-1 text-[13px] transition sm:h-11 sm:px-0 sm:text-sm ${
-                            active || priceMenuOpen
-                              ? "font-bold text-[var(--aloha-green)]"
-                              : "font-medium text-[#444] hover:text-[var(--aloha-green)]"
-                          }`}
-                        >
-                          Giá
-                          <ChevronUp
-                            size={14}
-                            className={`transition ${priceMenuOpen ? "" : "rotate-180 opacity-70"}`}
-                          />
-                        </button>
-                        {priceMenuOpen ? (
-                          <div className="absolute right-0 top-full z-[60] mt-1 min-w-[168px] overflow-hidden rounded-2xl bg-white py-1.5 shadow-lg ring-1 ring-black/8">
-                            <button
-                              type="button"
-                              className={`block w-full px-4 py-2.5 text-left text-sm transition hover:bg-[var(--aloha-cream)] ${
-                                sort === "price_asc"
-                                  ? "font-bold text-[var(--aloha-green)]"
-                                  : "font-medium text-slate-600"
-                              }`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setPriceMenuOpen(false);
-                                pushParams({ sort: "price_asc", page: null });
-                              }}
-                            >
-                              Giá thấp - cao
-                            </button>
-                            <button
-                              type="button"
-                              className={`block w-full px-4 py-2.5 text-left text-sm transition hover:bg-[var(--aloha-cream)] ${
-                                sort === "price_desc"
-                                  ? "font-bold text-[var(--aloha-green)]"
-                                  : "font-medium text-slate-600"
-                              }`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setPriceMenuOpen(false);
-                                pushParams({ sort: "price_desc", page: null });
-                              }}
-                            >
-                              Giá cao - thấp
-                            </button>
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => onSortClick(o.value)}
-                        className={`inline-flex h-10 shrink-0 items-center px-1 text-[13px] transition sm:h-11 sm:px-0 sm:text-sm ${
-                          active
-                            ? "font-bold text-[var(--aloha-green)]"
-                            : "font-medium text-[#444] hover:text-[var(--aloha-green)]"
-                        }`}
-                      >
-                        {o.label}
-                      </button>
-                    )}
-                  </span>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="flex items-center">
-          <button
-            type="button"
-            onClick={openFilterModal}
-            className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-md border px-3.5 text-sm font-bold transition ${
-              secondaryFilterCount > 0
-                ? "border-[var(--aloha-green)] bg-[var(--aloha-green)] text-white"
-                : "border-[var(--aloha-green)] bg-white text-[var(--aloha-green)]"
-            }`}
-          >
-            <SlidersHorizontal size={16} />
-            Lọc
-          </button>
-        </div>
-      )}
+      <CatalogToolbar
+        filtersOnly={filtersOnly}
+        categoryLocked={categoryLocked}
+        allProductsPage={allProductsPage}
+        effectiveCategoryIds={effectiveCategoryIds}
+        activeFilters={activeFilters}
+        secondaryFilterCount={secondaryFilterCount}
+        onOpenFilterModal={openFilterModal}
+        sort={sort}
+        priceMenuOpen={priceMenuOpen}
+        onSortClick={onSortClick}
+        onSelectPriceSort={(val) => {
+          setPriceMenuOpen(false);
+          pushParams({ sort: val, page: null });
+        }}
+      />
 
       <div className="space-y-4">
         {!filtersOnly && total === 0 && secondaryFilterCount > 0 ? (
@@ -937,129 +471,37 @@ export function CatalogLayout({
             </button>
           </div>
         ) : null}
+
         {children}
 
-        {!filtersOnly && pages > 1 && (
-          <nav
-            className="flex flex-wrap items-center justify-center gap-1.5 pt-2"
-            aria-label="Phân trang"
-          >
-            <button
-              type="button"
-              disabled={page <= 1}
-              onClick={() => goPage(page - 1)}
-              className="inline-flex h-9 items-center gap-1 rounded-lg border border-[var(--aloha-line)] bg-white px-3 text-sm font-bold text-[var(--aloha-green)] disabled:opacity-40"
-            >
-              <ChevronLeft size={16} /> Trước
-            </button>
-            {pageNums[0] > 1 && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => goPage(1)}
-                  className="h-9 min-w-9 rounded-lg border border-[var(--aloha-line)] bg-white text-sm font-bold text-[var(--aloha-green)]"
-                >
-                  1
-                </button>
-                {pageNums[0] > 2 && <span className="px-1 text-slate-400">…</span>}
-              </>
-            )}
-            {pageNums.map((n) => (
-              <button
-                key={n}
-                type="button"
-                onClick={() => goPage(n)}
-                className={`h-9 min-w-9 rounded-lg text-sm font-bold ${
-                  n === page
-                    ? "bg-[var(--aloha-green)] text-white"
-                    : "border border-[var(--aloha-line)] bg-white text-[var(--aloha-green)]"
-                }`}
-              >
-                {n}
-              </button>
-            ))}
-            {pageNums[pageNums.length - 1] < pages && (
-              <>
-                {pageNums[pageNums.length - 1] < pages - 1 && (
-                  <span className="px-1 text-slate-400">…</span>
-                )}
-                <button
-                  type="button"
-                  onClick={() => goPage(pages)}
-                  className="h-9 min-w-9 rounded-lg border border-[var(--aloha-line)] bg-white text-sm font-bold text-[var(--aloha-green)]"
-                >
-                  {pages}
-                </button>
-              </>
-            )}
-            <button
-              type="button"
-              disabled={page >= pages}
-              onClick={() => goPage(page + 1)}
-              className="inline-flex h-9 items-center gap-1 rounded-lg border border-[var(--aloha-line)] bg-white px-3 text-sm font-bold text-[var(--aloha-green)] disabled:opacity-40"
-            >
-              Sau <ChevronRight size={16} />
-            </button>
-          </nav>
+        {!filtersOnly && (
+          <CatalogPagination
+            page={page}
+            pages={pages}
+            onPageChange={goPage}
+          />
         )}
       </div>
 
-      {/* Modal lọc — desktop + mobile */}
-      {open ? (
-        <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center sm:p-4">
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/45 backdrop-blur-[2px] transition-opacity"
-            aria-label="Đóng bộ lọc"
-            onClick={closeFilterModal}
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="catalog-filter-title"
-            className="relative z-10 flex max-h-[92vh] w-full max-w-3xl flex-col rounded-t-2xl bg-white shadow-2xl sm:max-h-[85vh] sm:rounded-2xl"
-          >
-            <div className="flex shrink-0 items-center justify-between border-b border-[var(--aloha-line)] px-4 py-3">
-              <h2
-                id="catalog-filter-title"
-                className="inline-flex items-center gap-2 text-base font-extrabold text-[var(--aloha-ink)]"
-              >
-                <SlidersHorizontal size={18} className="text-[var(--aloha-green)]" />
-                Bộ lọc
-              </h2>
-              <button
-                type="button"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 hover:bg-[var(--aloha-cream)]"
-                onClick={closeFilterModal}
-                aria-label="Đóng"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">{filterPanel}</div>
-            <div className="flex shrink-0 gap-2 border-t border-[var(--aloha-line)] bg-white px-4 pt-3 pb-[max(0.85rem,env(safe-area-inset-bottom))]">
-              <button
-                type="button"
-                onClick={clearDraftSecondary}
-                className="min-h-11 flex-1 rounded-full border border-[var(--aloha-line)] text-sm font-bold text-slate-600 transition hover:border-[var(--aloha-green)] hover:text-[var(--aloha-green)]"
-              >
-                Bỏ chọn
-              </button>
-              <button
-                type="button"
-                onClick={commitDraft}
-                className="min-h-11 flex-[1.4] rounded-full bg-[var(--aloha-green)] text-sm font-bold text-white shadow-sm transition hover:bg-[var(--aloha-green-hover)]"
-              >
-                {draftTotalLoading
-                  ? "Đang đếm…"
-                  : draftTotal != null
-                    ? `Xem ${draftTotal} kết quả`
-                    : "Xem kết quả"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <CatalogFilterModal
+        open={open}
+        onClose={closeFilterModal}
+        activeDraft={draft}
+        setDraft={setDraft}
+        facets={facets}
+        facetsLoading={facetsLoading}
+        filterNhoms={filterNhoms}
+        effectiveCategoryIds={effectiveCategoryIds}
+        categoryLocked={categoryLocked}
+        nhomTitle={nhomTitle}
+        q={q}
+        homeMode={homeMode}
+        allProductsPage={allProductsPage}
+        clearDraftSecondary={clearDraftSecondary}
+        onCommit={commitDraft}
+        draftTotalLoading={draftTotalLoading}
+        draftTotal={draftTotal}
+      />
     </div>
   );
 }
