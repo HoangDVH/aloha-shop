@@ -8,6 +8,9 @@ import type { Delivery } from "./checkoutTypes";
 type Props = {
   delivery: Delivery;
   total: number;
+  discount?: number;
+  appliedTitle?: string;
+  onOpenPromotion?: () => void;
   shippingFee: number;
   shippingLoading: boolean;
   grandTotal: number;
@@ -25,6 +28,9 @@ type Props = {
 export function CheckoutSummaryAside({
   delivery,
   total,
+  discount = 0,
+  appliedTitle,
+  onOpenPromotion,
   shippingFee,
   shippingLoading,
   grandTotal,
@@ -40,14 +46,34 @@ export function CheckoutSummaryAside({
     <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
       <button
         type="button"
-        onClick={() => window.alert("Ưu đãi sẽ sớm có — cảm ơn bạn đã chờ!")}
-        className="flex w-full items-center justify-between rounded-[var(--aloha-radius-lg)] bg-white px-4 py-3 shadow-[var(--aloha-shadow)] ring-1 ring-black/[0.04]"
+        onClick={onOpenPromotion}
+        className="flex w-full items-center justify-between rounded-[var(--aloha-radius-lg)] bg-white px-4 py-3 shadow-[var(--aloha-shadow)] ring-1 ring-black/[0.04] transition hover:bg-slate-50 cursor-pointer text-left"
       >
-        <span className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--aloha-ink)]">
-          <Ticket size={18} className="text-[var(--aloha-green)]" />
-          Ưu đãi
+        {discount > 0 ? (
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--aloha-green-light)] text-[var(--aloha-green)] shrink-0">
+              <Ticket size={18} />
+            </div>
+            <div>
+              <span className="text-sm font-bold text-[var(--aloha-ink)]">
+                Đã giảm {formatVnd(discount)}
+              </span>
+              {appliedTitle ? (
+                <span className="block text-[11px] text-[var(--aloha-green)] font-semibold truncate max-w-[200px]">
+                  {appliedTitle}
+                </span>
+              ) : null}
+            </div>
+          </div>
+        ) : (
+          <span className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--aloha-ink)]">
+            <Ticket size={18} className="text-[var(--aloha-green)]" />
+            Ưu đãi
+          </span>
+        )}
+        <span className="text-sm font-medium text-[var(--aloha-green)]">
+          {discount > 0 ? "Xem/Đổi ›" : "Nhập ưu đãi ›"}
         </span>
-        <span className="text-sm text-[var(--aloha-muted)]">Nhập ưu đãi ›</span>
       </button>
 
       {error ? (
@@ -76,6 +102,12 @@ export function CheckoutSummaryAside({
                     ? formatVnd(shippingFee)
                     : "—"}
               </span>
+            </div>
+          ) : null}
+          {discount > 0 ? (
+            <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold">
+              <span>Giảm giá ưu đãi</span>
+              <span className="tabular-nums">-{formatVnd(discount)}</span>
             </div>
           ) : null}
           <div className="border-t border-slate-200/90" />

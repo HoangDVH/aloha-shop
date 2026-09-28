@@ -36,6 +36,7 @@ import { registerShopSeoRedirectRoutes } from './shopSeo/redirects.js';
 import { registerShopAccountsAdminRoutes } from './shopAuth/adminRoutes.js';
 import { registerShopCommissionAdminRoutes } from './shopOrders/commissionAdminRoutes.js';
 import { registerShopOrdersAdminRoutes } from './shopOrders/adminRoutes.js';
+import { registerShopPromotionsRoutes } from './shopPromotions/index.js';
 import { registerShopAdminOpsRoutes } from './shopOrders/adminOpsStream.js';
 import { registerKvInvoiceWebhookRoutes } from './shopOrders/kvInvoiceWebhook.js';
 import { startKvDeliveryReconcile } from './shopOrders/kvDeliveryReconcile.js';
@@ -228,6 +229,7 @@ registerShopSeoRedirectRoutes(app, getOpsDb, getDb);
 registerShopAccountsAdminRoutes(app, getOpsDb, getDb);
 registerShopCommissionAdminRoutes(app, getOpsDb, getDb);
 registerShopOrdersAdminRoutes(app, getOpsDb, getDb);
+registerShopPromotionsRoutes(app, getOpsDb, getDb);
 registerShopAdminOpsRoutes(app, getOpsDb, getDb);
 /** KV: CK mark-paid + COD/CK delivery → shop orderStatus → HH khi hoan_thanh */
 registerKvInvoiceWebhookRoutes(app, getDb, getOpsDb);

@@ -13,6 +13,10 @@ import {
   cancelInvoiceForOrder,
   ensurePaidInvoice,
 } from "../shopInvoices/invoiceService.js";
+import {
+  markRedemptionUsed,
+  releasePromotionHold,
+} from "../shopPromotions/redemptionService.js";
 
 export type MarkPaidSource = "sepay" | "admin" | "kiotqr";
 
@@ -305,6 +309,8 @@ export async function markShopOrderPaid(opts: {
     ids: [String(order.code || code)],
   });
 
+  await markRedemptionUsed(opts.shopDb, String(order.code || code)).catch(() => 0);
+
   return { ok: true, order, shortfall: shortfall.length ? shortfall : undefined };
 }
 
@@ -355,6 +361,7 @@ export async function expireUnpaidShopOrders(
     .filter(Boolean);
   if (codes.length) {
     await releaseHoldsForExpiredOrders(shopDb, codes).catch(() => undefined);
+    await Promise.all(codes.map((c) => releasePromotionHold(shopDb, c).catch(() => undefined)));
   }
   if (r.modifiedCount > 0) {
     syncBus.publish(["shop_orders"], "shop-expire", { ids: codes });

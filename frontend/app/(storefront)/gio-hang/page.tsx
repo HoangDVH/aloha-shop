@@ -10,6 +10,8 @@ import { formatVnd } from "@/lib/api";
 import { formatVariantLabel } from "@/lib/cartVariant";
 import { useShopAuth } from "@/components/ShopAuthProvider";
 import { refreshCartPricesFromCatalog } from "@/lib/cartPriceRefresh";
+import { PromotionModal, type PromotionQuoteUI } from "@/components/checkout/PromotionModal";
+import { quotePromotions } from "@/lib/promotions";
 
 export default function CartPage() {
   const router = useShopRouter();
@@ -65,6 +67,45 @@ export default function CartPage() {
   const allSelected = lines.length > 0 && lines.every((l) => l.selected);
   const selectedQty = selectedLines.reduce((n, l) => n + l.qty, 0);
   const tamTinh = selectedLines.reduce((n, l) => n + l.gia * l.qty, 0);
+
+  const [promoModalOpen, setPromoModalOpen] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoAutoMode, setPromoAutoMode] = useState(true);
+  const [promoQuote, setPromoQuote] = useState<PromotionQuoteUI | null>(null);
+  const [promoLoading, setPromoLoading] = useState(false);
+
+  useEffect(() => {
+    if (!selectedLines.length) {
+      setPromoQuote(null);
+      return;
+    }
+    let cancelled = false;
+    setPromoLoading(true);
+    quotePromotions({
+      items: selectedLines.map((l) => ({
+        ma: l.ma,
+        ten: l.ten,
+        price: l.gia,
+        quantity: l.qty,
+      })),
+      selectedCode: promoCode,
+      autoMode: promoAutoMode,
+      phone: user?.phone || undefined,
+      email: user?.email || undefined,
+    })
+      .then((q) => {
+        if (!cancelled) setPromoQuote(q);
+      })
+      .finally(() => {
+        if (!cancelled) setPromoLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedLines, promoCode, promoAutoMode, user?.phone, user?.email]);
+
+  const discountAmount = promoQuote?.discountTotal || 0;
+  const tongSauGiam = Math.max(0, tamTinh - discountAmount);
 
   const handleCheckout = () => {
     if (selectedQty <= 0) return;
@@ -298,19 +339,34 @@ export default function CartPage() {
 
         {/* Cột phải — tóm tắt */}
         <aside className="space-y-3">
-          <div className="flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-[var(--aloha-line)]">
-            <span className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--aloha-ink)]">
-              <Ticket size={18} className="text-[var(--aloha-green)]" />
-              Ưu đãi
-            </span>
-            <button
-              type="button"
-              className="inline-flex items-center gap-1 text-sm text-slate-500"
-              title="Sắp có"
-            >
-              Nhập ưu đãi
+          <div
+            onClick={() => setPromoModalOpen(true)}
+            className="flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-[var(--aloha-line)] cursor-pointer hover:bg-slate-50 transition"
+          >
+            {discountAmount > 0 ? (
+              <div className="flex items-center gap-2">
+                <Ticket size={18} className="text-[var(--aloha-green)]" />
+                <div>
+                  <span className="text-sm font-bold text-[var(--aloha-ink)]">
+                    Đã giảm {formatVnd(discountAmount)}
+                  </span>
+                  {promoQuote?.applied?.title ? (
+                    <span className="block text-[11px] text-[var(--aloha-green)] font-semibold truncate max-w-[180px]">
+                      {promoQuote.applied.title}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            ) : (
+              <span className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--aloha-ink)]">
+                <Ticket size={18} className="text-[var(--aloha-green)]" />
+                Ưu đãi
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1 text-sm font-medium text-[var(--aloha-green)]">
+              {discountAmount > 0 ? "Xem/Đổi" : "Nhập ưu đãi"}
               <ChevronRight size={16} />
-            </button>
+            </span>
           </div>
 
           <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-[var(--aloha-line)]">
@@ -318,10 +374,16 @@ export default function CartPage() {
               <span>Tạm tính</span>
               <span>{formatVnd(tamTinh)}</span>
             </div>
+            {discountAmount > 0 ? (
+              <div className="flex items-center justify-between text-sm font-semibold text-[var(--aloha-price)] mt-1.5">
+                <span>Giảm giá ưu đãi</span>
+                <span>-{formatVnd(discountAmount)}</span>
+              </div>
+            ) : null}
             <div className="my-3 border-t border-[var(--aloha-line)]" />
             <div className="flex items-center justify-between">
               <span className="font-bold text-[var(--aloha-ink)]">Tổng tiền</span>
-              <span className="text-xl font-black text-[var(--aloha-price)]">{formatVnd(tamTinh)}</span>
+              <span className="text-xl font-black text-[var(--aloha-price)]">{formatVnd(tongSauGiam)}</span>
             </div>
             <button
               type="button"
@@ -355,8 +417,10 @@ export default function CartPage() {
               Tất cả
             </label>
             <div className="min-w-0 flex-1 text-right">
-              <p className="text-[11px] text-slate-500">Tổng ({selectedQty})</p>
-              <p className="truncate text-base font-black text-[var(--aloha-price)]">{formatVnd(tamTinh)}</p>
+              <p className="text-[11px] text-slate-500">
+                {discountAmount > 0 ? `Đã giảm ${formatVnd(discountAmount)}` : `Tổng (${selectedQty})`}
+              </p>
+              <p className="truncate text-base font-black text-[var(--aloha-price)]">{formatVnd(tongSauGiam)}</p>
             </div>
             <button
               type="button"
@@ -373,6 +437,28 @@ export default function CartPage() {
           </div>
         </div>
       ) : null}
+
+      <PromotionModal
+        open={promoModalOpen}
+        onClose={() => setPromoModalOpen(false)}
+        quote={promoQuote}
+        loading={promoLoading}
+        selectedCode={promoCode}
+        autoMode={promoAutoMode}
+        onApplyCode={(c) => {
+          setPromoCode(c);
+          setPromoAutoMode(false);
+        }}
+        onSelectAutoMode={() => {
+          setPromoCode("");
+          setPromoAutoMode(true);
+        }}
+        onRemoveDiscount={() => {
+          setPromoCode("");
+          setPromoAutoMode(false);
+          setPromoQuote(null);
+        }}
+      />
     </div>
   );
 }

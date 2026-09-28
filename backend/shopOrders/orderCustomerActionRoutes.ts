@@ -18,6 +18,7 @@ import {
   releaseShopStockHolds,
   shopStockHoldEnabled,
 } from "./stockHold.js";
+import { releasePromotionHold } from "../shopPromotions/redemptionService.js";
 import { expireUnpaidShopOrders } from "./markPaid.js";
 import {
   cancelInvoiceForOrder,
@@ -290,6 +291,7 @@ export function registerShopOrderCustomerActionRoutes(
           return res.status(400).json({ error: "Không hủy được (đã thanh toán hoặc không tồn tại)" });
         }
         await releaseShopStockHolds(db, String((doc as any).code || id)).catch(() => 0);
+        await releasePromotionHold(db, String((doc as any).code || id)).catch(() => 0);
         const invId = (doc as any).kvInvoiceId;
         if (invId != null && invId !== "" && !(doc as any).kvInvoiceCancelledAt) {
           try {

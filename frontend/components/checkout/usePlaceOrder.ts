@@ -57,6 +57,8 @@ type Args = {
   shippingQuote: ShippingQuote | null;
   shippingError: string;
   shippingFee: number;
+  promotionCode?: string;
+  promotionId?: string;
   note: string;
   user: ShopUserLike;
   replace: (href: string) => void;
@@ -86,6 +88,8 @@ export function usePlaceOrder({
   shippingQuote,
   shippingError,
   shippingFee,
+  promotionCode,
+  promotionId,
   note,
   user,
   replace,
@@ -260,6 +264,8 @@ export function usePlaceOrder({
           showShip && delivery === "giao_tan_noi"
             ? shippingQuote?.selected?.carrier
             : undefined,
+        promotionCode: promotionCode || undefined,
+        promotionId: promotionId || undefined,
         orderDetails: selected.map((l) => {
           const variant = formatVariantLabel(l);
           const lineNote = String(l.lineNote || "").trim();

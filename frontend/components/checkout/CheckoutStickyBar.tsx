@@ -6,6 +6,7 @@ import { formatVnd } from "@/lib/api";
 
 type Props = {
   total: number;
+  discount?: number;
   grandTotal: number;
   shippingFee?: number;
   showShipping?: boolean;
@@ -22,6 +23,7 @@ type Props = {
  */
 export function CheckoutStickyBar({
   total,
+  discount = 0,
   grandTotal,
   shippingFee = 0,
   showShipping = false,
@@ -50,6 +52,12 @@ export function CheckoutStickyBar({
               <span className="tabular-nums">
                 {shippingFee > 0 ? formatVnd(shippingFee) : "—"}
               </span>
+            </div>
+          ) : null}
+          {discount > 0 ? (
+            <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold">
+              <span>Giảm giá ưu đãi</span>
+              <span className="tabular-nums">-{formatVnd(discount)}</span>
             </div>
           ) : null}
           <div className="border-t border-slate-200/90" />

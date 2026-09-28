@@ -24,6 +24,8 @@ import { CheckoutLineItems } from "@/components/checkout/CheckoutLineItems";
 import { CheckoutShippingSection } from "@/components/checkout/CheckoutShippingSection";
 import { CheckoutStickyBar } from "@/components/checkout/CheckoutStickyBar";
 import { CheckoutSummaryAside } from "@/components/checkout/CheckoutSummaryAside";
+import { PromotionModal, type PromotionQuoteUI } from "@/components/checkout/PromotionModal";
+import { quotePromotions } from "@/lib/promotions";
 import { PreOrderCodConfirmModal } from "@/components/checkout/BackorderConfirmModal";
 import {
   EMPTY_DRAFT,
@@ -109,6 +111,12 @@ function CheckoutConfirm() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  const [promoModalOpen, setPromoModalOpen] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoAutoMode, setPromoAutoMode] = useState(true);
+  const [promoQuote, setPromoQuote] = useState<PromotionQuoteUI | null>(null);
+  const [promoLoading, setPromoLoading] = useState(false);
+
   useShopLoadingWhile(submitting);
 
   const [draft, setDraft] = useState<AddressDraft>(EMPTY_DRAFT);
@@ -130,6 +138,36 @@ function CheckoutConfirm() {
     });
   }, [cartMasKey]);
 
+  useEffect(() => {
+    if (!selected.length) {
+      setPromoQuote(null);
+      return;
+    }
+    let cancelled = false;
+    setPromoLoading(true);
+    quotePromotions({
+      items: selected.map((l) => ({
+        ma: l.ma,
+        ten: l.ten,
+        price: l.gia,
+        quantity: l.qty,
+      })),
+      selectedCode: promoCode,
+      autoMode: promoAutoMode,
+      phone: draft.phone || user?.phone || undefined,
+      email: user?.email || undefined,
+    })
+      .then((q) => {
+        if (!cancelled) setPromoQuote(q);
+      })
+      .finally(() => {
+        if (!cancelled) setPromoLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selected, promoCode, promoAutoMode, draft.phone, user?.phone, user?.email]);
+
   const {
     shippingQuote,
     shippingLoading,
@@ -147,8 +185,9 @@ function CheckoutConfirm() {
     enabled: showShip,
   });
 
+  const discountAmount = promoQuote?.discountTotal || 0;
   const effectiveShippingFee = showShip ? shippingFee : 0;
-  const grandTotal = total + effectiveShippingFee;
+  const grandTotal = Math.max(0, total - discountAmount) + effectiveShippingFee;
 
   useEffect(() => {
     if (authLoading) return;
@@ -229,6 +268,8 @@ function CheckoutConfirm() {
     shippingQuote,
     shippingError,
     shippingFee: effectiveShippingFee,
+    promotionCode: promoQuote?.applied?.code,
+    promotionId: promoQuote?.applied?.promotionId,
     note,
     user,
     replace: (href) => router.replace(href),
@@ -349,6 +390,9 @@ function CheckoutConfirm() {
           <CheckoutSummaryAside
             delivery={delivery}
             total={total}
+            discount={discountAmount}
+            appliedTitle={promoQuote?.applied?.title}
+            onOpenPromotion={() => setPromoModalOpen(true)}
             shippingFee={effectiveShippingFee}
             shippingLoading={shippingLoading}
             grandTotal={grandTotal}
@@ -398,6 +442,7 @@ function CheckoutConfirm() {
       {/* Ngoài khối animate — portal body để fixed không bị kéo theo cuộn */}
       <CheckoutStickyBar
         total={total}
+        discount={discountAmount}
         grandTotal={grandTotal}
         shippingFee={effectiveShippingFee}
         showShipping={showShip && delivery === "giao_tan_noi"}
@@ -405,6 +450,28 @@ function CheckoutConfirm() {
         submitting={submitting}
         orderBlockedReason={orderBlockedReason}
         onPlaceOrder={requestPlaceOrder}
+      />
+
+      <PromotionModal
+        open={promoModalOpen}
+        onClose={() => setPromoModalOpen(false)}
+        quote={promoQuote}
+        loading={promoLoading}
+        selectedCode={promoCode}
+        autoMode={promoAutoMode}
+        onApplyCode={(c) => {
+          setPromoCode(c);
+          setPromoAutoMode(false);
+        }}
+        onSelectAutoMode={() => {
+          setPromoCode("");
+          setPromoAutoMode(true);
+        }}
+        onRemoveDiscount={() => {
+          setPromoCode("");
+          setPromoAutoMode(false);
+          setPromoQuote(null);
+        }}
       />
     </>
   );

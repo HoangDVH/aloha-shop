@@ -14,6 +14,7 @@ import {
   Percent,
   Search,
   Shield,
+  Ticket,
   UserRound,
   Users,
 } from "lucide-react";
@@ -160,6 +161,13 @@ export function AdminSidebar() {
         >
           <Globe className="h-4 w-4 shrink-0 opacity-90" />
           Website bán hàng
+        </Link>
+        <Link
+          href="/admin/uu-dai"
+          className={linkClass(pathname.startsWith("/admin/uu-dai"))}
+        >
+          <Ticket className="h-4 w-4 shrink-0 opacity-90" />
+          Ưu đãi & Voucher
         </Link>
         <Link
           href="/admin/seo"

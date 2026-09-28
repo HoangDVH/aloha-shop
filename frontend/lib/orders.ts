@@ -62,6 +62,16 @@ export type ShopOrder = {
   freeShipApplied?: boolean;
   total: number;
   totalPayment?: number;
+  discount?: number;
+  promotion?: {
+    promotionId: string;
+    title: string;
+    type: string;
+    code?: string;
+    discountType: string;
+    discountValue: number;
+    discountAmount: number;
+  } | null;
   method?: string;
   usingCod?: boolean;
   customerNote?: string;
@@ -176,6 +186,8 @@ export type PlaceOrderInput = {
   quoteToken?: string;
   shippingFee?: number;
   shippingCarrier?: string;
+  promotionCode?: string;
+  promotionId?: string;
   /** Chống đặt trùng khi retry / mất response */
   idempotencyKey?: string;
 };

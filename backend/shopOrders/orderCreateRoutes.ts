@@ -52,6 +52,13 @@ import {
 } from "./checkoutFlags.js";
 import { normalizeCtvCode } from "../shopAuth/models.js";
 import { notifyOrderStatus } from "./notifyOrderStatus.js";
+import { evaluatePromotions } from "../shopPromotions/evaluator.js";
+import {
+  PROMOTIONS_COL,
+  PROMOTION_CODES_COL,
+} from "../shopPromotions/types.js";
+import { checkIsNewWebBuyer } from "../shopPromotions/customerEligibility.js";
+import { holdPromotion } from "../shopPromotions/redemptionService.js";
 
 async function filterActiveCtvCodes(
   shopDb: Db,
@@ -300,10 +307,80 @@ export function registerShopOrderCreateRoutes(
           // Phase COD: không bắt quote — phí ship = 0 (code quote vẫn giữ để bật lại)
           shippingFee = 0;
           shippingCarrier = undefined;
-          freeShipApplied = false;
         }
 
-        const total = subtotal + shippingFee;
+        const nowEval = new Date();
+        const nowIsoEval = nowEval.toISOString();
+
+        // Báo giá & kiểm tra ưu đãi (Khách mới 10%, Đơn lớn > 1tr, hoặc mã nhập tay)
+        const requestedCode = String(body.promotionCode || "").trim().toUpperCase();
+        const autoMode = body.autoPromotion !== false;
+
+        const isNewWeb = await checkIsNewWebBuyer(shopDb, {
+          phone: customerPhone,
+          email: buyerEmail,
+          userId: req.shopAuth?.userId,
+        });
+
+        const activePromos = await shopDb
+          .collection<any>(PROMOTIONS_COL)
+          .find({
+            status: "active",
+            $or: [
+              { startDate: { $exists: false } },
+              { startDate: null },
+              { startDate: { $lte: nowIsoEval } },
+            ],
+            $and: [
+              {
+                $or: [
+                  { endDate: { $exists: false } },
+                  { endDate: null },
+                  { endDate: { $gte: nowIsoEval } },
+                ],
+              },
+            ],
+          })
+          .toArray();
+
+        let activeCodes: any[] = [];
+        if (requestedCode) {
+          activeCodes = await shopDb
+            .collection<any>(PROMOTION_CODES_COL)
+            .find({ code: requestedCode, active: { $ne: false } })
+            .toArray();
+        }
+
+        const promoQuote = evaluatePromotions({
+          items: orderDetails.map((d) => ({
+            ma: d.productCode,
+            ten: d.productName,
+            price: d.price,
+            quantity: d.quantity,
+          })),
+          buyer: {
+            phone: customerPhone,
+            email: buyerEmail,
+            userId: req.shopAuth?.userId,
+            isNewWebBuyer: isNewWeb,
+            isWholesale: Boolean(req.shopAuth?.roles?.includes("si") || req.shopAuth?.roles?.includes("wholesale")),
+          },
+          promotions: activePromos,
+          codes: activeCodes,
+          selectedCode: requestedCode,
+          autoMode,
+          now: nowEval,
+        });
+
+        const discount = promoQuote.discountTotal || 0;
+        const appliedPromotion = promoQuote.applied;
+
+        // Cập nhật phân bổ giảm giá theo từng dòng SP
+        for (const d of orderDetails) {
+          d.discount = promoQuote.lineDiscounts[d.productCode] || 0;
+        }
+
+        const total = Math.max(0, subtotal - discount + shippingFee);
         const ctvCodes = [
           ...new Set(orderDetails.map((d) => d.ctvCode).filter(Boolean) as string[]),
         ];
@@ -407,6 +484,23 @@ export function registerShopOrderCreateRoutes(
 
         // Mongo trước — tránh orphan KV nếu insert lỗi
         let code = newShopOrderCode();
+
+        if (appliedPromotion && discount > 0) {
+          const holdRes = await holdPromotion(shopDb, {
+            orderCode: code,
+            promotionId: appliedPromotion.promotionId,
+            promotionCode: appliedPromotion.code,
+            discountAmount: discount,
+            buyerId: req.shopAuth?.userId,
+            buyerPhone: customerPhone,
+            buyerEmail,
+            idempotencyKey,
+          });
+          if (!holdRes.ok) {
+            return res.status(400).json({ error: (holdRes as any).error || "Ưu đãi không còn khả dụng" });
+          }
+        }
+
         let kvOrderId: string | number | null = null;
         let kvOrderCode: string | null = null;
 
@@ -458,7 +552,8 @@ export function registerShopOrderCreateRoutes(
               : null,
           total,
           totalPayment: total,
-          discount: 0,
+          discount,
+          promotion: appliedPromotion || null,
           method: reviewFirst ? "Pending" : method,
           usingCod: reviewFirst || isTransfer ? false : usingCod,
           hasPreOrder,
