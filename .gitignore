@@ -28,3 +28,6 @@ Thumbs.db
 # Uploads / local data
 uploads/
 *.local
+
+# Refactor test snapshots
+docs/refactor/snap-*

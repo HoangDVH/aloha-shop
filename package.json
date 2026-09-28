@@ -9,7 +9,10 @@
     "seed:shop-admin": "node scripts/seed-shop-admin.cjs",
     "tunnel:mongo": "node scripts/mongo-tunnel-ssh2.cjs",
     "sync:shop-product-type": "node scripts/sync-shop-product-type-from-ops.cjs",
-    "install:all": "npm install && npm install --prefix frontend"
+    "install:all": "npm install && npm install --prefix frontend",
+    "typecheck:api": "tsc -p tsconfig.backend.json",
+    "typecheck:web": "npm run lint --prefix frontend",
+    "typecheck": "npm run typecheck:api && npm run typecheck:web"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
