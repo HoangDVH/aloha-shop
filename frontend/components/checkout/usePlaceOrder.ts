@@ -59,6 +59,7 @@ type Args = {
   shippingFee: number | null;
   promotionCode?: string;
   promotionId?: string;
+  autoPromotion?: boolean;
   note: string;
   user: ShopUserLike;
   replace: (href: string) => void;
@@ -90,6 +91,7 @@ export function usePlaceOrder({
   shippingFee,
   promotionCode,
   promotionId,
+  autoPromotion = true,
   note,
   user,
   replace,
@@ -266,6 +268,7 @@ export function usePlaceOrder({
             : undefined,
         promotionCode: promotionCode || undefined,
         promotionId: promotionId || undefined,
+        autoPromotion,
         orderDetails: selected.map((l) => {
           const variant = formatVariantLabel(l);
           const lineNote = String(l.lineNote || "").trim();

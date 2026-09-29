@@ -320,14 +320,19 @@ app.listen(PORT, '0.0.0.0', () => {
   // Ephemeral đã chuyển Redis — bỏ collection Mongo cũ nếu còn.
   void getDb()
     .then(async (db) => {
-      for (const name of [
+      const legacy = [
         "aloha_shop_checkout_lock",
         "aloha_shop_si_sessions",
         "aloha_shop_si_lookups",
         "aloha_shop_login_ip",
         "aloha_shop_oauth_state",
         "aloha_shop_password_tokens",
-      ]) {
+      ];
+      // MongoDB 7+ drop() không lỗi khi collection không tồn tại — phải kiểm tra trước.
+      const existing = await db
+        .listCollections({ name: { $in: legacy } }, { nameOnly: true })
+        .toArray();
+      for (const { name } of existing) {
         try {
           await db.collection(name).drop();
           console.log(`[redis-migrate] dropped legacy Mongo collection ${name}`);

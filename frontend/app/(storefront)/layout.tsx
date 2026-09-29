@@ -11,7 +11,7 @@ export default function StorefrontLayout({ children }: { children: React.ReactNo
         <SiteHeader />
       </Suspense>
       <div className="shop-storefront-with-tabbar">
-        <main className="min-h-[70vh] bg-white">{children}</main>
+        <main className="min-h-[70vh] bg-[var(--aloha-surface)]">{children}</main>
         <SiteFooter />
       </div>
       <Suspense fallback={null}>

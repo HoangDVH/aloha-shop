@@ -1,7 +1,7 @@
 import type { ShipSizeClass } from "./sizePresets.js";
 
 const NHOM_RULES: { re: RegExp; size: ShipSizeClass }[] = [
-  { re: /đất|giá thể|giath|dat\b|bao\s*\d/i, size: "dat_giath" },
+  { re: /đất(?!\s*nung)|giá thể|giath|dat\b|bao\s*\d/i, size: "dat_giath" },
   { re: /size\s*lớn|size\s*lon|\blớn\b|\blon\b| cỡ lớn/i, size: "to" },
   { re: /size\s*trung|\bvừa\b|\bvua\b| cỡ vừa/i, size: "vua" },
   { re: /size\s*nhỏ|size\s*nho|\bnhỏ\b|\bnho\b| cỡ nhỏ/i, size: "nho" },

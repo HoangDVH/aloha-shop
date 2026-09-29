@@ -10,8 +10,16 @@ import {
   listGhnWards,
 } from "./locationCache.js";
 import { getShippingQuote } from "./quoteService.js";
-import type { ShippingCarrier } from "./quoteToken.js";
+import { hashQuoteItems, signQuoteToken, type ShippingCarrier } from "./quoteToken.js";
 import { shopRateLimitOrReject } from "../shopRateLimit.js";
+import { checkIsNewWebBuyer } from "../shopPromotions/customerEligibility.js";
+import {
+  customerKeyFor,
+  evaluateGoodsPromotions,
+  evaluateShippingForCheckout,
+  loadActivePromotions,
+  shippingPromotionHint,
+} from "../shopPromotions/checkoutPromotions.js";
 
 function parseQuoteItems(raw: unknown) {
   if (!Array.isArray(raw)) return [];
@@ -168,6 +176,35 @@ export function registerShopShippingRoutes(
             ? (body.carrier as ShippingCarrier)
             : undefined;
         const db = await getMainDb();
+        const shopDb = await _getShopDb();
+        const now = new Date();
+        const userId = req.shopAuth!.userId;
+        const buyerPhone = String(body.customerPhone || buyer?.phone || "").trim();
+        const buyerEmail = buyer?.email ? String(buyer.email) : "";
+        const evalItems = items.map((i) => ({
+          ma: i.productCode,
+          ten: i.productName,
+          price: i.price,
+          quantity: i.quantity,
+        }));
+        const buyerCtx = {
+          phone: buyerPhone,
+          email: buyerEmail,
+          userId,
+          isNewWebBuyer: await checkIsNewWebBuyer(shopDb, { phone: buyerPhone, email: buyerEmail, userId }),
+          isWholesale: Boolean(req.shopAuth?.roles?.includes("si") || req.shopAuth?.roles?.includes("wholesale")),
+        };
+        const customerKey = customerKeyFor(userId);
+        const promotions = await loadActivePromotions(shopDb, now);
+        const goods = await evaluateGoodsPromotions(shopDb, {
+          items: evalItems,
+          buyer: buyerCtx,
+          customerKey,
+          promotions,
+          selectedCode: body.promotionCode,
+          autoMode: body.autoPromotion !== false,
+          now,
+        });
         const quote = await getShippingQuote(db, {
           items,
           province,
@@ -176,9 +213,36 @@ export function registerShopShippingRoutes(
           ghnDistrictId,
           ghnWardCode,
           preferredCarrier: preferred,
-          discountTotal: Number(body.discountTotal) || 0,
+          discountTotal: goods.discountTotal,
         });
-        return res.json(quote);
+        const ship =
+          quote.shippingEstimateStatus === "unavailable"
+            ? null
+            : await evaluateShippingForCheckout(shopDb, db, {
+                items: evalItems,
+                buyer: buyerCtx,
+                customerKey,
+                promotions,
+                deliveryMethod,
+                shippingFee:
+                  quote.shippingEstimateStatus === "needs_confirmation" ? null : quote.estimatedShippingFee,
+                freeShipApplied: quote.freeShipApplied,
+                address: { province, district, ghnDistrictId },
+                now,
+              });
+        return res.json({
+          ...quote,
+          goodsDiscountTotal: goods.discountTotal,
+          shippingDiscount: ship?.applied?.discountAmount || 0,
+          shippingPromotion: ship?.applied
+            ? {
+                promotionId: ship.applied.promotionId,
+                title: ship.applied.title,
+                discountAmount: ship.applied.discountAmount,
+              }
+            : null,
+          shippingPromotionHint: quote.freeShipApplied ? null : shippingPromotionHint(ship) || null,
+        });
       } catch (e: any) {
         return res.status(500).json({ error: e?.message || "Báo giá ship thất bại" });
       }

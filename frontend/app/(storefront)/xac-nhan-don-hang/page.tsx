@@ -21,7 +21,6 @@ import {
 import { CheckoutAddressPickerModal } from "@/components/checkout/CheckoutAddressPickerModal";
 import { CheckoutAddressSection } from "@/components/checkout/CheckoutAddressSection";
 import { CheckoutLineItems } from "@/components/checkout/CheckoutLineItems";
-import { CheckoutShippingSection } from "@/components/checkout/CheckoutShippingSection";
 import { CheckoutStickyBar } from "@/components/checkout/CheckoutStickyBar";
 import { CheckoutSummaryAside } from "@/components/checkout/CheckoutSummaryAside";
 import { PromotionModal, type PromotionQuoteUI } from "@/components/checkout/PromotionModal";
@@ -175,6 +174,7 @@ function CheckoutConfirm() {
     shippingLoading,
     shippingError,
     shippingFee,
+    shippingDiscount,
     activeCarrier,
     quoteAddress,
     pickCarrier,
@@ -186,10 +186,16 @@ function CheckoutConfirm() {
     draft,
     enabled: showShip,
     discountTotal: discountAmount,
+    promotionCode: promoQuote?.applied?.code,
+    autoPromotion: promoAutoMode,
+    customerPhone: draft.phone || user?.phone || undefined,
   });
 
   const effectiveShippingFee = showShip ? shippingFee : null;
-  const grandTotal = Math.max(0, total - discountAmount) + (effectiveShippingFee ?? 0);
+  const effectiveShippingDiscount = showShip ? shippingDiscount : 0;
+  const grandTotal =
+    Math.max(0, total - discountAmount) +
+    Math.max(0, (effectiveShippingFee ?? 0) - effectiveShippingDiscount);
 
   useEffect(() => {
     if (authLoading) return;
@@ -272,6 +278,7 @@ function CheckoutConfirm() {
     shippingFee: effectiveShippingFee,
     promotionCode: promoQuote?.applied?.code,
     promotionId: promoQuote?.applied?.promotionId,
+    autoPromotion: promoAutoMode,
     note,
     user,
     replace: (href) => router.replace(href),
@@ -374,17 +381,6 @@ function CheckoutConfirm() {
               userPhone={user.phone}
             />
 
-            {showShip ? (
-              <CheckoutShippingSection
-                delivery={delivery}
-                quoteAddress={quoteAddress}
-                shippingLoading={shippingLoading}
-                shippingError={shippingError}
-                shippingQuote={shippingQuote}
-                activeCarrier={activeCarrier}
-                onPickCarrier={pickCarrier}
-              />
-            ) : null}
 
             <SiCartNotice />
           </div>
@@ -396,6 +392,10 @@ function CheckoutConfirm() {
             appliedTitle={promoQuote?.applied?.title}
             onOpenPromotion={() => setPromoModalOpen(true)}
             shippingFee={effectiveShippingFee}
+            shippingDiscount={effectiveShippingDiscount}
+            shippingPromotionTitle={shippingQuote?.shippingPromotion?.title}
+            shippingPromotionHint={showShip ? shippingQuote?.shippingPromotionHint || undefined : undefined}
+            freeShipApplied={Boolean(shippingQuote?.freeShipApplied)}
             shippingLoading={shippingLoading}
             grandTotal={grandTotal}
             error={error}
@@ -447,6 +447,7 @@ function CheckoutConfirm() {
         discount={discountAmount}
         grandTotal={grandTotal}
         shippingFee={effectiveShippingFee}
+        shippingDiscount={effectiveShippingDiscount}
         deliveryMethod={delivery}
         showShipping={showShip}
         canSubmit={canSubmit}

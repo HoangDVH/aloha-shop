@@ -18,7 +18,7 @@ export const ALOHA_PALETTE = {
   warmCream: "#FDF6E3",
   hoverBg: "#E8F5E9",
   white: "#FFFFFF",
-  surface: "#FFFFFF",
+  surface: "#F7F8FA",
   green: "#2E7D32",
   lightGreen: "#4CAF50",
   darkGreen: "#1B5E20",

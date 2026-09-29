@@ -1,10 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  gramPerSaleUnit,
+  isBulkSaleUnit,
   normalizeTrongLuongGram,
   resolveWeightWithSource,
 } from "../backend/shopShipping/resolveWeight.js";
+import { parseWeightGramFromText } from "../backend/shopShipping/parseWeight.js";
 import { qualifiesFreeShip } from "../backend/shopShipping/freeShip.js";
+import {
+  parseCategorySizeMap,
+  sizeClassForCategoryChain,
+} from "../backend/shopShipping/categorySizeConfig.js";
+import { SIZE_PRESETS } from "../backend/shopShipping/sizePresets.js";
 import {
   hashQuoteItems,
   signQuoteToken,
@@ -190,4 +198,120 @@ test("SH24: Cơ sở hoa hồng CTV strictly chỉ tính trên tiền hàng N = 
 
   // Xác minh không cộng S vào cơ sở hoa hồng: (N + S) * 5% = 12.075đ là SAI!
   assert.notEqual((N + S) * rate, commission);
+});
+
+test("Nhóm ship theo danh mục: bỏ giá trị sai, nhóm con kế thừa nhóm mẹ gần nhất", () => {
+  const map = parseCategorySizeMap({ "10": "vua", "11": "to", "12": "khong-hop-le", abc: "nho", "-3": "nho" });
+  assert.deepEqual([...map.entries()], [
+    [10, "vua"],
+    [11, "to"],
+  ]);
+
+  assert.equal(sizeClassForCategoryChain([10, 20, 30], map), "vua", "Nhóm cháu kế thừa nhóm gốc");
+  assert.equal(sizeClassForCategoryChain([10, 11, 30], map), "to", "Nhóm mẹ gần nhất thắng nhóm gốc");
+  assert.equal(sizeClassForCategoryChain([99], map), null);
+  assert.equal(sizeClassForCategoryChain(undefined, map), null);
+});
+
+test("Nhóm ship theo danh mục cho ra phí tạm; shipSizeClass trên SP vẫn ưu tiên", () => {
+  const byCategory = resolveWeightWithSource({
+    ma: "TUINUOCMIA2LY",
+    ten: "Túi nước mía 2 ly",
+    categoryShipSizeClass: "nho",
+  });
+  assert.equal(byCategory.needsConfirmation, false);
+  assert.equal(byCategory.source, "verified_preset");
+  assert.equal(byCategory.weightGram, SIZE_PRESETS.nho.weightGram);
+
+  const override = resolveWeightWithSource({
+    ma: "CAY-LON",
+    ten: "Cây bàng Singapore",
+    categoryShipSizeClass: "nho",
+    shipSizeClass: "to",
+  });
+  assert.equal(override.weightGram, SIZE_PRESETS.to.weightGram, "Cấu hình riêng SP thắng danh mục");
+
+  const measured = resolveWeightWithSource({
+    ma: "CO-CAN",
+    ten: "Chậu sứ",
+    trongLuong: 1500,
+    categoryShipSizeClass: "to",
+  });
+  assert.equal(measured.source, "measured", "Cân thật vẫn ưu tiên hơn nhóm danh mục");
+  assert.equal(measured.weightGram, 1500);
+
+  const none = resolveWeightWithSource({ ma: "SP-LA", ten: "Vật phẩm lạ" });
+  assert.equal(none.needsConfirmation, true, "Danh mục chưa gán nhóm vẫn chờ báo phí");
+});
+
+test("ĐVT bán theo khối lượng: 1 đơn vị = đúng khối lượng ghi ở ĐVT", () => {
+  assert.equal(gramPerSaleUnit("KG"), 1000);
+  assert.equal(gramPerSaleUnit(" kg "), 1000);
+  assert.equal(gramPerSaleUnit("500g"), 500);
+  assert.equal(gramPerSaleUnit("500 gr"), 500);
+  assert.equal(gramPerSaleUnit("1,5 kg"), 1500);
+  assert.equal(gramPerSaleUnit("Cái"), 0);
+  assert.equal(gramPerSaleUnit("Bộ"), 0);
+  assert.equal(gramPerSaleUnit("Gói"), 0, "Gói không phải đơn vị khối lượng");
+  assert.equal(gramPerSaleUnit(undefined), 0);
+
+  const tnm = resolveWeightWithSource({ ma: "TNM2L", ten: "TÚI NƯỚC MÍA 2 LY", dvt: "KG", trongLuong: 0 });
+  assert.equal(tnm.needsConfirmation, false);
+  assert.equal(tnm.weightGram, 1000);
+  assert.equal(tnm.source, "inferred");
+
+  const measured = resolveWeightWithSource({ ma: "X", ten: "Phân bón", dvt: "KG", trongLuong: 1100 });
+  assert.equal(measured.weightGram, 1100, "Cân thật (kèm bao bì) ưu tiên hơn ĐVT");
+});
+
+test("Đọc khối lượng từ tên/ĐVT: không nhầm '1 GỐC' thành 1g, hiểu 'gr' và 'BAO12kg'", () => {
+  assert.equal(parseWeightGramFromText("CÂY KIM NGÂN 1 GỐC (THÙNG 24 CÂY)"), null);
+  assert.equal(parseWeightGramFromText("NPK KÍCH HOA (HỦ 100gr)"), 100);
+  assert.equal(parseWeightGramFromText("CANXI BO 50G"), 50);
+  assert.equal(parseWeightGramFromText("ĐẤT TRỒNG SEN ĐÁ XƯƠNG RỒNG 1KG"), 1000);
+
+  const sackDvt = resolveWeightWithSource({ ma: "BST8-10", ten: "SỎI TRẮNG", dvt: "BAO12kg" });
+  assert.equal(sackDvt.weightGram, 12_000);
+
+  const byName = resolveWeightWithSource({
+    ma: "DTSDXR",
+    ten: "ĐẤT TRỒNG SEN ĐÁ XƯƠNG RỒNG 1KG",
+    dvt: "TÚI",
+    categoryShipSizeClass: "dat_giath",
+  });
+  assert.equal(byName.weightGram, 1000, "Khối lượng ghi trên tên thắng nhóm danh mục");
+});
+
+test("Hàng bán nguyên thùng chờ shop báo phí; bán theo BAO dùng mức đất/giá thể", () => {
+  assert.equal(isBulkSaleUnit("THÙNG"), true);
+  assert.equal(isBulkSaleUnit("THÙNG 48 CÂY"), true);
+  assert.equal(isBulkSaleUnit("1 THÙNG"), true);
+  assert.equal(isBulkSaleUnit("HỘP 12 CHẬU"), true);
+  assert.equal(isBulkSaleUnit("CÂY"), false);
+  assert.equal(isBulkSaleUnit("CÁI"), false);
+
+  const carton = resolveWeightWithSource({
+    ma: "TKT28",
+    ten: "CÂY KIM TIỀN ( THÙNG 28 CÂY )",
+    dvt: "THÙNG",
+    categoryShipSizeClass: "vua",
+  });
+  assert.equal(carton.needsConfirmation, true);
+
+  const single = resolveWeightWithSource({
+    ma: "KT28",
+    ten: "CÂY KIM TIỀN ( THÙNG 28 CÂY )",
+    dvt: "CÂY",
+    categoryShipSizeClass: "vua",
+  });
+  assert.equal(single.needsConfirmation, false);
+  assert.equal(single.weightGram, SIZE_PRESETS.vua.weightGram);
+
+  const sack = resolveWeightWithSource({ ma: "BDCSTG", ten: "ĐÁ CUỘI TRỨNG GÀ", dvt: "BAO", categoryShipSizeClass: "nho" });
+  assert.equal(sack.weightGram, SIZE_PRESETS.dat_giath.weightGram);
+});
+
+test("Chậu đất nung không bị xếp vào nhóm đất/giá thể 20kg", () => {
+  const pot = resolveWeightWithSource({ ma: "L9DNT", ten: "CHẬU LY SỐ 9 TRẮNG ĐẤT NUNG", nhomPath: "CHẬU TRỒNG CÂY >> ĐẤT NUNG TRẮNG" });
+  assert.notEqual(pot.weightGram, SIZE_PRESETS.dat_giath.weightGram);
 });

@@ -27,6 +27,38 @@ function estimateFee(pkg: CarrierQuoteInput): number {
   return Math.max(15000, Math.round(base + kg * perKg + remote + bulky));
 }
 
+/** API phí/tạo đơn GHN bắt buộc service_type_id: 2 = hàng nhẹ, 5 = hàng nặng (cần kèm items). */
+const GHN_SERVICE_LIGHT = 2;
+const GHN_SERVICE_HEAVY = 5;
+const GHN_HEAVY_MIN_GRAM = 20_000;
+
+type GhnServiceOption = { service_type_id: number; items?: Array<Record<string, unknown>> };
+
+function ghnServiceOptions(pkg: {
+  weightGram: number;
+  lengthCm: number;
+  widthCm: number;
+  heightCm: number;
+}): GhnServiceOption[] {
+  const weight = Math.max(100, Math.round(pkg.weightGram));
+  const light: GhnServiceOption = { service_type_id: GHN_SERVICE_LIGHT };
+  if (weight < GHN_HEAVY_MIN_GRAM) return [light];
+  const heavy: GhnServiceOption = {
+    service_type_id: GHN_SERVICE_HEAVY,
+    items: [
+      {
+        name: "Hàng hóa",
+        quantity: 1,
+        weight,
+        length: Math.max(1, Math.round(pkg.lengthCm)),
+        width: Math.max(1, Math.round(pkg.widthCm)),
+        height: Math.max(1, Math.round(pkg.heightCm)),
+      },
+    ],
+  };
+  return [heavy, light];
+}
+
 function normProvinceKey(s: string): string {
   return String(s || "")
     .normalize("NFD")
@@ -84,29 +116,36 @@ export async function quoteGhn(pkg: CarrierQuoteInput): Promise<CarrierQuoteResu
       coupon: null,
     };
 
-    const res = await fetch(
-      "https://online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/fee",
-      {
-        method: "POST",
-        headers: {
-          Token: token,
-          ShopId: String(shopId),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(25_000),
-      }
+    const attempts = await Promise.all(
+      ghnServiceOptions(pkg).map(async (service) => {
+        const res = await fetch(
+          "https://online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/fee",
+          {
+            method: "POST",
+            headers: {
+              Token: token,
+              ShopId: String(shopId),
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ ...body, ...service }),
+            signal: AbortSignal.timeout(25_000),
+          }
+        );
+        const json = (await res.json().catch(() => ({}))) as {
+          code?: number;
+          message?: string;
+          data?: { total?: number; service_fee?: number };
+        };
+        const fee = Number(json?.data?.total ?? json?.data?.service_fee ?? 0);
+        const ok = res.ok && json.code === 200 && fee > 0;
+        return { ok, fee, json, serviceTypeId: service.service_type_id };
+      })
     );
-    const json = (await res.json().catch(() => ({}))) as {
-      code?: number;
-      message?: string;
-      data?: { total?: number; service_fee?: number };
-    };
-    const fee = Number(json?.data?.total ?? json?.data?.service_fee ?? 0);
-    if (!res.ok || json.code !== 200 || fee <= 0) {
-      throw new Error(json?.message || "GHN fee failed");
+    const best = attempts.filter((a) => a.ok).sort((a, b) => a.fee - b.fee)[0];
+    if (!best) {
+      throw new Error(attempts.map((a) => a.json?.message).filter(Boolean).join(" | ") || "GHN fee failed");
     }
-    return baseResult(pkg, fee, "api", json);
+    return baseResult(pkg, best.fee, "api", { ...best.json, serviceTypeId: best.serviceTypeId });
   } catch (e) {
     console.warn("[shopShipping] quoteGhn:", e);
     return baseResult(pkg, estimateFee(pkg), "estimate");
@@ -150,29 +189,38 @@ export async function createGhnOrder(input: ShipmentOrderInput): Promise<Shipmen
       width: Math.max(1, Math.round(input.widthCm)),
       height: Math.max(1, Math.round(input.heightCm)),
       insurance_value: Math.max(0, Math.round(input.valueVnd)),
-      service_type_id: 2,
       client_order_code: input.orderCode,
     };
 
-    const res = await fetch(
-      "https://online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/create",
-      {
-        method: "POST",
-        headers: {
-          Token: token,
-          ShopId: String(shopId),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(30_000),
-      }
-    );
-    const json = (await res.json().catch(() => ({}))) as {
+    type GhnCreateJson = {
       code?: number;
       message?: string;
       data?: { order_code?: string; sort_code?: string };
     };
-    if (!res.ok || json.code !== 200) {
+    let json: GhnCreateJson = {};
+    let created = false;
+    // Chỉ thử dịch vụ kế tiếp khi GHN trả lỗi rõ ràng (chưa tạo đơn); lỗi mạng thì dừng để không tạo trùng.
+    for (const service of ghnServiceOptions(input)) {
+      const res = await fetch(
+        "https://online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/create",
+        {
+          method: "POST",
+          headers: {
+            Token: token,
+            ShopId: String(shopId),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ ...body, ...service }),
+          signal: AbortSignal.timeout(30_000),
+        }
+      );
+      json = (await res.json().catch(() => ({}))) as GhnCreateJson;
+      if (res.ok && json.code === 200) {
+        created = true;
+        break;
+      }
+    }
+    if (!created) {
       return { ok: false, error: json?.message || "GHN tạo đơn thất bại", raw: json };
     }
     return {

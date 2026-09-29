@@ -27,7 +27,11 @@ type Args = {
   draft: AddressDraft;
   /** false = phase ẩn ship — không gọi API quote (giữ code). */
   enabled?: boolean;
+  /** Đổi số tiền giảm → báo giá lại (miễn ship xét sau giảm); server tự tính lại số tiền. */
   discountTotal?: number;
+  promotionCode?: string;
+  autoPromotion?: boolean;
+  customerPhone?: string;
 };
 
 /** Báo giá phí ship + chọn hãng — logic giữ nguyên từ trang xác nhận đơn. */
@@ -39,6 +43,9 @@ export function useShippingQuote({
   draft,
   enabled = true,
   discountTotal = 0,
+  promotionCode = "",
+  autoPromotion = true,
+  customerPhone = "",
 }: Args) {
   const [shippingQuote, setShippingQuote] = useState<ShippingQuote | null>(null);
   const [shippingLoading, setShippingLoading] = useState(false);
@@ -97,8 +104,10 @@ export function useShippingQuote({
         quoteAddress.ghnDistrictId,
         quoteAddress.ghnWardCode,
         discountTotal,
+        promotionCode,
+        autoPromotion,
       ].join("::"),
-    [quoteItemsKey, quoteAddress, discountTotal]
+    [quoteItemsKey, quoteAddress, discountTotal, promotionCode, autoPromotion]
   );
 
   const shippingFee: number | null = useMemo(() => {
@@ -116,6 +125,11 @@ export function useShippingQuote({
     }
     return shippingQuote.selected?.fee ?? null;
   }, [enabled, delivery, shippingQuote]);
+
+  const shippingDiscount =
+    shippingFee != null && delivery === "giao_tan_noi"
+      ? Math.min(shippingFee, Math.max(0, shippingQuote?.shippingDiscount || 0))
+      : 0;
 
   const shippingEstimateStatus: ShippingEstimateStatus = useMemo(() => {
     if (delivery === "nhan_cua_hang") return "nhan_cua_hang";
@@ -136,14 +150,14 @@ export function useShippingQuote({
   const quoteItemsRef = useRef(quoteItems);
   const quoteAddressRef = useRef(quoteAddress);
   const deliveryRef = useRef(delivery);
-  const discountTotalRef = useRef(discountTotal);
+  const promoRef = useRef({ promotionCode, autoPromotion, customerPhone });
   const enabledRef = useRef(enabled);
 
   quoteItemsRef.current = quoteItems;
   quoteAddressRef.current = quoteAddress;
   deliveryRef.current = delivery;
   enabledRef.current = enabled;
-  discountTotalRef.current = discountTotal;
+  promoRef.current = { promotionCode, autoPromotion, customerPhone };
 
   const requestShippingQuote = useCallback((resetCarrier: boolean) => {
     if (quoteTimerRef.current) {
@@ -204,7 +218,9 @@ export function useShippingQuote({
           ghnWardCode: ghnWardCode || undefined,
           deliveryMethod,
           carrier,
-          discountTotal: discountTotalRef.current,
+          promotionCode: promoRef.current.promotionCode || undefined,
+          autoPromotion: promoRef.current.autoPromotion,
+          customerPhone: promoRef.current.customerPhone || undefined,
         },
         ac.signal
       )
@@ -259,6 +275,7 @@ export function useShippingQuote({
     shippingError,
     carrierPick,
     shippingFee,
+    shippingDiscount,
     shippingEstimateStatus,
     activeCarrier,
     quoteAddress,

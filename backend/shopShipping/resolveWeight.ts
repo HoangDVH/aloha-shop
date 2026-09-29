@@ -17,6 +17,8 @@ export type ProductShipMeta = {
   donViTrongLuong?: string;
   dvt?: string;
   shipSizeClass?: string;
+  /** Nhóm vận chuyển shop cấu hình cho danh mục (kể cả kế thừa nhóm mẹ). */
+  categoryShipSizeClass?: string;
   categoryId?: number;
   nhomPath?: string;
   nhom?: string;
@@ -73,6 +75,9 @@ export function resolveSizeClassWithSource(doc: ProductShipMeta): {
 } {
   const fromMongo = normalizeSizeClass(doc.shipSizeClass);
   if (fromMongo) return { sizeClass: fromMongo, source: "verified_preset" };
+
+  const fromCategoryConfig = normalizeSizeClass(doc.categoryShipSizeClass);
+  if (fromCategoryConfig) return { sizeClass: fromCategoryConfig, source: "verified_preset" };
 
   const ancestor = Array.isArray(doc.ancestor)
     ? doc.ancestor.map((x) => String(x || "").trim()).filter(Boolean)
@@ -135,6 +140,24 @@ export function normalizeTrongLuongGram(raw: number, textContext = "", unitHint 
   return Math.round(tl);
 }
 
+/** ĐVT bán theo khối lượng ("KG", "500g", "1,5 kg") → gram của 1 đơn vị bán; ĐVT khác → 0. */
+export function gramPerSaleUnit(dvt: unknown): number {
+  const m = String(dvt || "")
+    .trim()
+    .toLowerCase()
+    .match(/^(\d+(?:[.,]\d+)?)?\s*(kg|kilo|kilogram|g|gr|gram)$/);
+  if (!m) return 0;
+  const qty = m[1] ? Number(m[1].replace(",", ".")) : 1;
+  if (!(qty > 0)) return 0;
+  const perUnit = m[2].startsWith("k") ? 1000 : 1;
+  return Math.round(qty * perUnit);
+}
+
+/** ĐVT bán nguyên thùng/kiện/hộp nhiều cái — preset của 1 món không dùng được. */
+export function isBulkSaleUnit(dvt: unknown): boolean {
+  return /^(?:\d+\s*)?(?:thùng|kiện|hộp|bịch|sấp|lốc)(?!\p{L})/iu.test(String(dvt || "").trim());
+}
+
 /**
  * Trả về trọng lượng gram kèm nguồn dữ liệu (Level 1..4 theo Section 5.1).
  */
@@ -171,6 +194,35 @@ export function resolveWeightWithSource(doc: ProductShipMeta): ResolvedWeightInf
     }
   }
 
+  const unitGram = gramPerSaleUnit(doc.dvt) || parseWeightGramFromText(String(doc.dvt || "")) || 0;
+  if (unitGram > 0) {
+    return { weightGram: unitGram, source: "inferred", needsConfirmation: false };
+  }
+
+  const ownSizeClass = normalizeSizeClass(doc.shipSizeClass);
+  if (ownSizeClass) {
+    return { weightGram: SIZE_PRESETS[ownSizeClass].weightGram, source: "verified_preset", needsConfirmation: false };
+  }
+
+  if (isBulkSaleUnit(doc.dvt)) {
+    return {
+      weightGram: DEFAULT_WEIGHT_GRAM,
+      source: "unknown",
+      needsConfirmation: true,
+      confirmationReason: "Hàng bán nguyên thùng/kiện cần shop báo phí vận chuyển",
+    };
+  }
+
+  // Khối lượng ghi trên tên SP cụ thể hơn nhóm danh mục.
+  const fromTenEarly = parseWeightGramFromText(ten);
+  if (fromTenEarly) {
+    return { weightGram: fromTenEarly, source: "inferred", needsConfirmation: false };
+  }
+
+  if (/^bao(?!\p{L})/iu.test(String(doc.dvt || "").trim())) {
+    return { weightGram: SIZE_PRESETS.dat_giath.weightGram, source: "verified_preset", needsConfirmation: false };
+  }
+
   // Mức 2: Mẫu preset đã kiểm chứng từ danh mục/biến thể
   const sizeRes = resolveSizeClassWithSource(doc);
   if (sizeRes.source === "verified_preset" && sizeRes.sizeClass) {
@@ -186,10 +238,6 @@ export function resolveWeightWithSource(doc: ProductShipMeta): ResolvedWeightInf
   const fromMa = parseWeightGramFromText(ma);
   if (fromMa) {
     return { weightGram: fromMa, source: "inferred", needsConfirmation: false };
-  }
-  const fromTen = parseWeightGramFromText(ten);
-  if (fromTen) {
-    return { weightGram: fromTen, source: "inferred", needsConfirmation: false };
   }
 
   // Mức 4: Không nhận diện được hoặc dữ liệu mâu thuẫn -> Chờ shop báo phí (SH03)

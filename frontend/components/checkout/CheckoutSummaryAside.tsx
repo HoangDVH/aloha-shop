@@ -12,6 +12,10 @@ type Props = {
   appliedTitle?: string;
   onOpenPromotion?: () => void;
   shippingFee: number | null;
+  shippingDiscount?: number;
+  shippingPromotionTitle?: string;
+  shippingPromotionHint?: string;
+  freeShipApplied?: boolean;
   shippingLoading: boolean;
   grandTotal: number;
   error: string;
@@ -32,6 +36,10 @@ export function CheckoutSummaryAside({
   appliedTitle,
   onOpenPromotion,
   shippingFee,
+  shippingDiscount = 0,
+  shippingPromotionTitle,
+  shippingPromotionHint,
+  freeShipApplied = false,
   shippingLoading,
   grandTotal,
   error,
@@ -110,16 +118,33 @@ export function CheckoutSummaryAside({
                 <span className="tabular-nums text-slate-400">Đang tính…</span>
               </div>
             ) : shippingFee != null ? (
-              <div className="flex items-center justify-between gap-3">
-                <span>Phí vận chuyển tạm tính</span>
-                <span className="tabular-nums font-medium text-slate-700">{formatVnd(shippingFee)}</span>
-              </div>
+              <>
+                <div className="flex items-center justify-between gap-3">
+                  <span>Phí vận chuyển tạm tính</span>
+                  {freeShipApplied && shippingFee === 0 ? (
+                    <span className="tabular-nums font-medium text-emerald-700">0đ (Miễn phí vận chuyển)</span>
+                  ) : (
+                    <span className="tabular-nums font-medium text-slate-700">{formatVnd(shippingFee)}</span>
+                  )}
+                </div>
+                {shippingDiscount > 0 ? (
+                  <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold">
+                    <span className="min-w-0 truncate" title={shippingPromotionTitle}>
+                      {shippingPromotionTitle || "Hỗ trợ phí ship"}
+                    </span>
+                    <span className="tabular-nums">-{formatVnd(shippingDiscount)}</span>
+                  </div>
+                ) : null}
+              </>
             ) : (
               <div className="flex items-center justify-between gap-3">
                 <span>Phí vận chuyển</span>
                 <span className="tabular-nums font-medium text-amber-700">Chờ xác nhận</span>
               </div>
             )
+          ) : null}
+          {showShip && delivery === "giao_tan_noi" && !shippingDiscount && !freeShipApplied && shippingPromotionHint ? (
+            <p className="text-[12px] leading-snug text-slate-500">{shippingPromotionHint}</p>
           ) : null}
 
           <div className="border-t border-slate-200/90" />
@@ -133,16 +158,11 @@ export function CheckoutSummaryAside({
               </span>
             </div>
           ) : shippingFee != null ? (
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between gap-3">
-                <span>Tổng tạm tính</span>
-                <span className="text-base font-bold tabular-nums text-[var(--aloha-price)]">
-                  {formatVnd(grandTotal)}
-                </span>
-              </div>
-              <p className="text-[11px] leading-snug text-slate-400 italic">
-                Aloha sẽ xác nhận phí vận chuyển cùng hình ảnh đơn hàng trước khi bạn thanh toán.
-              </p>
+            <div className="flex items-center justify-between gap-3">
+              <span>Tổng tạm tính</span>
+              <span className="text-base font-bold tabular-nums text-[var(--aloha-price)]">
+                {formatVnd(grandTotal)}
+              </span>
             </div>
           ) : (
             <div className="flex items-center justify-between gap-3">
@@ -172,9 +192,6 @@ export function CheckoutSummaryAside({
         >
           {submitting ? "Đang gửi…" : "Đặt hàng"}
         </button>
-        <p className="mt-2 text-center text-[11px] leading-snug text-slate-500">
-          Sau khi đặt, Aloha kiểm tra và gửi hình xác nhận. Thanh toán hoặc cọc thực hiện sau khi bạn xác nhận ảnh.
-        </p>
       </section>
     </aside>
   );

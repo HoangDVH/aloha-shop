@@ -109,9 +109,11 @@ export function attachEta<T extends object>(
   speed: CarrierSpeed = "standard"
 ): T & DeliveryEta {
   const eta = estimateDeliveryEta(province, speed);
+  const feeSource = (result as { source?: DeliveryEta["source"] }).source;
   return {
     ...result,
     eta: `${eta.leadDaysMin}–${eta.leadDaysMax} ngày`,
     ...eta,
+    source: feeSource ?? eta.source,
   };
 }

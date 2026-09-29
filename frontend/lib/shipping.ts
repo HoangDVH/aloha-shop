@@ -47,6 +47,10 @@ export type ShippingQuote = {
   estimateReason?: string;
   estimatedAt?: string;
   expiresAt?: string;
+  /** Hỗ trợ phí ship do server tính (voucher ship theo vùng). */
+  shippingDiscount?: number;
+  shippingPromotion?: { promotionId: string; title: string; discountAmount: number } | null;
+  shippingPromotionHint?: string | null;
 };
 
 export type QuoteShippingInput = {
@@ -64,7 +68,10 @@ export type QuoteShippingInput = {
   ghnWardCode?: string;
   deliveryMethod: "giao_tan_noi" | "nhan_cua_hang";
   carrier?: ShippingCarrier;
-  discountTotal?: number;
+  /** Server tự tính số tiền giảm từ mã/chế độ ưu đãi — không gửi số tiền. */
+  promotionCode?: string;
+  autoPromotion?: boolean;
+  customerPhone?: string;
 };
 
 export async function fetchShippingQuote(

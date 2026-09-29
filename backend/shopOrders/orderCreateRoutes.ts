@@ -52,13 +52,18 @@ import {
 } from "./checkoutFlags.js";
 import { normalizeCtvCode } from "../shopAuth/models.js";
 import { notifyOrderStatus } from "./notifyOrderStatus.js";
-import { evaluatePromotions } from "../shopPromotions/evaluator.js";
-import {
-  PROMOTIONS_COL,
-  PROMOTION_CODES_COL,
-} from "../shopPromotions/types.js";
 import { checkIsNewWebBuyer } from "../shopPromotions/customerEligibility.js";
-import { holdPromotion } from "../shopPromotions/redemptionService.js";
+import {
+  holdPromotion,
+  releasePromotionHold,
+  renameRedemptionOrderCode,
+} from "../shopPromotions/redemptionService.js";
+import {
+  customerKeyFor,
+  evaluateGoodsPromotions,
+  evaluateShippingForCheckout,
+  loadActivePromotions,
+} from "../shopPromotions/checkoutPromotions.js";
 
 async function filterActiveCtvCodes(
   shopDb: Db,
@@ -287,20 +292,6 @@ export function registerShopOrderCreateRoutes(
             } else {
               shippingFee = 0;
             }
-            // Free ship theo tổng hiện tại: nếu token miễn ship nhưng tổng mới không đủ điều kiện → báo giá lại
-            const stillFree = qualifiesFreeShip(
-              subtotal,
-              orderDetails.map((d) => ({
-                productCode: d.productCode,
-                quantity: d.quantity,
-                price: d.price,
-              }))
-            );
-            if (quote.freeShipApplied && !stillFree) {
-              return res.status(400).json({
-                error: "Đơn không còn đủ điều kiện freeship — báo giá ship lại",
-              });
-            }
             shippingCarrier = quote.carrier || undefined;
             totalWeightGram = quote.totalWeightGram;
             freeShipApplied = Boolean(quote.freeShipApplied);
@@ -316,7 +307,6 @@ export function registerShopOrderCreateRoutes(
         }
 
         const nowEval = new Date();
-        const nowIsoEval = nowEval.toISOString();
 
         // Báo giá & kiểm tra ưu đãi (Khách mới 10%, Đơn lớn > 1tr, hoặc mã nhập tay)
         const requestedCode = String(body.promotionCode || "").trim().toUpperCase();
@@ -328,51 +318,27 @@ export function registerShopOrderCreateRoutes(
           userId: req.shopAuth?.userId,
         });
 
-        const activePromos = await shopDb
-          .collection<any>(PROMOTIONS_COL)
-          .find({
-            status: "active",
-            $or: [
-              { startDate: { $exists: false } },
-              { startDate: null },
-              { startDate: { $lte: nowIsoEval } },
-            ],
-            $and: [
-              {
-                $or: [
-                  { endDate: { $exists: false } },
-                  { endDate: null },
-                  { endDate: { $gte: nowIsoEval } },
-                ],
-              },
-            ],
-          })
-          .toArray();
+        const activePromos = await loadActivePromotions(shopDb, nowEval);
+        const evalItems = orderDetails.map((d) => ({
+          ma: d.productCode,
+          ten: d.productName,
+          price: d.price,
+          quantity: d.quantity,
+        }));
+        const buyerCtx = {
+          phone: customerPhone,
+          email: buyerEmail,
+          userId: req.shopAuth?.userId,
+          isNewWebBuyer: isNewWeb,
+          isWholesale: Boolean(req.shopAuth?.roles?.includes("si") || req.shopAuth?.roles?.includes("wholesale")),
+        };
+        const customerKey = customerKeyFor(req.shopAuth?.userId);
 
-        let activeCodes: any[] = [];
-        if (requestedCode) {
-          activeCodes = await shopDb
-            .collection<any>(PROMOTION_CODES_COL)
-            .find({ code: requestedCode, active: { $ne: false } })
-            .toArray();
-        }
-
-        const promoQuote = evaluatePromotions({
-          items: orderDetails.map((d) => ({
-            ma: d.productCode,
-            ten: d.productName,
-            price: d.price,
-            quantity: d.quantity,
-          })),
-          buyer: {
-            phone: customerPhone,
-            email: buyerEmail,
-            userId: req.shopAuth?.userId,
-            isNewWebBuyer: isNewWeb,
-            isWholesale: Boolean(req.shopAuth?.roles?.includes("si") || req.shopAuth?.roles?.includes("wholesale")),
-          },
+        const promoQuote = await evaluateGoodsPromotions(shopDb, {
+          items: evalItems,
+          buyer: buyerCtx,
+          customerKey,
           promotions: activePromos,
-          codes: activeCodes,
           selectedCode: requestedCode,
           autoMode,
           now: nowEval,
@@ -386,7 +352,45 @@ export function registerShopOrderCreateRoutes(
           d.discount = promoQuote.lineDiscounts[d.productCode] || 0;
         }
 
-        const total = Math.max(0, subtotal - discount + shippingFee);
+        // Miễn ship xét trên tiền hàng sau giảm, cùng cơ sở với báo giá (mục 24.7.2)
+        if (quoteVerified && quoteVerified.fee != null) {
+          const stillFree = qualifiesFreeShip(
+            Math.max(0, subtotal - discount),
+            orderDetails.map((d) => ({
+              productCode: d.productCode,
+              quantity: d.quantity,
+              price: d.price,
+            }))
+          );
+          if (Boolean(quoteVerified.freeShipApplied) !== stillFree) {
+            return res.status(409).json({
+              code: "quote_stale",
+              error: stillFree
+                ? "Đơn đã đủ điều kiện miễn ship — báo giá ship lại"
+                : "Đơn không còn đủ điều kiện freeship — báo giá ship lại",
+            });
+          }
+        }
+
+        const shipPromoEval = await evaluateShippingForCheckout(shopDb, mainDbEarly, {
+          items: evalItems,
+          buyer: buyerCtx,
+          customerKey,
+          promotions: activePromos,
+          deliveryMethod,
+          shippingFee:
+            deliveryMethod === "nhan_cua_hang" ? 0 : quoteVerified && quoteVerified.fee != null ? shippingFee : null,
+          freeShipApplied,
+          address: { province, district, ghnDistrictId },
+          now: nowEval,
+        });
+        const shippingPromotion = shipPromoEval?.applied || null;
+        const shippingDiscount = Math.min(shippingFee, shippingPromotion?.discountAmount || 0);
+        // shippingFee lưu/đẩy KiotViet = phí khách trả sau hỗ trợ ship (mục 24.7.4); phí gốc lưu riêng.
+        const shippingFeeOriginal = shippingFee;
+        const shippingFeeCharged = Math.max(0, shippingFee - shippingDiscount);
+
+        const total = Math.max(0, subtotal - discount + shippingFeeCharged);
         const ctvCodes = [
           ...new Set(orderDetails.map((d) => d.ctvCode).filter(Boolean) as string[]),
         ];
@@ -500,10 +504,33 @@ export function registerShopOrderCreateRoutes(
             buyerId: req.shopAuth?.userId,
             buyerPhone: customerPhone,
             buyerEmail,
+            customerKey,
+            benefitType: "goods",
             idempotencyKey,
           });
           if (!holdRes.ok) {
             return res.status(400).json({ error: (holdRes as any).error || "Ưu đãi không còn khả dụng" });
+          }
+        }
+
+        if (shippingPromotion && shippingDiscount > 0) {
+          const shipHold = await holdPromotion(shopDb, {
+            orderCode: code,
+            promotionId: shippingPromotion.promotionId,
+            discountAmount: shippingDiscount,
+            buyerId: req.shopAuth?.userId,
+            buyerPhone: customerPhone,
+            buyerEmail,
+            customerKey,
+            benefitType: "shipping",
+            idempotencyKey,
+          });
+          if (!shipHold.ok) {
+            await releasePromotionHold(shopDb, code).catch(() => undefined);
+            return res.status(409).json({
+              code: "quote_stale",
+              error: `${(shipHold as any).error || "Hỗ trợ phí ship không còn khả dụng"} — báo giá ship lại`,
+            });
           }
         }
 
@@ -547,7 +574,22 @@ export function registerShopOrderCreateRoutes(
           orderDetails,
           ctvCodes,
           subtotal,
-          shippingFee,
+          shippingFee: shippingFeeCharged,
+          shippingFeeOriginal,
+          shippingDiscount,
+          shippingPromotion: shippingPromotion
+            ? {
+                promotionId: shippingPromotion.promotionId,
+                title: shippingPromotion.title,
+                discountAmount: shippingDiscount,
+                regionId: shippingPromotion.regionId,
+                regionVersion: shippingPromotion.regionVersion,
+                regionSource: shippingPromotion.regionSource,
+                thresholdBasis: "goods_before_order_discount",
+              }
+            : null,
+          shippingPromotionPending: shipPromoEval?.pending || null,
+          freeShipThresholdBasis: "goods_after_discount",
           shippingCarrier: shippingCarrier || null,
           freeShipApplied,
           totalWeightGram: deliveryMethod === "giao_tan_noi" ? totalWeightGram : 0,
@@ -673,7 +715,7 @@ export function registerShopOrderCreateRoutes(
                     500
                   ),
               totalPayment: 0,
-              shippingFee,
+              shippingFee: shippingFeeCharged,
               discount,
             });
             kvOrderId = ord.kvOrderId;
@@ -687,6 +729,7 @@ export function registerShopOrderCreateRoutes(
               patch.legacyCodes = [code];
               patch.code = kvOrderCode;
               patch.id = kvOrderCode;
+              await renameRedemptionOrderCode(shopDb, code, kvOrderCode);
               code = kvOrderCode;
             }
             await shopDb.collection(SHOP_ORDERS).updateOne({ _id: mongoId }, { $set: patch });
@@ -709,6 +752,7 @@ export function registerShopOrderCreateRoutes(
               if (doc.stockHeld) {
                 await releaseShopStockHolds(shopDb, code).catch(() => {});
               }
+              await releasePromotionHold(shopDb, code).catch(() => undefined);
               await shopDb.collection(SHOP_ORDERS).deleteOne({ _id: mongoId }).catch(() => {});
               return res.status(400).json({
                 error: msg,
@@ -744,7 +788,7 @@ export function registerShopOrderCreateRoutes(
                     500
                   ),
                 totalPayment: total,
-                shippingFee,
+                shippingFee: shippingFeeCharged,
               });
               const patch = {
                 kvInvoiceId: inv.kvInvoiceId,
@@ -771,6 +815,7 @@ export function registerShopOrderCreateRoutes(
                 if (doc.stockHeld) {
                   await releaseShopStockHolds(shopDb, code).catch(() => {});
                 }
+                await releasePromotionHold(shopDb, code).catch(() => undefined);
                 await shopDb.collection(SHOP_ORDERS).deleteOne({ _id: mongoId }).catch(() => {});
                 return res.status(400).json({
                   error: msg,

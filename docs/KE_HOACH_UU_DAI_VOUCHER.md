@@ -392,7 +392,7 @@ Chưa sửa bất kỳ file triển khai nào. Không trộn thay đổi tính n
 ### Giai đoạn 2 — mã và trải nghiệm mở rộng
 
 - Mã chung/mã riêng, phát hành hàng loạt, ví ưu đãi, nhập/xuất, báo cáo nâng cao.
-- Nhóm khách/sản phẩm nâng cao và ưu đãi ship nếu cần; mở từng loại kèm quy tắc kết hợp rõ.
+- Nhóm khách/sản phẩm nâng cao và ưu đãi ship nếu cần; mở từng loại kèm quy tắc kết hợp rõ. Voucher hỗ trợ phí ship theo khu vực: xem mục 24.
 - Hoàn tất khi mã riêng không lộ, người không đủ điều kiện biết cách xử lý, giữ và tiêu thụ đúng qua mọi trạng thái đơn.
 
 ### Giai đoạn 3 — voucher KiotViet
@@ -432,7 +432,7 @@ Phát hành bằng cờ tính năng, chương trình mặc định là nháp. B�
 | Thời hạn giữ đơn chờ xác nhận? | Cấu hình theo quy trình vận hành thực tế |
 | Có OTP/định danh đủ tin cậy chưa? | Cần kiểm tra trước phát hành ưu đãi lần đầu |
 | Dùng voucher KiotViet ngay bản đầu? | Đề xuất sau ưu đãi web, phụ thuộc xác minh API thực tế |
-| Ngưỡng miễn ship trước hay sau giảm? | Khảo sát và giữ chính sách hiện tại, ghi rõ trên UI; không tự đổi |
+| Ngưỡng miễn ship trước hay sau giảm? | Chốt 29/09/2026: sau mọi giảm tiền hàng, không cộng ship, tính ở server (mục 24.7.2) |
 
 Các điểm chưa chốt không cản việc thiết kế form tổng quát. Chúng phải được điền trước khi kích hoạt chương trình thật.
 
@@ -4005,4 +4005,394 @@ Ví dụ báo lỗi: “TC-KV06: đồng bộ đơn có giảm 100.000đ làm t�
 - Cơ chế quan sát/khôi phục: metric, audit, correlation ID và thời hạn job bù.
 
 Trạng thái tài liệu: đã thiết kế test case, chưa viết test tự động, chưa thực thi, chưa chứng nhận chức năng đạt. Sau triển khai phải dùng kết quả thực tế để quyết định phát hành.
+
+## 24. Voucher hỗ trợ phí ship theo khu vực
+
+Bổ sung 29/09/2026. Trạng thái: chính sách và cách làm Giai đoạn 0 đã chốt ở mục 24.1 và 24.7, chưa viết code, test case Not run. Nhu cầu gốc: “hỗ trợ phí ship −30.000đ cho khách khu vực Hồ Chí Minh”. Mức 30.000đ và khu vực là giá trị cấu hình của chương trình mẫu, không gắn cố định vào code (mục 1).
+
+### 24.1. Quyết định đã chốt
+
+| Câu hỏi | Quyết định |
+|---|---|
+| Khu vực Hồ Chí Minh | TP.HCM theo ranh giới **trước 01/07/2025**. Không gồm Bình Dương và Bà Rịa – Vũng Tàu cũ dù nay thuộc TP.HCM mới |
+| Cách dùng | Tự áp dụng khi đủ điều kiện, khách không nhập mã |
+| Kết hợp | Được kết hợp với một ưu đãi giảm tiền hàng và với chính sách miễn ship hiện có |
+| Giới hạn | Có ngưỡng đơn tối thiểu, ngân sách tổng và giới hạn lượt dùng mỗi khách |
+| Khách sỉ | Được áp dụng |
+| Định nghĩa khu vực | “Vùng giao hàng” nội bộ gồm danh sách mã quận/huyện (và phường nếu cần), có phiên bản; không so tên tỉnh |
+| Ngưỡng miễn ship | Tiền hàng sau mọi giảm tiền hàng, không cộng ship; tính ở server |
+| Ngưỡng voucher ship | Giữ cách tính mục 3: sau giảm riêng sản phẩm, trước giảm toàn đơn, không cộng ship; tính ở server |
+| Giới hạn chương trình | Giới hạn chính là tổng số lượt; ngân sách tiền là trần an toàn; cảnh báo khi dùng 80% |
+| Ngân sách/lượt còn lẻ | Không giảm một phần |
+| KiotViet | Chốt một cách ghi bằng thử trên gian hàng thử; đối soát hằng ngày |
+
+### 24.2. Hiện trạng code (29/09/2026)
+
+- Ưu đãi hiện chỉ giảm tiền hàng: `evaluator.ts` giới hạn mức giảm trong tiền hàng đủ điều kiện và phân bổ vào từng dòng (`lineDiscounts`); `orderCreateRoutes.ts` tính `total = subtotal − discount + shippingFee`.
+- `PromotionDoc` không có trường khu vực/địa chỉ. `combineWithShip` được lưu nhưng không nơi nào đọc; form admin không hiển thị. `usageLimitPerCustomer` có trong kiểu dữ liệu nhưng form admin chưa cho nhập.
+- Địa chỉ checkout có `province/district/ward` dạng chữ và `ghnProvinceId/ghnDistrictId/ghnWardCode`. Tên tỉnh không thống nhất giữa các nguồn: `vnLocations.ts` dùng “TP. Hồ Chí Minh”, `addressMerger.ts` dùng “Thành phố Hồ Chí Minh”, biến môi trường kho lấy hàng dùng “Hồ Chí Minh”.
+- Cơ sở ngưỡng miễn ship không thống nhất: `quoteService.ts` xét trên tiền hàng **sau** giảm với `discountTotal` do client gửi; `orderCreateRoutes.ts` kiểm tra lại trên tiền hàng **trước** giảm. Client gửi `discountTotal = 0` có thể nhận miễn ship dù tiền hàng sau giảm không đạt ngưỡng. Phải sửa trước khi mở voucher ship vì hai chính sách được kết hợp.
+
+### 24.3. Chính sách tính tiền
+
+1. **Loại lợi ích mới:** chương trình có `benefitType` = `goods` (giảm tiền hàng, như hiện tại) hoặc `shipping` (giảm phí vận chuyển). Bản đầu voucher ship chỉ hỗ trợ số tiền cố định VND; giảm % phí ship để sau.
+2. **Thứ tự tính:** giảm tiền hàng (mục 6) → báo giá ship theo địa chỉ → áp chính sách miễn ship → áp voucher ship trên phí còn lại.
+3. **Số tiền giảm ship** = min(mệnh giá, phí ship sau miễn ship). Không âm, không chuyển phần dư sang tiền hàng.
+4. **Tổng đơn** = tiền hàng − giảm hàng + (phí ship − giảm ship). Đúng bất biến mục 20.5.
+5. **Khu vực:** chương trình trỏ tới một **vùng giao hàng** (mục 24.7.1). Thứ tự nhận diện: mã quận/huyện GHN (`ghnDistrictId`) → mã phường GHN → bảng bí danh tên quận/tỉnh đã chuẩn hóa không dấu (“tp ho chi minh”, “thanh pho ho chi minh”, “ho chi minh”, “hcm”, “sai gon”) kết hợp tên quận/huyện → nếu địa chỉ dạng mới hai cấp thì tra bảng phường mới → quận/huyện cũ. Không xác định được thì **không áp** và báo “Chưa xác định được khu vực — vui lòng chọn lại phường/xã”. Không so chuỗi tên tỉnh trực tiếp.
+6. **Ngưỡng tối thiểu:** tính như mục 3 — tiền hàng đủ điều kiện sau giảm riêng sản phẩm, **trước** giảm toàn đơn; không cộng ship và thuế. Toán tử “trên/từ” admin chọn. Khác cơ sở ngưỡng miễn ship (sau mọi giảm, mục 24.7.2) theo quyết định 29/09/2026: mã giảm toàn đơn không làm khách mất hỗ trợ ship.
+7. **Kết hợp:** tối đa một voucher ship mỗi đơn; nhiều voucher ship cùng hợp lệ thì chọn mức giảm lớn nhất, bằng nhau theo priority rồi ID. Voucher ship không nằm trong nhóm loại trừ của ưu đãi tiền hàng. Đơn đã miễn ship (phí 0đ) thì voucher ship không áp và **không giữ lượt/ngân sách**.
+8. **Lượt và ngân sách:** giới hạn chính là **tổng số lượt** (bắt buộc với voucher ship). Ngân sách tiền là trần an toàn, mặc định = tổng lượt × mệnh giá, admin có thể hạ; trừ theo số tiền giảm ship thực tế, không theo mệnh giá. Giữ khi đặt, trừ khi đơn thành công, trả khi hủy/hết hạn (mục 7). Hết lượt, hoặc ngân sách còn nhỏ hơn số tiền giảm của đơn, thì **không áp** — không giảm một phần.
+9. **Lượt mỗi khách:** định danh theo tài khoản/số điện thoại đã xác minh như mục 7; không dùng số điện thoại nhận hàng tự nhập. Bộ tính phải thực thi `usageLimitPerCustomer`, tính cả lượt đang giữ, bằng cập nhật nguyên tử (mục 24.7.3).
+10. **Khách sỉ:** đối tượng mặc định “Tất cả” gồm khách sỉ. Đơn sỉ bán nguyên thùng thường có phí ship “chờ shop báo phí”, áp theo SV09.
+11. **Phí ship chưa có** (chờ shop báo phí): chưa trừ tiền; hiển thị “Được hỗ trợ tối đa 30.000đ phí ship khi shop báo phí”; khi shop báo phí và khách xác nhận báo giá cuối thì tính và giữ lượt.
+12. **CTV:** cơ sở hoa hồng không gồm phí ship (mục 15.1) nên voucher ship không làm đổi hoa hồng.
+13. **Snapshot đơn:** phí ship gốc, cơ sở ngưỡng miễn ship và cơ sở ngưỡng voucher ship, miễn ship (có/không, lý do), chương trình ship + phiên bản, vùng đã nhận diện (`regionId`, `regionVersion`, nguồn nhận diện), số tiền giảm ship, phí ship khách trả.
+
+### 24.4. Admin
+
+- Form tạo chương trình thêm lựa chọn **Loại ưu đãi**: “Giảm tiền hàng” / “Hỗ trợ phí vận chuyển”. Chọn hỗ trợ phí ship thì: mệnh giá chỉ VND; hiện trường **Vùng áp dụng** (chọn vùng giao hàng đã định nghĩa, có sẵn vùng “TP.HCM (ranh giới trước 01/07/2025)”); ẩn trần giảm %. Bản đầu không cho admin tự sửa danh sách quận trong vùng; sửa vùng tạo phiên bản mới và có audit.
+- Hiện đủ: ngưỡng tối thiểu (ghi rõ “chưa trừ mã giảm toàn đơn”), **tổng lượt** (bắt buộc), ngân sách tổng (tự điền tổng lượt × mệnh giá, cho hạ), **lượt mỗi khách**, đối tượng khách (mặc định Tất cả), thời gian, tự áp dụng.
+- Danh sách chương trình hiển thị lượt đã dùng/đang giữ/còn lại và tiền đã giảm; cảnh báo khi đạt 80% lượt hoặc ngân sách; trạng thái “Hết lượt/ngân sách” khi chạm trần.
+- Bản tóm tắt ví dụ: “Tự động giảm tối đa 30.000đ phí ship cho đơn giao tới TP.HCM (ranh giới trước 01/07/2025), tiền hàng từ 300.000đ (chưa trừ mã giảm toàn đơn); 100 lượt, mỗi khách 1 lần; kết hợp được với giảm tiền hàng và miễn ship”.
+- Xem thử (mục 4.3) bắt buộc có địa chỉ giao và cách nhận hàng; trả về khu vực nhận diện, phí ship, miễn ship, số tiền giảm ship và lý do không áp.
+- Mẫu gợi ý mới trong form: “Hỗ trợ ship HCM 30k” — tạo ở trạng thái nháp.
+
+### 24.5. Checkout và đơn hàng
+
+- Bảng tiền có dòng riêng: “Phí vận chuyển 35.000đ” và “Hỗ trợ phí ship (TP.HCM) −30.000đ”. Không gộp vào “Giảm giá ưu đãi”.
+- Thông báo khi không áp: ngoài khu vực; chưa đạt ngưỡng (kèm số tiền còn thiếu theo đúng cơ sở của chương trình); đã dùng hết lượt; chương trình hết lượt/ngân sách; phí ship đang chờ shop báo; đơn nhận tại cửa hàng.
+- Hai ngưỡng ship dùng hai cơ sở khác nhau nên câu chữ phải nêu rõ, và số tiền còn thiếu hiển thị riêng cho từng chương trình: “Miễn ship cho đơn từ X đ (sau giảm giá)”, “Hỗ trợ ship cho đơn từ Y đ (chưa trừ mã giảm toàn đơn)”.
+- Báo giá ship trả thêm phần giảm ship do server tính; token báo giá ký kèm số tiền giảm và phiên bản chương trình. Khi tạo đơn, server tính lại từ token và địa chỉ, không nhận số tiền giảm từ client.
+- Chi tiết đơn (khách và admin), email/thông báo và phiếu in hiển thị cùng dòng giảm ship.
+
+### 24.6. Điểm tích hợp trong repo
+
+| File | Việc dự kiến |
+|---|---|
+| `backend/shopPromotions/types.ts` | `benefitType`, `regionId`, tổng lượt bắt buộc với voucher ship, trường snapshot giảm ship |
+| `backend/shopPromotions/evaluator.ts` | Hàm tính voucher ship nhận phí ship đã báo giá + khu vực; thực thi lượt/khách |
+| `backend/shopPromotions/adminRoutes.ts` | Validate loại, mệnh giá VND, khu vực bắt buộc với voucher ship |
+| `backend/shopPromotions/redemptionService.ts` | Giữ/trừ/trả lượt và ngân sách theo số tiền giảm ship |
+| `backend/shopShipping/quoteService.ts`, `routes.ts`, `quoteToken.ts` | Dùng hàm cơ sở ngưỡng chung; tự tính giảm hàng thay vì nhận `discountTotal` từ client; trả và ký phần giảm ship |
+| `backend/shopShipping/` (file mới cho vùng giao hàng) | Đọc vùng từ collection `config` (cache như `categorySizeConfig.ts`), nhận diện vùng từ địa chỉ |
+| Script/job đối soát KiotViet (mới) | So 5 số tiền mỗi ngày, xuất danh sách lệch cho admin |
+| `backend/shopOrders/orderCreateRoutes.ts` | Tính lại, lưu snapshot, `total` trừ giảm ship |
+| Luồng đẩy đơn KiotViet | Ánh xạ phí ship sau giảm đúng một lần (KV15) — xác minh trước |
+| `frontend/components/admin/promotions/PromotionFormModal.tsx` | Trường loại ưu đãi, khu vực, lượt/khách |
+| `frontend/components/checkout/*` | Dòng “Hỗ trợ phí ship”, thông báo lý do |
+| Dữ liệu địa chỉ (`frontend/lib/vnLocations.ts`, `ghnLocations.ts`) | Bí danh tên tỉnh/quận, bảng phường mới → quận/huyện cũ |
+
+### 24.7. Giai đoạn 0 trước khi code
+
+Chốt 29/09/2026 theo thông lệ phổ biến của các hệ thống thương mại điện tử lớn: dữ liệu địa chỉ riêng có phiên bản, tách từng khoản tiền, mọi phép tính tiền làm ở server, giới hạn theo lượt và đối soát định kỳ. Đây là thông lệ công khai, không phải quy trình nội bộ đã kiểm chứng của một công ty cụ thể. Mỗi việc có tiêu chí xong; chưa xong thì không bật cờ tính năng.
+
+#### 24.7.1. Vùng giao hàng có phiên bản
+
+- **Cách làm:** Aloha tự giữ định nghĩa vùng, không phụ thuộc cách hãng vận chuyển trả dữ liệu sau sáp nhập. Vùng = danh sách mã quận/huyện GHN (thêm mã phường khi cần), có `version` và ngày hiệu lực.
+- **Việc cần làm:**
+  1. Gọi API GHN thật: lấy mã tỉnh TP.HCM, mã các quận/huyện; ghi lại GHN đang trả ranh giới cũ hay mới.
+  2. Tạo vùng “TP.HCM (ranh giới trước 01/07/2025)” gồm 22 đơn vị cấp huyện: Quận 1, 3, 4, 5, 6, 7, 8, 10, 11, 12, Bình Tân, Bình Thạnh, Gò Vấp, Phú Nhuận, Tân Bình, Tân Phú, TP Thủ Đức, Bình Chánh, Cần Giờ, Củ Chi, Hóc Môn, Nhà Bè. Nếu GHN vẫn tách Quận 2, Quận 9 và Thủ Đức cũ thì đưa cả ba mã vào vùng.
+  3. Nếu checkout hoặc GHN đã dùng địa chỉ hai cấp: thêm bảng phường mới → quận/huyện cũ theo nghị quyết sắp xếp đơn vị hành chính 2025. Phường mới gộp từ cả phần trong lẫn ngoài TP.HCM cũ thì không áp, không đoán.
+  4. Lưu vùng trong collection `config` với cả `id` và `key` — collection này có unique index `key_1` không sparse, thiếu `key` sẽ lỗi E11000 như lần ghi `shipping_category_size`.
+- **Xong khi:** địa chỉ mẫu của TC-SV01–SV03 cho đúng kết quả; đơn lưu `regionId` + `regionVersion`.
+
+#### 24.7.2. Ngưỡng miễn ship: sau giảm, tính ở server
+
+- **Quyết định:** cơ sở ngưỡng miễn ship = tiền hàng khách thực trả sau mọi giảm tiền hàng, không cộng ship và thuế. Voucher ship không dùng cơ sở này mà giữ cách tính mục 3 (mục 24.3 bước 6); cả hai đều do server tính. Đây cũng là cách phổ biến (ví dụ Amazon tính ngưỡng miễn phí vận chuyển sau khuyến mãi): khách phải thực trả đủ ngưỡng, tránh “mua đủ ngưỡng rồi dùng mã giảm xuống dưới”.
+- **Việc cần làm:**
+  1. Một hàm dùng chung tính cơ sở ngưỡng, gọi ở cả `quoteService.ts` và `orderCreateRoutes.ts`.
+  2. Báo giá tự tính giảm hàng từ giỏ và chương trình đang áp (cùng bộ tính `evaluatePromotions`), bỏ `discountTotal` do client gửi. Token báo giá ký kèm cơ sở ngưỡng.
+  3. Đổi câu chữ UI theo mục 24.5.
+- **Ảnh hưởng:** báo giá hiện đã xét sau giảm, nên với khách dùng bình thường kết quả gần như không đổi; thay đổi chủ yếu chặn đường lách bằng `discountTotal = 0`.
+- **Xong khi:** TC-SV16 Pass; request báo giá gửi `discountTotal` sai không làm đổi kết quả miễn ship.
+
+#### 24.7.3. Lượt và ngân sách
+
+- **Giới hạn chính:** tổng số lượt, bắt buộc với voucher ship. Ngân sách tiền là trần an toàn, mặc định = tổng lượt × mệnh giá.
+- **Không giảm phần lẻ:** hết lượt, hoặc ngân sách còn nhỏ hơn số tiền giảm của đơn, thì không áp.
+- **Lượt mỗi khách:** bộ đếm theo (chương trình, định danh khách = tài khoản + số điện thoại đã xác minh). Giữ lượt bằng một lệnh cập nhật có điều kiện `đã dùng + đang giữ < giới hạn` để hai đơn đồng thời không cùng lọt. Kiểm tra `evaluator.ts`/`redemptionService.ts` đã thực thi `usageLimitPerCustomer` chưa; chưa thì bổ sung.
+- **Cảnh báo:** lượt hoặc ngân sách (tính cả đang giữ) đạt 80% thì báo admin một lần; chạm 100% thì chương trình tự ngừng áp đơn mới, hiển thị “Hết lượt/ngân sách”.
+- **Để sau:** chống lạm dụng nâng cao (thiết bị, nhiều tài khoản cùng địa chỉ giao).
+- **Xong khi:** TC-SV19, SV25, SV26, SV28 Pass.
+
+#### 24.7.4. KiotViet và đối soát
+
+- **Thử hợp đồng:** trên gian hàng thử, đẩy ba đơn: có ship; miễn ship; có giảm hàng + giảm ship. Ghi lại KiotViet lưu phí giao hàng và khoản giảm ở trường nào rồi chốt một cách ghi duy nhất. Nếu API không có trường giảm phí giao hàng: ghi phí giao hàng = phí khách trả sau giảm; phí gốc và khoản giảm lưu ở snapshot web và ghi chú đơn.
+- **Đối soát hằng ngày:** so đơn web thành công với hóa đơn KiotViet theo 5 số — tiền hàng, giảm hàng, phí ship khách trả, giảm ship, tổng. Lệch từ 1đ trở lên vào danh sách cho admin xử lý; job không tự sửa dữ liệu.
+- **Xong khi:** TC-SV24 và SV29 Pass trên môi trường thử.
+
+#### 24.7.5. Chương trình mẫu và phát hành
+
+- **Ngưỡng:** chủ shop xem giá trị đơn trung bình web 3 tháng gần nhất trên báo cáo, đặt ngưỡng cao hơn khoảng 10–30% để kéo khách mua thêm. Phía phát triển không truy vấn production để lấy số này.
+- **Lượt/ngân sách:** chủ shop chọn theo mức chi chấp nhận được; fixture test dùng 100 lượt × 30.000đ = 3.000.000đ.
+- **Phát hành:** cờ tính năng; chương trình tạo ở trạng thái nháp; nếu có từ hai tài khoản admin thì người tạo và người bật khác nhau; mọi thay đổi có audit; bật cho nhóm thử trước (mục 13).
+- **Theo dõi:** lượt đã dùng/đang giữ, tiền đã giảm, số đơn không được áp theo từng lý do.
+
+### 24.8. Tình huống vận hành
+
+| Mã | Tình huống | Xử lý |
+|---|---|---|
+| SV01 | Tên tỉnh ghi nhiều kiểu (“TP. Hồ Chí Minh”, “Thành phố Hồ Chí Minh”, “Hồ Chí Minh”) | Nhận diện theo mã GHN rồi bí danh chuẩn hóa; cùng một kết quả |
+| SV02 | Địa chỉ thuộc Bình Dương hoặc Bà Rịa – Vũng Tàu cũ, kể cả khi ghi “TP.HCM” dạng địa chỉ mới | Không áp — ngoài khu vực ranh giới cũ |
+| SV03 | Địa chỉ cũ trong sổ có quận/huyện; địa chỉ mới chỉ có phường/xã | Cả hai dạng cho cùng kết quả khi thuộc TP.HCM cũ |
+| SV04 | Khách đổi địa chỉ từ TP.HCM sang tỉnh khác trước khi đặt | Báo giá lại; bỏ voucher ship, nêu lý do |
+| SV05 | Admin sửa địa chỉ đơn sau khi đặt | Kiểm tra lại điều kiện; có audit; không âm thầm giữ hoặc bỏ khoản giảm |
+| SV06 | Phí ship thấp hơn mệnh giá (18.000đ) | Giảm 18.000đ; phí ship khách trả 0đ |
+| SV07 | Đơn được miễn ship | Không áp voucher ship, không giữ lượt/ngân sách |
+| SV08 | Nhận tại cửa hàng | Không áp |
+| SV09 | Phí ship chờ shop báo | Chưa trừ; hiển thị “tối đa”; tính khi chốt báo giá cuối |
+| SV10 | Phí hãng thực tế khác phí tạm tính | Giảm tính trên phí đã chốt với khách; chênh lệch theo chính sách phí ship |
+| SV11 | Token báo giá hết hạn hoặc client sửa số tiền giảm | Server tính lại; từ chối số tiền do client gửi |
+| SV12 | Đơn đặt trước giao nhiều lần | Giảm một lần cho mỗi đơn |
+| SV13 | Ngưỡng biên 299.999/300.000đ; ship không cộng; giảm toàn đơn làm tiền hàng sau giảm dưới ngưỡng | Theo mục 24.3 bước 6: xét trước giảm toàn đơn nên vẫn áp |
+| SV14 | Kết hợp với ưu đãi khách mới 10% | Áp cả hai, hai dòng riêng |
+| SV15 | Hai voucher ship cùng hợp lệ | Chọn một, mức lớn nhất; bằng nhau theo priority rồi ID |
+| SV16 | Giảm tiền hàng làm đơn rớt ngưỡng miễn ship | Mất miễn ship (cơ sở sau giảm, mục 24.7.2); báo giá và tạo đơn cùng kết quả; voucher ship được xét trên phí mới |
+| SV17 | Hủy đơn hoặc chuyển khoản hết hạn | Trả lượt và ngân sách đúng một lần |
+| SV18 | Giao thất bại hoặc hoàn hàng | Không hoàn khoản hỗ trợ ship thành tiền; phí ship hoàn theo chính sách riêng |
+| SV19 | Hai khách tranh lượt/ngân sách cuối | Giữ nguyên tử; người sau nhận “hết ngân sách/lượt” và báo giá lại |
+| SV20 | Chương trình hết hạn khi khách đang thanh toán | Giờ Việt Nam; đơn giữ lượt trước giờ kết thúc được giữ khoản giảm |
+| SV21 | Khách sỉ | Được áp; đơn nguyên thùng theo SV09 |
+| SV22 | Phí ship về 0đ nhờ voucher | Tổng vẫn gồm tiền hàng; đơn tổng 0đ theo mục 6 |
+| SV23 | Hoa hồng CTV | Không đổi |
+| SV24 | Đồng bộ KiotViet | Phí ship và giảm ship ghi nhận đúng một lần |
+| SV25 | Khách đã dùng đủ lượt | Không áp; thông báo đã dùng; lượt đang giữ cũng được tính |
+| SV26 | Ngân sách còn nhỏ hơn số tiền giảm của đơn | Không áp, không giảm một phần |
+| SV27 | Khách chưa đăng nhập | Báo giá ship hiện yêu cầu đăng nhập; chỉ hiển thị lợi ích dạng “có thể được hỗ trợ” |
+| SV28 | Lượt hoặc ngân sách chạm 80% và 100% | Báo admin một lần ở 80%; ở 100% ngừng áp đơn mới, trạng thái “Hết lượt/ngân sách” |
+| SV29 | Số tiền web và KiotViet lệch | Đối soát ngày đưa đơn vào danh sách lệch; không tự sửa |
+
+### 24.9. Test case
+
+Fixture bổ sung (dùng cùng mục 20.4):
+
+| Fixture | Giá trị |
+|---|---|
+| SHIP30_HCM | Tự áp dụng, giảm phí ship 30.000đ, vùng TP.HCM ranh giới trước 01/07/2025, tiền hàng từ 300.000đ (trước giảm toàn đơn), 100 lượt, ngân sách 3.000.000đ, 1 lượt/khách, đối tượng Tất cả |
+| A_HCM | Giao tới Phường Tân Định, Quận 1, TP.HCM |
+| A_BD | Giao tới Thuận An, Bình Dương cũ |
+| A_HN | Giao tới Hà Nội |
+| S35 / S18 | Phí ship báo giá 35.000đ / 18.000đ |
+
+Hậu kiểm chung cho mọi TC-SV: bất biến mục 20.5; bằng chứng mục 20.6; counters lượt/ngân sách trước/sau khớp kỳ vọng; ca không giữ lượt thì counters không đổi.
+
+#### TC-SV01 — Tên tỉnh nhiều kiểu
+
+- **Truy vết:** SV01. **Ưu tiên:** P1. **Lớp:** Logic. **Trạng thái:** Not run.
+- **Dữ liệu:** SHIP30_HCM; G800; S35; tỉnh lần lượt “TP. Hồ Chí Minh”, “Thành phố Hồ Chí Minh”, “Hồ Chí Minh”, có/không `ghnProvinceId`.
+
+**Kết quả mong đợi:** Cả bốn bộ nhận diện TP.HCM cũ, giảm 30.000đ, tổng 805.000đ.
+
+#### TC-SV02 — Bình Dương cũ ghi dạng TP.HCM mới
+
+- **Truy vết:** SV02. **Ưu tiên:** P0. **Lớp:** Logic/API. **Trạng thái:** Not run.
+- **Dữ liệu:** SHIP30_HCM; G800; S35; A_BD ở dạng cũ và dạng địa chỉ mới thuộc TP.HCM.
+- **Điểm chặn:** cần vùng giao hàng và bảng phường mới → quận/huyện cũ (mục 24.7.1); chưa có thì Blocked.
+
+**Kết quả mong đợi:** Không áp ở cả hai dạng; lý do “ngoài khu vực”; tổng 835.000đ.
+
+#### TC-SV03 — Địa chỉ ba cấp và hai cấp
+
+- **Truy vết:** SV03. **Ưu tiên:** P1. **Lớp:** Logic. **Trạng thái:** Not run.
+- **Dữ liệu:** A_HCM dạng tỉnh/quận/phường và dạng tỉnh/phường.
+
+**Kết quả mong đợi:** Cùng nhận diện TP.HCM cũ và cùng mức giảm.
+
+#### TC-SV04 — Đổi địa chỉ trước khi đặt
+
+- **Truy vết:** SV04, GH14. **Ưu tiên:** P1. **Lớp:** API + UI. **Trạng thái:** Not run.
+- **Dữ liệu:** SHIP30_HCM; G800; A_HCM → A_HN.
+
+**Bước thực hiện:**
+
+1. Báo giá với A_HCM.
+2. Đổi sang A_HN, chờ báo giá mới.
+3. Đặt đơn.
+
+**Kết quả mong đợi:** Dòng hỗ trợ ship biến mất kèm lý do; đơn lưu không có giảm ship; không giữ lượt.
+
+#### TC-SV05 — Admin sửa địa chỉ sau đặt
+
+- **Truy vết:** SV05. **Ưu tiên:** P1. **Lớp:** API + DB. **Trạng thái:** Not run.
+- **Dữ liệu:** Đơn đã đặt với A_HCM có giảm 30.000đ; admin đổi sang A_HN.
+
+**Kết quả mong đợi:** Hệ thống yêu cầu báo giá/xác nhận lại; giảm ship được bỏ và lượt trả lại khi xác nhận; có audit người sửa.
+
+#### TC-SV06 — Phí ship nhỏ hơn mệnh giá
+
+- **Truy vết:** SV06. **Ưu tiên:** P0. **Lớp:** Logic. **Trạng thái:** Not run.
+- **Dữ liệu:** SHIP30_HCM; G800; A_HCM; S18.
+
+**Kết quả mong đợi:** Giảm 18.000đ; ship khách trả 0đ; tổng 800.000đ; ngân sách trừ 18.000đ.
+
+#### TC-SV07 — Đơn đã miễn ship
+
+- **Truy vết:** SV07. **Ưu tiên:** P0. **Lớp:** Logic/API. **Trạng thái:** Not run.
+- **Dữ liệu:** SHIP30_HCM; A_HCM; giỏ đạt điều kiện miễn ship.
+
+**Kết quả mong đợi:** Phí ship 0đ, không có dòng hỗ trợ ship; lượt và ngân sách không đổi.
+
+#### TC-SV08 — Nhận tại cửa hàng
+
+- **Truy vết:** SV08. **Ưu tiên:** P1. **Lớp:** API. **Trạng thái:** Not run.
+- **Dữ liệu:** SHIP30_HCM; G800; nhận tại cửa hàng.
+
+**Kết quả mong đợi:** Không áp; không giữ lượt.
+
+#### TC-SV09 — Phí ship chờ shop báo
+
+- **Truy vết:** SV09. **Ưu tiên:** P1. **Lớp:** API + UI. **Trạng thái:** Not run.
+- **Dữ liệu:** SHIP30_HCM; A_HCM; giỏ có hàng nguyên thùng (phí chờ báo).
+
+**Bước thực hiện:**
+
+1. Đặt đơn khi phí chưa có.
+2. Shop báo phí 35.000đ; khách xác nhận báo giá cuối.
+
+**Kết quả mong đợi:** Bước 1 hiển thị “tối đa 30.000đ”, chưa trừ, chưa giữ lượt. Bước 2 giảm 30.000đ và giữ lượt.
+
+#### TC-SV10 — Phí hãng thực tế khác phí tạm tính
+
+- **Truy vết:** SV10. **Ưu tiên:** P2. **Lớp:** DB. **Trạng thái:** Not run.
+- **Dữ liệu:** Đơn chốt S35 giảm 30.000đ; hãng tính thực tế 42.000đ.
+
+**Kết quả mong đợi:** Snapshot đơn giữ 35.000đ/−30.000đ; chênh lệch xử lý theo chính sách phí ship, không đổi khoản giảm.
+
+#### TC-SV11 — Client sửa số tiền giảm ship
+
+- **Truy vết:** SV11, TC-SEC07. **Ưu tiên:** P0. **Lớp:** API. **Trạng thái:** Not run.
+- **Dữ liệu:** SHIP30_HCM; G800; A_HCM; request tạo đơn gửi giảm ship 35.000đ, hoặc token báo giá hết hạn.
+
+**Kết quả mong đợi:** Server dùng số tự tính (30.000đ) hoặc yêu cầu báo giá lại; không lưu số client gửi.
+
+#### TC-SV12 — Đơn đặt trước giao nhiều lần
+
+- **Truy vết:** SV12. **Ưu tiên:** P2. **Lớp:** DB. **Trạng thái:** Not run.
+- **Dữ liệu:** SHIP30_HCM; đơn A_HCM có hàng đặt trước, giao hai lần.
+
+**Kết quả mong đợi:** Giảm ship một lần cho đơn; lượt trừ một lần.
+
+#### TC-SV13 — Biên ngưỡng
+
+- **Truy vết:** SV13, GH03. **Ưu tiên:** P0. **Lớp:** Logic. **Trạng thái:** Not run.
+- **Dữ liệu:** SHIP30_HCM “từ 300.000đ”; A_HCM; S35; tiền hàng 299.999đ / 300.000đ; thêm bộ 300.000đ kèm ưu đãi toàn đơn giảm 20.000đ.
+
+**Kết quả mong đợi:** 299.999đ không áp (báo thiếu 1đ); 300.000đ áp; bộ có giảm toàn đơn vẫn áp 30.000đ vì ngưỡng voucher ship tính trước giảm toàn đơn (tổng 280.000đ + 5.000đ = 285.000đ).
+
+#### TC-SV14 — Kết hợp khách mới 10%
+
+- **Truy vết:** SV14. **Ưu tiên:** P0. **Lớp:** Logic/API + UI. **Trạng thái:** Not run.
+- **Dữ liệu:** U_NEW; FIRST10; SHIP30_HCM; G800; A_HCM; S35.
+
+**Kết quả mong đợi:** Giảm hàng 80.000đ, giảm ship 30.000đ, tổng 725.000đ; hai dòng riêng; snapshot lưu hai chương trình.
+
+#### TC-SV15 — Hai voucher ship cùng hợp lệ
+
+- **Truy vết:** SV15. **Ưu tiên:** P1. **Lớp:** Logic. **Trạng thái:** Not run.
+- **Dữ liệu:** SHIP30_HCM và một voucher ship 20.000đ cùng khu vực; G800; A_HCM; S35.
+
+**Kết quả mong đợi:** Chỉ áp 30.000đ; chạy lặp cho cùng kết quả; khi bằng nhau chọn theo priority rồi ID.
+
+#### TC-SV16 — Giảm hàng làm rớt ngưỡng miễn ship
+
+- **Truy vết:** SV16, GH13. **Ưu tiên:** P0. **Lớp:** Logic/API. **Trạng thái:** Not run.
+- **Dữ liệu:** Tiền hàng vừa chạm ngưỡng miễn ship trước giảm; ưu đãi giảm toàn đơn làm tiền hàng sau giảm rớt dưới ngưỡng miễn ship; tiền hàng trước giảm toàn đơn vẫn từ 300.000đ; A_HCM; S35. Bộ thứ hai: cùng giỏ, request báo giá gửi `discountTotal = 0`.
+
+**Kết quả mong đợi:** Không miễn ship; giảm ship 30.000đ trên phí 35.000đ; báo giá và tạo đơn cùng kết quả. Bộ thứ hai cho kết quả như bộ đầu vì server tự tính giảm hàng.
+
+#### TC-SV17 — Hủy hoặc hết hạn
+
+- **Truy vết:** SV17. **Ưu tiên:** P0. **Lớp:** DB. **Trạng thái:** Not run.
+- **Dữ liệu:** Đơn giữ lượt SHIP30_HCM 30.000đ; hủy; gửi lại sự kiện hủy lần hai.
+
+**Kết quả mong đợi:** Lượt và ngân sách trả đúng một lần.
+
+#### TC-SV18 — Giao thất bại/hoàn hàng
+
+- **Truy vết:** SV18. **Ưu tiên:** P1. **Lớp:** DB. **Trạng thái:** Not run.
+- **Dữ liệu:** Đơn giảm ship 30.000đ đã thanh toán, giao thất bại và hoàn.
+
+**Kết quả mong đợi:** Khoản hoàn không gồm 30.000đ hỗ trợ ship; phí ship hoàn theo chính sách riêng; lượt không cấp lại tự động.
+
+#### TC-SV19 — Tranh ngân sách cuối
+
+- **Truy vết:** SV19. **Ưu tiên:** P0. **Lớp:** Tích hợp DB, hai instance API. **Trạng thái:** Not run.
+- **Dữ liệu:** Bộ 1: SHIP30_HCM còn 30.000đ ngân sách. Bộ 2: còn 1 lượt. U_NEW1 và U_NEW2 đặt đồng thời trong mỗi bộ.
+
+**Kết quả mong đợi:** Mỗi bộ đúng một đơn được giảm; đơn còn lại báo hết lượt/ngân sách và báo giá lại; tổng giữ + đã dùng không vượt 100 lượt và 3.000.000đ.
+
+#### TC-SV20 — Biên thời gian
+
+- **Truy vết:** SV20. **Ưu tiên:** P1. **Lớp:** Logic. **Trạng thái:** Not run.
+- **Dữ liệu:** Đồng hồ khóa ở T1 − 1 giây và T1 theo giờ Việt Nam; đơn giữ lượt trước T1 rồi thanh toán sau T1.
+
+**Kết quả mong đợi:** Trước T1 áp; từ T1 không áp đơn mới; đơn đã giữ trước T1 giữ khoản giảm.
+
+#### TC-SV21 — Khách sỉ
+
+- **Truy vết:** SV21. **Ưu tiên:** P1. **Lớp:** API. **Trạng thái:** Not run.
+- **Dữ liệu:** U_SI; SHIP30_HCM; giỏ giá sỉ đạt ngưỡng; A_HCM; S35; thêm bộ hàng nguyên thùng.
+
+**Kết quả mong đợi:** Bộ thường giảm 30.000đ; bộ nguyên thùng theo TC-SV09.
+
+#### TC-SV22 — Phí ship về 0đ
+
+- **Truy vết:** SV22. **Ưu tiên:** P2. **Lớp:** Logic + UI. **Trạng thái:** Not run.
+- **Dữ liệu:** SHIP30_HCM; G800; A_HCM; S18.
+
+**Kết quả mong đợi:** Ship khách trả 0đ, tổng 800.000đ; QR/chuyển khoản dùng đúng tổng.
+
+#### TC-SV23 — Hoa hồng CTV
+
+- **Truy vết:** SV23. **Ưu tiên:** P0. **Lớp:** Logic/DB. **Trạng thái:** Not run.
+- **Dữ liệu:** GXY qua link CTV A 5%; SHIP30_HCM; A_HCM; S35.
+
+**Kết quả mong đợi:** Cơ sở hoa hồng như khi không có voucher ship; hoa hồng không đổi.
+
+#### TC-SV24 — Đồng bộ KiotViet
+
+- **Truy vết:** SV24, KV15. **Ưu tiên:** P0. **Lớp:** Hợp đồng KiotViet (sandbox). **Trạng thái:** Not run.
+- **Điểm chặn:** ánh xạ phí giao hàng/giảm phí giao hàng chưa xác minh thì Blocked.
+- **Dữ liệu:** Đơn G800 + FIRST10 + SHIP30_HCM, S35.
+
+**Kết quả mong đợi:** KiotViet ghi tiền hàng 800.000đ, giảm 80.000đ, phí ship khách trả 5.000đ, tổng 725.000đ; không trừ hai lần; đọc ngược không làm mất khoản giảm.
+
+#### TC-SV25 — Đã dùng hết lượt
+
+- **Truy vết:** SV25. **Ưu tiên:** P0. **Lớp:** API/DB. **Trạng thái:** Not run.
+- **Dữ liệu:** Khách đã có một đơn thành công dùng SHIP30_HCM; bộ thứ hai: đơn đầu đang giữ lượt chưa thanh toán.
+
+**Kết quả mong đợi:** Đơn tiếp theo không áp ở cả hai bộ; thông báo đã dùng lượt.
+
+#### TC-SV26 — Ngân sách còn lẻ
+
+- **Truy vết:** SV26. **Ưu tiên:** P1. **Lớp:** Logic/DB. **Trạng thái:** Not run.
+- **Dữ liệu:** SHIP30_HCM còn 20.000đ ngân sách và còn lượt; G800; A_HCM; S35. Bộ thứ hai: cùng ngân sách, S18.
+
+**Kết quả mong đợi:** Bộ đầu không áp, ngân sách giữ nguyên 20.000đ, thông báo hết ngân sách. Bộ thứ hai áp 18.000đ vì số tiền giảm của đơn không vượt phần còn lại.
+
+#### TC-SV27 — Khách chưa đăng nhập
+
+- **Truy vết:** SV27. **Ưu tiên:** P2. **Lớp:** UI. **Trạng thái:** Not run.
+- **Dữ liệu:** Khách vãng lai; giỏ G800; địa chỉ A_HCM.
+
+**Kết quả mong đợi:** Không trừ tiền trước đăng nhập; chỉ hiển thị “có thể được hỗ trợ phí ship”; sau đăng nhập báo giá và áp bình thường.
+
+#### TC-SV28 — Cảnh báo 80% và dừng ở 100%
+
+- **Truy vết:** SV28. **Ưu tiên:** P1. **Lớp:** API/DB + UI admin. **Trạng thái:** Not run.
+- **Dữ liệu:** SHIP30_HCM với 10 lượt; đặt lần lượt 8 đơn đủ điều kiện, rồi thêm 2 đơn, rồi đơn thứ 11. Bộ thứ hai: ngân sách hạ còn 240.000đ, lượt vẫn 100.
+
+**Kết quả mong đợi:** Đơn thứ 8 (hoặc ngân sách dùng + giữ đạt 240.000đ × 80%) tạo đúng một cảnh báo admin; không lặp cảnh báo ở đơn sau. Khi chạm 100%, đơn mới không được áp, admin thấy trạng thái “Hết lượt/ngân sách”. Hủy một đơn đang giữ thì lượt trả lại và chương trình áp tiếp.
+
+#### TC-SV29 — Đối soát web và KiotViet
+
+- **Truy vết:** SV29, KV15. **Ưu tiên:** P1. **Lớp:** Tích hợp KiotViet (gian hàng thử). **Trạng thái:** Not run.
+- **Điểm chặn:** cách ghi KiotViet chưa chốt (mục 24.7.4) thì Blocked.
+- **Dữ liệu:** Ba đơn khớp; một đơn cố ý sửa phí giao hàng trên gian hàng thử lệch 5.000đ.
+
+**Kết quả mong đợi:** Job đối soát báo đúng một đơn lệch, nêu số nào lệch và chênh bao nhiêu; ba đơn khớp không bị báo; job không sửa dữ liệu ở cả hai phía.
+
+Bộ chạy đề xuất bổ sung vào mục 23.1: **Smoke voucher ship** gồm TC-SV02, SV06, SV07, SV11, SV13, SV14, SV16; **Tính tiền/cạnh tranh** gồm toàn bộ P0 của mục này, chạy khi đổi bộ tính ưu đãi, báo giá ship hoặc luồng tạo đơn; **Vận hành** gồm TC-SV28, SV29, chạy trước mỗi đợt bật chương trình mới.
 

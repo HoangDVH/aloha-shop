@@ -5,6 +5,7 @@ import type { Db } from "mongodb";
 import { slugify } from "./text.js";
 import { shopFilterBase } from "./publicProduct.js";
 import { COL } from "./types.js";
+import { CATEGORY_COL } from "../categoryCollection.js";
 import {
   buildCategoryTreeFromKv,
   flattenKvCategories,
@@ -135,7 +136,7 @@ export async function buildShopKvCategoryTree(
   db: Db
 ): Promise<{ tree: CategoryNode[]; items: ShopNavNode[] }> {
   const cats = await db
-    .collection("categories")
+    .collection(CATEGORY_COL)
     .find({
       categoryId: { $exists: true, $ne: null },
       $expr: { $gt: [{ $toDouble: { $ifNull: ["$categoryId", 0] } }, 0] },

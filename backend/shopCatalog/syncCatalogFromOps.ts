@@ -14,9 +14,11 @@ import {
 import { memoryCacheClear, redisInvalidateShopCache } from "../redis.js";
 import { syncBus } from "../syncBus.js";
 import { invalidateCategoryMetaCache } from "./categoryMeta.ts";
+import { CATEGORY_COL } from "./categoryCollection.ts";
 import { parseKvDate } from "../utils/productCreatedAt.js";
 
-const CAT_COL = "categories";
+const OPS_CAT_COL = "categories";
+const SHOP_CAT_COL = CATEGORY_COL;
 const PROD_COL = "aloha_products";
 
 function pickOpsCreatedRaw(p: Record<string, unknown> | undefined): unknown {
@@ -165,7 +167,7 @@ export async function syncCatalogFromOps(
   const now = new Date().toISOString();
 
   const opsCats = await sourceDb
-    .collection(CAT_COL)
+    .collection(OPS_CAT_COL)
     .find({
       categoryId: { $exists: true, $ne: null },
     })
@@ -179,7 +181,7 @@ export async function syncCatalogFromOps(
   }
 
   const shopCats = await shopDb
-    .collection(CAT_COL)
+    .collection(SHOP_CAT_COL)
     .find({
       categoryId: { $exists: true, $ne: null },
     })
@@ -221,7 +223,7 @@ export async function syncCatalogFromOps(
     }
 
     if (!dryRun) {
-      await shopDb.collection(CAT_COL).updateOne(
+      await shopDb.collection(SHOP_CAT_COL).updateOne(
         { categoryId: id },
         {
           $set: {
@@ -245,7 +247,8 @@ export async function syncCatalogFromOps(
   let removed = 0;
   const sampleRemoved: SyncCatalogFromOpsResult["categories"]["sampleRemoved"] =
     [];
-  if (removeStale) {
+  // Nguồn ops rỗng → không xóa, tránh làm trống cây nhóm shop.
+  if (removeStale && opsById.size > 0) {
     for (const [id, shop] of shopById) {
       if (opsById.has(id)) continue;
       removed += 1;
@@ -256,7 +259,7 @@ export async function syncCatalogFromOps(
         });
       }
       if (!dryRun) {
-        await shopDb.collection(CAT_COL).deleteMany({ categoryId: id });
+        await shopDb.collection(SHOP_CAT_COL).deleteMany({ categoryId: id });
       }
     }
   }

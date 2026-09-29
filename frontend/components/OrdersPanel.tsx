@@ -210,6 +210,12 @@ export function OrdersPanel({ highlightCode }: { highlightCode?: string }) {
                 </div>
               </>
             ) : null}
+            {o.shippingDiscount ? (
+              <div className="flex justify-between text-xs text-[var(--aloha-price)]">
+                <span>Đã hỗ trợ phí ship</span>
+                <span>-{formatVnd(o.shippingDiscount)}</span>
+              </div>
+            ) : null}
             <div className="flex justify-between font-bold">
               <span>Tổng thanh toán</span>
               <span className="text-[#EE6055]">{formatVnd(o.total)}</span>

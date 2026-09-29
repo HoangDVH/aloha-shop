@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   Table,
   Button,
   Tag,
   Space,
   Input,
-  Select,
   Card,
   Tabs,
   Modal,
@@ -19,8 +18,6 @@ import {
 import {
   Plus,
   Ticket,
-  Play,
-  Pause,
   Copy,
   Edit,
   Trash2,
@@ -29,20 +26,23 @@ import {
   Sparkles,
   Archive,
   BarChart3,
-  ExternalLink,
-  ShieldAlert,
   CheckCircle2,
   Clock,
   DollarSign,
   Users,
-  Eye,
   Store,
+  Check,
+  Layers,
+  Truck,
+  Download,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import dayjs from "dayjs";
-import { AdminCard, AdminPageHeader } from "@/components/admin/shell/AdminUi";
 import { formatVnd } from "@/lib/api";
 import {
   PromotionFormModal,
+  shippingRegionLabel,
   type PromotionItem,
 } from "@/components/admin/promotions/PromotionFormModal";
 import { PromotionCodeModal } from "@/components/admin/promotions/PromotionCodeModal";
@@ -80,11 +80,441 @@ interface AllCodeItem {
   createdAt: string;
 }
 
+// Chi tiết đợt phát hành KiotViet bung ngay dưới dòng
+interface VoucherDetailRowProps {
+  record: PromotionItem;
+  onEdit: (record: PromotionItem) => void;
+  onDuplicate: (record: PromotionItem) => void;
+  onManageCodes: (record: PromotionItem) => void;
+  allRedemptions: RedemptionLog[];
+}
+
+function KiotVietVoucherDetailRow({
+  record,
+  onEdit,
+  onDuplicate,
+  onManageCodes,
+  allRedemptions,
+}: VoucherDetailRowProps) {
+  const [activeSubTab, setActiveSubTab] = useState<"info" | "codes" | "orders">("info");
+  const [collapseCondition, setCollapseCondition] = useState(false);
+  const [codes, setCodes] = useState<any[]>([]);
+  const [loadingCodes, setLoadingCodes] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (activeSubTab === "codes" && record.id) {
+      fetchCodes();
+    }
+  }, [activeSubTab, record.id]);
+
+  const fetchCodes = async () => {
+    try {
+      setLoadingCodes(true);
+      const res = await fetch(`/api/shop/admin/promotions/${record.id}/codes`);
+      const data = await res.json();
+      if (data.ok) {
+        setCodes(data.codes || []);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoadingCodes(false);
+    }
+  };
+
+  const copyCode = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedCode(text);
+    message.success(`Đã sao chép mã: ${text}`);
+    setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  const matchingRedemptions = useMemo(() => {
+    return allRedemptions.filter((r) => r.promotionId === record.id);
+  }, [allRedemptions, record.id]);
+
+  return (
+    <div className="bg-white p-5 rounded-lg border border-slate-200/90 shadow-xs space-y-4 text-xs my-1">
+      {/* Sub tabs chuẩn KiotViet */}
+      <div className="flex items-center gap-6 border-b border-slate-200 text-sm">
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("info")}
+          className={`pb-2.5 font-medium cursor-pointer transition-colors ${
+            activeSubTab === "info"
+              ? "border-b-2 border-blue-600 text-blue-600 font-semibold"
+              : "text-slate-600 hover:text-blue-600"
+          }`}
+        >
+          Thông tin
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("codes")}
+          className={`pb-2.5 font-medium cursor-pointer transition-colors flex items-center gap-1.5 ${
+            activeSubTab === "codes"
+              ? "border-b-2 border-blue-600 text-blue-600 font-semibold"
+              : "text-slate-600 hover:text-blue-600"
+          }`}
+        >
+          <span>Danh sách voucher</span>
+          {codes.length > 0 && (
+            <span className="text-[11px] bg-blue-50 text-blue-700 px-1.5 py-0.2 rounded-full font-semibold">
+              {codes.length}
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("orders")}
+          className={`pb-2.5 font-medium cursor-pointer transition-colors flex items-center gap-1.5 ${
+            activeSubTab === "orders"
+              ? "border-b-2 border-blue-600 text-blue-600 font-semibold"
+              : "text-slate-600 hover:text-blue-600"
+          }`}
+        >
+          <span>Đơn hàng dùng voucher</span>
+          {matchingRedemptions.length > 0 && (
+            <span className="text-[11px] bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded-full font-semibold">
+              {matchingRedemptions.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeSubTab === "info" && (
+        <div className="space-y-4">
+          {/* Header row: Tên, Mã, Trạng thái */}
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span className="text-base font-bold text-slate-900">{record.name}</span>
+            <span className="text-sm font-semibold text-slate-600 font-mono">{record.id}</span>
+            {record.status === "active" ? (
+              <span className="text-xs px-2.5 py-0.5 rounded bg-[#e6f4ff] text-[#1677ff] border border-[#91caff] font-medium">
+                Đang kích hoạt
+              </span>
+            ) : record.status === "paused" ? (
+              <span className="text-xs px-2.5 py-0.5 rounded bg-[#fffbe6] text-[#faad14] border border-[#ffe58f] font-medium">
+                Tạm dừng
+              </span>
+            ) : (
+              <span className="text-xs px-2.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 font-medium">
+                Bản nháp
+              </span>
+            )}
+          </div>
+
+          {/* Top summary box như trong ảnh 1 */}
+          <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-3 text-xs text-slate-700 flex flex-wrap items-center gap-x-6 gap-y-2">
+            <div>
+              <span className="text-slate-500">Số lượng voucher: </span>
+              <strong className="text-slate-900">
+                {record.usageLimitTotal != null ? record.usageLimitTotal.toLocaleString("vi-VN") : "∞"}
+              </strong>
+            </div>
+            <span className="text-slate-300">|</span>
+            <div>
+              <span className="text-slate-500">Đã phát hành: </span>
+              <strong className="text-slate-900">
+                {((record.usedCount || 0) + (record.heldCount || 0)).toLocaleString("vi-VN")}
+              </strong>
+            </div>
+            <span className="text-slate-300">|</span>
+            <div>
+              <span className="text-slate-500">Đã sử dụng: </span>
+              <strong className="text-slate-900">
+                {(record.usedCount || 0).toLocaleString("vi-VN")}
+              </strong>
+            </div>
+            <span className="text-slate-300">|</span>
+            <div>
+              <span className="text-slate-500">Giá trị sử dụng: </span>
+              <strong className="text-slate-900 font-mono">
+                {record.budgetUsed != null
+                  ? record.budgetUsed.toLocaleString("vi-VN")
+                  : ((record.usedCount || 0) * (record.discountValue || 0)).toLocaleString("vi-VN")}
+              </strong>
+            </div>
+          </div>
+
+          {/* 4 Cột chi tiết như trong ảnh 1 */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs pt-1">
+            <div>
+              <div className="text-slate-500">Hiệu lực</div>
+              <div className="mt-1 font-medium text-slate-800">
+                {record.startDate ? dayjs(record.startDate).format("DD/MM/YYYY") : "—"}
+                {" - "}
+                {record.endDate ? dayjs(record.endDate).format("DD/MM/YYYY") : "Vô thời hạn"}
+              </div>
+            </div>
+
+            <div>
+              <div className="text-slate-500">Mệnh giá</div>
+              <div className="mt-1 font-semibold text-slate-800">
+                {record.discountType === "percentage"
+                  ? `${record.discountValue}%`
+                  : (record.discountValue || 0).toLocaleString("vi-VN")}
+              </div>
+            </div>
+
+            <div>
+              <div className="text-slate-500">Chi nhánh</div>
+              <div className="mt-1 font-medium text-slate-800">
+                {record.benefitType === "shipping" && record.regionId
+                  ? shippingRegionLabel(record.regionId)
+                  : "Toàn hệ thống"}
+              </div>
+            </div>
+
+            <div>
+              <div className="text-slate-500">Nhóm khách hàng</div>
+              <div className="mt-1 font-medium text-slate-800">
+                {record.targetCustomer === "new_web"
+                  ? "Khách mới web"
+                  : record.targetCustomer === "wholesale"
+                    ? "Khách sỉ"
+                    : record.targetCustomer === "retail"
+                      ? "Khách lẻ"
+                      : "Tất cả nhóm khách hàng"}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+            <div>
+              <div className="text-slate-500">Người tạo giao dịch</div>
+              <div className="mt-1 font-medium text-slate-800">Tất cả người tạo giao dịch</div>
+            </div>
+          </div>
+
+          {/* Hộp Điều kiện mua hàng (Collapsible) như ảnh 1 & 2 */}
+          <div className="rounded-lg border border-slate-200 bg-white p-3.5 space-y-2 text-xs">
+            <div
+              className="flex items-center justify-between font-bold text-slate-800 cursor-pointer select-none"
+              onClick={() => setCollapseCondition(!collapseCondition)}
+            >
+              <span>Điều kiện mua hàng</span>
+              <span className="text-slate-400">
+                {collapseCondition ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
+              </span>
+            </div>
+            {!collapseCondition && (
+              <div className="text-slate-600 space-y-1.5 pt-1">
+                <div>
+                  {record.minOrderThreshold ? (
+                    <span>
+                      Tổng tiền hàng tối thiểu từ{" "}
+                      <strong>{(record.minOrderThreshold || 0).toLocaleString("vi-VN")}</strong>
+                    </span>
+                  ) : (
+                    <span>Không yêu cầu giá trị đơn hàng tối thiểu</span>
+                  )}
+                </div>
+                {record.maxDiscountVnd ? (
+                  <div>
+                    Mức giảm tối đa: <strong>{formatVnd(record.maxDiscountVnd)}</strong>
+                  </div>
+                ) : null}
+                <div>
+                  Phạm vi áp dụng:{" "}
+                  <strong>
+                    {record.scope === "product"
+                      ? `${record.productMas?.length || 0} sản phẩm chỉ định`
+                      : "Toàn bộ hàng hóa"}
+                  </strong>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Ghi chú như ảnh 1 */}
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <Edit size={13} className="text-slate-400" />
+            <span>{record.description || record.title || "Chưa có ghi chú"}</span>
+          </div>
+
+          {/* Bottom actions như ảnh 2: Sao chép bên trái, Chỉnh sửa bên phải */}
+          <div className="flex items-center justify-between pt-3 border-t border-slate-200">
+            <button
+              type="button"
+              onClick={() => onDuplicate(record)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-slate-300 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-400 cursor-pointer transition-colors"
+            >
+              <Copy size={13} className="text-slate-500" />
+              <span>Sao chép</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onEdit(record)}
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded bg-[#0070f4] text-white text-xs font-semibold hover:bg-[#005bb5] cursor-pointer shadow-xs transition-colors"
+            >
+              <Edit size={13} />
+              <span>Chỉnh sửa</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {activeSubTab === "codes" && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-slate-600 font-medium">
+              Danh sách mã voucher phát hành cho đợt này ({codes.length} mã)
+            </div>
+            <Button
+              type="primary"
+              size="small"
+              className="bg-blue-600 hover:!bg-blue-700 text-xs font-semibold"
+              icon={<Plus size={13} />}
+              onClick={() => onManageCodes(record)}
+            >
+              + Tạo mã voucher
+            </Button>
+          </div>
+
+          {loadingCodes ? (
+            <div className="py-6 text-center text-slate-400">Đang tải mã voucher...</div>
+          ) : codes.length === 0 ? (
+            <div className="py-6 text-center text-slate-400 bg-white rounded border border-dashed border-slate-200">
+              Chưa có mã voucher nào được tạo cho đợt này.
+            </div>
+          ) : (
+            <Table
+              size="small"
+              dataSource={codes}
+              rowKey="code"
+              pagination={{ pageSize: 10 }}
+              columns={[
+                {
+                  title: "Mã voucher",
+                  dataIndex: "code",
+                  key: "code",
+                  render: (v: string) => (
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-bold text-xs bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                        {v}
+                      </span>
+                      <Button
+                        size="small"
+                        type="text"
+                        icon={
+                          copiedCode === v ? (
+                            <Check size={12} className="text-emerald-600" />
+                          ) : (
+                            <Copy size={12} />
+                          )
+                        }
+                        onClick={() => copyCode(v)}
+                      />
+                    </div>
+                  ),
+                },
+                {
+                  title: "Khách gán",
+                  dataIndex: "assignedBuyerPhone",
+                  key: "assignedBuyerPhone",
+                  render: (v?: string) => v || <span className="text-slate-400">Dùng chung</span>,
+                },
+                {
+                  title: "Lượt dùng",
+                  key: "usage",
+                  render: (_: any, r: any) => (
+                    <span>
+                      {r.usedCount || 0} / {r.maxUses || "∞"}
+                    </span>
+                  ),
+                },
+                {
+                  title: "Hạn dùng",
+                  dataIndex: "expiresAt",
+                  key: "expiresAt",
+                  render: (v?: string) => (v ? dayjs(v).format("DD/MM/YYYY HH:mm") : "Vô thời hạn"),
+                },
+                {
+                  title: "Trạng thái",
+                  dataIndex: "active",
+                  key: "active",
+                  render: (active: boolean) =>
+                    active ? (
+                      <span className="text-emerald-600 font-semibold text-[11px]">Sẵn sàng</span>
+                    ) : (
+                      <span className="text-slate-400 text-[11px]">Đã khóa</span>
+                    ),
+                },
+              ]}
+            />
+          )}
+        </div>
+      )}
+
+      {activeSubTab === "orders" && (
+        <div className="space-y-3">
+          <div className="text-xs text-slate-600 font-medium">
+            Đơn hàng đã áp dụng voucher của đợt này ({matchingRedemptions.length} đơn)
+          </div>
+          {matchingRedemptions.length === 0 ? (
+            <div className="py-6 text-center text-slate-400 bg-white rounded border border-dashed border-slate-200">
+              Chưa có đơn hàng nào sử dụng voucher của đợt này.
+            </div>
+          ) : (
+            <Table
+              size="small"
+              dataSource={matchingRedemptions}
+              rowKey="_id"
+              pagination={{ pageSize: 10 }}
+              columns={[
+                {
+                  title: "Mã đơn hàng",
+                  dataIndex: "orderCode",
+                  key: "orderCode",
+                  render: (v: string) => <strong className="font-mono text-blue-600">{v}</strong>,
+                },
+                {
+                  title: "Tiền giảm",
+                  dataIndex: "discountAmount",
+                  key: "discountAmount",
+                  render: (v: number) => (
+                    <strong className="text-emerald-700">-{formatVnd(v || 0)}</strong>
+                  ),
+                },
+                {
+                  title: "Khách hàng",
+                  dataIndex: "buyerPhone",
+                  key: "buyerPhone",
+                  render: (v: string) => v || "Khách lẻ",
+                },
+                {
+                  title: "Thời gian",
+                  dataIndex: "createdAt",
+                  key: "createdAt",
+                  render: (d: string) => dayjs(d).format("DD/MM/YYYY HH:mm"),
+                },
+                {
+                  title: "Trạng thái",
+                  dataIndex: "status",
+                  key: "status",
+                  render: (st: string) =>
+                    st === "used" ? "Đã thanh toán" : st === "held" ? "Đang giữ" : "Giải phóng",
+                },
+              ]}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminPromotionsPage() {
   const [promotions, setPromotions] = useState<PromotionItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [activeTabKey, setActiveTabKey] = useState<string>("programs");
+
+  // Dòng đang được bung chi tiết (như ảnh KiotViet)
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+
+  // Search input state
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Modals state
@@ -98,6 +528,7 @@ export default function AdminPromotionsPage() {
   const [allCodes, setAllCodes] = useState<AllCodeItem[]>([]);
   const [loadingCodes, setLoadingCodes] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [codeSearchQuery, setCodeSearchQuery] = useState("");
 
   // Tab 3: KiotViet status
   const [kvStatus, setKvStatus] = useState<any>(null);
@@ -107,14 +538,13 @@ export default function AdminPromotionsPage() {
   const [report, setReport] = useState<ReportOverview | null>(null);
   const [recentRedemptions, setRecentRedemptions] = useState<RedemptionLog[]>([]);
   const [loadingReport, setLoadingReport] = useState(false);
+  const [redemptionSearchQuery, setRedemptionSearchQuery] = useState("");
 
   // Load promotions
   const fetchPromotions = async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      if (statusFilter !== "all") params.set("status", statusFilter);
-      if (typeFilter !== "all") params.set("type", typeFilter);
       if (searchQuery) params.set("q", searchQuery);
 
       const res = await fetch(`/api/shop/admin/promotions?${params.toString()}`);
@@ -181,31 +611,13 @@ export default function AdminPromotionsPage() {
   useEffect(() => {
     fetchPromotions();
     fetchReport();
-  }, [statusFilter, typeFilter]);
+  }, []);
 
-  // Actions
-  const handleToggleStatus = async (item: PromotionItem) => {
-    const nextStatus = item.status === "active" ? "paused" : "active";
-    try {
-      const res = await fetch(`/api/shop/admin/promotions/${item.id}/status`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: nextStatus }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        message.success(
-          nextStatus === "active"
-            ? `Đã kích hoạt chương trình "${item.name}"`
-            : `Đã tạm dừng chương trình "${item.name}"`
-        );
-        fetchPromotions();
-      } else {
-        message.error(data.error || "Không cập nhật được trạng thái");
-      }
-    } catch (e: any) {
-      message.error(e?.message || "Lỗi cập nhật trạng thái");
-    }
+  const handleTabChange = (key: string) => {
+    setActiveTabKey(key);
+    if (key === "codes" && allCodes.length === 0) fetchAllCodes();
+    if (key === "kiotviet" && !kvStatus) fetchKvStatus();
+    if (key === "reports" && recentRedemptions.length === 0) fetchReport();
   };
 
   const handleDuplicate = async (item: PromotionItem) => {
@@ -225,25 +637,6 @@ export default function AdminPromotionsPage() {
     }
   };
 
-  const handleArchive = async (item: PromotionItem) => {
-    try {
-      const res = await fetch(`/api/shop/admin/promotions/${item.id}/status`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "archived" }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        message.success(`Đã chuyển vào lưu trữ: "${item.name}"`);
-        fetchPromotions();
-      } else {
-        message.error(data.error || "Không lưu trữ được");
-      }
-    } catch (e: any) {
-      message.error(e?.message || "Lỗi lưu trữ");
-    }
-  };
-
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedCode(text);
@@ -251,204 +644,179 @@ export default function AdminPromotionsPage() {
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
-  // Promotion columns
+  // Search filter
+  const displayedPromotions = useMemo(() => {
+    if (!searchQuery) return promotions;
+    const q = searchQuery.toLowerCase().trim();
+    return promotions.filter((p) => {
+      return (
+        (p.name || "").toLowerCase().includes(q) ||
+        (p.title || "").toLowerCase().includes(q) ||
+        (p.id || "").toLowerCase().includes(q)
+      );
+    });
+  }, [promotions, searchQuery]);
+
+  const displayedCodes = useMemo(() => {
+    if (!codeSearchQuery) return allCodes;
+    const q = codeSearchQuery.toLowerCase().trim();
+    return allCodes.filter((c) => {
+      return (
+        c.code.toLowerCase().includes(q) ||
+        (c.promotionName || "").toLowerCase().includes(q) ||
+        (c.assignedBuyerPhone || "").toLowerCase().includes(q)
+      );
+    });
+  }, [allCodes, codeSearchQuery]);
+
+  const displayedRedemptions = useMemo(() => {
+    if (!redemptionSearchQuery) return recentRedemptions;
+    const q = redemptionSearchQuery.toLowerCase().trim();
+    return recentRedemptions.filter((r) => {
+      return (
+        (r.orderCode || "").toLowerCase().includes(q) ||
+        (r.promotionId || "").toLowerCase().includes(q) ||
+        (r.buyerPhone || "").toLowerCase().includes(q)
+      );
+    });
+  }, [recentRedemptions, redemptionSearchQuery]);
+
+  // Export to CSV function (KiotViet style)
+  const exportPromotionsToCsv = () => {
+    if (displayedPromotions.length === 0) {
+      message.warning("Không có dữ liệu để xuất file");
+      return;
+    }
+    const headers = [
+      "Mã đợt phát hành",
+      "Tên đợt phát hành",
+      "Từ ngày",
+      "Đến ngày",
+      "Số lượng",
+      "Mệnh giá",
+      "Trạng thái",
+    ];
+    const rows = displayedPromotions.map((p) => [
+      `"${p.id}"`,
+      `"${(p.name || "").replace(/"/g, '""')}"`,
+      p.startDate ? dayjs(p.startDate).format("DD/MM/YYYY") : "—",
+      p.endDate ? dayjs(p.endDate).format("DD/MM/YYYY") : "Vô thời hạn",
+      p.usageLimitTotal != null ? p.usageLimitTotal : "∞",
+      p.discountType === "percentage" ? `${p.discountValue}%` : p.discountValue,
+      p.status === "active" ? "Đang kích hoạt" : p.status === "paused" ? "Tạm dừng" : "Bản nháp",
+    ]);
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `kiotviet_voucher_${dayjs().format("YYYYMMDD_HHmmss")}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    message.success("Đã xuất danh sách đợt phát hành & voucher thành công");
+  };
+
+  // Cột bảng chính khớp 100% với giao diện KiotViet trong ảnh của user
   const promotionColumns = [
     {
-      title: "Chương trình",
+      title: "Mã đợt phát hành",
+      key: "id",
+      width: 160,
+      render: (_: any, record: PromotionItem) => (
+        <span className="font-mono font-medium text-xs text-slate-800">{record.id}</span>
+      ),
+    },
+    {
+      title: "Tên đợt phát hành",
       key: "name",
       render: (_: any, record: PromotionItem) => (
-        <div className="space-y-1">
-          <div className="flex items-center gap-1.5">
-            <span className="font-bold text-slate-800 text-sm">{record.name}</span>
-            {record.isPublic === false ? (
-              <Tag color="purple" className="text-[10px] leading-tight px-1 py-0">
-                Ẩn
-              </Tag>
-            ) : null}
-          </div>
-          <div className="text-xs text-slate-500 line-clamp-1">{record.title}</div>
-          <div className="text-[11px] font-mono text-slate-400">ID: {record.id}</div>
-        </div>
+        <span className="font-medium text-slate-800 text-xs">{record.name}</span>
       ),
     },
     {
-      title: "Loại & Mức giảm",
-      key: "discount",
+      title: "Từ ngày",
+      key: "startDate",
+      width: 130,
       render: (_: any, record: PromotionItem) => (
-        <div className="space-y-1">
-          <div className="flex items-center gap-1">
-            {record.type === "auto" ? (
-              <Tag color="cyan" className="text-xs font-semibold">
-                Tự động
-              </Tag>
-            ) : (
-              <Tag color="blue" className="text-xs font-semibold">
-                Mã giảm giá
-              </Tag>
-            )}
-          </div>
-          <div className="font-bold text-emerald-700 text-sm">
-            {record.discountType === "percentage"
-              ? `${record.discountValue}%`
-              : formatVnd(record.discountValue)}
-            {record.maxDiscountVnd ? (
-              <span className="block text-[11px] font-normal text-slate-500">
-                Tối đa {formatVnd(record.maxDiscountVnd)}
-              </span>
-            ) : null}
-          </div>
-        </div>
+        <span className="text-xs text-slate-600">
+          {record.startDate ? dayjs(record.startDate).format("DD/MM/YYYY") : "—"}
+        </span>
       ),
     },
     {
-      title: "Điều kiện áp dụng",
-      key: "condition",
+      title: "Đến ngày",
+      key: "endDate",
+      width: 130,
       render: (_: any, record: PromotionItem) => (
-        <div className="space-y-1 text-xs">
-          <div>
-            <span className="text-slate-500">Đơn hàng: </span>
-            {record.minOrderThreshold ? (
-              <span className="font-semibold text-slate-700">
-                {record.thresholdOperator === ">=" ? "Từ" : "Trên"}{" "}
-                {formatVnd(record.minOrderThreshold)}
-              </span>
-            ) : (
-              <span className="text-slate-600">Không yêu cầu</span>
-            )}
-          </div>
-          <div>
-            <span className="text-slate-500">Khách: </span>
-            <span className="font-medium text-slate-700">
-              {record.targetCustomer === "new_web"
-                ? "Khách mới web"
-                : record.targetCustomer === "wholesale"
-                  ? "Khách sỉ"
-                  : "Khách lẻ"}
-            </span>
-          </div>
-          <div>
-            <span className="text-slate-500">Phạm vi: </span>
-            <span className="text-slate-700">
-              {record.scope === "product"
-                ? `${record.productMas?.length || 0} SP chỉ định`
-                : "Toàn bộ hàng"}
-            </span>
-          </div>
-        </div>
+        <span className="text-xs text-slate-600">
+          {record.endDate ? dayjs(record.endDate).format("DD/MM/YYYY") : "—"}
+        </span>
       ),
     },
     {
-      title: "Lượt dùng & Ngân sách",
-      key: "usage",
+      title: "Số lượng",
+      key: "quantity",
+      width: 110,
+      align: "center" as const,
       render: (_: any, record: PromotionItem) => (
-        <div className="space-y-1 text-xs">
-          <div>
-            <span className="text-slate-500">Lượt: </span>
-            <span className="font-semibold text-slate-800">
-              {record.usedCount || 0}
-              {record.heldCount ? (
-                <span className="text-amber-600 font-normal"> (+{record.heldCount} giữ)</span>
-              ) : null}
-            </span>
-            <span className="text-slate-400">
-              {" "}
-              / {record.usageLimitTotal ? record.usageLimitTotal : "∞"}
-            </span>
-          </div>
-          {record.budgetTotal ? (
-            <div>
-              <span className="text-slate-500">Ngân sách: </span>
-              <span className="font-medium text-slate-700">
-                {formatVnd(record.budgetUsed || 0)} / {formatVnd(record.budgetTotal)}
-              </span>
-            </div>
-          ) : null}
-        </div>
+        <span className="text-xs font-semibold text-slate-800">
+          {record.usageLimitTotal != null ? record.usageLimitTotal.toLocaleString("vi-VN") : "∞"}
+        </span>
+      ),
+    },
+    {
+      title: "Mệnh giá",
+      key: "discountValue",
+      width: 130,
+      align: "right" as const,
+      render: (_: any, record: PromotionItem) => (
+        <span className="text-xs font-semibold text-slate-800">
+          {record.discountType === "percentage"
+            ? `${record.discountValue}%`
+            : (record.discountValue || 0).toLocaleString("vi-VN")}
+        </span>
       ),
     },
     {
       title: "Trạng thái",
       key: "status",
+      width: 140,
       render: (_: any, record: PromotionItem) => {
         if (record.status === "active") {
-          return <Tag color="success">Đang áp dụng</Tag>;
+          return (
+            <span className="inline-block px-2.5 py-0.5 rounded text-xs font-medium bg-[#e6f4ff] text-[#1677ff] border border-[#91caff]">
+              Đang kích hoạt
+            </span>
+          );
         }
         if (record.status === "paused") {
-          return <Tag color="warning">Tạm dừng</Tag>;
+          return (
+            <span className="inline-block px-2.5 py-0.5 rounded text-xs font-medium bg-[#fffbe6] text-[#faad14] border border-[#ffe58f]">
+              Tạm dừng
+            </span>
+          );
         }
-        if (record.status === "archived") {
-          return <Tag color="default">Lưu trữ</Tag>;
-        }
-        return <Tag color="processing">Bản nháp</Tag>;
+        return (
+          <span className="inline-block px-2.5 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+            Chưa kích hoạt
+          </span>
+        );
       },
     },
     {
-      title: "Thao tác",
-      key: "actions",
+      title: "",
+      key: "toggle",
+      width: 48,
+      align: "center" as const,
       render: (_: any, record: PromotionItem) => (
-        <Space size="small" wrap>
-          <Tooltip title="Chỉnh sửa chương trình">
-            <Button
-              size="small"
-              icon={<Edit size={13} />}
-              onClick={() => {
-                setEditingItem(record);
-                setFormOpen(true);
-              }}
-            />
-          </Tooltip>
-
-          {record.status === "active" ? (
-            <Tooltip title="Tạm dừng áp dụng">
-              <Button
-                size="small"
-                icon={<Pause size={13} className="text-amber-600" />}
-                onClick={() => handleToggleStatus(record)}
-              />
-            </Tooltip>
-          ) : record.status === "paused" || record.status === "draft" ? (
-            <Tooltip title="Kích hoạt áp dụng">
-              <Button
-                size="small"
-                icon={<Play size={13} className="text-emerald-600" />}
-                onClick={() => handleToggleStatus(record)}
-              />
-            </Tooltip>
-          ) : null}
-
-          {record.type === "code" ? (
-            <Tooltip title="Quản lý mã giảm giá">
-              <Button
-                size="small"
-                icon={<Ticket size={13} className="text-blue-600" />}
-                onClick={() => {
-                  setCodeModalItem(record);
-                  setCodeModalOpen(true);
-                }}
-              />
-            </Tooltip>
-          ) : null}
-
-          <Tooltip title="Nhân bản thành bản nháp">
-            <Button
-              size="small"
-              icon={<Copy size={13} />}
-              onClick={() => handleDuplicate(record)}
-            />
-          </Tooltip>
-
-          {record.status !== "archived" ? (
-            <Popconfirm
-              title="Lưu trữ chương trình này?"
-              description="Chương trình đã lưu trữ sẽ ngừng áp dụng và ẩn khỏi danh sách chính."
-              onConfirm={() => handleArchive(record)}
-              okText="Lưu trữ"
-              cancelText="Hủy"
-            >
-              <Button size="small" icon={<Archive size={13} className="text-slate-400" />} />
-            </Popconfirm>
-          ) : null}
-        </Space>
+        <span className="text-slate-400">
+          {expandedRowKeys.includes(record.id) ? (
+            <ChevronUp size={16} className="text-blue-600" />
+          ) : (
+            <ChevronDown size={16} />
+          )}
+        </span>
       ),
     },
   ];
@@ -460,25 +828,35 @@ export default function AdminPromotionsPage() {
       key: "code",
       render: (_: any, record: AllCodeItem) => (
         <div className="flex items-center gap-2">
-          <span className="font-mono font-bold text-sm text-[var(--aloha-ink)] bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
+          <span className="font-mono font-bold text-xs text-slate-800 bg-slate-100 px-2.5 py-1 rounded-md border border-dashed border-slate-300">
             {record.code}
           </span>
-          <Button
-            size="small"
-            type="text"
-            icon={<Copy size={13} className={copiedCode === record.code ? "text-emerald-600" : ""} />}
-            onClick={() => copyToClipboard(record.code)}
-          />
+          <Tooltip title={copiedCode === record.code ? "Đã sao chép" : "Sao chép mã"}>
+            <Button
+              size="small"
+              type="text"
+              icon={
+                copiedCode === record.code ? (
+                  <Check size={13} className="text-emerald-600" />
+                ) : (
+                  <Copy size={13} className="text-slate-400 hover:text-slate-700" />
+                )
+              }
+              onClick={() => copyToClipboard(record.code)}
+            />
+          </Tooltip>
         </div>
       ),
     },
     {
-      title: "Chương trình ưu đãi",
+      title: "Đợt phát hành / Chương trình",
       key: "promotion",
       render: (_: any, record: AllCodeItem) => (
         <div>
-          <div className="font-semibold text-slate-800 text-sm">{record.promotionName}</div>
-          <div className="text-xs text-slate-500">{record.promotionTitle}</div>
+          <div className="font-semibold text-slate-800 text-xs">{record.promotionName}</div>
+          {record.promotionTitle ? (
+            <div className="text-[11px] text-slate-400">{record.promotionTitle}</div>
+          ) : null}
         </div>
       ),
     },
@@ -486,12 +864,12 @@ export default function AdminPromotionsPage() {
       title: "Mức giảm",
       key: "discount",
       render: (_: any, record: AllCodeItem) => (
-        <div className="font-bold text-emerald-700">
+        <div className="font-bold text-[var(--aloha-green)] text-xs">
           {record.discountType === "percentage"
             ? `${record.discountValue}%`
             : formatVnd(record.discountValue || 0)}
           {record.maxDiscountVnd ? (
-            <span className="block text-[11px] font-normal text-slate-500">
+            <span className="block text-[10px] font-normal text-slate-400">
               Tối đa {formatVnd(record.maxDiscountVnd)}
             </span>
           ) : null}
@@ -516,7 +894,9 @@ export default function AdminPromotionsPage() {
       key: "buyer",
       render: (_: any, record: AllCodeItem) =>
         record.assignedBuyerPhone ? (
-          <Tag color="cyan">{record.assignedBuyerPhone}</Tag>
+          <Tag color="cyan" className="font-mono text-xs">
+            {record.assignedBuyerPhone}
+          </Tag>
         ) : (
           <span className="text-slate-400 text-xs">Dùng chung</span>
         ),
@@ -538,9 +918,15 @@ export default function AdminPromotionsPage() {
       key: "active",
       render: (_: any, record: AllCodeItem) =>
         record.active ? (
-          <Tag color="success">Sẵn sàng</Tag>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            Sẵn sàng
+          </span>
         ) : (
-          <Tag color="default">Tạm khóa</Tag>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+            Tạm khóa
+          </span>
         ),
     },
   ];
@@ -551,18 +937,18 @@ export default function AdminPromotionsPage() {
       title: "Mã đơn hàng",
       dataIndex: "orderCode",
       key: "orderCode",
-      render: (v: string) => <span className="font-mono font-bold text-slate-800">{v}</span>,
+      render: (v: string) => <span className="font-mono font-bold text-blue-600">{v}</span>,
     },
     {
       title: "Số tiền đã giảm",
       dataIndex: "discountAmount",
       key: "discountAmount",
       render: (v: number) => (
-        <span className="font-bold text-emerald-700">-{formatVnd(v || 0)}</span>
+        <span className="font-bold text-[var(--aloha-green)]">-{formatVnd(v || 0)}</span>
       ),
     },
     {
-      title: "Chương trình",
+      title: "Mã chương trình",
       dataIndex: "promotionId",
       key: "promotionId",
       render: (v: string) => <span className="text-xs font-mono text-slate-600">{v}</span>,
@@ -571,16 +957,33 @@ export default function AdminPromotionsPage() {
       title: "Khách hàng",
       dataIndex: "buyerPhone",
       key: "buyerPhone",
-      render: (v: string) => v || <span className="text-slate-400 text-xs">Chưa rõ</span>,
+      render: (v: string) => v || <span className="text-slate-400 text-xs">Khách vãng lai</span>,
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
       render: (st: string) => {
-        if (st === "used") return <Tag color="success">Đã hoàn tất thanh toán</Tag>;
-        if (st === "held") return <Tag color="warning">Đang giữ đơn</Tag>;
-        return <Tag color="default">Đã giải phóng</Tag>;
+        if (st === "used")
+          return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              Đã hoàn tất
+            </span>
+          );
+        if (st === "held")
+          return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+              Đang giữ đơn
+            </span>
+          );
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+            Đã giải phóng
+          </span>
+        );
       },
     },
     {
@@ -596,155 +999,152 @@ export default function AdminPromotionsPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      <AdminPageHeader
-        title="Ưu đãi & Voucher"
-        description="Quản lý chính sách ưu đãi tự động, chiến dịch mã giảm giá và cơ chế phân bổ chiết khấu trên website Aloha."
-        actions={
+    <div className="space-y-4">
+      {/* Top Header KiotViet Style */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">Voucher</h1>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+              KiotViet Sync
+            </span>
+          </div>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Quản lý đợt phát hành voucher, chương trình ưu đãi và mã chiết khấu Aloha Shop.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            icon={<Download size={14} />}
+            onClick={exportPromotionsToCsv}
+            className="text-slate-700 border-slate-300 hover:text-blue-700 hover:border-blue-600"
+          >
+            Xuất file
+          </Button>
+
+          <Button
+            icon={<RefreshCw size={14} className={loading ? "animate-spin" : ""} />}
+            onClick={() => {
+              fetchPromotions();
+              if (activeTabKey === "codes") fetchAllCodes();
+              if (activeTabKey === "kiotviet") fetchKvStatus();
+              if (activeTabKey === "reports") fetchReport();
+            }}
+            loading={loading}
+          >
+            Làm mới
+          </Button>
+
           <Button
             type="primary"
-            className="bg-[var(--aloha-green)] hover:!bg-[var(--aloha-green-hover)] font-bold"
+            className="bg-[#0070f4] hover:!bg-[#005bb5] font-bold shadow-xs"
             icon={<Plus size={15} />}
             onClick={() => {
               setEditingItem(null);
               setFormOpen(true);
             }}
           >
-            Tạo ưu đãi mới
+            + Đợt phát hành voucher
           </Button>
-        }
-      />
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <AdminCard>
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
-              <Sparkles size={20} />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-slate-500">Chương trình đang chạy</p>
-              <h3 className="text-xl font-bold text-slate-900 mt-0.5">
-                {report?.activePromotionsCount ?? 0}
-              </h3>
-            </div>
-          </div>
-        </AdminCard>
-
-        <AdminCard>
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
-              <DollarSign size={20} />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-slate-500">Tổng tiền đã giảm</p>
-              <h3 className="text-xl font-bold text-emerald-700 mt-0.5">
-                {formatVnd(report?.totalDiscountGiven ?? 0)}
-              </h3>
-            </div>
-          </div>
-        </AdminCard>
-
-        <AdminCard>
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-50 text-purple-700">
-              <Ticket size={20} />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-slate-500">Đơn hàng dùng ưu đãi</p>
-              <h3 className="text-xl font-bold text-slate-900 mt-0.5">
-                {report?.totalOrdersUsingDiscount ?? 0}
-              </h3>
-            </div>
-          </div>
-        </AdminCard>
-
-        <AdminCard>
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
-              <Store size={20} />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-slate-500">Đồng bộ KiotViet</p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="inline-block h-2 w-2 rounded-full bg-emerald-500"></span>
-                <span className="text-sm font-bold text-slate-900">Chiết khấu kết nối</span>
-              </div>
-            </div>
-          </div>
-        </AdminCard>
+        </div>
       </div>
 
-      {/* Main Tabs */}
-      <AdminCard>
+      {/* Main Full-width Content View */}
+      <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-xs">
         <Tabs
-          defaultActiveKey="programs"
-          onChange={(key) => {
-            if (key === "codes") fetchAllCodes();
-            if (key === "kiotviet") fetchKvStatus();
-            if (key === "reports") fetchReport();
-          }}
+          activeKey={activeTabKey}
+          onChange={handleTabChange}
           items={[
             {
               key: "programs",
               label: (
-                <span className="flex items-center gap-1.5 font-semibold">
-                  <Sparkles size={15} /> Chương trình ưu đãi
+                <span className="flex items-center gap-2 font-semibold">
+                  <Sparkles size={15} className="text-blue-600" />
+                  <span>Đợt phát hành voucher</span>
+                  <Badge
+                    count={displayedPromotions.length}
+                    style={{ backgroundColor: "#e6f4ff", color: "#1677ff" }}
+                  />
                 </span>
               ),
               children: (
-                <div className="space-y-4 pt-2">
-                  {/* Filters & Search */}
+                <div className="space-y-3 pt-2">
+                  {/* Search Bar & Counter Toolbar chuẩn KiotViet */}
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex items-center gap-2 flex-1 min-w-[280px] max-w-md">
                       <Input
-                        placeholder="Tìm tên hoặc ID ưu đãi..."
+                        placeholder="Theo mã, tên đợt phát hành"
                         prefix={<Search size={14} className="text-slate-400" />}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onPressEnter={fetchPromotions}
-                        className="w-64"
                         allowClear
+                        className="rounded-lg text-xs py-1.5"
                       />
-                      <Select
-                        value={statusFilter}
-                        onChange={setStatusFilter}
-                        className="w-36"
-                        options={[
-                          { label: "Tất cả trạng thái", value: "all" },
-                          { label: "Đang áp dụng", value: "active" },
-                          { label: "Tạm dừng", value: "paused" },
-                          { label: "Bản nháp", value: "draft" },
-                          { label: "Lưu trữ", value: "archived" },
-                        ]}
-                      />
-                      <Select
-                        value={typeFilter}
-                        onChange={setTypeFilter}
-                        className="w-36"
-                        options={[
-                          { label: "Tất cả loại", value: "all" },
-                          { label: "Tự động", value: "auto" },
-                          { label: "Mã giảm giá", value: "code" },
-                        ]}
-                      />
-                      <Button icon={<RefreshCw size={14} />} onClick={fetchPromotions}>
+                      <Button
+                        icon={<RefreshCw size={13} className={loading ? "animate-spin" : ""} />}
+                        onClick={fetchPromotions}
+                        loading={loading}
+                        className="text-xs"
+                      >
                         Làm mới
                       </Button>
                     </div>
 
-                    <div className="text-xs text-slate-500">
-                      Hiển thị <strong>{promotions.length}</strong> chương trình
+                    <div className="text-xs text-slate-500 font-medium">
+                      Hiển thị <strong>{displayedPromotions.length}</strong> đợt phát hành
                     </div>
                   </div>
 
-                  {/* Promotions Table */}
+                  {/* Main Promotions Table: Bấm vào dòng là bung thông tin ngay dưới dòng như 2 ảnh KiotViet */}
                   <Table
                     columns={promotionColumns}
-                    dataSource={promotions}
+                    dataSource={displayedPromotions}
                     rowKey="id"
                     loading={loading}
                     pagination={{ pageSize: 15 }}
+                    expandable={{
+                      expandedRowKeys,
+                      onExpandedRowsChange: (keys) => setExpandedRowKeys(keys as string[]),
+                      expandedRowRender: (record) => (
+                        <KiotVietVoucherDetailRow
+                          record={record}
+                          onEdit={(rec) => {
+                            setEditingItem(rec);
+                            setFormOpen(true);
+                          }}
+                          onDuplicate={handleDuplicate}
+                          onManageCodes={(rec) => {
+                            setCodeModalItem(rec);
+                            setCodeModalOpen(true);
+                          }}
+                          allRedemptions={recentRedemptions}
+                        />
+                      ),
+                      showExpandColumn: false,
+                    }}
+                    onRow={(record) => ({
+                      onClick: (e) => {
+                        const target = e.target as HTMLElement;
+                        if (
+                          target.closest("button") ||
+                          target.closest("a") ||
+                          target.closest(".ant-popconfirm") ||
+                          target.closest("input")
+                        ) {
+                          return;
+                        }
+                        setExpandedRowKeys((prev) =>
+                          prev.includes(record.id) ? [] : [record.id]
+                        );
+                      },
+                      className: `cursor-pointer transition-colors ${
+                        expandedRowKeys.includes(record.id)
+                          ? "!bg-blue-50/50"
+                          : "hover:bg-slate-50/80"
+                      }`,
+                    })}
                     className="overflow-x-auto"
                   />
                 </div>
@@ -753,33 +1153,48 @@ export default function AdminPromotionsPage() {
             {
               key: "codes",
               label: (
-                <span className="flex items-center gap-1.5 font-semibold">
-                  <Ticket size={15} /> Mã giảm giá
+                <span className="flex items-center gap-2 font-semibold">
+                  <Ticket size={15} className="text-blue-600" />
+                  <span>Danh sách mã Voucher</span>
+                  {allCodes.length > 0 && (
+                    <Badge
+                      count={displayedCodes.length}
+                      style={{ backgroundColor: "#dbeafe", color: "#1e40af" }}
+                    />
+                  )}
                 </span>
               ),
               children: (
                 <div className="space-y-4 pt-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-800">
-                        Danh sách mã giảm giá phát hành
-                      </h4>
-                      <p className="text-xs text-slate-500">
-                        Tổng hợp mã chung và mã cá nhân cho các chương trình dạng Nhập mã.
-                      </p>
+                  {/* Search Bar for Codes */}
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 flex-1 min-w-[280px] max-w-md">
+                      <Input
+                        placeholder="Tìm mã voucher, SĐT khách..."
+                        prefix={<Search size={14} className="text-slate-400" />}
+                        value={codeSearchQuery}
+                        onChange={(e) => setCodeSearchQuery(e.target.value)}
+                        allowClear
+                        className="rounded-lg text-xs py-1.5"
+                      />
+                      <Button
+                        icon={<RefreshCw size={13} />}
+                        onClick={fetchAllCodes}
+                        loading={loadingCodes}
+                        className="text-xs"
+                      >
+                        Làm mới
+                      </Button>
                     </div>
-                    <Button
-                      icon={<RefreshCw size={14} />}
-                      onClick={fetchAllCodes}
-                      loading={loadingCodes}
-                    >
-                      Làm mới
-                    </Button>
+
+                    <div className="text-xs text-slate-500 font-medium">
+                      Hiển thị <strong>{displayedCodes.length}</strong> mã voucher
+                    </div>
                   </div>
 
                   <Table
                     columns={allCodesColumns}
-                    dataSource={allCodes}
+                    dataSource={displayedCodes}
                     rowKey="code"
                     loading={loadingCodes}
                     pagination={{ pageSize: 15 }}
@@ -789,10 +1204,58 @@ export default function AdminPromotionsPage() {
               ),
             },
             {
+              key: "reports",
+              label: (
+                <span className="flex items-center gap-2 font-semibold">
+                  <BarChart3 size={15} className="text-purple-600" />
+                  <span>Lịch sử sử dụng & Đối soát</span>
+                </span>
+              ),
+              children: (
+                <div className="space-y-4 pt-2">
+                  {/* Search Bar for Redemptions */}
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 flex-1 min-w-[280px] max-w-md">
+                      <Input
+                        placeholder="Tìm theo mã đơn hàng, SĐT khách..."
+                        prefix={<Search size={14} className="text-slate-400" />}
+                        value={redemptionSearchQuery}
+                        onChange={(e) => setRedemptionSearchQuery(e.target.value)}
+                        allowClear
+                        className="rounded-lg text-xs py-1.5"
+                      />
+                      <Button
+                        icon={<RefreshCw size={13} />}
+                        onClick={fetchReport}
+                        loading={loadingReport}
+                        className="text-xs"
+                      >
+                        Làm mới
+                      </Button>
+                    </div>
+
+                    <div className="text-xs text-slate-500 font-medium">
+                      Hiển thị <strong>{displayedRedemptions.length}</strong> giao dịch
+                    </div>
+                  </div>
+
+                  <Table
+                    columns={redemptionColumns}
+                    dataSource={displayedRedemptions}
+                    rowKey="_id"
+                    loading={loadingReport}
+                    pagination={{ pageSize: 15 }}
+                    className="overflow-x-auto"
+                  />
+                </div>
+              ),
+            },
+            {
               key: "kiotviet",
               label: (
-                <span className="flex items-center gap-1.5 font-semibold">
-                  <Store size={15} /> Voucher KiotViet & Đối soát
+                <span className="flex items-center gap-2 font-semibold">
+                  <Store size={15} className="text-amber-600" />
+                  <span>Đồng bộ KiotViet</span>
                 </span>
               ),
               children: (
@@ -886,48 +1349,9 @@ export default function AdminPromotionsPage() {
                 </div>
               ),
             },
-            {
-              key: "reports",
-              label: (
-                <span className="flex items-center gap-1.5 font-semibold">
-                  <BarChart3 size={15} /> Báo cáo & Lịch sử
-                </span>
-              ),
-              children: (
-                <div className="space-y-4 pt-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-800">
-                        Nhật ký sử dụng ưu đãi gần đây
-                      </h4>
-                      <p className="text-xs text-slate-500">
-                        Lịch sử các lần giữ quyền (held), áp dụng thanh toán thành công (used) và
-                        giải phóng (released).
-                      </p>
-                    </div>
-                    <Button
-                      icon={<RefreshCw size={14} />}
-                      onClick={fetchReport}
-                      loading={loadingReport}
-                    >
-                      Làm mới
-                    </Button>
-                  </div>
-
-                  <Table
-                    columns={redemptionColumns}
-                    dataSource={recentRedemptions}
-                    rowKey="_id"
-                    loading={loadingReport}
-                    pagination={{ pageSize: 15 }}
-                    className="overflow-x-auto"
-                  />
-                </div>
-              ),
-            },
           ]}
         />
-      </AdminCard>
+      </div>
 
       {/* Modals */}
       <PromotionFormModal

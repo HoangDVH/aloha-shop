@@ -6,13 +6,17 @@ import { SHOP_ACCOUNTS, shopAccountIdQuery } from "../shopAuth/models.js";
 import { applyShopCors } from "../shopCors.js";
 import {
   PROMOTIONS_COL,
-  PROMOTION_CODES_COL,
   type PromotionDoc,
-  type PromotionCodeDoc,
   type CartItemToEvaluate,
 } from "./types.js";
-import { evaluatePromotions } from "./evaluator.js";
+import { isShippingPromotion } from "./evaluator.js";
 import { checkIsNewWebBuyer } from "./customerEligibility.js";
+import {
+  customerKeyFor,
+  evaluateGoodsPromotions,
+  loadActivePromotions,
+  shipVoucherEnabled,
+} from "./checkoutPromotions.js";
 
 export function registerShopPromotionsPublicRoutes(
   app: Express,
@@ -53,13 +57,18 @@ export function registerShopPromotionsPublicRoutes(
         .sort({ priority: -1, createdAt: -1 })
         .toArray();
 
+      const visible = shipVoucherEnabled()
+        ? promotions
+        : promotions.filter((p) => !isShippingPromotion(p));
+
       res.json({
         ok: true,
-        items: promotions.map((p) => ({
+        items: visible.map((p) => ({
           id: p.id,
           title: p.title,
           description: p.description || "",
           type: p.type,
+          benefitType: p.benefitType || "goods",
           discountType: p.discountType,
           discountValue: p.discountValue,
           maxDiscountVnd: p.maxDiscountVnd,
@@ -130,43 +139,8 @@ export function registerShopPromotionsPublicRoutes(
           userId: buyerUserId,
         });
 
-        // Tải các chương trình đang hoạt động
         const now = new Date();
-        const nowIso = now.toISOString();
-
-        const promotions = await shopDb
-          .collection<PromotionDoc>(PROMOTIONS_COL)
-          .find({
-            status: "active",
-            $or: [
-              { startDate: { $exists: false } },
-              { startDate: null },
-              { startDate: { $lte: nowIso } },
-            ],
-            $and: [
-              {
-                $or: [
-                  { endDate: { $exists: false } },
-                  { endDate: null },
-                  { endDate: { $gte: nowIso } },
-                ],
-              },
-            ],
-          })
-          .toArray();
-
-        let codes: PromotionCodeDoc[] = [];
-        if (selectedCode) {
-          codes = await shopDb
-            .collection<PromotionCodeDoc>(PROMOTION_CODES_COL)
-            .find({
-              code: selectedCode,
-              active: { $ne: false },
-            })
-            .toArray();
-        }
-
-        const quote = evaluatePromotions({
+        const quote = await evaluateGoodsPromotions(shopDb, {
           items,
           buyer: {
             phone: buyerPhone,
@@ -175,8 +149,8 @@ export function registerShopPromotionsPublicRoutes(
             isNewWebBuyer,
             isWholesale,
           },
-          promotions,
-          codes,
+          customerKey: customerKeyFor(buyerUserId),
+          promotions: await loadActivePromotions(shopDb, now),
           selectedCode,
           autoMode,
           now,

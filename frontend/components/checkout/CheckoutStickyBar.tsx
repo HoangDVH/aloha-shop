@@ -9,6 +9,7 @@ type Props = {
   discount?: number;
   grandTotal: number;
   shippingFee: number | null;
+  shippingDiscount?: number;
   deliveryMethod?: "giao_tan_noi" | "nhan_cua_hang";
   showShipping?: boolean;
   canSubmit: boolean;
@@ -27,6 +28,7 @@ export function CheckoutStickyBar({
   discount = 0,
   grandTotal,
   shippingFee,
+  shippingDiscount = 0,
   deliveryMethod = "giao_tan_noi",
   showShipping = false,
   canSubmit,
@@ -61,10 +63,18 @@ export function CheckoutStickyBar({
                 <span className="tabular-nums text-slate-700">0đ (Nhận tại cửa hàng)</span>
               </div>
             ) : shippingFee != null ? (
-              <div className="flex items-center justify-between gap-3">
-                <span>Phí vận chuyển tạm tính</span>
-                <span className="tabular-nums font-medium text-slate-700">{formatVnd(shippingFee)}</span>
-              </div>
+              <>
+                <div className="flex items-center justify-between gap-3">
+                  <span>Phí vận chuyển tạm tính</span>
+                  <span className="tabular-nums font-medium text-slate-700">{formatVnd(shippingFee)}</span>
+                </div>
+                {shippingDiscount > 0 ? (
+                  <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold">
+                    <span>Hỗ trợ phí ship</span>
+                    <span className="tabular-nums">-{formatVnd(shippingDiscount)}</span>
+                  </div>
+                ) : null}
+              </>
             ) : (
               <div className="flex items-center justify-between gap-3">
                 <span>Phí vận chuyển</span>

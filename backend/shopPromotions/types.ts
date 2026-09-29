@@ -2,8 +2,10 @@ export const PROMOTIONS_COL = "aloha_shop_promotions";
 export const PROMOTION_CODES_COL = "aloha_shop_promotion_codes";
 export const PROMOTION_REDEMPTIONS_COL = "aloha_shop_promotion_redemptions";
 export const PROMOTION_AUDIT_COL = "aloha_shop_promotion_audit";
+export const PROMOTION_CUSTOMER_USAGE_COL = "aloha_shop_promotion_customer_usage";
 
 export type PromotionType = "auto" | "code";
+export type PromotionBenefitType = "goods" | "shipping";
 export type DiscountType = "percentage" | "fixed";
 export type ThresholdOperator = ">" | ">=";
 export type PromotionScope = "all" | "category" | "product";
@@ -16,6 +18,8 @@ export interface PromotionDoc {
   title: string; // Tiêu đề khách thấy (VD: "Giảm 10% cho khách mua lần đầu")
   description?: string;
   type: PromotionType; // "auto" (tự động) | "code" (cần nhập mã)
+  benefitType?: PromotionBenefitType; // thiếu = "goods" (giảm tiền hàng); "shipping" = hỗ trợ phí ship
+  regionId?: string; // Vùng giao hàng, bắt buộc với benefitType "shipping"
   discountType: DiscountType; // "percentage" | "fixed"
   discountValue: number; // % (1-100) hoặc số tiền VND
   maxDiscountVnd?: number; // Trần giảm tối đa (bắt buộc với %)
@@ -66,6 +70,8 @@ export interface PromotionRedemptionDoc {
   buyerPhone?: string;
   buyerEmail?: string;
   buyerId?: string;
+  customerKey?: string; // Khóa đếm lượt mỗi khách (PROMOTION_CUSTOMER_USAGE_COL)
+  benefitType?: PromotionBenefitType;
   discountAmount: number;
   status: "held" | "used" | "released";
   idempotencyKey?: string;
@@ -138,4 +144,29 @@ export interface PromotionQuoteResult {
   discountTotal: number;
   finalTotal: number;
   candidates: EvaluatedCandidate[];
+}
+
+export interface ShippingPromotionCandidate {
+  promotionId: string;
+  title: string;
+  eligible: boolean;
+  ineligibleReason?: string;
+  calculatedDiscount: number;
+  maxDiscount: number;
+  minOrderThreshold?: number;
+  thresholdOperator?: ThresholdOperator;
+}
+
+export interface ShippingPromotionResult {
+  applied?: {
+    promotionId: string;
+    title: string;
+    discountAmount: number;
+    regionId: string;
+    regionVersion: number;
+    regionSource: "ghn_district" | "name";
+  };
+  /** Đủ điều kiện nhưng phí ship chưa có (chờ shop báo phí) — chưa trừ tiền, chưa giữ lượt. */
+  pending?: { promotionId: string; title: string; maxDiscount: number };
+  candidates: ShippingPromotionCandidate[];
 }

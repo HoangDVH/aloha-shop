@@ -394,6 +394,17 @@ export function OrderPendingView({
                   <span>Phí ship</span>
                   <span className="font-medium text-amber-700">Chờ xác nhận</span>
                 </div>
+              ) : order.shippingDiscount ? (
+                <>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Phí ship tạm tính</span>
+                    <span>{formatVnd(order.shippingFeeOriginal ?? (order.shippingFee || 0) + order.shippingDiscount)}</span>
+                  </div>
+                  <div className="flex justify-between text-[var(--aloha-price)] font-semibold">
+                    <span>{order.shippingPromotion?.title || "Hỗ trợ phí ship"}</span>
+                    <span>-{formatVnd(order.shippingDiscount)}</span>
+                  </div>
+                </>
               ) : (
                 <div className="flex justify-between text-slate-600">
                   <span>Phí ship tạm tính</span>

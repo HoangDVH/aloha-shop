@@ -135,7 +135,8 @@ export async function getShippingQuote(
     };
   }
 
-  // Xét điều kiện miễn ship theo tiền hàng sau ưu đãi N = G - D (Section 15.2 & LK06)
+  // Xét điều kiện miễn ship theo tiền hàng sau ưu đãi N = G - D (Section 15.2 & LK06).
+  // discountTotal phải do server tính (routes.ts), không lấy từ client.
   const subtotalAfterDiscount = Math.max(0, built.subtotal - (Number(input.discountTotal) || 0));
   const freeShip = qualifiesFreeShip(subtotalAfterDiscount, built.items);
 

@@ -57,7 +57,11 @@ export type ShopOrder = {
   orderDetails: ShopOrderDetail[];
   ctvCodes?: string[];
   subtotal?: number;
+  /** Phí ship khách trả (đã trừ hỗ trợ ship). */
   shippingFee?: number;
+  shippingFeeOriginal?: number;
+  shippingDiscount?: number;
+  shippingPromotion?: { promotionId: string; title: string; discountAmount: number } | null;
   shippingCarrier?: string;
   freeShipApplied?: boolean;
   shippingEstimate?: {
@@ -195,6 +199,8 @@ export type PlaceOrderInput = {
   shippingCarrier?: string;
   promotionCode?: string;
   promotionId?: string;
+  /** false = khách đã bỏ ưu đãi tự động; server không tự áp lại. */
+  autoPromotion?: boolean;
   /** Chống đặt trùng khi retry / mất response */
   idempotencyKey?: string;
 };

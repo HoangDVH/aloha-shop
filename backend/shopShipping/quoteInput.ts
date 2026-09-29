@@ -12,7 +12,10 @@ import type { QuoteLineItem } from "./quoteToken.js";
 import {
   loadCategoryMetaById,
   overlayProductCategoryFields,
+  type CategoryMeta,
 } from "../shopCatalog/categoryMeta.js";
+import { loadCategorySizeMap, sizeClassForCategoryChain } from "./categorySizeConfig.js";
+import type { ShipSizeClass } from "./sizePresets.js";
 
 const COL = "aloha_products";
 
@@ -30,6 +33,18 @@ function normalizeMa(raw: unknown): string {
   return String(raw || "")
     .trim()
     .toUpperCase();
+}
+
+function withCategoryShipSize(
+  doc: Record<string, unknown>,
+  metaById: Map<number, CategoryMeta>,
+  sizeMap: Map<number, ShipSizeClass>
+): Record<string, unknown> {
+  const overlaid = overlayProductCategoryFields(doc, metaById);
+  const categoryId = Number(doc.categoryId) || 0;
+  const chain = categoryId > 0 ? metaById.get(categoryId)?.ancestorIds || [categoryId] : [];
+  const categoryShipSizeClass = sizeClassForCategoryChain(chain, sizeMap);
+  return categoryShipSizeClass ? { ...overlaid, categoryShipSizeClass } : overlaid;
 }
 
 function indexProductKeys(doc: Record<string, unknown>, byMa: Map<string, ProductShipMeta>) {
@@ -61,6 +76,7 @@ async function loadProductsByCode(db: Db, mas: string[]): Promise<Map<string, Pr
       maHang: 1,
       ten: 1,
       trongLuong: 1,
+      dvt: 1,
       shipSizeClass: 1,
       categoryId: 1,
       nhomPath: 1,
@@ -73,12 +89,12 @@ async function loadProductsByCode(db: Db, mas: string[]): Promise<Map<string, Pr
     })
     .toArray();
 
-  const metaById = await loadCategoryMetaById(db);
+  const [metaById, sizeMap] = await Promise.all([
+    loadCategoryMetaById(db),
+    loadCategorySizeMap(db),
+  ]);
   for (const d of docs) {
-    indexProductKeys(
-      overlayProductCategoryFields(d as Record<string, unknown>, metaById),
-      byMa
-    );
+    indexProductKeys(withCategoryShipSize(d as Record<string, unknown>, metaById, sizeMap), byMa);
   }
 
   const missing = mas.filter((m) => !byMa.has(m));
@@ -94,6 +110,7 @@ async function loadProductsByCode(db: Db, mas: string[]): Promise<Map<string, Pr
         maHang: 1,
         ten: 1,
         trongLuong: 1,
+        dvt: 1,
         shipSizeClass: 1,
         categoryId: 1,
         nhomPath: 1,
@@ -107,10 +124,7 @@ async function loadProductsByCode(db: Db, mas: string[]): Promise<Map<string, Pr
       .limit(50)
       .toArray();
     for (const d of loose) {
-      indexProductKeys(
-        overlayProductCategoryFields(d as Record<string, unknown>, metaById),
-        byMa
-      );
+      indexProductKeys(withCategoryShipSize(d as Record<string, unknown>, metaById, sizeMap), byMa);
     }
   }
 

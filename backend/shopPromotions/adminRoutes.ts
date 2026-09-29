@@ -18,10 +18,31 @@ import {
   type PromotionAuditDoc,
   type CartItemToEvaluate,
 } from "./types.js";
-import { evaluatePromotions } from "./evaluator.js";
+import { evaluatePromotions, evaluateShippingPromotions } from "./evaluator.js";
+import { DEFAULT_SHIPPING_REGIONS, matchShippingRegion } from "../shopShipping/shippingRegions.js";
 
 function newId(prefix = "pro"): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+const TARGET_CUSTOMERS = ["all", "wholesale", "new_web", "retail"];
+
+/** Voucher ship: tự áp dụng, giảm VND cố định, bắt buộc vùng và tổng lượt (mục 24.4). */
+function shippingPromotionError(doc: Partial<PromotionDoc>): string | null {
+  if (doc.benefitType !== "shipping") return null;
+  if (!/^[a-z0-9_]{2,40}$/.test(String(doc.regionId || ""))) return "Chọn vùng áp dụng cho voucher ship";
+  if (!(Number(doc.usageLimitTotal) >= 1)) return "Voucher ship bắt buộc nhập tổng lượt";
+  if (!(Number(doc.discountValue) > 0)) return "Mệnh giá hỗ trợ ship phải lớn hơn 0";
+  return null;
+}
+
+function applyShippingPromotionDefaults(doc: Partial<PromotionDoc>): Partial<PromotionDoc> {
+  if (doc.benefitType !== "shipping") return {};
+  const budgetTotal =
+    doc.budgetTotal != null && doc.budgetTotal > 0
+      ? doc.budgetTotal
+      : Math.round(Number(doc.usageLimitTotal) * Number(doc.discountValue));
+  return { type: "auto", discountType: "fixed", maxDiscountVnd: undefined, budgetTotal };
 }
 
 export function registerShopPromotionsAdminRoutes(
@@ -114,7 +135,8 @@ export function registerShopPromotionsAdminRoutes(
           return res.status(400).json({ ok: false, error: "Giá trị giảm giá phải lớn hơn 0" });
         }
 
-        const discountType = b.discountType === "fixed" ? "fixed" : "percentage";
+        const discountType =
+          b.benefitType === "shipping" || b.discountType === "fixed" ? "fixed" : "percentage";
         if (discountType === "percentage" && discountValue > 100) {
           return res.status(400).json({ ok: false, error: "Giảm theo % không được quá 100%" });
         }
@@ -129,6 +151,8 @@ export function registerShopPromotionsAdminRoutes(
           title,
           description: b.description ? String(b.description).trim() : "",
           type: b.type === "code" ? "code" : "auto",
+          benefitType: b.benefitType === "shipping" ? "shipping" : "goods",
+          regionId: b.benefitType === "shipping" ? String(b.regionId || "").trim() : undefined,
           discountType,
           discountValue,
           maxDiscountVnd: b.maxDiscountVnd ? Math.max(0, Number(b.maxDiscountVnd)) : undefined,
@@ -140,7 +164,7 @@ export function registerShopPromotionsAdminRoutes(
           excludedProductMas: Array.isArray(b.excludedProductMas)
             ? b.excludedProductMas.map((m: any) => String(m).trim().toUpperCase())
             : [],
-          targetCustomer: ["wholesale", "new_web", "retail"].includes(b.targetCustomer)
+          targetCustomer: TARGET_CUSTOMERS.includes(b.targetCustomer)
             ? b.targetCustomer
             : "retail",
           startDate: b.startDate ? new Date(b.startDate).toISOString() : undefined,
@@ -161,6 +185,12 @@ export function registerShopPromotionsAdminRoutes(
           updatedAt: nowIso,
           updatedBy: actor,
         };
+
+        const shipErr = shippingPromotionError(doc);
+        if (shipErr) {
+          return res.status(400).json({ ok: false, error: shipErr });
+        }
+        Object.assign(doc, applyShippingPromotionDefaults(doc));
 
         await shopDb.collection<PromotionDoc>(PROMOTIONS_COL).insertOne(doc as any);
 
@@ -271,10 +301,22 @@ export function registerShopPromotionsAdminRoutes(
             : [];
         }
         if (b.targetCustomer !== undefined) {
-          updateSet.targetCustomer = ["wholesale", "new_web", "retail"].includes(b.targetCustomer)
+          updateSet.targetCustomer = TARGET_CUSTOMERS.includes(b.targetCustomer)
             ? b.targetCustomer
             : "retail";
         }
+        if (b.benefitType !== undefined) {
+          const nextBenefit = b.benefitType === "shipping" ? "shipping" : "goods";
+          const currentBenefit = existing.benefitType || "goods";
+          if (nextBenefit !== currentBenefit && (existing.usedCount || 0) + (existing.heldCount || 0) > 0) {
+            return res.status(400).json({
+              ok: false,
+              error: "Không đổi loại ưu đãi khi chương trình đã có lượt dùng. Hãy nhân bản thành chương trình mới.",
+            });
+          }
+          updateSet.benefitType = nextBenefit;
+        }
+        if (b.regionId !== undefined) updateSet.regionId = String(b.regionId || "").trim() || undefined;
         if (b.startDate !== undefined) {
           updateSet.startDate = b.startDate ? new Date(b.startDate).toISOString() : undefined;
         }
@@ -298,6 +340,13 @@ export function registerShopPromotionsAdminRoutes(
         if (b.isPublic !== undefined) updateSet.isPublic = b.isPublic !== false;
         if (b.combineWithShip !== undefined) updateSet.combineWithShip = b.combineWithShip !== false;
         if (b.priority !== undefined) updateSet.priority = Number(b.priority) || 0;
+
+        const merged = { ...existing, ...updateSet } as PromotionDoc;
+        const shipErr = shippingPromotionError(merged);
+        if (shipErr) {
+          return res.status(400).json({ ok: false, error: shipErr });
+        }
+        Object.assign(updateSet, applyShippingPromotionDefaults(merged));
 
         await col.updateOne({ id }, { $set: updateSet });
         const updated = await col.findOne({ id });
@@ -457,13 +506,47 @@ export function registerShopPromotionsAdminRoutes(
           updatedAt: new Date().toISOString(),
         };
 
+        const buyer = {
+          isNewWebBuyer: b.buyer?.isNewWebBuyer !== false,
+          isWholesale: Boolean(b.buyer?.isWholesale),
+          phone: b.buyer?.phone,
+        };
+
+        if (promoConfig.benefitType === "shipping") {
+          mockPromo.benefitType = "shipping";
+          mockPromo.regionId = promoConfig.regionId;
+          mockPromo.type = "auto";
+          mockPromo.discountType = "fixed";
+          mockPromo.usageLimitPerCustomer = undefined;
+          mockPromo.budgetTotal = undefined;
+          const ship = b.shipping || {};
+          const shippingFee =
+            ship.fee === null || ship.fee === undefined || ship.fee === ""
+              ? null
+              : Math.max(0, Number(ship.fee) || 0);
+          const shipping = evaluateShippingPromotions({
+            items,
+            buyer,
+            promotions: [mockPromo],
+            deliveryMethod: ship.deliveryMethod === "nhan_cua_hang" ? "nhan_cua_hang" : "giao_tan_noi",
+            shippingFee,
+            freeShipApplied: Boolean(ship.freeShipApplied),
+            matchRegion: (regionId) => {
+              const region = DEFAULT_SHIPPING_REGIONS.find((r) => r.id === regionId);
+              if (!region) return { status: "outside", reason: "Vùng áp dụng chưa được cấu hình." };
+              return matchShippingRegion(region, {
+                province: ship.province,
+                district: ship.district,
+                ghnDistrictId: Number(ship.ghnDistrictId) || undefined,
+              });
+            },
+          });
+          return res.json({ ok: true, shipping });
+        }
+
         const quote = evaluatePromotions({
           items,
-          buyer: {
-            isNewWebBuyer: b.buyer?.isNewWebBuyer !== false,
-            isWholesale: Boolean(b.buyer?.isWholesale),
-            phone: b.buyer?.phone,
-          },
+          buyer,
           promotions: [mockPromo],
           autoMode: true,
         });

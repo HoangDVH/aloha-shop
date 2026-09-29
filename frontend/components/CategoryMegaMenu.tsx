@@ -120,20 +120,20 @@ function MegaL3Tile({
     <Link
       href={categoryHref(node)}
       onClick={onNavigate}
-      className="group flex min-w-0 flex-col items-center gap-1.5 text-center"
+      className="group flex w-full min-w-0 flex-col items-center gap-1 text-center"
       title={node.name}
     >
-      <span className="flex aspect-square w-full max-w-[4.75rem] items-center justify-center overflow-hidden rounded-xl bg-[#f6f8f4] ring-1 ring-[var(--aloha-line)] shadow-sm transition duration-200 group-hover:-translate-y-0.5 group-hover:ring-[var(--aloha-green)]/45 group-hover:shadow-md">
+      <span className="flex aspect-square w-full max-w-[4.15rem] shrink-0 items-center justify-center overflow-hidden rounded-xl transition duration-200 group-hover:-translate-y-0.5">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={src}
           alt=""
-          className="max-h-[88%] max-w-[88%] object-contain transition duration-200 group-hover:scale-[1.05]"
+          className="h-full w-full rounded-xl object-cover transition duration-200 group-hover:scale-[1.05]"
           loading="lazy"
           onError={() => setImgFailed(true)}
         />
       </span>
-      <span className="line-clamp-2 min-h-[2.3em] w-full px-0.5 text-[11px] font-semibold leading-snug text-[var(--aloha-ink)] transition group-hover:text-[var(--aloha-green)]">
+      <span className="line-clamp-2 min-h-[2.2em] w-full px-0.5 text-[11px] font-semibold leading-snug text-[var(--aloha-ink)] transition group-hover:text-[var(--aloha-green)]">
         {labelNode(node.name)}
       </span>
     </Link>
@@ -326,10 +326,10 @@ export function CategoryMegaMenu({
 
             {/* Cột 2 — chỉ khi L1 có nhóm con */}
             {l2.length ? (
-            <div className="min-h-[22rem] min-w-0 flex-1 bg-white px-6 py-5">
+            <div className="min-h-[22rem] min-w-0 flex-1 bg-white px-6 py-4">
               {active ? (
                 <>
-                  <div className="mb-5 flex items-start gap-3 border-b border-[var(--aloha-line)] pb-3.5">
+                  <div className="mb-3.5 flex items-start gap-3 border-b border-[var(--aloha-line)] pb-2.5">
                     <span className="mt-0.5 text-[var(--aloha-green)]">
                       {navBarIcon(active.name)}
                     </span>
@@ -347,7 +347,7 @@ export function CategoryMegaMenu({
                     </div>
                   </div>
 
-                    <div className="max-h-[min(62vh,32rem)] space-y-6 overflow-y-auto overscroll-contain pr-1">
+                    <div className="max-h-[min(76vh,36.5rem)] space-y-5 overflow-y-auto overscroll-contain pr-1.5 pb-2">
                       {l2.map((section) => {
                         const kids = nodeSubs(section);
                         const withImg = (
@@ -359,8 +359,8 @@ export function CategoryMegaMenu({
                         if (!withImg.length && !kids.length) {
                           return (
                             <section key={section.id} className="pl-8">
-                              <div className="mb-2.5 flex items-baseline justify-between gap-3">
-                                <span className="min-w-0 truncate text-[15px] font-extrabold leading-none text-[var(--aloha-green-dark)] sm:text-base">
+                              <div className="mb-2 flex items-baseline justify-between gap-3">
+                                <span className="min-w-0 truncate py-0.5 text-[15px] font-extrabold leading-tight text-[var(--aloha-green-dark)] sm:text-base">
                                   {labelNode(section.name)}
                                 </span>
                                 <Link
@@ -377,11 +377,11 @@ export function CategoryMegaMenu({
                         if (!withImg.length) return null;
                         return (
                           <section key={section.id} className="pl-8">
-                            <div className="mb-3 flex items-baseline justify-between gap-3">
+                            <div className="mb-2.5 flex items-baseline justify-between gap-3">
                               <Link
                                 href={categoryHref(section)}
                                 onClick={handleNavigate}
-                                className="min-w-0 truncate text-[15px] font-extrabold leading-none text-[var(--aloha-green-dark)] hover:text-[var(--aloha-green)] sm:text-base"
+                                className="min-w-0 truncate py-0.5 text-[15px] font-extrabold leading-tight text-[var(--aloha-green-dark)] hover:text-[var(--aloha-green)] sm:text-base"
                               >
                                 {labelNode(section.name)}
                               </Link>
@@ -393,7 +393,7 @@ export function CategoryMegaMenu({
                                 Xem tất cả →
                               </Link>
                             </div>
-                            <div className="grid grid-cols-5 gap-x-2.5 gap-y-3 justify-items-start">
+                            <div className="grid grid-cols-5 gap-x-2.5 gap-y-2">
                               {withImg.map((leaf) => (
                                 <MegaL3Tile
                                   key={leaf.id}

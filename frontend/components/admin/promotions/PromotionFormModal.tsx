@@ -27,12 +27,25 @@ import {
 } from "lucide-react";
 import dayjs from "dayjs";
 
+export const SHIPPING_REGION_OPTIONS = [
+  { value: "hcm_pre_2025", label: "TP.HCM (ranh giới trước 01/07/2025)" },
+];
+
+export function shippingRegionLabel(regionId?: string): string {
+  return SHIPPING_REGION_OPTIONS.find((r) => r.value === regionId)?.label || regionId || "—";
+}
+
+const formatThousands = (v: unknown) => `${v ?? ""}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+const parseThousands = (v: string | undefined) => Number(String(v || "").replace(/[^\d.]/g, "")) || 0;
+
 export interface PromotionItem {
   id: string;
   name: string;
   title: string;
   description?: string;
   type: "auto" | "code";
+  benefitType?: "goods" | "shipping";
+  regionId?: string;
   discountType: "percentage" | "fixed";
   discountValue: number;
   maxDiscountVnd?: number;
@@ -100,6 +113,8 @@ export function PromotionFormModal({
       setCustomerMode(isSpecificCust ? "specific" : "all");
 
       form.setFieldsValue({
+        benefitType: editingItem.benefitType || "goods",
+        regionId: editingItem.regionId || SHIPPING_REGION_OPTIONS[0].value,
         name: editingItem.name,
         code: editingItem.id || "",
         discountValue: editingItem.discountValue || 0,
@@ -121,6 +136,7 @@ export function PromotionFormModal({
         customerMode: isSpecificCust ? "specific" : "all",
         targetCustomer: editingItem.targetCustomer || "all",
         usageLimitTotal: editingItem.usageLimitTotal,
+        usageLimitPerCustomer: editingItem.usageLimitPerCustomer,
         budgetTotal: editingItem.budgetTotal,
         priority: editingItem.priority || 0,
       });
@@ -129,6 +145,8 @@ export function PromotionFormModal({
       setTimeMode("range");
       setCustomerMode("all");
       form.setFieldsValue({
+        benefitType: "goods",
+        regionId: SHIPPING_REGION_OPTIONS[0].value,
         name: "",
         code: "",
         discountValue: 10,
@@ -148,14 +166,48 @@ export function PromotionFormModal({
         customerMode: "all",
         targetCustomer: "all",
         usageLimitTotal: undefined,
+        usageLimitPerCustomer: undefined,
         budgetTotal: undefined,
         priority: 0,
       });
     }
   }, [open, editingItem, form]);
 
-  const applyPreset = (preset: "first10" | "bigOrder" | "coupon") => {
-    if (preset === "first10") {
+  const switchBenefitType = (next: "goods" | "shipping") => {
+    form.setFieldValue("benefitType", next);
+    if (next === "shipping") {
+      const currentValue = Number(form.getFieldValue("discountValue")) || 0;
+      form.setFieldsValue({
+        discountType: "fixed",
+        discountValue: form.getFieldValue("discountType") === "fixed" && currentValue > 0 ? currentValue : 30000,
+        maxDiscountVnd: undefined,
+        isAutoApply: true,
+        regionId: form.getFieldValue("regionId") || SHIPPING_REGION_OPTIONS[0].value,
+      });
+    }
+  };
+
+  const applyPreset = (preset: "first10" | "bigOrder" | "coupon" | "shipHcm") => {
+    if (preset !== "shipHcm") form.setFieldValue("benefitType", "goods");
+    if (preset === "shipHcm") {
+      form.setFieldsValue({
+        benefitType: "shipping",
+        regionId: SHIPPING_REGION_OPTIONS[0].value,
+        name: "Hỗ trợ phí ship nội thành TP.HCM 30k",
+        discountType: "fixed",
+        discountValue: 30000,
+        maxDiscountVnd: undefined,
+        minOrderThreshold: 0,
+        isAutoApply: true,
+        customerMode: "all",
+        targetCustomer: "all",
+        usageLimitTotal: 100,
+        usageLimitPerCustomer: 1,
+        budgetTotal: undefined,
+        description: "Tự động giảm tối đa 30.000đ phí giao hàng cho địa chỉ TP.HCM (ranh giới cũ)",
+      });
+      setCustomerMode("all");
+    } else if (preset === "first10") {
       form.setFieldsValue({
         name: "Ưu đãi khách mới web 10%",
         discountType: "percentage",
@@ -199,7 +251,23 @@ export function PromotionFormModal({
 
   const handleSave = async (andCreateCode = false) => {
     try {
-      const values = await form.validateFields();
+      await form.validateFields();
+      // Tab đang ẩn bị unmount: validateFields() chỉ trả field đang hiển thị.
+      const values = form.getFieldsValue(true);
+      const isShipping = values.benefitType === "shipping";
+      if (isShipping) {
+        if (!values.regionId) {
+          setActiveTab("info");
+          message.warning("Chọn vùng áp dụng cho voucher hỗ trợ ship");
+          return;
+        }
+        if (!(Number(values.usageLimitTotal) >= 1)) {
+          setActiveTab("scope");
+          setCollapseNganSach(false);
+          message.warning("Voucher hỗ trợ ship bắt buộc nhập tổng lượt dùng");
+          return;
+        }
+      }
       setSubmitting(true);
 
       const productMas = String(values.productMasText || "")
@@ -218,18 +286,23 @@ export function PromotionFormModal({
         endDate = values.timeRange[1]?.toISOString();
       }
 
-      const targetCustomer =
-        values.customerMode === "all" ? "all" : values.targetCustomer || "retail";
+      const specificTarget =
+        values.targetCustomer && values.targetCustomer !== "all" ? values.targetCustomer : "retail";
+      const targetCustomer = customerMode === "all" ? "all" : specificTarget;
+      const discountType = isShipping ? "fixed" : values.discountType || "percentage";
+      const optionalNumber = (v: unknown) => (v ? Number(v) : null);
 
       const payload = {
         name: values.name,
         title: values.name,
         description: values.description,
-        type: values.isAutoApply ? "auto" : "code",
-        discountType: values.discountType || "percentage",
+        benefitType: isShipping ? "shipping" : "goods",
+        regionId: isShipping ? values.regionId : undefined,
+        type: isShipping || values.isAutoApply ? "auto" : "code",
+        discountType,
         discountValue: Number(values.discountValue) || 0,
         maxDiscountVnd:
-          values.discountType === "percentage" && values.maxDiscountVnd
+          discountType === "percentage" && values.maxDiscountVnd
             ? Number(values.maxDiscountVnd)
             : undefined,
         minOrderThreshold: Number(values.minOrderThreshold) || 0,
@@ -240,8 +313,9 @@ export function PromotionFormModal({
         targetCustomer,
         startDate,
         endDate,
-        usageLimitTotal: values.usageLimitTotal ? Number(values.usageLimitTotal) : undefined,
-        budgetTotal: values.budgetTotal ? Number(values.budgetTotal) : undefined,
+        usageLimitTotal: optionalNumber(values.usageLimitTotal),
+        usageLimitPerCustomer: optionalNumber(values.usageLimitPerCustomer),
+        budgetTotal: optionalNumber(values.budgetTotal),
         status: values.status || "active",
         priority: Number(values.priority) || 0,
         revision: editingItem?.revision,
@@ -289,6 +363,19 @@ export function PromotionFormModal({
 
   const discountType = Form.useWatch("discountType", form);
   const scope = Form.useWatch("scope", form);
+  const benefitType = Form.useWatch("benefitType", { form, preserve: true });
+  const watchedDiscountValue = Form.useWatch("discountValue", { form, preserve: true });
+  const watchedUsageLimitTotal = Form.useWatch("usageLimitTotal", { form, preserve: true });
+  const watchedBudgetTotal = Form.useWatch("budgetTotal", { form, preserve: true });
+  const isShipping = benefitType === "shipping";
+  const defaultShipBudget =
+    isShipping && Number(watchedUsageLimitTotal) > 0 && Number(watchedDiscountValue) > 0
+      ? Number(watchedUsageLimitTotal) * Number(watchedDiscountValue)
+      : null;
+  const shipBudgetTooLow =
+    defaultShipBudget != null &&
+    Number(watchedBudgetTotal) > 0 &&
+    Number(watchedBudgetTotal) < defaultShipBudget;
 
   return (
     <Modal
@@ -353,6 +440,14 @@ export function PromotionFormModal({
               >
                 Mã voucher 50k
               </button>
+              •
+              <button
+                type="button"
+                onClick={() => applyPreset("shipHcm")}
+                className="text-blue-600 hover:underline px-1.5 py-0.5 rounded bg-blue-50/60 text-[11px] font-medium"
+              >
+                Hỗ trợ ship HCM 30k
+              </button>
             </div>
           ) : null}
 
@@ -395,6 +490,37 @@ export function PromotionFormModal({
             {/* -------------------- TAB 1: THÔNG TIN (ẢNH 1, 2, 4) -------------------- */}
             {activeTab === "info" ? (
               <div className="space-y-4">
+                <div className="flex items-center gap-4 flex-wrap text-xs text-slate-700">
+                  <span className="font-semibold text-slate-700">Loại ưu đãi</span>
+                  <Form.Item name="benefitType" noStyle>
+                    <Radio.Group
+                      onChange={(e) => switchBenefitType(e.target.value)}
+                      disabled={
+                        !!editingItem &&
+                        (editingItem.usedCount || 0) + (editingItem.heldCount || 0) > 0
+                      }
+                    >
+                      <Radio value="goods">Giảm tiền hàng</Radio>
+                      <Radio value="shipping">Hỗ trợ phí ship</Radio>
+                    </Radio.Group>
+                  </Form.Item>
+                  {isShipping ? (
+                    <span className="inline-flex items-center gap-2">
+                      <span className="font-medium text-slate-600">Vùng áp dụng</span>
+                      <Form.Item name="regionId" noStyle>
+                        <Select className="!w-72 !h-8" options={SHIPPING_REGION_OPTIONS} />
+                      </Form.Item>
+                    </span>
+                  ) : null}
+                </div>
+                {isShipping ? (
+                  <p className="text-[11px] text-slate-500 -mt-2">
+                    Tự áp dụng khi giao hàng tận nơi, địa chỉ thuộc vùng và đơn chưa được miễn ship. Giảm
+                    tối đa bằng mệnh giá, không vượt phí ship thực tế. Dùng chung được với ưu đãi giảm
+                    tiền hàng.
+                  </p>
+                ) : null}
+
                 {/* Hàng 1 (3 Cột): Tên đợt phát hành | Mã đợt phát hành | Mệnh giá */}
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 items-start">
                   <div className="md:col-span-5">
@@ -433,27 +559,40 @@ export function PromotionFormModal({
 
                   <div className="md:col-span-4">
                     <Form.Item
-                      name="discountValue"
                       label={
                         <span className="text-xs font-semibold text-slate-700 flex items-center gap-1">
                           Mệnh giá
-                          <Tooltip title="Giá trị chiết khấu khi áp dụng voucher (theo VNĐ hoặc %)">
+                          <Tooltip
+                            title={
+                              isShipping
+                                ? "Số tiền phí ship tối đa được hỗ trợ mỗi đơn (VNĐ)"
+                                : "Giá trị chiết khấu khi áp dụng voucher (theo VNĐ hoặc %)"
+                            }
+                          >
                             <Info size={13} className="text-slate-400 cursor-pointer" />
                           </Tooltip>
                         </span>
                       }
-                      rules={[{ required: true, message: "Nhập mệnh giá" }]}
+                      required
                       className="!mb-0"
                     >
                       <div className="flex gap-1.5">
-                        <InputNumber
-                          className="flex-1 !h-9 !rounded-md border-slate-300 font-semibold text-slate-900"
-                          min={1}
-                          formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
-                        />
+                        <Form.Item
+                          name="discountValue"
+                          noStyle
+                          rules={[{ required: true, message: "Nhập mệnh giá" }]}
+                        >
+                          <InputNumber
+                            className="flex-1 !h-9 !rounded-md border-slate-300 font-semibold text-slate-900"
+                            min={1}
+                            formatter={formatThousands}
+                            parser={parseThousands}
+                          />
+                        </Form.Item>
                         <Form.Item name="discountType" noStyle>
                           <Select
                             className="!w-20 !h-9"
+                            disabled={isShipping}
                             options={[
                               { label: "%", value: "percentage" },
                               { label: "VND", value: "fixed" },
@@ -544,15 +683,21 @@ export function PromotionFormModal({
                     <div className="pt-3.5 space-y-3.5 text-xs text-slate-700">
                       {/* Tổng tiền hàng tối thiểu từ */}
                       <div className="flex items-center gap-3">
-                        <span className="min-w-[170px] font-medium text-slate-600">
+                        <span className="min-w-[170px] font-medium text-slate-600 flex items-center gap-1">
                           Tổng tiền hàng tối thiểu từ
+                          {isShipping ? (
+                            <Tooltip title="Tính trên tiền hàng đủ điều kiện, chưa trừ mã giảm toàn đơn">
+                              <Info size={13} className="text-slate-400 cursor-pointer" />
+                            </Tooltip>
+                          ) : null}
                         </span>
                         <Form.Item name="minOrderThreshold" noStyle>
                           <InputNumber
                             className="!w-44 !h-8 !rounded-md border-slate-300"
                             min={0}
                             step={50000}
-                            formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                            formatter={formatThousands}
+                            parser={parseThousands}
                             addonAfter="VND"
                           />
                         </Form.Item>
@@ -608,7 +753,8 @@ export function PromotionFormModal({
                               min={0}
                               step={10000}
                               placeholder="Không giới hạn"
-                              formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                              formatter={formatThousands}
+                              parser={parseThousands}
                               addonAfter="VND"
                             />
                           </Form.Item>
@@ -636,14 +782,16 @@ export function PromotionFormModal({
                 <div className="space-y-2 pt-1 text-xs text-slate-700">
                   <div>
                     <Form.Item name="isAutoApply" valuePropName="checked" noStyle>
-                      <Checkbox>
+                      <Checkbox disabled={isShipping}>
                         <span className="font-medium text-slate-800">
                           Áp dụng tự động trên website khi thỏa điều kiện (⚡ Ưu đãi tự động)
                         </span>
                       </Checkbox>
                     </Form.Item>
                     <p className="text-[11px] text-slate-400 ml-6 mt-0.5">
-                      Nếu bỏ chọn, voucher chỉ kích hoạt khi khách hàng nhập mã coupon vào ô mã giảm giá.
+                      {isShipping
+                        ? "Voucher hỗ trợ ship luôn tự áp dụng, không phát mã."
+                        : "Nếu bỏ chọn, voucher chỉ kích hoạt khi khách hàng nhập mã coupon vào ô mã giảm giá."}
                     </p>
                   </div>
 
@@ -711,6 +859,10 @@ export function PromotionFormModal({
                         onChange={(e) => {
                           setCustomerMode(e.target.value);
                           form.setFieldValue("customerMode", e.target.value);
+                          const currentTarget = form.getFieldValue("targetCustomer");
+                          if (e.target.value === "specific" && (!currentTarget || currentTarget === "all")) {
+                            form.setFieldValue("targetCustomer", "retail");
+                          }
                         }}
                         className="flex flex-col gap-2.5"
                       >
@@ -751,12 +903,28 @@ export function PromotionFormModal({
                   </div>
 
                   {!collapseNganSach && (
-                    <div className="pt-3.5 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-slate-700">
+                    <div className="pt-3.5 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-700">
                       <div>
                         <label className="block font-medium text-slate-600 mb-1">
-                          Tổng lượt dùng tối đa
+                          Tổng lượt dùng tối đa{isShipping ? " (bắt buộc)" : ""}
                         </label>
                         <Form.Item name="usageLimitTotal" noStyle>
+                          <InputNumber
+                            className="!w-full !h-8 !rounded-md border-slate-300"
+                            min={1}
+                            placeholder={isShipping ? "Bắt buộc" : "Không giới hạn"}
+                          />
+                        </Form.Item>
+                      </div>
+
+                      <div>
+                        <label className="block font-medium text-slate-600 mb-1 flex items-center gap-1">
+                          Lượt dùng mỗi khách
+                          <Tooltip title="Khi đặt giới hạn này, khách phải đăng nhập mới được áp dụng ưu đãi">
+                            <Info size={12} className="text-slate-400 cursor-pointer" />
+                          </Tooltip>
+                        </label>
+                        <Form.Item name="usageLimitPerCustomer" noStyle>
                           <InputNumber
                             className="!w-full !h-8 !rounded-md border-slate-300"
                             min={1}
@@ -774,11 +942,21 @@ export function PromotionFormModal({
                             className="!w-full !h-8 !rounded-md border-slate-300"
                             min={0}
                             step={500000}
-                            placeholder="Không giới hạn"
-                            formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                            placeholder={isShipping ? "Mặc định = lượt × mệnh giá" : "Không giới hạn"}
+                            formatter={formatThousands}
+                            parser={parseThousands}
                             addonAfter="VND"
                           />
                         </Form.Item>
+                        {defaultShipBudget != null ? (
+                          <p
+                            className={`mt-1 text-[11px] ${shipBudgetTooLow ? "text-amber-600" : "text-slate-400"}`}
+                          >
+                            {shipBudgetTooLow
+                              ? `Thấp hơn lượt × mệnh giá (${formatThousands(defaultShipBudget)}đ): có thể hết ngân sách trước khi hết lượt.`
+                              : `Lượt × mệnh giá = ${formatThousands(defaultShipBudget)}đ`}
+                          </p>
+                        ) : null}
                       </div>
 
                       <div>
@@ -817,13 +995,15 @@ export function PromotionFormModal({
             Bỏ qua
           </Button>
 
-          <Button
-            onClick={() => handleSave(true)}
-            loading={submitting}
-            className="!h-9 !px-4 !rounded-md border-slate-300 text-slate-700 hover:text-[#0070e0] font-medium"
-          >
-            Lưu &amp; Tạo mã voucher
-          </Button>
+          {!isShipping ? (
+            <Button
+              onClick={() => handleSave(true)}
+              loading={submitting}
+              className="!h-9 !px-4 !rounded-md border-slate-300 text-slate-700 hover:text-[#0070e0] font-medium"
+            >
+              Lưu &amp; Tạo mã voucher
+            </Button>
+          ) : null}
 
           <Button
             type="primary"

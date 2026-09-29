@@ -1,5 +1,5 @@
 /**
- * Meta nhóm từ collection `categories` (cây KV: mẹ/con + fullPath).
+ * Meta nhóm từ collection `aloha_category` (cây KV: mẹ/con + fullPath).
  * Dùng overlay lúc đọc — giữ field categoryName/ancestor trên SP nhưng hiển thị khớp KV.
  * Không tạo nhom/nhomPath.
  */
@@ -9,21 +9,29 @@ import {
   flattenKvCategories,
   type CategoryNode,
 } from "../utils/categoryTree.ts";
+import { CATEGORY_COL } from "./categoryCollection.ts";
 
 export type CategoryMeta = {
   name: string;
   path: string;
   /** Đoạn path root → lá (khớp fullPath KV) */
   ancestor: string[];
+  /** categoryId root → lá, gồm chính nhóm này */
+  ancestorIds: number[];
 };
 
 let memAt = 0;
 let memMap: Map<number, CategoryMeta> | null = null;
 const MEM_TTL_MS = 30_000;
 
-function walkMeta(nodes: CategoryNode[], out: Map<number, CategoryMeta>) {
+function walkMeta(
+  nodes: CategoryNode[],
+  out: Map<number, CategoryMeta>,
+  parentIds: number[] = []
+) {
   for (const n of nodes) {
     const id = Number(n.categoryId) || 0;
+    const chainIds = id > 0 ? [...parentIds, id] : parentIds;
     if (id > 0) {
       const path = String(n.fullPath || n.name || "").trim();
       const ancestor = path
@@ -34,9 +42,10 @@ function walkMeta(nodes: CategoryNode[], out: Map<number, CategoryMeta>) {
         name: String(n.name || "").trim(),
         path,
         ancestor: ancestor.length ? ancestor : [String(n.name || "").trim()].filter(Boolean),
+        ancestorIds: chainIds,
       });
     }
-    if (n.children?.length) walkMeta(n.children, out);
+    if (n.children?.length) walkMeta(n.children, out, chainIds);
   }
 }
 
@@ -50,7 +59,7 @@ export async function loadCategoryMetaById(
     return memMap;
   }
   const cats = await db
-    .collection("categories")
+    .collection(CATEGORY_COL)
     .find({
       categoryId: { $exists: true, $ne: null },
       $expr: { $gt: [{ $toDouble: { $ifNull: ["$categoryId", 0] } }, 0] },
