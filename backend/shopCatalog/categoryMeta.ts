@@ -1,5 +1,5 @@
 /**
- * Meta nhóm từ collection `categories` (cây KV: mẹ/con + fullPath).
+ * Meta nhóm từ collection `aloha_category` (cây KV: mẹ/con + fullPath).
  * Dùng overlay lúc đọc — giữ field categoryName/ancestor trên SP nhưng hiển thị khớp KV.
  * Không tạo nhom/nhomPath.
  */
@@ -9,6 +9,7 @@ import {
   flattenKvCategories,
   type CategoryNode,
 } from "../utils/categoryTree.ts";
+import { CATEGORY_COL } from "./categoryCollection.ts";
 
 export type CategoryMeta = {
   name: string;
@@ -50,7 +51,7 @@ export async function loadCategoryMetaById(
     return memMap;
   }
   const cats = await db
-    .collection("categories")
+    .collection(CATEGORY_COL)
     .find({
       categoryId: { $exists: true, $ne: null },
       $expr: { $gt: [{ $toDouble: { $ifNull: ["$categoryId", 0] } }, 0] },

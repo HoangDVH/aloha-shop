@@ -11,10 +11,11 @@ import {
   resolveCategoryIdsFromPathIndex,
   type CategoryNode,
 } from "../utils/categoryTree.ts";
+import { CATEGORY_COL } from "./categoryCollection.ts";
 
 async function loadCategoryTree(db: Db): Promise<CategoryNode[]> {
   const cats = await db
-    .collection("categories")
+    .collection(CATEGORY_COL)
     .find({
       categoryId: { $exists: true, $ne: null },
       $expr: { $gt: [{ $toDouble: { $ifNull: ["$categoryId", 0] } }, 0] },

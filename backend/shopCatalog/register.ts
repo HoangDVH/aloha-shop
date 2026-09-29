@@ -15,6 +15,7 @@ import {
   resolveCategoryIdsFromPathIndex,
   type CategoryNode,
 } from "../utils/categoryTree.ts";
+import { CATEGORY_COL } from "./categoryCollection.ts";
 import { normalizeTrongLuongGram } from "../shopShipping/resolveWeight.js";
 import { mongoLoaiFilter } from "../utils/kvProductLoai.ts";
 import { normalizeWebBadge } from "./webBadge.js";
@@ -380,7 +381,7 @@ function attachLeafImages(
  */
 async function buildShopKvCategoryTree(db: Db): Promise<{ tree: CategoryNode[]; items: ShopNavNode[] }> {
   const cats = await db
-    .collection("categories")
+    .collection(CATEGORY_COL)
     .find({
       categoryId: { $exists: true, $ne: null },
       $expr: { $gt: [{ $toDouble: { $ifNull: ["$categoryId", 0] } }, 0] },
