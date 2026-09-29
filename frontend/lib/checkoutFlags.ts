@@ -19,9 +19,9 @@ export function shopShowTransferPayment(): boolean {
   return envOn("NEXT_PUBLIC_SHOP_SHOW_TRANSFER", true);
 }
 
-/** Hiện khối vận chuyển + phí ship. Mặc định tắt (theo yêu cầu phase hiện tại). */
+/** Hiện khối vận chuyển + phí ship. Mặc định bật khi triển khai tính năng ước tính phí vận chuyển. */
 export function shopShowCheckoutShipping(): boolean {
-  return envOn("NEXT_PUBLIC_SHOP_SHOW_CHECKOUT_SHIPPING", false);
+  return envOn("NEXT_PUBLIC_SHOP_SHOW_CHECKOUT_SHIPPING", true);
 }
 
 /**

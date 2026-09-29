@@ -188,7 +188,7 @@ function CheckoutConfirm() {
     discountTotal: discountAmount,
   });
 
-  const effectiveShippingFee = showShip ? shippingFee : 0;
+  const effectiveShippingFee = showShip ? shippingFee : null;
   const grandTotal = Math.max(0, total - discountAmount) + (effectiveShippingFee ?? 0);
 
   useEffect(() => {
