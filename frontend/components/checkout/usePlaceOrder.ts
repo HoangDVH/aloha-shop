@@ -56,7 +56,7 @@ type Args = {
   setShowNewForm: Dispatch<SetStateAction<boolean>>;
   shippingQuote: ShippingQuote | null;
   shippingError: string;
-  shippingFee: number;
+  shippingFee: number | null;
   promotionCode?: string;
   promotionId?: string;
   note: string;
@@ -225,8 +225,8 @@ export function usePlaceOrder({
       }
 
       if (showShip && delivery === "giao_tan_noi") {
-        if (!shippingQuote?.quoteToken || !shippingQuote.selected) {
-          setError(shippingError || "Chưa có phí ship — kiểm tra địa chỉ nhận hàng");
+        if (!shippingQuote?.quoteToken) {
+          setError(shippingError || "Chưa có thông tin vận chuyển — kiểm tra địa chỉ nhận hàng");
           return;
         }
       }
@@ -259,7 +259,7 @@ export function usePlaceOrder({
           showShip && delivery === "giao_tan_noi"
             ? shippingQuote?.quoteToken
             : undefined,
-        shippingFee: showShip && delivery === "giao_tan_noi" ? shippingFee : 0,
+        shippingFee: showShip && delivery === "giao_tan_noi" ? (shippingFee ?? 0) : 0,
         shippingCarrier:
           showShip && delivery === "giao_tan_noi"
             ? shippingQuote?.selected?.carrier

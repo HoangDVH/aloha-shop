@@ -176,6 +176,7 @@ export type EnsureCodKvOrderInput = {
   description: string;
   totalPayment: number;
   shippingFee?: number;
+  discount?: number;
 };
 
 export type EnsureCodKvOrderResult = {
@@ -199,8 +200,9 @@ export async function ensureReviewKvOrder(
     usingCod: false,
     method: "Cash",
     description: opts.description.slice(0, 500),
-    totalPayment: 0,
+    totalPayment: opts.totalPayment ?? 0,
     shippingFee: opts.shippingFee,
+    discount: opts.discount,
   });
   return {
     kvOrderId: ord.kvOrderId,
@@ -222,8 +224,9 @@ export async function ensureCodKvOrder(
     method: "Cash",
     description: opts.description.slice(0, 500),
     // Chưa thu — giống HĐ awaiting: tiền thu khi giao / tạo HĐ
-    totalPayment: 0,
+    totalPayment: opts.totalPayment ?? 0,
     shippingFee: opts.shippingFee,
+    discount: opts.discount,
   });
   return {
     kvOrderId: ord.kvOrderId,

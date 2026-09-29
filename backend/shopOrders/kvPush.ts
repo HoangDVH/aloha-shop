@@ -199,6 +199,8 @@ export type PushShopOrderKvInput = {
   totalPayment: number;
   /** Phí ship (đồng) — cộng vào HĐ KV. */
   shippingFee?: number;
+  /** Giảm giá phiếu đặt (order-level discount) */
+  discount?: number;
   /**
    * HĐ chờ CK (KiotQR): totalPayment=0 để KV chưa ghi nhận đã thu;
    * khi tiền vào, KiotQR/webhook cập nhật thanh toán.
@@ -227,29 +229,21 @@ export async function pushShopOrderToKiotViet(
   const soldById = await resolveShopKvSoldById(creds, token);
   const saleChannelId = await resolveShopKvSaleChannelId(creds, token);
 
+  const orderDiscount = Math.max(0, Math.round(Number(input.discount) || 0));
+
+  // Phân biệt giảm cấp đơn và giảm riêng sản phẩm:
+  // Nếu có giảm cấp đơn ("Giảm giá phiếu đặt"), không gửi lại phần giảm phân bổ nội bộ xuống dòng KV (Section 19.2)
   const orderDetails = input.orderDetails.map((it) => ({
     productCode: it.productCode,
     productName: it.productName,
     quantity: it.quantity,
     price: it.price,
-    discount: it.discount || 0,
+    discount: orderDiscount > 0 ? 0 : (it.discount || 0),
     note: it.note || "",
   }));
 
   const shipFee = Math.max(0, Math.round(Number(input.shippingFee) || 0));
-  if (shipFee > 0) {
-    const shipCode = await resolveShopKvShipProductCode(creds, token);
-    if (shipCode) {
-      orderDetails.push({
-        productCode: shipCode,
-        productName: "Phí vận chuyển",
-        quantity: 1,
-        price: shipFee,
-        discount: 0,
-        note: "Ship web",
-      });
-    }
-  }
+  // Không thêm dòng sản phẩm dịch vụ ship vào orderDetails để tránh cộng ship hai lần và làm sai lệch hàng hóa/CTV (Section 19.2 & 20.1)
 
   const receiver = input.customerName || "Khách web";
   const phone = input.customerPhone || "";
@@ -262,12 +256,13 @@ export async function pushShopOrderToKiotViet(
     saleChannelId,
     ...(!input.customerId ? { customerName: receiver, contactNumber: phone || undefined, address: shipAddr } : {}),
     orderDetails,
+    ...(orderDiscount > 0 ? { discount: orderDiscount } : {}),
     usingCod: input.usingCod,
     method: input.method || (input.usingCod ? "Cash" : "Transfer"),
     description: input.description.slice(0, 500),
     status: 1,
-    totalPayment: input.totalPayment,
-    // KV bật giao hàng → bắt buộc orderDelivery
+    totalPayment: Math.max(0, Math.round(Number(input.totalPayment) || 0)),
+    // KV bật giao hàng → bắt buộc orderDelivery ("THU PHÍ SHIP")
     orderDelivery: {
       receiver,
       contactNumber: phone || "0000000000",

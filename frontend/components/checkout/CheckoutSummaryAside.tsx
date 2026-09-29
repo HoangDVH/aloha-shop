@@ -11,7 +11,7 @@ type Props = {
   discount?: number;
   appliedTitle?: string;
   onOpenPromotion?: () => void;
-  shippingFee: number;
+  shippingFee: number | null;
   shippingLoading: boolean;
   grandTotal: number;
   error: string;
@@ -83,7 +83,7 @@ export function CheckoutSummaryAside({
       ) : null}
 
       {/* Desktop: chi tiết thanh toán đầy đủ */}
-      <section className="hidden rounded-[var(--aloha-radius-lg)] bg-white p-5 shadow-[var(--aloha-shadow)] ring-1 ring-black/[0.04] lg:block">
+      <section className="rounded-[var(--aloha-radius-lg)] bg-white p-5 shadow-[var(--aloha-shadow)] ring-1 ring-black/[0.04] hidden lg:block">
         <h2 className="mb-3 text-base font-extrabold text-[var(--aloha-ink)]">
           Chi tiết thanh toán
         </h2>
@@ -92,31 +92,66 @@ export function CheckoutSummaryAside({
             <span>Tổng tiền hàng</span>
             <span className="tabular-nums">{formatVnd(total)}</span>
           </div>
-          {showShip && delivery === "giao_tan_noi" ? (
-            <div className="flex items-center justify-between gap-3">
-              <span>Phí vận chuyển</span>
-              <span className="tabular-nums">
-                {shippingLoading
-                  ? "..."
-                  : shippingFee > 0
-                    ? formatVnd(shippingFee)
-                    : "—"}
-              </span>
-            </div>
-          ) : null}
           {discount > 0 ? (
             <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold">
               <span>Giảm giá ưu đãi</span>
               <span className="tabular-nums">-{formatVnd(discount)}</span>
             </div>
           ) : null}
+          {showShip ? (
+            delivery === "nhan_cua_hang" ? (
+              <div className="flex items-center justify-between gap-3">
+                <span>Phí vận chuyển</span>
+                <span className="tabular-nums text-slate-700">0đ (Nhận tại cửa hàng)</span>
+              </div>
+            ) : shippingLoading ? (
+              <div className="flex items-center justify-between gap-3">
+                <span>Phí vận chuyển</span>
+                <span className="tabular-nums text-slate-400">Đang tính…</span>
+              </div>
+            ) : shippingFee != null ? (
+              <div className="flex items-center justify-between gap-3">
+                <span>Phí vận chuyển tạm tính</span>
+                <span className="tabular-nums font-medium text-slate-700">{formatVnd(shippingFee)}</span>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <span>Phí vận chuyển</span>
+                <span className="tabular-nums font-medium text-amber-700">Chờ xác nhận</span>
+              </div>
+            )
+          ) : null}
+
           <div className="border-t border-slate-200/90" />
-          <div className="flex items-center justify-between gap-3">
-            <span>Tổng tiền thanh toán</span>
-            <span className="text-base font-bold tabular-nums text-[var(--aloha-price)]">
-              {formatVnd(grandTotal)}
-            </span>
-          </div>
+
+          {/* Dòng tổng theo Section 7.2 */}
+          {delivery === "nhan_cua_hang" ? (
+            <div className="flex items-center justify-between gap-3">
+              <span>Tổng tiền thanh toán</span>
+              <span className="text-base font-bold tabular-nums text-[var(--aloha-price)]">
+                {formatVnd(Math.max(0, total - discount))}
+              </span>
+            </div>
+          ) : shippingFee != null ? (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-3">
+                <span>Tổng tạm tính</span>
+                <span className="text-base font-bold tabular-nums text-[var(--aloha-price)]">
+                  {formatVnd(grandTotal)}
+                </span>
+              </div>
+              <p className="text-[11px] leading-snug text-slate-400 italic">
+                Aloha sẽ xác nhận phí vận chuyển cùng hình ảnh đơn hàng trước khi bạn thanh toán.
+              </p>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-semibold text-slate-700 leading-snug">Tiền hàng chưa gồm phí vận chuyển:</span>
+              <span className="text-base font-bold tabular-nums text-[var(--aloha-price)]">
+                {formatVnd(Math.max(0, total - discount))}
+              </span>
+            </div>
+          )}
         </div>
 
         {error ? (

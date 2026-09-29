@@ -179,15 +179,46 @@ export async function syncShopOrderMoneyFromKv(opts: {
     return { ok: false, error: "empty_kv_details", code };
   }
 
-  const subtotal = details.reduce(
-    (s, d) =>
-      s +
-      Math.max(0, d.price * Math.max(1, d.quantity) - (Number(d.discount) || 0)),
+  const rawDiscount = kvOrder?.discount ?? kvOrder?.Discount;
+  const kvOrderDiscount =
+    rawDiscount != null
+      ? Math.max(0, Math.round(Number(rawDiscount) || 0))
+      : Math.round(Number(order.discount) || 0);
+
+  const goodsSubtotal = details.reduce(
+    (s, d) => s + d.price * Math.max(1, d.quantity),
     0
   );
-  const total = Math.round(subtotal + shippingFee);
+
+  // Phân bổ giảm cấp đơn cho từng dòng chi tiết để giữ đúng hoa hồng CTV và hoàn tiền theo dòng (Section 15.3 & 19.2)
+  if (kvOrderDiscount > 0 && goodsSubtotal > 0) {
+    let allocated = 0;
+    const fractions: Array<{ idx: number; frac: number; maxVal: number }> = [];
+    details.forEach((d, i) => {
+      const lineVal = d.price * Math.max(1, d.quantity);
+      const raw = (kvOrderDiscount * lineVal) / goodsSubtotal;
+      const flr = Math.floor(raw);
+      d.discount = flr;
+      allocated += flr;
+      fractions.push({ idx: i, frac: raw - flr, maxVal: lineVal });
+    });
+    let rem = kvOrderDiscount - allocated;
+    if (rem > 0) {
+      fractions.sort((a, b) => b.frac - a.frac);
+      for (let i = 0; i < fractions.length && rem > 0; i++) {
+        if (details[fractions[i].idx].discount! < fractions[i].maxVal) {
+          details[fractions[i].idx].discount! += 1;
+          rem -= 1;
+        }
+      }
+    }
+  }
+
+  const subtotalAfterDiscount = Math.max(0, goodsSubtotal - kvOrderDiscount);
+  const total = Math.round(subtotalAfterDiscount + shippingFee);
   const prevTotal = Math.round(Number(order.total || order.totalPayment) || 0);
   const prevShip = Math.round(Number(order.shippingFee) || 0);
+  const prevDiscount = Math.round(Number(order.discount) || 0);
   const sameLines =
     details.length === prevDetails.length &&
     details.every((d, i) => {
@@ -200,7 +231,12 @@ export async function syncShopOrderMoneyFromKv(opts: {
         Number(p.discount || 0) === Number(d.discount || 0)
       );
     });
-  if (sameLines && prevShip === shippingFee && prevTotal === total) {
+  if (
+    sameLines &&
+    prevShip === shippingFee &&
+    prevTotal === total &&
+    prevDiscount === kvOrderDiscount
+  ) {
     return { ok: true, skipped: true, changed: false, code };
   }
 
@@ -212,10 +248,14 @@ export async function syncShopOrderMoneyFromKv(opts: {
     {
       $set: {
         orderDetails: details,
-        subtotal: Math.round(subtotal),
+        subtotal: Math.round(goodsSubtotal),
+        discount: kvOrderDiscount,
         shippingFee,
         total,
-        totalPayment: total,
+        totalPayment:
+          order.paymentStatus === "paid"
+            ? total
+            : Math.round(Number(order.paidAmount) || 0),
         moneySyncedFromKvAt: now,
         moneyMismatch: moneyMismatch || undefined,
         updatedAt: now,
@@ -246,6 +286,7 @@ export async function syncShopOrderMoneyFromKv(opts: {
       ...order,
       orderDetails: details,
       total,
+      discount: kvOrderDiscount,
       code,
     });
   }

@@ -6,6 +6,7 @@ import type { ShopAddress } from "@/lib/orders";
 import {
   fetchShippingQuote,
   type ShippingCarrier,
+  type ShippingEstimateStatus,
   type ShippingQuote,
 } from "@/lib/shipping";
 import type { Delivery } from "./checkoutTypes";
@@ -26,6 +27,7 @@ type Args = {
   draft: AddressDraft;
   /** false = phase ẩn ship — không gọi API quote (giữ code). */
   enabled?: boolean;
+  discountTotal?: number;
 };
 
 /** Báo giá phí ship + chọn hãng — logic giữ nguyên từ trang xác nhận đơn. */
@@ -36,6 +38,7 @@ export function useShippingQuote({
   showNewForm,
   draft,
   enabled = true,
+  discountTotal = 0,
 }: Args) {
   const [shippingQuote, setShippingQuote] = useState<ShippingQuote | null>(null);
   const [shippingLoading, setShippingLoading] = useState(false);
@@ -93,14 +96,36 @@ export function useShippingQuote({
         quoteAddress.ward,
         quoteAddress.ghnDistrictId,
         quoteAddress.ghnWardCode,
+        discountTotal,
       ].join("::"),
-    [quoteItemsKey, quoteAddress]
+    [quoteItemsKey, quoteAddress, discountTotal]
   );
 
-  const shippingFee =
-    !enabled || delivery !== "giao_tan_noi" || !shippingQuote?.selected
-      ? 0
-      : shippingQuote.selected.fee;
+  const shippingFee: number | null = useMemo(() => {
+    if (!enabled) return 0;
+    if (delivery === "nhan_cua_hang") return 0;
+    if (!shippingQuote) return null;
+    if (
+      shippingQuote.shippingEstimateStatus === "needs_confirmation" ||
+      shippingQuote.shippingEstimateStatus === "unavailable"
+    ) {
+      return null;
+    }
+    if (shippingQuote.estimatedShippingFee != null) {
+      return shippingQuote.estimatedShippingFee;
+    }
+    return shippingQuote.selected?.fee ?? null;
+  }, [enabled, delivery, shippingQuote]);
+
+  const shippingEstimateStatus: ShippingEstimateStatus = useMemo(() => {
+    if (delivery === "nhan_cua_hang") return "nhan_cua_hang";
+    if (!quoteAddress.province || !quoteAddress.ward) return "missing_address";
+    if (shippingQuote?.shippingEstimateStatus) return shippingQuote.shippingEstimateStatus;
+    if (shippingError) return "unavailable";
+    if (shippingQuote?.selected) return "estimated";
+    return "missing_address";
+  }, [delivery, quoteAddress.province, quoteAddress.ward, shippingQuote, shippingError]);
+
   const activeCarrier =
     carrierPick || shippingQuote?.selected?.carrier || shippingQuote?.cheapest || null;
 
@@ -111,12 +136,14 @@ export function useShippingQuote({
   const quoteItemsRef = useRef(quoteItems);
   const quoteAddressRef = useRef(quoteAddress);
   const deliveryRef = useRef(delivery);
+  const discountTotalRef = useRef(discountTotal);
   const enabledRef = useRef(enabled);
 
   quoteItemsRef.current = quoteItems;
   quoteAddressRef.current = quoteAddress;
   deliveryRef.current = delivery;
   enabledRef.current = enabled;
+  discountTotalRef.current = discountTotal;
 
   const requestShippingQuote = useCallback((resetCarrier: boolean) => {
     if (quoteTimerRef.current) {
@@ -177,6 +204,7 @@ export function useShippingQuote({
           ghnWardCode: ghnWardCode || undefined,
           deliveryMethod,
           carrier,
+          discountTotal: discountTotalRef.current,
         },
         ac.signal
       )
@@ -231,6 +259,7 @@ export function useShippingQuote({
     shippingError,
     carrierPick,
     shippingFee,
+    shippingEstimateStatus,
     activeCarrier,
     quoteAddress,
     pickCarrier,

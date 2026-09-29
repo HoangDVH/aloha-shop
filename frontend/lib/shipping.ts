@@ -16,6 +16,19 @@ export type ShippingQuoteOption = {
   freeShip?: boolean;
 };
 
+export type ShippingEstimateStatus =
+  | "estimated"
+  | "needs_confirmation"
+  | "unavailable"
+  | "missing_address"
+  | "nhan_cua_hang";
+
+export type PackageDataSource =
+  | "measured"
+  | "verified_preset"
+  | "inferred"
+  | "unknown";
+
 export type ShippingQuote = {
   ok: boolean;
   subtotal: number;
@@ -27,6 +40,13 @@ export type ShippingQuote = {
   cheapest: ShippingCarrier | null;
   selected: ShippingQuoteOption | null;
   quoteToken: string;
+  shippingEstimateStatus?: ShippingEstimateStatus;
+  estimatedShippingFee?: number | null;
+  pricingSource?: "carrier_api" | "internal_estimate" | "shop_policy";
+  packageDataSource?: PackageDataSource;
+  estimateReason?: string;
+  estimatedAt?: string;
+  expiresAt?: string;
 };
 
 export type QuoteShippingInput = {
@@ -44,6 +64,7 @@ export type QuoteShippingInput = {
   ghnWardCode?: string;
   deliveryMethod: "giao_tan_noi" | "nhan_cua_hang";
   carrier?: ShippingCarrier;
+  discountTotal?: number;
 };
 
 export async function fetchShippingQuote(

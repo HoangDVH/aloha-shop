@@ -60,6 +60,13 @@ export type ShopOrder = {
   shippingFee?: number;
   shippingCarrier?: string;
   freeShipApplied?: boolean;
+  shippingEstimate?: {
+    status?: "estimated" | "needs_confirmation" | "unavailable" | "missing_address";
+    estimatedFee?: number | null;
+    pricingSource?: "carrier_api" | "internal_estimate" | "shop_policy";
+    packageDataSource?: string;
+    estimatedAt?: string;
+  } | null;
   total: number;
   totalPayment?: number;
   discount?: number;

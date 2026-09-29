@@ -17,8 +17,8 @@ export type QuoteLineItem = {
 
 export type QuoteTokenPayload = {
   typ: "shop_shipping_quote";
-  carrier: ShippingCarrier;
-  fee: number;
+  carrier?: ShippingCarrier | null;
+  fee?: number | null;
   subtotal: number;
   totalWeightGram: number;
   province: string;
@@ -28,6 +28,10 @@ export type QuoteTokenPayload = {
   ghnWardCode?: string;
   itemsKey: string;
   freeShipApplied?: boolean;
+  shippingEstimateStatus?: "estimated" | "needs_confirmation" | "unavailable";
+  pricingSource?: "carrier_api" | "internal_estimate" | "shop_policy";
+  packageDataSource?: string;
+  estimatedShippingFee?: number | null;
 };
 
 export function hashQuoteItems(items: QuoteLineItem[]): string {

@@ -117,15 +117,42 @@ export function registerShopShippingRoutes(
 
         if (deliveryMethod === "nhan_cua_hang") {
           const subtotal = items.reduce((n, i) => n + i.price * i.quantity, 0);
+          const now = new Date();
+          const estimatedAt = now.toISOString();
+          const expiresAt = new Date(now.getTime() + 15 * 60_000).toISOString();
+          const itemsKey = hashQuoteItems(items);
+          const quoteToken = signQuoteToken({
+            carrier: null,
+            fee: 0,
+            subtotal,
+            totalWeightGram: 0,
+            province: "",
+            district: "",
+            ward: "",
+            itemsKey,
+            freeShipApplied: true,
+            shippingEstimateStatus: "estimated",
+            pricingSource: "shop_policy",
+            packageDataSource: "verified_preset",
+            estimatedShippingFee: 0,
+          });
           return res.json({
             ok: true,
             subtotal,
             totalWeightGram: 0,
+            freeShipApplied: true,
+            freeShipMinVnd: 0,
+            freeShipMaxUnitVnd: 0,
             quotes: [],
             cheapest: null,
             selected: null,
-            quoteToken: "",
-            shippingFee: 0,
+            quoteToken,
+            shippingEstimateStatus: "estimated",
+            estimatedShippingFee: 0,
+            pricingSource: "shop_policy",
+            packageDataSource: "verified_preset",
+            estimatedAt,
+            expiresAt,
           });
         }
 
@@ -149,6 +176,7 @@ export function registerShopShippingRoutes(
           ghnDistrictId,
           ghnWardCode,
           preferredCarrier: preferred,
+          discountTotal: Number(body.discountTotal) || 0,
         });
         return res.json(quote);
       } catch (e: any) {

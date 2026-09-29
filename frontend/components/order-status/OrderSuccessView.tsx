@@ -234,21 +234,51 @@ export function OrderSuccessView({
                   <span>{formatVnd(order.subtotal)}</span>
                 </div>
               ) : null}
-              {(order.shippingFee ?? 0) > 0 || order.freeShipApplied ? (
-                <div className="flex justify-between text-slate-600">
-                  <span>Phí vận chuyển</span>
-                  <span className={order.freeShipApplied ? "font-semibold text-[var(--aloha-green)]" : ""}>
-                    {(order.shippingFee ?? 0) > 0
-                      ? formatVnd(order.shippingFee || 0)
-                      : "Miễn phí"}
-                  </span>
+              {order.discount ? (
+                <div className="flex justify-between text-[var(--aloha-price)] font-semibold">
+                  <span>Giảm giá ưu đãi</span>
+                  <span>-{formatVnd(order.discount)}</span>
                 </div>
               ) : null}
+              {order.deliveryMethod === "nhan_cua_hang" ? (
+                <div className="flex justify-between text-slate-600">
+                  <span>Phí vận chuyển</span>
+                  <span>0đ (Nhận tại cửa hàng)</span>
+                </div>
+              ) : order.shippingEstimate?.status === "needs_confirmation" ||
+                order.shippingEstimate?.status === "unavailable" ||
+                (order.shippingFee == null && !order.freeShipApplied) ? (
+                <div className="flex justify-between text-slate-600">
+                  <span>Phí vận chuyển</span>
+                  <span className="font-medium text-amber-700">Chờ xác nhận</span>
+                </div>
+              ) : (
+                <div className="flex justify-between text-slate-600">
+                  <span>Phí vận chuyển tạm tính</span>
+                  <span className={order.freeShipApplied ? "font-semibold text-[var(--aloha-green)]" : ""}>
+                    {(order.shippingFee ?? 0) > 0 ? formatVnd(order.shippingFee || 0) : "Miễn phí"}
+                  </span>
+                </div>
+              )}
               <div className="flex items-center justify-between border-t border-dashed border-[var(--aloha-line)] pt-2">
-                <span className="font-extrabold text-[var(--aloha-ink)]">Thành tiền</span>
-                <span className="text-lg font-extrabold text-[#EE6055]">
-                  {formatVnd(order.total)}
-                </span>
+                {order.deliveryMethod === "nhan_cua_hang" ? (
+                  <>
+                    <span className="font-extrabold text-[var(--aloha-ink)]">Tổng tiền thanh toán</span>
+                    <span className="text-lg font-extrabold text-[#EE6055]">{formatVnd(order.total)}</span>
+                  </>
+                ) : order.shippingEstimate?.status === "needs_confirmation" ||
+                  order.shippingEstimate?.status === "unavailable" ||
+                  (order.shippingFee == null && !order.freeShipApplied) ? (
+                  <>
+                    <span className="text-xs font-semibold text-slate-700">Tiền hàng chưa gồm phí vận chuyển:</span>
+                    <span className="text-lg font-extrabold text-[#EE6055]">{formatVnd(order.total)}</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="font-extrabold text-[var(--aloha-ink)]">Tổng tạm tính</span>
+                    <span className="text-lg font-extrabold text-[#EE6055]">{formatVnd(order.total)}</span>
+                  </>
+                )}
               </div>
             </div>
           </section>

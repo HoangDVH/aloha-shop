@@ -239,6 +239,7 @@ export function registerShopOrderCreateRoutes(
         let totalWeightGram = 0;
         let freeShipApplied = false;
         const quoteToken = String(body.quoteToken || "").trim();
+        let quoteVerified: ReturnType<typeof verifyQuoteToken> | null = null;
 
         if (deliveryMethod === "giao_tan_noi" && shopRequireShippingQuote()) {
           if (!quoteToken) {
@@ -246,6 +247,7 @@ export function registerShopOrderCreateRoutes(
           }
           try {
             const quote = verifyQuoteToken(quoteToken);
+            quoteVerified = quote;
             const itemsKey = hashQuoteItems(
               orderDetails.map((d) => ({
                 productCode: d.productCode,
@@ -276,9 +278,14 @@ export function registerShopOrderCreateRoutes(
             if (quote.ghnWardCode && ghnWardCode && quote.ghnWardCode !== ghnWardCode) {
               return res.status(400).json({ error: "Phường/xã lệch báo giá ship" });
             }
-            const clientFee = Math.max(0, Number(body.shippingFee) || 0);
-            if (clientFee !== quote.fee) {
-              return res.status(400).json({ error: "Phí ship đã thay đổi — báo giá lại" });
+            if (quote.fee != null) {
+              const clientFee = body.shippingFee == null ? null : Math.max(0, Number(body.shippingFee) || 0);
+              if (clientFee !== quote.fee) {
+                return res.status(400).json({ error: "Phí ship đã thay đổi — báo giá lại" });
+              }
+              shippingFee = quote.fee;
+            } else {
+              shippingFee = 0;
             }
             // Free ship theo tổng hiện tại: nếu token miễn ship nhưng tổng mới không đủ điều kiện → báo giá lại
             const stillFree = qualifiesFreeShip(
@@ -294,8 +301,7 @@ export function registerShopOrderCreateRoutes(
                 error: "Đơn không còn đủ điều kiện freeship — báo giá ship lại",
               });
             }
-            shippingFee = quote.fee;
-            shippingCarrier = quote.carrier;
+            shippingCarrier = quote.carrier || undefined;
             totalWeightGram = quote.totalWeightGram;
             freeShipApplied = Boolean(quote.freeShipApplied);
           } catch (e: any) {
@@ -551,8 +557,36 @@ export function registerShopOrderCreateRoutes(
               ? { status: "pending", carrier: shippingCarrier || null }
               : null,
           total,
-          totalPayment: total,
+          totalPayment: reviewFirst || isTransfer || usingCod ? 0 : total,
+          paidAmount: reviewFirst || isTransfer || usingCod ? 0 : total,
+          remainingAmount: reviewFirst || isTransfer || usingCod ? total : 0,
           discount,
+          shippingEstimate:
+            deliveryMethod === "nhan_cua_hang"
+              ? {
+                  status: "estimated",
+                  estimatedFee: 0,
+                  pricingSource: "shop_policy",
+                  packageDataSource: "verified_preset",
+                  estimatedAt: now,
+                }
+              : quoteVerified
+                ? {
+                    status: quoteVerified.shippingEstimateStatus || "estimated",
+                    estimatedFee: quoteVerified.estimatedShippingFee ?? quoteVerified.fee ?? null,
+                    pricingSource:
+                      quoteVerified.pricingSource ||
+                      (quoteVerified.freeShipApplied ? "shop_policy" : "carrier_api"),
+                    packageDataSource: quoteVerified.packageDataSource || "inferred",
+                    estimatedAt: now,
+                  }
+                : {
+                    status: "needs_confirmation",
+                    estimatedFee: null,
+                    pricingSource: "shop_policy",
+                    packageDataSource: "unknown",
+                    estimatedAt: now,
+                  },
           promotion: appliedPromotion || null,
           method: reviewFirst ? "Pending" : method,
           usingCod: reviewFirst || isTransfer ? false : usingCod,
@@ -638,8 +672,9 @@ export function registerShopOrderCreateRoutes(
                     0,
                     500
                   ),
-              totalPayment: total,
+              totalPayment: 0,
               shippingFee,
+              discount,
             });
             kvOrderId = ord.kvOrderId;
             kvOrderCode = String(ord.kvOrderCode || "").trim() || null;

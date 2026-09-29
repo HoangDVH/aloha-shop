@@ -382,7 +382,10 @@ export default function CartPage() {
             ) : null}
             <div className="my-3 border-t border-[var(--aloha-line)]" />
             <div className="flex items-center justify-between">
-              <span className="font-bold text-[var(--aloha-ink)]">Tổng tiền</span>
+              <div>
+                <span className="font-bold text-[var(--aloha-ink)] block">Tạm tính tiền hàng</span>
+                <span className="text-[11px] text-slate-400">Chưa gồm phí vận chuyển</span>
+              </div>
               <span className="text-xl font-black text-[var(--aloha-price)]">{formatVnd(tongSauGiam)}</span>
             </div>
             <button
@@ -398,7 +401,7 @@ export default function CartPage() {
               Mua hàng ({selectedQty})
             </button>
             <p className="mt-2 hidden text-center text-[11px] text-slate-400 lg:block">
-              Tiếp theo: xác nhận địa chỉ và đặt hàng trên web.
+              Phí vận chuyển sẽ được tính tại bước xác nhận đơn.
             </p>
           </div>
         </aside>

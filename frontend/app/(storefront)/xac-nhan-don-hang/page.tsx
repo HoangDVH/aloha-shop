@@ -168,6 +168,8 @@ function CheckoutConfirm() {
     };
   }, [selected, promoCode, promoAutoMode, draft.phone, user?.phone, user?.email]);
 
+  const discountAmount = promoQuote?.discountTotal || 0;
+
   const {
     shippingQuote,
     shippingLoading,
@@ -183,11 +185,11 @@ function CheckoutConfirm() {
     showNewForm,
     draft,
     enabled: showShip,
+    discountTotal: discountAmount,
   });
 
-  const discountAmount = promoQuote?.discountTotal || 0;
   const effectiveShippingFee = showShip ? shippingFee : 0;
-  const grandTotal = Math.max(0, total - discountAmount) + effectiveShippingFee;
+  const grandTotal = Math.max(0, total - discountAmount) + (effectiveShippingFee ?? 0);
 
   useEffect(() => {
     if (authLoading) return;
@@ -445,7 +447,8 @@ function CheckoutConfirm() {
         discount={discountAmount}
         grandTotal={grandTotal}
         shippingFee={effectiveShippingFee}
-        showShipping={showShip && delivery === "giao_tan_noi"}
+        deliveryMethod={delivery}
+        showShipping={showShip}
         canSubmit={canSubmit}
         submitting={submitting}
         orderBlockedReason={orderBlockedReason}

@@ -8,10 +8,14 @@ import {
   type SizePreset,
 } from "./sizePresets.js";
 
+export type PackageDataSource = "measured" | "verified_preset" | "inferred" | "unknown";
+
 export type ProductShipMeta = {
   ma?: string;
   ten?: string;
   trongLuong?: number;
+  donViTrongLuong?: string;
+  dvt?: string;
   shipSizeClass?: string;
   categoryId?: number;
   nhomPath?: string;
@@ -21,6 +25,16 @@ export type ProductShipMeta = {
   chieuDaiCm?: number;
   chieuRongCm?: number;
   chieuCaoCm?: number;
+  isFragile?: boolean;
+  packageIncluded?: boolean;
+  requiresSpecialHandling?: boolean;
+};
+
+export type ResolvedWeightInfo = {
+  weightGram: number;
+  source: PackageDataSource;
+  needsConfirmation: boolean;
+  confirmationReason?: string;
 };
 
 function normalizeSizeClass(raw: unknown): ShipSizeClass | null {
@@ -28,9 +42,9 @@ function normalizeSizeClass(raw: unknown): ShipSizeClass | null {
     .trim()
     .toLowerCase();
   if (s === "nho" || s === "vua" || s === "to" || s === "dat_giath") return s;
-  if (s === "nhỏ" || s === "nho") return "nho";
-  if (s === "vừa" || s === "vua" || s === "trung") return "vua";
-  if (s === "lớn" || s === "lon" || s === "to") return "to";
+  if (s === "nhỏ") return "nho";
+  if (s === "vừa" || s === "trung") return "vua";
+  if (s === "lớn" || s === "lon") return "to";
   return null;
 }
 
@@ -53,9 +67,12 @@ export function inferSizeFromMaTen(ma: string, ten = ""): ShipSizeClass | null {
   return null;
 }
 
-export function resolveSizeClass(doc: ProductShipMeta): ShipSizeClass {
+export function resolveSizeClassWithSource(doc: ProductShipMeta): {
+  sizeClass: ShipSizeClass | null;
+  source: PackageDataSource;
+} {
   const fromMongo = normalizeSizeClass(doc.shipSizeClass);
-  if (fromMongo) return fromMongo;
+  if (fromMongo) return { sizeClass: fromMongo, source: "verified_preset" };
 
   const ancestor = Array.isArray(doc.ancestor)
     ? doc.ancestor.map((x) => String(x || "").trim()).filter(Boolean)
@@ -69,46 +86,124 @@ export function resolveSizeClass(doc: ProductShipMeta): ShipSizeClass {
   ).trim();
   const ten = String(doc.ten || "").trim();
   const ma = String(doc.ma || "").trim();
+
   const fromCat = shipSizeFromCategory(nhomPath, ten);
-  if (fromCat) return fromCat;
+  if (fromCat) return { sizeClass: fromCat, source: "verified_preset" };
 
   const fromCode = inferSizeFromMaTen(ma, ten);
-  if (fromCode) return fromCode;
+  if (fromCode) return { sizeClass: fromCode, source: "inferred" };
 
-  return DEFAULT_SIZE_CLASS;
+  return { sizeClass: null, source: "unknown" };
+}
+
+export function resolveSizeClass(doc: ProductShipMeta): ShipSizeClass {
+  const res = resolveSizeClassWithSource(doc);
+  return res.sizeClass || DEFAULT_SIZE_CLASS;
 }
 
 /**
- * KiotViet lưu `weight` theo kg (vd 1.5, 3).
- * Job enrich / nhập tay thường là gram (500, 3000).
+ * Chuẩn hóa trọng lượng ra gram, phân biệt chuẩn xác 30g vs 30kg (SH04).
  */
-export function normalizeTrongLuongGram(raw: number): number {
+export function normalizeTrongLuongGram(raw: number, textContext = "", unitHint = ""): number {
   const tl = Number(raw) || 0;
   if (tl <= 0) return 0;
+
+  const hint = String(unitHint || "").trim().toLowerCase();
+  if (hint === "g" || hint === "gram") return Math.round(tl);
+  if (hint === "kg" || hint === "kilo" || hint === "kilogram") return Math.round(tl * 1000);
+
+  // Phân tích từ ngữ cảnh text (tên/mã SP) nếu có
+  const text = String(textContext || "").toUpperCase();
+  if (text) {
+    const isExplicitKg = /\b\d+(\.\d+)?\s*(KG|KILO)\b/.test(text);
+    const isExplicitG = /\b\d+(\.\d+)?\s*(G|GRAM)\b/.test(text);
+    if (isExplicitG && !isExplicitKg) {
+      return Math.round(tl);
+    }
+    if (isExplicitKg) {
+      if (tl < 100) return Math.round(tl * 1000);
+      return Math.round(tl);
+    }
+  }
+
   // >= 100 → đã là gram (500, 1100, 3000…)
   if (tl >= 100) return Math.round(tl);
-  // < 50 → coi là kg từ KiotViet (1.5, 3, 12…) → gram
-  // = 50 giữ nguyên gram (gói 50G), tránh nhân nhầm thành 50kg
+
+  // < 50: nếu không có text khẳng định là gram, coi là kg từ KiotViet (1.5, 3, 12…) → gram
   if (tl > 0 && tl < 50) return Math.round(tl * 1000);
+
   return Math.round(tl);
 }
 
-export function resolveWeightGram(doc: ProductShipMeta): number {
-  const tl = normalizeTrongLuongGram(Number(doc.trongLuong) || 0);
-  if (tl > 0) return tl;
-
+/**
+ * Trả về trọng lượng gram kèm nguồn dữ liệu (Level 1..4 theo Section 5.1).
+ */
+export function resolveWeightWithSource(doc: ProductShipMeta): ResolvedWeightInfo {
   const ma = String(doc.ma || "").trim();
   const ten = String(doc.ten || "").trim();
+  const textCombo = `${ma} ${ten}`;
+
+  // Kiểm tra hàng đặc thù / dễ vỡ / vượt khổ (SH07)
+  if (doc.isFragile || doc.requiresSpecialHandling) {
+    return {
+      weightGram: DEFAULT_WEIGHT_GRAM,
+      source: "unknown",
+      needsConfirmation: true,
+      confirmationReason: "Hàng đặc thù/dễ vỡ cần shop xác nhận cách đóng gói",
+    };
+  }
+
+  // Mức 1: Có trọng lượng thực hoặc kích thước đo
+  const rawTl = Number(doc.trongLuong) || 0;
+  if (rawTl > 0) {
+    const norm = normalizeTrongLuongGram(rawTl, textCombo, doc.donViTrongLuong);
+    if (norm > 0) {
+      // Nếu trọng lượng quá lớn (> 50kg) chuyển xác nhận (SH07)
+      if (norm > 50_000) {
+        return {
+          weightGram: norm,
+          source: "measured",
+          needsConfirmation: true,
+          confirmationReason: "Kiện hàng lớn (>50kg) cần shop báo phí vận chuyển",
+        };
+      }
+      return { weightGram: norm, source: "measured", needsConfirmation: false };
+    }
+  }
+
+  // Mức 2: Mẫu preset đã kiểm chứng từ danh mục/biến thể
+  const sizeRes = resolveSizeClassWithSource(doc);
+  if (sizeRes.source === "verified_preset" && sizeRes.sizeClass) {
+    const preset = SIZE_PRESETS[sizeRes.sizeClass];
+    return {
+      weightGram: preset.weightGram,
+      source: "verified_preset",
+      needsConfirmation: false,
+    };
+  }
+
+  // Mức 3: Gợi ý từ mã/tên (VD: 500G, 2KG...)
   const fromMa = parseWeightGramFromText(ma);
-  if (fromMa) return fromMa;
+  if (fromMa) {
+    return { weightGram: fromMa, source: "inferred", needsConfirmation: false };
+  }
   const fromTen = parseWeightGramFromText(ten);
-  if (fromTen) return fromTen;
+  if (fromTen) {
+    return { weightGram: fromTen, source: "inferred", needsConfirmation: false };
+  }
 
-  const envDefault = Math.max(0, Number(process.env.SHOP_DEFAULT_WEIGHT_GRAM) || 0);
-  if (envDefault > 0) return Math.round(envDefault);
+  // Mức 4: Không nhận diện được hoặc dữ liệu mâu thuẫn -> Chờ shop báo phí (SH03)
+  // Không tự động gán hàng 500g tùy tiện làm phí sai lệch
+  return {
+    weightGram: DEFAULT_WEIGHT_GRAM,
+    source: "unknown",
+    needsConfirmation: true,
+    confirmationReason: "Chưa có thông số kích thước/khối lượng xác thực",
+  };
+}
 
-  const size = resolveSizeClass(doc);
-  return SIZE_PRESETS[size].weightGram;
+export function resolveWeightGram(doc: ProductShipMeta): number {
+  return resolveWeightWithSource(doc).weightGram;
 }
 
 export function resolveDimensions(doc: ProductShipMeta): SizePreset {
@@ -136,8 +231,8 @@ export type PackageLine = {
   lengthCm: number;
   widthCm: number;
   heightCm: number;
-  /** Số lượng SP dòng — dùng phóng kích thước kiện (cân đã nhân qty ở weightGram). */
   quantity?: number;
+  packageIncluded?: boolean;
 };
 
 function stackDimsForQty(

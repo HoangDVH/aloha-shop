@@ -3,6 +3,8 @@ import {
   mergePackage,
   resolveDimensions,
   resolveLineWeightGram,
+  resolveWeightWithSource,
+  type PackageDataSource,
   type ProductShipMeta,
 } from "./resolveWeight.js";
 import type { CarrierQuoteInput } from "./ghtkClient.js";
@@ -19,6 +21,9 @@ export type BuiltQuoteInput = {
   subtotal: number;
   totalWeightGram: number;
   package: CarrierQuoteInput;
+  packageDataSource: import("./resolveWeight.js").PackageDataSource;
+  needsConfirmation: boolean;
+  confirmationReason?: string;
 };
 
 function normalizeMa(raw: unknown): string {
@@ -146,6 +151,9 @@ export async function buildCarrierQuoteInput(
     quantity?: number;
   }[] = [];
   let subtotal = 0;
+  let overallDataSource: PackageDataSource = "measured";
+  let needsConfirmation = false;
+  let confirmationReason: string | undefined = undefined;
 
   for (const ln of lines) {
     const found = byMa.get(ln.productCode);
@@ -163,7 +171,26 @@ export async function buildCarrierQuoteInput(
           trongLuong: undefined,
         };
     const dim = resolveDimensions(doc);
-    const lineWeight = resolveLineWeightGram(doc, ln.quantity);
+    const weightRes = resolveWeightWithSource(doc);
+    const lineWeight = weightRes.weightGram * ln.quantity;
+
+    if (weightRes.needsConfirmation) {
+      needsConfirmation = true;
+      if (!confirmationReason) confirmationReason = weightRes.confirmationReason;
+    }
+
+    if (weightRes.source === "unknown") {
+      overallDataSource = "unknown";
+    } else if (weightRes.source === "inferred" && overallDataSource !== "unknown") {
+      overallDataSource = "inferred";
+    } else if (
+      weightRes.source === "verified_preset" &&
+      overallDataSource !== "unknown" &&
+      overallDataSource !== "inferred"
+    ) {
+      overallDataSource = "verified_preset";
+    }
+
     pkgLines.push({
       weightGram: lineWeight,
       lengthCm: dim.lengthCm,
@@ -199,5 +226,8 @@ export async function buildCarrierQuoteInput(
     subtotal,
     totalWeightGram: merged.weightGram,
     package: packageInput,
+    packageDataSource: overallDataSource,
+    needsConfirmation,
+    confirmationReason,
   };
 }
