@@ -72,7 +72,13 @@ export function parseOrderDetails(raw: unknown): ShopOrderDetail[] {
 export async function applyCatalogPrices(
   mainDb: Db,
   details: ShopOrderDetail[],
-  opts?: { buyerEmail?: string | null; account?: Record<string, unknown> | null; quoteOnly?: boolean }
+  opts?: {
+    buyerEmail?: string | null;
+    account?: Record<string, unknown> | null;
+    quoteOnly?: boolean;
+    /** Đơn đã tạo (đồng bộ lại): không chặn SP đã ngừng kinh doanh. */
+    allowInactive?: boolean;
+  }
 ): Promise<
   | { ok: true; details: ShopOrderDetail[]; error?: undefined }
   | { ok: false; error: string }
@@ -98,12 +104,17 @@ export async function applyCatalogPrices(
       basePrice: 1,
       anh: 1,
       priceBooks: 1,
+      isActive: 1,
+      mergedInto: 1,
     })
     .toArray();
   const byMa = new Map<string, any>();
   for (const d of docs) {
     const key = String(d.ma || "").trim().toUpperCase();
-    if (key) byMa.set(key, d);
+    if (!key) continue;
+    // Bản trùng đã gộp (mergedInto) không được đè bản chính.
+    if (d.mergedInto && byMa.has(key)) continue;
+    byMa.set(key, d);
   }
   const pbByMa = await loadPriceBooksByMa(mainDb, mas);
   const out: ShopOrderDetail[] = [];
@@ -111,6 +122,12 @@ export async function applyCatalogPrices(
     const raw = byMa.get(d.productCode);
     if (!raw) {
       return { ok: false, error: `Không tìm thấy sản phẩm ${d.productCode}` };
+    }
+    if (raw.isActive === false && !raw.mergedInto && !opts?.quoteOnly && !opts?.allowInactive) {
+      return {
+        ok: false,
+        error: `${d.productCode} đã ngừng kinh doanh — vui lòng xoá khỏi giỏ hàng`,
+      };
     }
     const doc = applyPriceBookOverlay(raw, pbByMa.get(d.productCode));
     const { gia, priceKind } = resolveShopPrice(doc, isActiveWholesale(opts?.account) ? "si" : "web");

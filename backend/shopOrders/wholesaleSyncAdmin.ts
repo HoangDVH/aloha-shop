@@ -62,7 +62,7 @@ export function registerWholesaleSyncAdmin(app: Express, getDb: GetDb, getOps: G
         order.orderStatus !== "cho_xac_nhan" || !Number.isInteger(req.body.revision)) return fail(res);
       if (!order.policyAcceptedAt && (req.body.confirmedConsent !== true || String(req.body.reason || "").trim().length < 10)) return fail(res);
       const buyer = await db.collection(SHOP_ACCOUNTS).findOne(shopAccountIdQuery(order.shopAccountId));
-      const priced = await applyCatalogPrices(await getOps(), order.orderDetails, { account: buyer });
+      const priced = await applyCatalogPrices(await getOps(), order.orderDetails, { account: buyer, allowInactive: true });
       if (!priced.ok || priced.details.some((d, i) => d.price !== order.orderDetails[i].price)) return fail(res);
       // Expired holds/old consent need the existing proposal flow, not silent renewal.
       if (Date.now() - new Date(order.createdAt).getTime() > 24 * 3600000) return fail(res);

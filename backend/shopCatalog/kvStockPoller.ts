@@ -1,6 +1,7 @@
 /**
  * Poll tồn/giá từ KiotViet → chỉ $set field ĐÃ CÓ trên aloha_shop_db.aloha_products.
- * Không thêm thuộc tính mới (inventories, kvTon, source, …).
+ * Không thêm thuộc tính mới (inventories, kvTon, source, …) — ngoại lệ duy nhất: isActive
+ * (SP bị xoá / ngừng kinh doanh trên KV, xem kvActiveSync).
  */
 import type { Db, AnyBulkWriteOperation } from "mongodb";
 import {
@@ -10,12 +11,15 @@ import {
 } from "../services/kvApiClient.js";
 import { sumInventoriesOnHand } from "../utils/productTon.js";
 import { syncBus } from "../syncBus.js";
+import { planKvActiveChanges, type KvActiveDoc } from "./kvActiveSync.js";
+import { resolveShopKvBranchId } from "../shopOrders/kvPush.js";
 
 const STATE_COL = "aloha_shop_sync_state";
 const SYNC_KEY = "kv_stock";
 const PRODUCT_COL = "aloha_products";
 const DEFAULT_INTERVAL_MS = 2 * 60 * 1000;
-const FULL_SYNC_EVERY_MS = 7 * 24 * 60 * 60 * 1000;
+/** Full = quét toàn bộ KV: phát hiện SP bị xoá (API delta không trả mã đã xoá). */
+const FULL_SYNC_EVERY_MS = 6 * 60 * 60 * 1000;
 const INITIAL_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
 const BACKOFF_CAP_MS = 15 * 60 * 1000;
 
@@ -40,6 +44,11 @@ export type KvStockPollResult = {
   matched: number;
   updated: number;
   skipped: number;
+  /** isActive=false vì KV ngừng kinh doanh / đã xoá; true vì KV bán lại. */
+  deactivated?: number;
+  reactivated?: number;
+  /** Mã vắng trên KV nhưng không ẩn vì danh sách KV nghi thiếu. */
+  blockedDeletes?: number;
   deltaFrom: string | null;
   fullSync: boolean;
   durationMs: number;
@@ -82,14 +91,21 @@ function hasOwn(doc: Record<string, unknown>, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(doc, key);
 }
 
-/** Tồn KV cấp SP (giống app: onHand/ton, không cộng inventories nếu đã có số SP). */
-export function tonFromKvProduct(p: Record<string, unknown>): number {
+/**
+ * Tồn KV cho shop: chi nhánh bán web (branchId, cùng CN đẩy đơn) nếu có trong inventories;
+ * không thì số cấp SP / tổng inventories.
+ */
+export function tonFromKvProduct(p: Record<string, unknown>, branchId = 0): number {
+  const inv = Array.isArray(p.inventories) ? (p.inventories as Array<Record<string, unknown>>) : [];
+  if (branchId > 0) {
+    const row = inv.find((x) => Number(x?.branchId) === branchId);
+    if (row) return Number(row.onHand) || 0;
+  }
   const direct = p.onHand ?? p.OnHand ?? p.ton ?? p.tonKho;
   if (direct != null && direct !== "") {
     const n = Number(direct);
     if (Number.isFinite(n)) return n;
   }
-  const inv = Array.isArray(p.inventories) ? p.inventories : [];
   if (inv.length) return sumInventoriesOnHand(inv as any);
   return 0;
 }
@@ -119,13 +135,16 @@ function priceFromKv(p: Record<string, unknown>): Partial<Record<PatchableKey, n
   return out;
 }
 
+/** branchId = 0 (không xác định được CN bán web) → không ghi tồn, tránh ghi tổng mọi kho. */
 function buildSetForShopDoc(
   shopDoc: Record<string, unknown>,
-  kv: Record<string, unknown>
+  kv: Record<string, unknown>,
+  branchId: number
 ): Record<string, unknown> | null {
+  const ton = branchId > 0 ? tonFromKvProduct(kv, branchId) : undefined;
   const candidate: Partial<Record<PatchableKey, unknown>> = {
-    ton: tonFromKvProduct(kv),
-    onHand: tonFromKvProduct(kv),
+    ton,
+    onHand: ton,
     ...priceFromKv(kv),
     updatedAt: nowIso(),
   };
@@ -208,6 +227,10 @@ export async function runShopKvStockPoll(
       !!opts?.forceFull
     );
     const token = await fetchKvAccessToken(creds);
+    const branchId = await resolveShopKvBranchId(creds, token).catch((e: any) => {
+      console.warn("[kv-stock-poll] không xác định được CN bán web — bỏ qua cập nhật tồn:", e?.message || e);
+      return 0;
+    });
     const raw = await fetchKvProducts(creds, token, { lastModifiedFrom });
 
     const byMa = new Map<string, Record<string, unknown>>();
@@ -223,14 +246,18 @@ export async function runShopKvStockPoll(
     let matched = 0;
     let updated = 0;
     let skipped = 0;
+    let deactivated = 0;
+    let reactivated = 0;
+    let blockedDeletes = 0;
     const changedIds: string[] = [];
 
     if (byMa.size) {
       // Mã KV giữ nguyên hoa/thường («50k») — doc shop có thể lưu mã gốc hoặc mã HOA.
       const mas = [...new Set([...byMa.keys(), ...rawCodes])];
+      // Full: lấy hết SP shop để tìm mã đã bị xoá trên KV.
       const shopDocs = await db
         .collection(PRODUCT_COL)
-        .find({ ma: { $in: mas }, mergedInto: { $exists: false } })
+        .find(fullSync ? { mergedInto: { $exists: false } } : { ma: { $in: mas }, mergedInto: { $exists: false } })
         .project({
           ma: 1,
           ton: 1,
@@ -241,16 +268,31 @@ export async function runShopKvStockPoll(
           giaWeb: 1,
           basePrice: 1,
           updatedAt: 1,
+          isActive: 1,
         })
         .toArray();
 
       const ops: AnyBulkWriteOperation[] = [];
+      const plan = planKvActiveChanges(shopDocs as KvActiveDoc[], raw, { full: fullSync });
+      blockedDeletes = plan.blockedDeletes;
+      for (const c of plan.changes) {
+        ops.push({ updateOne: { filter: { _id: c._id as any }, update: { $set: { isActive: c.isActive } } } });
+        if (c.isActive) reactivated += 1;
+        else deactivated += 1;
+        changedIds.push(c.ma);
+      }
+      if (plan.changes.length || blockedDeletes) {
+        console.log(
+          `[kv-stock-poll] isActive: an=${deactivated} mo_lai=${reactivated} chan_an=${blockedDeletes}` +
+            (plan.changes.length ? ` (${plan.changes.slice(0, 20).map((c) => `${c.ma}:${c.reason}`).join(",")})` : "")
+        );
+      }
       for (const doc of shopDocs) {
         const ma = normMa((doc as any).ma);
         const kv = byMa.get(ma);
         if (!kv) continue;
         matched += 1;
-        const $set = buildSetForShopDoc(doc as Record<string, unknown>, kv);
+        const $set = buildSetForShopDoc(doc as Record<string, unknown>, kv, branchId);
         if (!$set) {
           skipped += 1;
           continue;
@@ -303,6 +345,9 @@ export async function runShopKvStockPoll(
       matched,
       updated,
       skipped,
+      deactivated,
+      reactivated,
+      blockedDeletes,
       deltaFrom: lastModifiedFrom,
       fullSync,
       durationMs: Date.now() - t0,
