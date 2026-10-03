@@ -20,7 +20,7 @@ import { ProductCampaignBox } from "@/components/pdp/ProductCampaignBox";
 import { useCampaignRequoteKey } from "@/lib/campaign/campaignQuote";
 import { useCampaignView } from "@/lib/campaign/useCampaignView";
 import { ProductPurchaseSheet } from "@/components/pdp/ProductPurchaseSheet";
-import { ProductAttachedItems } from "@/components/pdp/ProductAttachedItems";
+import { ProductAttachedItems, selectBuyNowLines } from "@/components/pdp/ProductAttachedItems";
 import { isPromoSelling, promoAnchorPrice } from "@/components/campaign/CardPromo";
 import {
   buildProductShareUrl,
@@ -398,17 +398,7 @@ export function ProductDetailView({
     }
 
     if (buyNow) {
-      const attachedCodes = new Set(
-        (product.attachedItems || []).map((c) => String(c).toUpperCase())
-      );
-      useCart.setState((s) => ({
-        lines: s.lines.map((l) => ({
-          ...l,
-          selected:
-            l.ma.toUpperCase() === activeProduct.ma.toUpperCase() ||
-            attachedCodes.has(l.ma.toUpperCase()),
-        })),
-      }));
+      selectBuyNowLines(activeProduct.ma, product.attachedItems);
       // Giữ trang SP trong cache trình duyệt để Back không chờ fetch lại lâu
       try {
         const stay = `${window.location.pathname}${window.location.search || ""}`;
@@ -771,7 +761,6 @@ export function ProductDetailView({
         mainLivePrice={liveGia}
         mainLiveTon={liveTon}
       />
-
       {desc ? <ProductDescription text={desc} /> : null}
 
       <ProductStickyCta

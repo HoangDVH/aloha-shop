@@ -8,6 +8,14 @@ import { useToast } from "@/components/Toast";
 import { getGuestCtvCode, isValidCtvCode, normalizeCtvCode } from "@/lib/ctv";
 import { useSearchParams } from "next/navigation";
 
+/** Mua ngay: chỉ chọn SP chính + các SP đi kèm của nó trong giỏ. */
+export function selectBuyNowLines(mainMa: string, attachedItems?: string[]) {
+  const keep = new Set([mainMa, ...(attachedItems || [])].map((c) => String(c).toUpperCase()));
+  useCart.setState((s) => ({
+    lines: s.lines.map((l) => ({ ...l, selected: keep.has(l.ma.toUpperCase()) })),
+  }));
+}
+
 export function ProductAttachedItems({
   mainProduct,
   attachedProducts,
