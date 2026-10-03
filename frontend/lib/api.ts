@@ -50,6 +50,10 @@ export type ShopProduct = {
   seoDescription?: string;
   /** Ưu đãi chiến dịch do server tính; null / thiếu = card thường. */
   campaignPromo?: CampaignPromoUI | null;
+  /** Mã sản phẩm đính kèm / phụ kiện từ DB */
+  attachedItems?: string[];
+  /** Danh sách sản phẩm đính kèm / phụ kiện đã nạp đầy đủ thông tin */
+  attachedProducts?: ShopProduct[];
 };
 
 export type ShopVariantModel = {

@@ -90,6 +90,25 @@ export function shopPath(doc: Record<string, unknown>): string {
   return `/c/${categorySlug(doc)}/p/${productSlug(doc)}`;
 }
 
+export function normalizeAttachedCodes(val: unknown): string[] {
+  if (Array.isArray(val)) {
+    return val
+      .map((x) =>
+        typeof x === "string"
+          ? x
+          : x && typeof x === "object"
+          ? String((x as any).productCode || (x as any).product_code || (x as any).ma || (x as any).code || "")
+          : String(x || "")
+      )
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  if (typeof val === "string" && val.trim()) {
+    return val.split(/[,;\s]+/).map((s) => s.trim()).filter(Boolean);
+  }
+  return [];
+}
+
 /** Field công khai — không giaVon / NCC / cost. Không ghi Mongo. */
 export function toPublicProduct(doc: Record<string, unknown>) {
   const ma = String(doc.ma || doc._id || "").trim();
@@ -107,6 +126,7 @@ export function toPublicProduct(doc: Record<string, unknown>) {
   const categoryName = String(doc.categoryName || "").trim();
   const nhom = deriveNhom(doc);
   const nhomPath = deriveNhomPath(doc) || nhom;
+  const attachedItems = normalizeAttachedCodes(doc.attachedItems);
   return {
     ma,
     ten,
@@ -136,6 +156,7 @@ export function toPublicProduct(doc: Record<string, unknown>) {
     webBadge: webBadge || undefined,
     seoTitle: String(doc.seoTitle || "").trim() || undefined,
     seoDescription: String(doc.seoDescription || "").trim() || undefined,
+    attachedItems: attachedItems.length ? attachedItems : undefined,
   };
 }
 

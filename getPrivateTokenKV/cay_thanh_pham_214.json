@@ -1,0 +1,1714 @@
+[
+  {
+    "productId": 1009345806,
+    "productCode": "LTTP24",
+    "productName": "CHẬU LƯỠI HỖ THÀNH PHẨM (THÙNG 24 CÂY) (CÁI)",
+    "price": 100000,
+    "categoryId": 820172,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 1009345844,
+    "productCode": "TPTTP",
+    "productName": "CÂY TRÚC PHÁT TÀI THÀNH PHẨM (CÁI)",
+    "price": 90000,
+    "categoryId": 820172,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 13725528,
+    "productCode": "KNTP",
+    "productName": "CÂY KIM NGÂN TƯỢNG PHÂT (THÙNG 17 CÂY) (CÂY)",
+    "price": 178000,
+    "categoryId": 686422,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 13725529,
+    "productCode": "TKNTP",
+    "productName": "CÂY KIM NGÂN TƯỢNG PHÂT (THÙNG 17 CÂY) (THÙNG)",
+    "price": 2360000,
+    "categoryId": 686422,
+    "unit": "THÙNG"
+  },
+  {
+    "productId": 15909230,
+    "productCode": "TTPTVC",
+    "productName": "CÂY TRÚC PHÁT TÀI THÀNH PHẨM (THÙNG)",
+    "price": 2200000,
+    "categoryId": 820172,
+    "unit": "THÙNG"
+  },
+  {
+    "productId": 22700860,
+    "productCode": "HLTS24",
+    "productName": "CÂY HỒNG LỘC THỦY SINH 1 THÂN (THÙNG 24 CÂY) (CÂY)",
+    "price": 102000,
+    "categoryId": 1002349,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 22700881,
+    "productCode": "THLTS24",
+    "productName": "CÂY HỒNG LỘC THỦY SINH 1 THÂN (THÙNG 24 CÂY) (THÙNG)",
+    "price": 2200000,
+    "categoryId": 1002349,
+    "unit": "THÙNG"
+  },
+  {
+    "productId": 23520889,
+    "productCode": "OVHBMTC",
+    "productName": "OVAN HỎA BIẾN MIX TIỂU CẢNH (CÂY)",
+    "price": 230000,
+    "categoryId": 820175,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 23523802,
+    "productCode": "CBGDH",
+    "productName": "COMBO GIA ĐÌNH HEO (CÁI)",
+    "price": 150000,
+    "categoryId": 820172,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 23554477,
+    "productCode": "LHTCVG1",
+    "productName": "COMBO CHẬU LƯỠI HỔ TRỒNG CHẬU VÁT GỐC 1 (CÁI)",
+    "price": 220000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 23554623,
+    "productCode": "KTMTCM",
+    "productName": "COMBO CÂY KIM TIỀN MIX TIỂU CẢNH MÈO (CÁI)",
+    "price": 190000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 23554628,
+    "productCode": "TTBA",
+    "productName": "COMBO CHẬU CÂY THIÊN THẦN BÌNH AN LỚN (Cái)",
+    "price": 390000,
+    "categoryId": 1002351,
+    "unit": "Cái"
+  },
+  {
+    "productId": 23561667,
+    "productCode": "CGDTLTBA",
+    "productName": "CÔ GÁI DỄ THƯƠNG LỚN TRỒNG BÌNH AN (Cái)",
+    "price": 365000,
+    "categoryId": 1002351,
+    "unit": "Cái"
+  },
+  {
+    "productId": 23562141,
+    "productCode": "LE2TDC",
+    "productName": "COMBO CHẬU LÊ 2 TRƠN TRỒNG ĐUÔI CÔNG (CÁI)",
+    "price": 220000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 23696902,
+    "productCode": "TPPTPL",
+    "productName": "COMBO PHÁT TÀI PHÁT LỘC (CÁI)",
+    "price": 450000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 1010287707,
+    "productCode": "TPTXTP",
+    "productName": "TRÚC PHÁT TÀI XOẮN THÀNH PHẨM (THÙNG 24C) (CÂY)",
+    "price": 150000,
+    "categoryId": 686422,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 1010287711,
+    "productCode": "TTPTXTP",
+    "productName": "TRÚC PHÁT TÀI XOẮN THÀNH PHẨM (THÙNG 24C) (THÙNG)",
+    "price": 3200000,
+    "categoryId": 686422,
+    "unit": "THÙNG"
+  },
+  {
+    "productId": 24843971,
+    "productCode": "TPMHN04",
+    "productName": "COMBO MAI HỒNG NGỌC 04 (CÁI)",
+    "price": 200000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 25005662,
+    "productCode": "CGLMTBN",
+    "productName": "CÔ GÁI LỚN MIX TRẦU BÀ NHỎ (CÁI)",
+    "price": 296000,
+    "categoryId": 1002351,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 25159558,
+    "productCode": "HDLMSD",
+    "productName": "CHẬU HẠT DẺ LUN MIX SEN ĐÁ (CÁI)",
+    "price": 355000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 25923772,
+    "productCode": "TXTVDL",
+    "productName": "COMBO THANH XUÂN THỊNH VƯỢNG ĐẠI LỢI (CÁI)",
+    "price": 920000,
+    "categoryId": 820183,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 1011638059,
+    "productCode": "TBNMBA",
+    "productName": "THỦY TINH TAI BÈO NHỎ MIX THỦY SINH BÌNH AN (Cái)",
+    "price": 120000,
+    "categoryId": 1002349,
+    "unit": "Cái"
+  },
+  {
+    "productId": 1011812129,
+    "productCode": "THMDS",
+    "productName": "CHẬU THỎ HỒNG MIX DƯƠNG XỈ (CÁI)",
+    "price": 322000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 1011856852,
+    "productCode": "TVMBA",
+    "productName": "CHẬU THỎ VÀNG LỚN MIX BÌNH AN (CÁI)",
+    "price": 293000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 1011879814,
+    "productCode": "BS3MHP",
+    "productName": "CHẬU BOM S3 MIX HẠNH PHÚC (CÁI)",
+    "price": 621000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 1011974952,
+    "productCode": "TLTTP24",
+    "productName": "CHẬU LƯỠI HỖ THÀNH PHẨM (THÙNG 24 CÂY) (THÙNG)",
+    "price": 3118000,
+    "categoryId": 820172,
+    "unit": "THÙNG"
+  },
+  {
+    "productId": 1012007258,
+    "productCode": "CGLMBASD",
+    "productName": "CHẬU CÔ GÁI LỚN MIX BÌNH AN SEN ĐÁ (CÁI)",
+    "price": 431000,
+    "categoryId": 1002351,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 1012132066,
+    "productCode": "LGBSMCT",
+    "productName": "CHẬU LỤC GIÁC BONSAI MIX CẦN THĂNG (CÁI)",
+    "price": 182000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 26231716,
+    "productCode": "TBS4MKN",
+    "productName": "CHẬU TRỤ BẸT S4 MIX KIM NGÂN GỐC TO (Cái)",
+    "price": 644000,
+    "categoryId": 686422,
+    "unit": "Cái"
+  },
+  {
+    "productId": 26340064,
+    "productCode": "HDLS3MKN1G",
+    "productName": "CHẬU HẠT DẺ LÙN S3 MIX KIM NGÂN 1 GỐC VÀ NHIỀU CÂY (Cái)",
+    "price": 494000,
+    "categoryId": 686422,
+    "unit": "Cái"
+  },
+  {
+    "productId": 26351134,
+    "productCode": "CTPTYC1",
+    "productName": "COMBO THEO YÊU CẦU 1 (CÁI)",
+    "price": 200000,
+    "categoryId": 820183,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 26470463,
+    "productCode": "TBLMTT",
+    "productName": "CHẬU TÙNG BỒNG LAI MIX THẦN TÀI (CÁI)",
+    "price": 278000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 26470771,
+    "productCode": "TBLMNC",
+    "productName": "CHẬU TÙNG BỒNG LAI MIX NAI BABY (VÀNG) (CÁI)",
+    "price": 287000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 26470943,
+    "productCode": "TBLMMTL",
+    "productName": "CHẬU TÙNG BỒNG LAI MIX MÈO TÀI LỘC (CÁI)",
+    "price": 287000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 26486105,
+    "productCode": "CLXMTBLTT",
+    "productName": "CHẬU LU XẺ MIX TÙNG BỒNG LAI THẦN TÀI (CÁI)",
+    "price": 170000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 26529048,
+    "productCode": "LYTS28",
+    "productName": "LAN Ý THỦY SINH (THÙNG 28 CÂY) (CÁI)",
+    "price": 130000,
+    "categoryId": 1002349,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 26529049,
+    "productCode": "TLYTS28",
+    "productName": "LAN Ý THỦY SINH (THÙNG 28 CÂY) (THÙNG)",
+    "price": 2576000,
+    "categoryId": 1002349,
+    "unit": "THÙNG"
+  },
+  {
+    "productId": 26827516,
+    "productCode": "MDSMMM",
+    "productName": "CHẬU MÈO ĐỌC SÁCH MIX MAY MẮN (CÁI)",
+    "price": 184000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 26833151,
+    "productCode": "OVMXR",
+    "productName": "CHẬU OVAN MIX XƯƠNG RỒNG (CÁI)",
+    "price": 172000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 26870935,
+    "productCode": "SMTBS",
+    "productName": "CHẬU SÓC MIX TRẦU BÀ SỮA (CÁI)",
+    "price": 250000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 26873450,
+    "productCode": "OVMKN",
+    "productName": "CHẬU KIM NGÂN ĐẠI CÁT (CÁI)",
+    "price": 218000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 26886348,
+    "productCode": "TPBATS01",
+    "productName": "COMBO BÌNH AN THỦY SINH (CÁI)",
+    "price": 100000,
+    "categoryId": 1002349,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 26894768,
+    "productCode": "CXMMM",
+    "productName": "CHẬU CẶP XÁCH MIX MAY MẮN (CÁI)",
+    "price": 130000,
+    "categoryId": 1002351,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 26894852,
+    "productCode": "TCLMSD",
+    "productName": "CHẬU TIỂU CẢNH LỚN MIX SEN ĐÁ (CÁI)",
+    "price": 368000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 26894909,
+    "productCode": "GMKXMTCL",
+    "productName": "CHẬU GẤU MẸ KÉO XE MIX TRỨNG CHIM LỚN (Cái)",
+    "price": 200000,
+    "categoryId": 686422,
+    "unit": "Cái"
+  },
+  {
+    "productId": 26895070,
+    "productCode": "KGMLH",
+    "productName": "CHẬU KHÚC GỖ MIX LƯỠI HỔ (CÁI)",
+    "price": 230000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 26895647,
+    "productCode": "VS2MHM",
+    "productName": "CHẬU VUÔNG S2 MIX HỒNG MÔN ĐỎ (Cái)",
+    "price": 299000,
+    "categoryId": 686422,
+    "unit": "Cái"
+  },
+  {
+    "productId": 26909754,
+    "productCode": "OVMKNDX",
+    "productName": "CHẬU OVAN MIX KIM NGÂN DƯƠNG XỈ (CÁI)",
+    "price": 276000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 26945932,
+    "productCode": "TBS4MTV",
+    "productName": "CHẬU TRỤ BẸT S4 MIX THỊNH VƯỢNG (CÁI)",
+    "price": 448000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 26945972,
+    "productCode": "BKNMTPT",
+    "productName": "CHẬU BẸT KHẾ NHỎ MIX TRÚC PHÁT TÀI (CÁI)",
+    "price": 230000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 26957036,
+    "productCode": "TPTTC01",
+    "productName": "COMBO TÙNG TIỂU CẢNH 01 (CÁI)",
+    "price": 150000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 26965128,
+    "productCode": "CBCTPT01",
+    "productName": "CHẬU DÁNG NHẬT MIX TRÚC PHÁT TÀI (CÁI)",
+    "price": 207000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 26971221,
+    "productCode": "TBS2MST",
+    "productName": "CHẬU TRỤ BO S2 MIX SƠN TÙNG (Cái)",
+    "price": 275000,
+    "categoryId": 759572,
+    "unit": "Cái"
+  },
+  {
+    "productId": 26971251,
+    "productCode": "LTS2MST",
+    "productName": "CHẬU LÊ TĂM S2 MIX SƠN TÙNG (Cái)",
+    "price": 255000,
+    "categoryId": 759572,
+    "unit": "Cái"
+  },
+  {
+    "productId": 26971277,
+    "productCode": "BAHDTMST",
+    "productName": "CHẬU BẮC ÂU HAT DẺ TĂM MIX SƠN TÙNG (CÁI)",
+    "price": 264000,
+    "categoryId": 759572,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 26972056,
+    "productCode": "HDS2MKTMM",
+    "productName": "CHẬU HẠT DẺ S2 MIX KIM TIỀN MAY MẮN (CÁI)",
+    "price": 241000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 26972159,
+    "productCode": "NMMXRTS",
+    "productName": "CHẬU NHÀ MÈO MIX XR THANH SƠN (CÁI)",
+    "price": 138000,
+    "categoryId": 820172,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 26972177,
+    "productCode": "NVMXRTS",
+    "productName": "CHẬU NHÀ VỊT MIX XR THANH SƠN (CÁI)",
+    "price": 140000,
+    "categoryId": 820172,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 26972340,
+    "productCode": "GDOHCMMM",
+    "productName": "CHẬU GẤU ĐỘI ÔM HỘP CÁ MỒI MIX MAY MẮN (CÁI)",
+    "price": 129000,
+    "categoryId": 820172,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 26972356,
+    "productCode": "TPNNTC01",
+    "productName": "COMBO NGÔI NHÀ TIỂU CẢNH 01 (CÁI)",
+    "price": 135000,
+    "categoryId": 820172,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 26972382,
+    "productCode": "GNOTOMMM",
+    "productName": "CHẬU GẤU NÂU ÔM TỔ ONG MIX MAY MẮN (CÁI)",
+    "price": 129000,
+    "categoryId": 820172,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 26972458,
+    "productCode": "TDBLMMM",
+    "productName": "CHẬU THỎ ĐEO BALO TRÈO GIỎ TRE MIX MAY MẮN (CÁI)",
+    "price": 130000,
+    "categoryId": 820172,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 27005686,
+    "productCode": "NVMMR",
+    "productName": "CHẬU NHÀ VỊT MIX MÓNG RỒNG (CÁI)",
+    "price": 132000,
+    "categoryId": 820172,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 27155193,
+    "productCode": "TVGOM",
+    "productName": "CHẬU TRỤ BẸT S4 MIX THỊNH VƯỢNG GẤU ÔM MÂY (CÁI)",
+    "price": 517000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 27197003,
+    "productCode": "KGMKT",
+    "productName": "CHẬU KHÚC GỖ MIX KIM TIỀN (CÁI)",
+    "price": 230000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 27203544,
+    "productCode": "TBS4MVL",
+    "productName": "CHẬU TRỤ BẸT S4 MIX VẠN LỘC (CÁI)",
+    "price": 460000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 27249611,
+    "productCode": "BS3MKT",
+    "productName": "CHẬU BOM S3 MIX KIM TIỀN (CÁI)",
+    "price": 713000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 27429873,
+    "productCode": "HDLS3MSD",
+    "productName": "CHẬU HẠT DẺ LÙN S3 MIX SEN ĐÁ (CÁI)",
+    "price": 400000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 27562170,
+    "productCode": "TPHPDC1",
+    "productName": "COMBO HẠNH PHÚC ĐẠI CÁT 1 (CÁI)",
+    "price": 224000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 27562237,
+    "productCode": "TPDVKC",
+    "productName": "COMBO ĐẾ VƯƠNG KIM CƯƠNG (CÁI)",
+    "price": 280000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 27562295,
+    "productCode": "TPHPDC2",
+    "productName": "COMBO HẠNH PHÚC ĐẠI CÁT 2 (CÁI)",
+    "price": 299000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 27585776,
+    "productCode": "TPKGCT",
+    "productName": "COMBO KIM GIAO CÁT TƯỜNG (CÁI)",
+    "price": 285000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 27600505,
+    "productCode": "TPKTDC",
+    "productName": "COMBO KIM TIỀN ĐẠI CÁT (CÁI)",
+    "price": 580000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 27765770,
+    "productCode": "TPKNAK",
+    "productName": "COMBO KIM NGÂN AN KHANG (CÁI)",
+    "price": 230000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 29367308,
+    "productCode": "TPMHN01",
+    "productName": "COMBO MAI HỒNG NGỌC 01 (CÁI)",
+    "price": 190000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 29386929,
+    "productCode": "TPMHN02",
+    "productName": "COMBO MAI HỒNG NGỌC 02 (CÁI)",
+    "price": 190000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 29386943,
+    "productCode": "TPMHN03",
+    "productName": "COMBO MAI HỒNG NGỌC 03 (CÁI)",
+    "price": 190000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 29725532,
+    "productCode": "TPTTCT",
+    "productName": "THÀNH PHẨM THĂNG TIẾN CÁT TƯỜNG ( CẦN THĂNG ) (CÁI)",
+    "price": 230000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 29798701,
+    "productCode": "TPTLHDB",
+    "productName": "COMBO TÙNG LA HÁN ĐỂ BÀN (CÁI)",
+    "price": 120000,
+    "categoryId": 820172,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 29827065,
+    "productCode": "CBLHCG",
+    "productName": "COMBO LƯỠI HỔ ĐỂ BÀN 12 CON GIÁP (CÁI)",
+    "price": 120000,
+    "categoryId": 820172,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 29936795,
+    "productCode": "BLMTBL",
+    "productName": "COMBO TRẦU BÀ ĐỂ BÀN (CÁI)",
+    "price": 150000,
+    "categoryId": 820172,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 29936863,
+    "productCode": "TBLMTBL",
+    "productName": "COMBO TRẦU BÀ ĐỂ BÀN (THÙNG)",
+    "price": 1000000,
+    "categoryId": 820172,
+    "unit": "THÙNG"
+  },
+  {
+    "productId": 29964202,
+    "productCode": "KN3GMOB",
+    "productName": "COMBO KIM NGÂN BÁCH NIÊN (CÁI)",
+    "price": 250000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 30239089,
+    "productCode": "KNBMLD",
+    "productName": "COMBO KIM NGÂN MIX LẠC ĐÀ (CÁI)",
+    "price": 220000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 30621745,
+    "productCode": "TPDC",
+    "productName": "COMBO ĐUÔI CÔNG (CÁI)",
+    "price": 200000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 30631771,
+    "productCode": "TPKTNY",
+    "productName": "CHẬU KIM TIỀN NHƯ Ý (CÁI)",
+    "price": 160000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 30633075,
+    "productCode": "TPPTSL01",
+    "productName": "COMBO PHÁT TÀI SINH LỘC 01 (HÌNH) (CÁI)",
+    "price": 276000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 30910783,
+    "productCode": "TPTCGS",
+    "productName": "THÀNH PHẨM TIỂU CẢNH GIÁNG SINH (Cái)",
+    "price": 85000,
+    "categoryId": 759572,
+    "unit": "Cái"
+  },
+  {
+    "productId": 30956146,
+    "productCode": "TPLGNE",
+    "productName": "COMBO LỤC GIÁC NOEL (CÁI)",
+    "price": 218000,
+    "categoryId": 759572,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 31071698,
+    "productCode": "BSMTSCT",
+    "productName": "COMBO BẦU SỌC MIX TRƯỜNG SINH CẨM THẠCH (CÁI)",
+    "price": 105000,
+    "categoryId": 820172,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 31073873,
+    "productCode": "CTSMNN",
+    "productName": "CÂY NGỌC NGÂN THỦY SINH 01 (CÁI)",
+    "price": 130000,
+    "categoryId": 1002349,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 31153605,
+    "productCode": "TPVLBA",
+    "productName": "COMBO VẠN LỘC BÌNH AN (CÁI)",
+    "price": 230000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 31156160,
+    "productCode": "TPLCTC",
+    "productName": "COMBO LAN CHI TIỂU CẢNH (CÁI)",
+    "price": 184000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 31177069,
+    "productCode": "TPKTCT",
+    "productName": "COMBO KIM TIỀN CÁT TƯỜNG (CÁI)",
+    "price": 180000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 31198203,
+    "productCode": "TPTL",
+    "productName": "COMBO TAM LỘC ( KIM NGÂN - PHÁT TÀI - MAI MẮN) (CÁI)",
+    "price": 445000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 31407542,
+    "productCode": "TPKTTV",
+    "productName": "COMBO KIM TIỀN THỊNH VƯỢNG (CÁI)",
+    "price": 130000,
+    "categoryId": 820172,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 31480576,
+    "productCode": "TPTLTT",
+    "productName": "COMBO TÀI LỘC TRƯỜNG TỒN (CÁI)",
+    "price": 440000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 31619815,
+    "productCode": "TPPTNY",
+    "productName": "CHẬU PHÁT TÀI NHƯ Ý (CÁI)",
+    "price": 150000,
+    "categoryId": 820172,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 31683437,
+    "productCode": "TLTT2",
+    "productName": "COMBO TÀI LỘC TRƯỜNG TỒN 2 (CÁI)",
+    "price": 450000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 31684230,
+    "productCode": "KNBN",
+    "productName": "COMBO KIM NGÂN BÍNH BẠCH NGỌC (CÁI)",
+    "price": 420000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 31717628,
+    "productCode": "TLL",
+    "productName": "CÂY TÀI LỘC LỚN (CÁI)",
+    "price": 100000,
+    "categoryId": 820172,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 31717635,
+    "productCode": "TLN",
+    "productName": "CÂY TÀI LỘC NHỎ (CÁI)",
+    "price": 110000,
+    "categoryId": 820172,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 31736299,
+    "productCode": "TPVLSV",
+    "productName": "COMBO VẠN LỘC SUM VẦY (CÁI)",
+    "price": 270000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 31746650,
+    "productCode": "VLTS24",
+    "productName": "CÂY VẠN LỘC THỦY SINH (THÙNG 24) (CÂY)",
+    "price": 140000,
+    "categoryId": 1002349,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 31746651,
+    "productCode": "VLTST24",
+    "productName": "CÂY VẠN LỘC THỦY SINH (THÙNG 24) (THÙNG)",
+    "price": 3200000,
+    "categoryId": 1002349,
+    "unit": "THÙNG"
+  },
+  {
+    "productId": 31914137,
+    "productCode": "TSAN",
+    "productName": "COMBO TIỂU SEN AN NHIÊN (CÁI)",
+    "price": 110000,
+    "categoryId": 820172,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 31926638,
+    "productCode": "KNHP",
+    "productName": "COMBO KIM NGÂN HẠNH PHÚC (CÁI)",
+    "price": 250000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 31932407,
+    "productCode": "NSD",
+    "productName": "THÀNH PHẨM NÀNG SEN ĐÁ (Cái)",
+    "price": 350000,
+    "categoryId": 1002351,
+    "unit": "Cái"
+  },
+  {
+    "productId": 31939569,
+    "productCode": "NHMN",
+    "productName": "COMBO NÀNG HOA MINI (CÁI)",
+    "price": 130000,
+    "categoryId": 1002351,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 31942102,
+    "productCode": "KTPT",
+    "productName": "COMBO KIM TIỀN PHÁT TÀI (CÁI)",
+    "price": 450000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 31942444,
+    "productCode": "KNVV",
+    "productName": "COMBO KIM NGÂN VUI VẺ (CÁI)",
+    "price": 220000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 31942805,
+    "productCode": "KVCT",
+    "productName": "COMBO KHU VƯỜN CHIẾC THUYỀN (CÁI)",
+    "price": 480000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 31943770,
+    "productCode": "KTHH",
+    "productName": "COMBO KIM TIỀN HOÀN HẢO (CÁI)",
+    "price": 320000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 31951399,
+    "productCode": "KNCT",
+    "productName": "COMBO KIM NGÂN CÁT TƯỜNG (CÁI)",
+    "price": 250000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 31951501,
+    "productCode": "KNLD",
+    "productName": "THÀNH PHẨM KIM NGÂN LẠC ĐÀ (Cái)",
+    "price": 175000,
+    "categoryId": 820175,
+    "unit": "Cái"
+  },
+  {
+    "productId": 31995093,
+    "productCode": "XRMT20",
+    "productName": "COMBO XƯƠNG RỒNG MIX (THÙNG 20) (CÁI)",
+    "price": 130000,
+    "categoryId": 820172,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 31995094,
+    "productCode": "TXRMT20",
+    "productName": "COMBO XƯƠNG RỒNG MIX (THÙNG 20) (THÙNG)",
+    "price": 3000000,
+    "categoryId": 820172,
+    "unit": "THÙNG"
+  },
+  {
+    "productId": 32041452,
+    "productCode": "TPT3T24",
+    "productName": "COMBO TRÚC PHÁT TÀI 3 THÂN (THÙNG 24) (CÁI)",
+    "price": 170000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 32041453,
+    "productCode": "TPT3TT24",
+    "productName": "COMBO TRÚC PHÁT TÀI 3 THÂN (THÙNG 24) (THÙNG)",
+    "price": 4800000,
+    "categoryId": 820175,
+    "unit": "THÙNG"
+  },
+  {
+    "productId": 32092057,
+    "productCode": "MMMCX",
+    "productName": "MAY MẮN MIX CHẬU XẺ (CÁI)",
+    "price": 85000,
+    "categoryId": 820172,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 32099783,
+    "productCode": "PTNTS",
+    "productName": "CHẬU PHÁT TÀI NHẬT THỦY SINH (CÁI)",
+    "price": 100000,
+    "categoryId": 1002349,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 32110034,
+    "productCode": "DDNH",
+    "productName": "Dành Dành Nhất Hương (CÁI)",
+    "price": 170000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 32305713,
+    "productCode": "DVTS24",
+    "productName": "CÂY ĐẾ VƯƠNG THỦY SINH (CÁI)",
+    "price": 150000,
+    "categoryId": 1002349,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 32305714,
+    "productCode": "TDVTS24",
+    "productName": "CÂY ĐẾ VƯƠNG THỦY SINH (THÙNG)",
+    "price": 3454238,
+    "categoryId": 1002349,
+    "unit": "THÙNG"
+  },
+  {
+    "productId": 35997061,
+    "productCode": "TP230",
+    "productName": "COMBO 230K (CÁI)",
+    "price": 230000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 36661443,
+    "productCode": "CBVMHN",
+    "productName": "COMBO VƯỜN HỒNG NGỌC LỚN (CÁI)",
+    "price": 350000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 36667150,
+    "productCode": "CBHNTL",
+    "productName": "COMBO HỒNG NGỌC TÀI LỘC (CÁI)",
+    "price": 240000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 36819348,
+    "productCode": "CBHNCT",
+    "productName": "COMBO HỒNG NGỌC CÁT TƯỜNG (CÁI)",
+    "price": 380000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 38724520,
+    "productCode": "LHTT",
+    "productName": "COMBO LƯỠI HỔ THẦN TÀI (CÁI)",
+    "price": 215000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 38861672,
+    "productCode": "GDBA1",
+    "productName": "TIỂU CẢNH GIA ĐÌNH BÌNH AN 01 (CÁI)",
+    "price": 590000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 39501247,
+    "productCode": "PTTT",
+    "productName": "COMBO PHÁT TÀI THĂNG TIẾN (Cái)",
+    "price": 450000,
+    "categoryId": 820179,
+    "unit": "Cái"
+  },
+  {
+    "productId": 40415576,
+    "productCode": "KTMM",
+    "productName": "THÀNH PHẨM KIM TIỀN MAY MẮN (Cái)",
+    "price": 230000,
+    "categoryId": 820175,
+    "unit": "Cái"
+  },
+  {
+    "productId": 40898365,
+    "productCode": "CBKNPT",
+    "productName": "COMBO KIM NGÂN PHÁT TÀI (CÁI)",
+    "price": 480000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 41353964,
+    "productCode": "GTUOI",
+    "productName": "CÂY GỪNG TƯƠI MINI (CÁI)",
+    "price": 80000,
+    "categoryId": 820172,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 41381815,
+    "productCode": "KTTTS",
+    "productName": "CÂY KIM THỦY TÙNG THỦY SINH (CÂY)",
+    "price": 130000,
+    "categoryId": 1002349,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 41596223,
+    "productCode": "TP700K",
+    "productName": "CÂY THÀNH PHẨM 700K (CÁI)",
+    "price": 700000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 41719579,
+    "productCode": "LYTST42",
+    "productName": "CÂY LAN Ý THỦY SINH THÙNG 42 (CÂY)",
+    "price": 130000,
+    "categoryId": 1002349,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 41949708,
+    "productCode": "TPTNEW",
+    "productName": "THÀNH PHẨM TRÚC PHÁT TÀI NEW (CÂY)",
+    "price": 150000,
+    "categoryId": 820172,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 41951803,
+    "productCode": "TPXRMN",
+    "productName": "THÀNH PHẨM XƯƠNG RỒNG MINI (CÁI)",
+    "price": 120000,
+    "categoryId": 820172,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 41970703,
+    "productCode": "TTPTPTN20",
+    "productName": "THÀNH PHẨM TRÚC PHÁT TÀI NEW (1 THÙNG)",
+    "price": 2500000,
+    "categoryId": 820172,
+    "unit": "1 THÙNG"
+  },
+  {
+    "productId": 41971670,
+    "productCode": "LYTSCV",
+    "productName": "CÂY LAN Ý THỦY SINH CHẬU VUÔNG (CÂY)",
+    "price": 250000,
+    "categoryId": 1002349,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 41971915,
+    "productCode": "TPTXB2",
+    "productName": "THÀNH PHẨM THANH XUÂN B2 (CÁI)",
+    "price": 720000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 41971963,
+    "productCode": "TPKTB3",
+    "productName": "THÀNH PHẨM KIM TIỀN B3 (CÁI)",
+    "price": 700000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 41972057,
+    "productCode": "TPB3MX",
+    "productName": "THÀNH PHẨM BOM3 MIX (CÁI)",
+    "price": 1150000,
+    "categoryId": 820183,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 41972242,
+    "productCode": "TPGTCT",
+    "productName": "THÀNH PHẨM CẦN THĂNG GỐC THỤ CÁT TƯỜNG (CÁI)",
+    "price": 750000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 41989172,
+    "productCode": "TPBADB",
+    "productName": "CÂY THÀNH PHẨM BÌNH AN ĐỂ BÀN (CÁI)",
+    "price": 152000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42189503,
+    "productCode": "CBDVTU",
+    "productName": "COMBO ĐẾ VƯƠNG THUYỀN UYỂN (CÁI)",
+    "price": 235000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42189590,
+    "productCode": "CBDVTP",
+    "productName": "COMBO ĐẾ VƯƠNG TAM PHÚC (CÁI)",
+    "price": 280000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42189915,
+    "productCode": "CBTCAN",
+    "productName": "COMBO TIỂU CẢNH AN NHIÊN (CÁI)",
+    "price": 820000,
+    "categoryId": 820183,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42190073,
+    "productCode": "CBDVDP",
+    "productName": "COMBO ĐẾ VƯƠNG ĐẠI PHÁT (CÁI)",
+    "price": 315000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42190143,
+    "productCode": "CBDLHP",
+    "productName": "COMBO ĐINH LĂNG HẠNH PHÚC (CÁI)",
+    "price": 280000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42190710,
+    "productCode": "CBHPMM",
+    "productName": "COMBO HẠNH PHÚC MAY MẮN (CÁI)",
+    "price": 248000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42194531,
+    "productCode": "CBKTAN",
+    "productName": "COMBO KIM TIỀN AN NHIÊN (CÁI)",
+    "price": 195000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42196762,
+    "productCode": "LDTTS",
+    "productName": "THÀNH PHẨM LÁ ĐỒNG TIỀN THỦY SINH (CÁI)",
+    "price": 90000,
+    "categoryId": 1002349,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42196999,
+    "productCode": "TPTDL",
+    "productName": "COMBO TRÚC PHÁT TÀI ĐẠI LỘC(TRÚC PHÁT TÀI+KIM TIỀN) (CÁI)",
+    "price": 350000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42197129,
+    "productCode": "CBKVBY",
+    "productName": "COMBO KHU VƯỜN BÌNH YÊN(CẦN THĂNG GỐC THỤ) (CÁI)",
+    "price": 790000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42198410,
+    "productCode": "CBCTAN",
+    "productName": "COMBO CHÚ TIỂU AN NHIÊN (CÁI)",
+    "price": 420000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42198958,
+    "productCode": "CBDVAN",
+    "productName": "COMBO ĐẾ VƯƠNG AN NHIÊN (CÁI)",
+    "price": 380000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42199210,
+    "productCode": "TPNNHP",
+    "productName": "THÀNH PHẨM NGÔI NHÀ HẠNH PHÚC (CÁI)",
+    "price": 325000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42199253,
+    "productCode": "CBDVHN",
+    "productName": "COMBO ĐẾ VƯƠNG HỒN NHIÊN(ĐẾ VƯƠNG+KIM TIỀN MINI) (CÁI)",
+    "price": 310000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42199332,
+    "productCode": "CBPTPQ",
+    "productName": "COMBO PHÁT TÀI PHÚ QUÝ(TRÚC PHÁT TÀI+NGŨ GIA BÌ) (CÁI)",
+    "price": 300000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42199382,
+    "productCode": "CBANPQ",
+    "productName": "COMBO AN NHIÊN PHÚ QUÝ( PHÁT TÀI + ĐA LỘC) (CÁI)",
+    "price": 360000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42213312,
+    "productCode": "CBCTPT",
+    "productName": "THÀNH PHẨM CẦN THĂNG PHÁT TÀI (CẦN THĂNG GỐC THỤ) (CÁI)",
+    "price": 730000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42215996,
+    "productCode": "CBCTNY",
+    "productName": "COM BO CẦN THĂNG NHƯ Ý(CẦN THĂNG GỐC THỤ ĐÁ THƯ PHÁP)) (CÁI)",
+    "price": 840000,
+    "categoryId": 820183,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42217931,
+    "productCode": "CBKNPL",
+    "productName": "COMBO KIM NGÂN PHÁT LỘC (CÁI)",
+    "price": 230000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42226022,
+    "productCode": "CBKVMN",
+    "productName": "COMBO KHU VƯỜN MINI (KIM TIỀN MINI) (CÁI)",
+    "price": 175000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42323687,
+    "productCode": "CBNGBV",
+    "productName": "COMBO NGŨ GIA BÌ VAR (CÁI)",
+    "price": 360000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42709906,
+    "productCode": "CBDVTT",
+    "productName": "COMBO ĐẾ VƯƠNG THĂNG TIẾN (CÁI)",
+    "price": 150000,
+    "categoryId": 820172,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42709957,
+    "productCode": "CBDVPL",
+    "productName": "COMBO ĐẾ VƯƠNG PHÁT LỘC (CÁI)",
+    "price": 150000,
+    "categoryId": 820172,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42710055,
+    "productCode": "CBKNMM",
+    "productName": "COMBO KIM NGÂN MIMI (CÁI)",
+    "price": 160000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42711347,
+    "productCode": "CBKTYT",
+    "productName": "COMBO KIM TIỀN YÊU THƯƠNG (CÁI)",
+    "price": 180000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42714174,
+    "productCode": "CBKTDP",
+    "productName": "COMBO KIM TIỀN ĐẠI PHÁT (CÁI)",
+    "price": 180000,
+    "categoryId": 820175,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42714482,
+    "productCode": "TPCTAN",
+    "productName": "THÀNH PHẨM CHIẾC THUYỀN AN NHIÊN (CÁI)",
+    "price": 420000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42714544,
+    "productCode": "CBCTTT",
+    "productName": "COMBO CHIẾC THUYỀN THẦN TÀI (CÁI)",
+    "price": 410000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 42716414,
+    "productCode": "TBXTSL",
+    "productName": "CÂY TRÀ BÀ LÁ XANH THỦY SINH LỚN (CÂY)",
+    "price": 250000,
+    "categoryId": 1002349,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 42737480,
+    "productCode": "TPDVTS",
+    "productName": "THÀNH PHẨM TRẦU BÀ ĐẾ VƯƠNG THỦY SINH (CÂY)",
+    "price": 115000,
+    "categoryId": 1002349,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 42747134,
+    "productCode": "LMMDBN",
+    "productName": "CÂY LÁ MAY MẮN ĐỎ BẦU NHỎ (CÂY)",
+    "price": 65000,
+    "categoryId": 1002368,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 42747149,
+    "productCode": "HNCBN",
+    "productName": "CÂY HỔ NHỈ CẢNH BẦU NHỎ (CÂY)",
+    "price": 26000,
+    "categoryId": 1002368,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 42747173,
+    "productCode": "LMMXBN",
+    "productName": "CÂY LÁ MAY MẮN XANH BẦU NHỎ (CÂY)",
+    "price": 65000,
+    "categoryId": 1002368,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 42747191,
+    "productCode": "HMNBN",
+    "productName": "CÂY HỒNG MÔN NHUNG BẦU NHỎ (CÂY)",
+    "price": 40000,
+    "categoryId": 1002368,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 42747210,
+    "productCode": "DXLXBN",
+    "productName": "CÂY DƯƠNG XỈ LÁ XANH BẦU NHỎ (CÂY)",
+    "price": 65000,
+    "categoryId": 1002368,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 42747243,
+    "productCode": "HGBN",
+    "productName": "CÂY HOA GẤM BẦU NHỎ (CÂY)",
+    "price": 65000,
+    "categoryId": 1002368,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 42747256,
+    "productCode": "TXCTBN",
+    "productName": "CÂY THƯỜNG XUÂN CẨM THẠCH BẦU NHỎ (CÂY)",
+    "price": 65000,
+    "categoryId": 1002368,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 42747289,
+    "productCode": "DXCL",
+    "productName": "CÂY DƯƠNG XỈ CULI (CÂY)",
+    "price": 120000,
+    "categoryId": 1002368,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 42750848,
+    "productCode": "DXCT",
+    "productName": "CÂY DƯƠNG XỈ CẨM THẠCH (CÂY)",
+    "price": 65000,
+    "categoryId": 1002368,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 42814302,
+    "productCode": "TPKTMM",
+    "productName": "THÀNH PHẨM KIM TIỀN MIMI (CÂY)",
+    "price": 145000,
+    "categoryId": 820172,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 42814333,
+    "productCode": "TPDVMN",
+    "productName": "THÀNH PHẨM ĐẾ VƯƠNG MINI (CÂY)",
+    "price": 120000,
+    "categoryId": 820172,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 42814346,
+    "productCode": "TPKNMN",
+    "productName": "THÀNH PHẨM KIM NGÂN MINI (CÂY)",
+    "price": 130000,
+    "categoryId": 820172,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 42821211,
+    "productCode": "TPLHDB",
+    "productName": "THÀNH PHẨM LƯỠI HỔ ĐỂ BÀN (CÂY)",
+    "price": 136000,
+    "categoryId": 820172,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 42829435,
+    "productCode": "CBKTDL",
+    "productName": "COMBO KIM TIỀN ĐẠI LỘC (CÂY)",
+    "price": 338000,
+    "categoryId": 820179,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 42904096,
+    "productCode": "CBKNTV",
+    "productName": "COMBO KIM NGÂN THỊNH VƯỢNG (CÂY)",
+    "price": 150000,
+    "categoryId": 820172,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 42912249,
+    "productCode": "CBKNMN",
+    "productName": "CONBO KIM NGÂN MINI (CÂY)",
+    "price": 150000,
+    "categoryId": 820172,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 42950640,
+    "productCode": "TPKTTT",
+    "productName": "THÀNH PHẨM KIM TIỀN THẦN TÀI (LỚN) (CÂY)",
+    "price": 390000,
+    "categoryId": 820179,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 42950983,
+    "productCode": "CBKTTL",
+    "productName": "COMBO KIM TIỀN TÀI LỘC (CÂY)",
+    "price": 310000,
+    "categoryId": 820179,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 43035768,
+    "productCode": "TCVBTC",
+    "productName": "TIỂU CẢNH VỮNG BƯỚC THÀNH CÔNG (CÁI)",
+    "price": 650000,
+    "categoryId": 820179,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 43075546,
+    "productCode": "CBLHCT",
+    "productName": "COMBO LƯỠI HỔ CHIÊU TÀI (CÂY)",
+    "price": 116000,
+    "categoryId": 820172,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 43075597,
+    "productCode": "CBLHNN",
+    "productName": "COMBO LƯỠI HỔ NGỌT NGÀO (CÂY)",
+    "price": 105000,
+    "categoryId": 820172,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 43104624,
+    "productCode": "HPBTS",
+    "productName": "CÂY HẠNH PHÚC BỤI THỦY SINH (CÂY)",
+    "price": 245000,
+    "categoryId": 1002349,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 43107376,
+    "productCode": "TPKNDP",
+    "productName": "THÀNH PHẨM KIM NGÂN ĐẠI PHÁT (CÂY)",
+    "price": 145000,
+    "categoryId": 820172,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 43177612,
+    "productCode": "TPCMMM",
+    "productName": "THÀNH PHẨM CHÂN MÈO MAY MẮN (CÂY)",
+    "price": 105000,
+    "categoryId": 820172,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 43177645,
+    "productCode": "TPTTYT",
+    "productName": "THÀNH PHẨM TRÁI TIM YÊU THƯƠNG (CÂY)",
+    "price": 134000,
+    "categoryId": 820172,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 43240228,
+    "productCode": "MTTT",
+    "productName": "CÂY MAI TIỂU THƯ TRUNG (CÂY)",
+    "price": 138000,
+    "categoryId": 1002368,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 43293651,
+    "productCode": "TPTSDC",
+    "productName": "THÀNH PHẨM TRƯỜNG SINH ĐẠT CÁT (CÂY)",
+    "price": 134000,
+    "categoryId": 820172,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 43293669,
+    "productCode": "TPTSDL",
+    "productName": "THÀNH PHẨM TRƯỜNG SINH ĐẠI LỘC (CÂY)",
+    "price": 134000,
+    "categoryId": 820172,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 43385253,
+    "productCode": "NGBDB",
+    "productName": "COMBO NGŨ GIA BÌ ĐỂ BÀN (CÂY)",
+    "price": 140000,
+    "categoryId": 686422,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 43385301,
+    "productCode": "TPVLDB",
+    "productName": "THÀNH PHẨM VẠN LỘC ĐỂ BÀN (CÂY)",
+    "price": 175000,
+    "categoryId": 686422,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 43385350,
+    "productCode": "TPVCTT",
+    "productName": "THÀNH PHẨM VƯỜN CAU TIỂU TRÂM (CÂY)",
+    "price": 145000,
+    "categoryId": 686422,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 43385383,
+    "productCode": "TPTNCT",
+    "productName": "THÀNH PHẨM THỎ NGỌC CUNG TRĂNG (CÂY)",
+    "price": 180000,
+    "categoryId": 686422,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 43418728,
+    "productCode": "TPKNB",
+    "productName": "THÀNH PHẨM KIM NGÂN BÍNH (CÂY)",
+    "price": 150000,
+    "categoryId": 686422,
+    "unit": "CÂY"
+  },
+  {
+    "productId": 43418729,
+    "productCode": "TPKNB-1",
+    "productName": "THÀNH PHẨM KIM NGÂN BÍNH (THÙNG)",
+    "price": 2800000,
+    "categoryId": 686422,
+    "unit": "THÙNG"
+  },
+  {
+    "productId": 43419261,
+    "productCode": "BKCS1",
+    "productName": "CHẬU BOM KIM CƯƠNG - SỐ 1 (CÁI)",
+    "price": 0,
+    "categoryId": 686422,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 43419270,
+    "productCode": "BKCS2",
+    "productName": "CHẬU BOM KIM CƯƠNG - SỐ 2 (CÁI)",
+    "price": 0,
+    "categoryId": 686422,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 43419279,
+    "productCode": "BKCS3",
+    "productName": "CHẬU BOM KIM CƯƠNG - SỐ 3 (CÁI)",
+    "price": 0,
+    "categoryId": 686422,
+    "unit": "CÁI"
+  },
+  {
+    "productId": 43419318,
+    "productCode": "BVXS3",
+    "productName": "CHẬU BOM VÀNG XOẮN - SỐ 3 (CÁI)",
+    "price": 0,
+    "categoryId": 686422,
+    "unit": "CÁI"
+  }
+]

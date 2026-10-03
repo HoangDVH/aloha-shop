@@ -20,6 +20,7 @@ import { ProductCampaignBox } from "@/components/pdp/ProductCampaignBox";
 import { useCampaignRequoteKey } from "@/lib/campaign/campaignQuote";
 import { useCampaignView } from "@/lib/campaign/useCampaignView";
 import { ProductPurchaseSheet } from "@/components/pdp/ProductPurchaseSheet";
+import { ProductAttachedItems } from "@/components/pdp/ProductAttachedItems";
 import { isPromoSelling, promoAnchorPrice } from "@/components/campaign/CardPromo";
 import {
   buildProductShareUrl,
@@ -397,10 +398,15 @@ export function ProductDetailView({
     }
 
     if (buyNow) {
+      const attachedCodes = new Set(
+        (product.attachedItems || []).map((c) => String(c).toUpperCase())
+      );
       useCart.setState((s) => ({
         lines: s.lines.map((l) => ({
           ...l,
-          selected: l.ma === activeProduct.ma,
+          selected:
+            l.ma.toUpperCase() === activeProduct.ma.toUpperCase() ||
+            attachedCodes.has(l.ma.toUpperCase()),
         })),
       }));
       // Giữ trang SP trong cache trình duyệt để Back không chờ fetch lại lâu
@@ -757,6 +763,14 @@ export function ProductDetailView({
           </div>
         </div>
       </div>
+
+      <ProductAttachedItems
+        mainProduct={activeProduct}
+        attachedProducts={product.attachedProducts}
+        mainQty={qty}
+        mainLivePrice={liveGia}
+        mainLiveTon={liveTon}
+      />
 
       {desc ? <ProductDescription text={desc} /> : null}
 
