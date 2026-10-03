@@ -12,6 +12,7 @@ import {
   shopFilterBase,
   toPublicProduct,
   findByProductSlug,
+  normalizeAttachedCodes,
 } from "../catalog/publicProduct.js";
 import {
   findAttrSiblings,
@@ -38,6 +39,57 @@ import {
 import { isShopTestBuyerEmail } from "../../shopOrders/checkoutFlags.js";
 import { requestShopBuyerEmail } from "../catalog/priceContext.js";
 import { withCampaignPromos } from "../../shopCampaigns/catalogPromos.js";
+
+async function loadAttachedProducts(
+  db: any,
+  req: any,
+  attachedItemRaw: unknown
+) {
+  const codes = normalizeAttachedCodes(attachedItemRaw);
+  if (!codes.length) return [];
+
+  const upperCodes = codes.map((c) => c.toUpperCase());
+  const docs = await db.collection(COL).find({
+    $and: [
+      ...(shopFilterBase().$and as object[]),
+      {
+        $or: [
+          { ma: { $in: codes } },
+          { ma: { $in: upperCodes } },
+          { _id: { $in: codes } },
+        ],
+      },
+    ],
+  }).toArray();
+
+  if (!docs.length) return [];
+
+  const metaById = await loadCategoryMetaById(db);
+  const mas = docs.map((d: any) => String(d.ma || "").trim().toUpperCase());
+  const pbByMa = await loadPriceBooksByMa(db, mas);
+
+  const publicItems = docs.map((d: any) => {
+    const maKey = String(d.ma || "").trim().toUpperCase();
+    const overlaid = applyPriceBookOverlay(
+      overlayProductCategoryFields(d, metaById),
+      pbByMa.get(maKey)
+    );
+    return toPublicProduct(overlaid);
+  }).filter((p: any) => Number(p.gia) > 0 || p.priceKind === "si_missing");
+
+  const withHolds = (await subtractHeldFromPublicItems(db, publicItems)) as typeof publicItems;
+  const { items: withPromos } = await withCampaignPromos(db, req, withHolds);
+
+  const map = new Map(withPromos.map((p) => [p.ma.toUpperCase(), p]));
+  const ordered: typeof withPromos = [];
+  for (const c of upperCodes) {
+    const found = map.get(c);
+    if (found && !ordered.some((o) => o.ma.toUpperCase() === c)) {
+      ordered.push(found);
+    }
+  }
+  return ordered;
+}
 
 export function registerProductDetailRoutes(app: Express, ctx: CatalogCtx) {
   /** Biến thể + ĐVT — chỉ đọc Mongo. */
@@ -175,7 +227,8 @@ export function registerProductDetailRoutes(app: Express, ctx: CatalogCtx) {
       ton = await availableTonAfterHold(db, item.ma, ton);
       res.setHeader("X-Shop-Cache", "BYPASS");
       const [withPromo] = (await withCampaignPromos(db, req, [ton !== item.ton ? { ...item, ton } : item])).items;
-      res.json({ item: withPromo });
+      const attachedProducts = await loadAttachedProducts(db, req, (doc as any).attachedItems);
+      res.json({ item: { ...withPromo, attachedProducts } });
     } catch (e: any) {
       res.status(500).json({ error: e?.message || "product_failed" });
     }
@@ -221,7 +274,8 @@ export function registerProductDetailRoutes(app: Express, ctx: CatalogCtx) {
       const ton = await availableTonAfterHold(db, item.ma, item.ton);
       res.setHeader("X-Shop-Cache", "BYPASS");
       const [withPromo] = (await withCampaignPromos(db, req, [ton !== item.ton ? { ...item, ton } : item])).items;
-      res.json({ item: withPromo });
+      const attachedProducts = await loadAttachedProducts(db, req, (doc as any).attachedItems);
+      res.json({ item: { ...withPromo, attachedProducts } });
     } catch (e: any) {
       res.status(500).json({ error: e?.message || "resolve_failed" });
     }

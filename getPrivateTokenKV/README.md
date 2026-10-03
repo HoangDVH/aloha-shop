@@ -64,10 +64,66 @@ taoQrDonHang();
 
 ---
 
+---
+
+## 🎁 Tính năng: Tự động Tạo Chương Trình Khuyến Mại (Promotion)
+
+Bạn có thể tạo khuyến mại *"Hàng hóa - Giá bán theo số lượng mua"* cho từng mã sản phẩm chỉ bằng 1 hàm gọi.
+
+### Cách tạo cho 1 sản phẩm:
+```javascript
+const { createPromotionForProduct } = require('./getPrivateTokenKV');
+
+async function taoKhuyenMai() {
+  const result = await createPromotionForProduct({
+    productCode: 'TPKNB', // Chỉ cần truyền mã sản phẩm
+    // Mặc định tự sinh:
+    // - Tên: "KM cây thành phẩm TPKNB"
+    // - Bậc 1: Mua >= 1 giảm 20%
+    // - Bậc 2: Mua >= 10 giảm 30%
+    // - Thời hạn: 6 tháng từ ngày tạo
+  });
+
+  console.log('Tạo thành công:', result.campaignCode, result.campaignName);
+}
+
+taoKhuyenMai();
+```
+
+### Cách chạy hàng loạt cho 214 sản phẩm:
+```javascript
+const { createPromotionForProduct } = require('./getPrivateTokenKV');
+
+const listProductCodes = ['TPKNB', 'TNM2L', 'CAY01', 'CAY02' /* ... 214 mã sản phẩm */];
+
+async function taoHangLoat() {
+  for (const code of listProductCodes) {
+    try {
+      console.log(`Đang tạo khuyến mại cho ${code}...`);
+      const res = await createPromotionForProduct({ productCode: code });
+      console.log(`✅ Thành công: ${res.campaignCode} - ${res.campaignName}`);
+      // Nghỉ nhẹ 300ms giữa các request để tránh spam API
+      await new Promise(r => setTimeout(r, 300));
+    } catch (err) {
+      console.error(`❌ Thất bại mã ${code}:`, err.message);
+    }
+  }
+}
+
+taoHangLoat();
+```
+
+---
+
 ## 🧪 Kiểm tra chạy thử
 
 Đứng tại thư mục `getPrivateTokenKV` và gõ:
 
 ```bash
+# Test tạo mã QR
 node test.js
+
+# Test tạo khuyến mại cho 1 mã sản phẩm
+node test_campaign.js TNM2L
 ```
+
