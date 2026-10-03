@@ -1,12 +1,8 @@
 "use client";
 
-import { Gift, Zap } from "lucide-react";
+import { Gift } from "lucide-react";
 import type { CampaignPromoUI } from "@/lib/campaign/campaignApi";
-import { discountTagText, formatCompactVnd } from "@/lib/voucherFormat";
 import { formatVnd } from "@/lib/api";
-import { useCampaignView } from "@/lib/campaign/useCampaignView";
-import { anchorDealProgress, flashDealProgress } from "@/lib/campaign/dealProgress";
-import { CountdownText } from "./CountdownText";
 
 /** Đang bán giá sale thật (khung giờ mở). Còn lại chỉ là nhãn báo trước. */
 export function isPromoSelling(p: CampaignPromoUI | null | undefined): boolean {
@@ -30,95 +26,36 @@ export function promoAnchorPrice(p: CampaignPromoUI | null | undefined, price?: 
   return anchor > (price ?? p.listPrice) ? anchor : 0;
 }
 
-function vnTime(iso: string | null) {
-  if (!iso) return "";
-  const d = new Date(Date.parse(iso) + 7 * 3600_000);
-  return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
-}
-
-/** Nhãn góc ảnh: "-38%" / "Giảm 150K" khi đang bán, "Quà tặng" khi kèm quà. */
-export function PromoBadge({ promo }: { promo: CampaignPromoUI }) {
-  const anchor = promoAnchorPrice(promo);
-  const tag = isPromoPriceActive(promo)
-    ? discountTagText(promo.listPrice, promo.salePrice as number)
-    : anchor
-      ? discountTagText(anchor, promo.listPrice)
-      : "";
-  const giftCount = promo.gifts?.length ?? 0;
-  return (
-    <>
-      {tag ? (
-        <span className="product-card__badge inline-flex h-5 w-max items-center gap-0.5 rounded-full bg-[#C8102E] px-2 text-[10px] font-black leading-none text-white shadow-sm whitespace-nowrap">
-          <Zap size={10} aria-hidden className="fill-white" />
-          {tag}
-        </span>
-      ) : null}
-      {promo.giftLabel ? (
-        <span className="product-card__badge inline-flex h-5 w-max items-center gap-0.5 rounded-full bg-amber-500 px-2 text-[10px] font-bold leading-none text-white shadow-sm whitespace-nowrap">
-          <Gift size={10} aria-hidden />
-          {giftCount > 1 ? `${giftCount} quà tặng` : "Quà tặng"}
-        </span>
-      ) : null}
-    </>
-  );
+/** % giảm so với giá gạch (giá sale đang bán hoặc giá gạch chiến dịch); 0 = không giảm. */
+export function promoDiscountPct(promo: CampaignPromoUI, price?: number): number {
+  const selling = isPromoPriceActive(promo);
+  const from = selling ? promo.listPrice : promoAnchorPrice(promo, price);
+  const to = selling ? (promo.salePrice as number) : (price ?? promo.listPrice);
+  if (!(from > 0) || !(to < from)) return 0;
+  return Math.round(((from - to) / from) * 100);
 }
 
 /**
- * Dòng dưới giá, cùng chiều cao với chỗ trống của card thường để lưới không lệch:
- * đang bán → thanh "Đã bán" + đếm ngược; chưa mở → "Giá sale 124K lúc 09:00".
+ * Dòng dưới giá cho thẻ ở trang thường (danh mục, tìm kiếm): chip "-18%" + "2 quà tặng".
+ * Không thanh tiến độ, không nhấp nháy — hiệu ứng gấp chỉ dành cho trang ưu đãi / flash sale.
  */
-export function PromoMetaLine({ promo, stock = null, allowBackorder }: { promo: CampaignPromoUI; stock?: number | null; allowBackorder?: boolean }) {
-  const { offsetMs } = useCampaignView();
-  const cap = allowBackorder === false ? stock : null;
-  const flash = isPromoSelling(promo) ? flashDealProgress(promo, true, cap, Date.now(), stock) : anchorDealProgress(promo, stock, allowBackorder);
-  if (flash?.state === "low") {
-    return (
-      <div className="mt-0.5 flex h-[1.05rem] items-center gap-1.5 text-[10px] font-bold text-[#C8102E]">
-        <span className="min-w-0 flex-1 truncate animate-pulse">🔥 {flash.left}</span>
-        <span className="shrink-0">{flash.right}</span>
-      </div>
-    );
-  }
-  if (isPromoSoldOut(promo) || flash?.soldOut) {
-    return (
-      <div className="mt-0.5 h-[1.05rem] truncate text-[10px] font-semibold text-slate-500">
-        Đã hết suất giá sale · Về giá thường
-      </div>
-    );
-  }
-  if (flash) {
-    return (
-      <div className="mt-0.5 flex h-[1.05rem] items-center gap-1.5 text-[10px] font-semibold text-[#C8102E]">
-        {flash.state === "selling" ? (
-          <>
-            <span className="relative h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-red-100" aria-hidden>
-              <span className="absolute inset-y-0 left-0 rounded-full bg-[#C8102E]" style={{ width: `${Math.max(flash.pct, 6)}%` }} />
-            </span>
-            <span className="shrink-0">{flash.right || flash.left}</span>
-          </>
-        ) : (
-          <>
-            <span className="min-w-0 flex-1 truncate">🔥 {flash.left}</span>
-            {isPromoSelling(promo) ? (
-              <CountdownText target={Date.parse(promo.endsAt)} offsetMs={offsetMs} className="shrink-0" />
-            ) : flash.right ? (
-              <span className="shrink-0">{flash.right}</span>
-            ) : null}
-          </>
-        )}
-      </div>
-    );
-  }
-  if (promo.salePrice != null && promo.salePrice < promo.listPrice) {
-    const when = promo.opensAt ? ` lúc ${vnTime(promo.opensAt)}` : "";
-    return (
-      <div className="mt-0.5 h-[1.05rem] truncate text-[10px] font-semibold text-[#C8102E]">
-        Giá sale {formatCompactVnd(promo.salePrice).toUpperCase()}
-        {when}
-      </div>
-    );
-  }
-  return <div className="mt-0.5 h-[1.05rem]" aria-hidden />;
+export function PromoCalmLine({ promo, price }: { promo: CampaignPromoUI; price?: number }) {
+  const pct = promoDiscountPct(promo, price);
+  const giftCount = promo.giftLabel ? promo.gifts?.length || 1 : 0;
+  if (!pct && !giftCount) return <div className="mt-0.5 h-[1.05rem]" aria-hidden />;
+  return (
+    <div className="mt-0.5 flex h-[1.05rem] min-w-0 items-center gap-1.5 text-[10px] font-semibold">
+      {pct ? (
+        <span className="shrink-0 rounded-sm bg-[#FDECEE] px-1 leading-[1rem] text-[#C8102E]">-{pct}%</span>
+      ) : null}
+      {giftCount ? (
+        <span className="inline-flex min-w-0 items-center gap-0.5 truncate text-amber-700">
+          <Gift size={11} aria-hidden className="shrink-0" />
+          <span className="truncate">{giftCount > 1 ? `${giftCount} quà tặng` : "Quà tặng"}</span>
+        </span>
+      ) : null}
+    </div>
+  );
 }
 
 /** Giá gạch ngang cạnh giá sale. */

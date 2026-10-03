@@ -38,6 +38,14 @@ export function webBadgeMongoFilter(badge: WebBadge | "", dealMas: string[] = []
   return { webBadge: badge };
 }
 
+/** «Giảm giá» trên thanh sắp xếp = chỉ SP đang giảm: SP chiến dịch đang chạy + SP gắn nhãn giam_gia. */
+export function discountMongoFilter(dealMas: string[]): Record<string, unknown> {
+  if (!dealMas.length) return { webBadge: "giam_gia" };
+  return {
+    $or: [{ webBadge: "giam_gia" }, { ma: { $in: [...dealMas, ...dealMas.map((m) => m.toLowerCase())] } }],
+  };
+}
+
 export function isWebBadge(raw: unknown): raw is WebBadge {
   return normalizeWebBadge(raw) !== "";
 }

@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useZaloAskProduct, zaloAskText } from "@/lib/zaloAsk";
+import { SHOP_ORIGIN } from "@/lib/seo";
 import { ZaloAskSheet } from "./ZaloAskSheet";
 
 /** Trang thanh toán: không hiện nút để khách tập trung chốt đơn. */
@@ -43,7 +44,7 @@ export function ZaloFloatButton({ href }: { href: string }) {
   const onClick = (e: React.MouseEvent) => {
     if (!product) return;
     e.preventDefault();
-    const text = zaloAskText(product, `${window.location.origin}${window.location.pathname}`);
+    const text = zaloAskText(product, `${SHOP_ORIGIN}${window.location.pathname}`);
     setAsk({ text, copied: false });
     copy(text);
   };

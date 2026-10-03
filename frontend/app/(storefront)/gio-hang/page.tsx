@@ -13,7 +13,7 @@ import { refreshCartPricesFromCatalog } from "@/lib/cartPriceRefresh";
 import { PromotionModal } from "@/components/checkout/PromotionModal";
 import { useCandidateClaim } from "@/components/checkout/useCandidateClaim";
 import { CartVoucherProgress } from "@/components/checkout/CartVoucherProgress";
-import { SmartFreeshipBar } from "@/components/cart/SmartFreeshipBar";
+import { SmartFreeshipBar, useMoreShoppingHref } from "@/components/cart/SmartFreeshipBar";
 
 import { useManualCodeFallback } from "@/components/checkout/useManualCodeFallback";
 import { onShopCampaignChanged } from "@/lib/catalogSync";
@@ -30,6 +30,7 @@ import { useStickyBarHeight } from "@/lib/floatingStack";
 export default function CartPage() {
   const router = useShopRouter();
   const { user } = useShopAuth();
+  const moreHref = useMoreShoppingHref();
   const lines = useCart((s) => s.lines);
   const setQty = useCart((s) => s.setQty);
   const remove = useCart((s) => s.remove);
@@ -138,7 +139,7 @@ export default function CartPage() {
         <SiCartNotice />
         {lines.length > 0 ? (
           <Link
-            href="/tim"
+            href={moreHref}
             className="inline-flex items-center gap-1 rounded-lg border border-[var(--aloha-green)] px-3 py-2 text-sm font-bold text-[var(--aloha-green)] hover:bg-[var(--aloha-green-light)]"
           >
             <Plus size={16} /> Mua thêm
@@ -167,7 +168,7 @@ export default function CartPage() {
               <p className="text-base font-bold text-[var(--aloha-ink)]">Giỏ hàng của bạn đang trống</p>
               <p className="mt-1 text-sm text-slate-500">Lướt cửa hàng, mua sắm ngay</p>
               <Link
-                href="/tim"
+                href={moreHref}
                 className="mt-5 rounded-full bg-[var(--aloha-green)] px-6 py-2.5 text-sm font-bold text-white hover:bg-[var(--aloha-green-hover)]"
               >
                 Tiếp tục mua sắm

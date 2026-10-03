@@ -129,6 +129,34 @@ function CheckoutConfirm() {
 
   const [draft, setDraft] = useState<AddressDraft>(EMPTY_DRAFT);
 
+  // Khôi phục form địa chỉ từ sessionStorage nếu khách bấm Mua thêm rồi quay lại
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const saved = sessionStorage.getItem("aloha_checkout_draft");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === "object") {
+          setDraft((prev) => ({ ...prev, ...parsed }));
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  // Tự động lưu form địa chỉ vào sessionStorage khi người dùng nhập liệu
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (draft.fullName || draft.phone || draft.detail || draft.province) {
+      try {
+        sessionStorage.setItem("aloha_checkout_draft", JSON.stringify(draft));
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [draft]);
+
   const selectedAddr = addresses.find((a) => a.id === selectedAddrId);
   // Cùng SĐT với đơn gửi lên: giới hạn suất sale mỗi khách tính theo SĐT người nhận.
   const receiverPhone =

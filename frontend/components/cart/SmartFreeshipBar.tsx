@@ -6,6 +6,7 @@ import { Truck, CheckCircle2, ChevronRight, Sparkles } from "lucide-react";
 import { formatVnd } from "@/lib/api";
 import { formatCompactVnd } from "@/lib/voucherFormat";
 import { getAvailablePromotions, type AvailablePromotionUI } from "@/lib/promotions";
+import { useCampaignView } from "@/lib/campaign/useCampaignView";
 
 export type FreeshipTier = {
   threshold: number;
@@ -20,16 +21,32 @@ const DEFAULT_TIERS: FreeshipTier[] = [
 ];
 
 /**
+ * URL điều hướng mua thêm thông minh:
+ * - Khi có chiến dịch ưu đãi đang chạy: chuyển sang trang có lọc "Giảm giá" (?sort=giam_gia&inStock=1)
+ * - Khi không có chiến dịch: chuyển sang trang có lọc "Nổi bật" (?sort=ban_chay&inStock=1)
+ */
+export function useMoreShoppingHref(): string {
+  const { running } = useCampaignView();
+  return running ? "/tim?sort=giam_gia&inStock=1" : "/tim?sort=ban_chay&inStock=1";
+}
+
+/**
  * Thanh tiến trình Freeship thông minh (Smart Threshold Progress Bar) chuẩn sàn TMĐT (Shopee / TikTok Shop).
  * Đặt tại đầu Giỏ hàng cho cả Desktop và Mobile để kích thích người dùng mua thêm (tăng AOV).
  */
 export function SmartFreeshipBar({
   currentAmount,
   className = "",
+  variant = "default",
+  moreHref,
 }: {
   currentAmount: number;
   className?: string;
+  variant?: "default" | "compact";
+  moreHref?: string;
 }) {
+  const defaultMoreHref = useMoreShoppingHref();
+  const targetHref = moreHref || defaultMoreHref;
   const [promos, setPromos] = useState<AvailablePromotionUI[]>([]);
 
   useEffect(() => {
@@ -52,10 +69,7 @@ export function SmartFreeshipBar({
       .map((p) => {
         const threshold = p.minOrderThreshold as number;
         const discount = p.discountValue || 30_000;
-        const label =
-          discount >= 50_000
-            ? `Giảm ${formatCompactVnd(discount)} ship`
-            : `Giảm ${formatCompactVnd(discount)} ship`;
+        const label = `Giảm ${formatCompactVnd(discount)} ship`;
         return { threshold, discount, label };
       })
       .sort((a, b) => a.threshold - b.threshold);
@@ -84,6 +98,82 @@ export function SmartFreeshipBar({
   }, [tiers, currentAmount]);
 
   if (!tiers.length) return null;
+
+  if (variant === "compact") {
+    return (
+      <div
+        className={`relative overflow-hidden rounded-xl border transition-all duration-300 ${
+          isHighestReached
+            ? "border-emerald-200/90 bg-emerald-50/70 shadow-2xs"
+            : "border-teal-200/80 bg-gradient-to-r from-teal-50/80 via-emerald-50/60 to-teal-50/80 shadow-2xs"
+        } p-2.5 sm:p-3 ${className}`}
+        role="status"
+        aria-live="polite"
+      >
+        {isHighestReached ? (
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-xs">
+                <CheckCircle2 size={13} strokeWidth={2.5} aria-hidden />
+              </span>
+              <p className="text-xs font-bold text-emerald-900 leading-snug">
+                🎉 Đã đạt <span className="text-[#0D9488] uppercase">{currentTier?.label || "Miễn phí vận chuyển"}</span>
+              </p>
+            </div>
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-100/90 px-2 py-0.5 text-[11px] font-bold text-emerald-800">
+              <Sparkles size={11} className="text-amber-500 fill-amber-500" />
+              Đã nhận
+            </span>
+          </div>
+        ) : (
+          <div>
+            {/* Tầng 1: Số tiền còn thiếu + Nút Mua thêm */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#0D9488] to-[#0F766E] text-white shadow-xs">
+                  <Truck size={13} strokeWidth={2.4} aria-hidden />
+                </span>
+                <p className="text-xs font-semibold text-slate-800 leading-tight">
+                  Mua thêm <strong className="text-[#C8102E] font-black">{formatVnd(shortfall)}</strong>
+                </p>
+              </div>
+
+              <Link
+                href={targetHref}
+                className="group inline-flex shrink-0 items-center gap-0.5 rounded-full border border-teal-200/90 bg-white/95 px-2.5 py-0.5 text-[11px] font-bold text-teal-800 shadow-2xs transition-all hover:bg-white hover:text-teal-900 active:scale-95 select-none"
+              >
+                <span>+ Mua thêm</span>
+                <ChevronRight
+                  size={11}
+                  className="text-teal-600 transition-transform duration-200 group-hover:translate-x-0.5"
+                />
+              </Link>
+            </div>
+
+            {/* Tầng 2: Mục tiêu quyền lợi nhận được (100% không bị cắt) */}
+            <div className="mt-1 flex items-center justify-between pl-8 text-[11.5px] leading-tight">
+              <span className="text-slate-600">
+                để được <strong className="text-[#0D9488] font-bold uppercase">{nextTier?.label}</strong>
+              </span>
+              <span className="text-[10px] font-semibold text-teal-700/80 tabular-nums">{pct}%</span>
+            </div>
+          </div>
+        )}
+
+        {/* Thanh tiến trình siêu mỏng */}
+        <div className="relative mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200/70" aria-hidden>
+          <div
+            className={`h-full rounded-full transition-all duration-500 ease-out ${
+              isHighestReached
+                ? "bg-gradient-to-r from-emerald-500 to-teal-500"
+                : "bg-gradient-to-r from-[#0D9488] via-emerald-500 to-[#0F766E]"
+            }`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -137,7 +227,7 @@ export function SmartFreeshipBar({
         {/* Nút hành động Mua thêm nếu chưa đạt mốc cao nhất */}
         {!isHighestReached ? (
           <Link
-            href="/tim"
+            href={targetHref}
             className="group inline-flex min-h-[30px] sm:min-h-[32px] shrink-0 items-center gap-0.5 rounded-full border border-teal-200/90 bg-white/95 px-2.5 sm:px-3 py-1 text-[11px] sm:text-xs font-bold text-teal-800 shadow-2xs transition-all hover:bg-white hover:text-teal-900 hover:shadow-xs active:scale-95 select-none"
           >
             <span>Mua thêm</span>

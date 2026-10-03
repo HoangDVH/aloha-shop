@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Link2, Share2 } from "lucide-react";
 import { useToast } from "@/components/Toast";
+import { SHOP_ORIGIN } from "@/lib/seo";
 
 function shareUrl(): string {
-  const u = new URL(window.location.href);
+  const u = new URL(window.location.pathname + window.location.search, SHOP_ORIGIN);
   for (const k of ["focus", "src", "slot"]) u.searchParams.delete(k);
   u.searchParams.set("src", "share");
   return u.toString();

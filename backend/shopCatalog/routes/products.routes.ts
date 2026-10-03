@@ -41,7 +41,7 @@ import {
   resolveShopDisplayTon,
 } from "../../shopVariantGroup.js";
 import { mongoLoaiFilter } from "../../utils/kvProductLoai.js";
-import { normalizeWebBadge, webBadgeMongoFilter } from "../webBadge.js";
+import { discountMongoFilter, normalizeWebBadge, webBadgeMongoFilter } from "../webBadge.js";
 import { resolvePinBadgeScope, arrangeByAbsolutePin } from "../pinArrange.js";
 import { isShopTestBuyerEmail } from "../../shopOrders/checkoutFlags.js";
 import {
@@ -53,7 +53,14 @@ import {
   overlayProductCategoryFields,
 } from "../categoryMeta.js";
 import { subtractHeldFromPublicItems } from "../../shopOrders/stockHold.js";
-import { campaignDealMas, dealMasCacheSuffix, withCampaignPromos } from "../../shopCampaigns/catalogPromos.js";
+import {
+  campaignDealInfo,
+  campaignDealMas,
+  dealInfoCacheSuffix,
+  dealMasCacheSuffix,
+  withCampaignPromos,
+} from "../../shopCampaigns/catalogPromos.js";
+import type { CatalogDealInfo } from "../catalog/publicProduct.js";
 import { parseVoucherQuery, voucherProductFilter } from "../../shopPromotions/voucherProductFilter.js";
 
 export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
@@ -97,9 +104,11 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
         dvtFilters.length > 0 ||
         Boolean(loai);
       const dealMas = badge === "uu_dai" ? await campaignDealMas(await ctx.catalogDb(), req) : [];
+      const deals =
+        sort === "giam_gia" ? await campaignDealInfo(await ctx.catalogDb(), req) : new Map<string, CatalogDealInfo>();
       const voucherId = parseVoucherQuery(req.query.voucher);
       const voucher = voucherId ? await voucherProductFilter(await ctx.catalogDb(), voucherId) : null;
-      const cacheKey = `shop:products:v37:${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}${dealMasCacheSuffix(dealMas)}|v=${voucherId}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|maxTon=${maxTon}|${sort}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
+      const cacheKey = `shop:products:v38:${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}${dealMasCacheSuffix(dealMas)}|v=${voucherId}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|maxTon=${maxTon}|${sort}${dealInfoCacheSuffix(deals)}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
       const pinScope = resolvePinBadgeScope({ sort, badge, maxTon });
 
       const { body, cache } = await cachedJson(cacheKey, async () => {
@@ -150,6 +159,7 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
         if (loaiMongo) and.push(loaiMongo);
         const badgeMongo = webBadgeMongoFilter(badge, dealMas);
         if (badgeMongo) and.push(badgeMongo);
+        if (sort === "giam_gia") and.push(discountMongoFilter([...deals.keys()]));
         if (voucher && Object.keys(voucher.filter).length) and.push(voucher.filter);
         filter.$and = and;
 
@@ -300,7 +310,8 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
                 dedupeListItems(mapped.docs, mapped.items),
                 sort,
                 createdMsByMa,
-                pinScope
+                pinScope,
+                deals
               ),
               buyerEmail
             )
@@ -356,7 +367,7 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
           const prev = createdMsByMa.get(ma) || 0;
           if (ms >= prev) createdMsByMa.set(ma, ms);
         }
-        items = sortPublicItems(items, sort, createdMsByMa, pinScope);
+        items = sortPublicItems(items, sort, createdMsByMa, pinScope, deals);
 
         const total = items.length;
         const pageItems = items.slice(skip, skip + limit);

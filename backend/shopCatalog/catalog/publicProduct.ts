@@ -139,15 +139,27 @@ export function toPublicProduct(doc: Record<string, unknown>) {
   };
 }
 
+export type CatalogDealInfo = { salePrice: number; compareAtPrice: number; hasGift: boolean };
+
+/** Tỉ lệ giảm của SP chiến dịch so với giá web (0 = chỉ quà); -1 = không thuộc chiến dịch. */
+export function campaignDealOff(gia: number, deal: CatalogDealInfo | undefined): number {
+  if (!deal) return -1;
+  if (gia > 0 && deal.salePrice > 0 && deal.salePrice < gia) return (gia - deal.salePrice) / gia;
+  if (gia > 0 && deal.compareAtPrice > gia) return (deal.compareAtPrice - gia) / deal.compareAtPrice;
+  return 0;
+}
+
 /**
  * Ghim = vị trí tuyệt đối trong đúng nhãn (pinBadgeScope).
  * Scope rỗng → không áp ghim (tránh đụng chéo nhãn).
+ * «Giảm giá»: SP chiến dịch (giảm sâu → quà) trước, rồi SP gắn nhãn giam_gia, rồi còn lại.
  */
 export function sortPublicItems(
   items: ReturnType<typeof toPublicProduct>[],
   sort: string,
   createdMsByMa?: Map<string, number>,
-  pinBadgeScope?: string | null
+  pinBadgeScope?: string | null,
+  deals?: Map<string, CatalogDealInfo>
 ) {
   const scope =
     pinBadgeScope !== undefined
@@ -171,13 +183,26 @@ export function sortPublicItems(
       scope || "ban_chay_sap_het"
     );
   } else if (sort === "giam_gia") {
+    const rank = new Map<string, { group: number; off: number; gift: number }>();
+    for (const p of next) {
+      const ma = normalizeMa(p.ma);
+      const deal = deals?.get(ma);
+      const off = campaignDealOff(p.gia, deal);
+      const group = off >= 0 ? 2 : normalizeWebBadge(p.webBadge) === "giam_gia" ? 1 : 0;
+      rank.set(ma, { group, off: Math.max(0, off), gift: deal?.hasGift ? 1 : 0 });
+    }
+    const none = { group: 0, off: 0, gift: 0 };
     return arrangeByAbsolutePin(
       next,
       (a, b) => {
-        const ga = normalizeWebBadge(a.webBadge) === "giam_gia" ? 1 : 0;
-        const gb = normalizeWebBadge(b.webBadge) === "giam_gia" ? 1 : 0;
-        if (gb !== ga) return gb - ga;
-        return a.ten.localeCompare(b.ten, "vi");
+        const ra = rank.get(normalizeMa(a.ma)) || none;
+        const rb = rank.get(normalizeMa(b.ma)) || none;
+        return (
+          rb.group - ra.group ||
+          rb.off - ra.off ||
+          rb.gift - ra.gift ||
+          a.ten.localeCompare(b.ten, "vi")
+        );
       },
       scope || "giam_gia"
     );

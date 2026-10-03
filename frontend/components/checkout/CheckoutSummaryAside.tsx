@@ -3,6 +3,7 @@
 import { Ticket } from "lucide-react";
 import { formatVnd } from "@/lib/api";
 import { shopShowCheckoutShipping } from "@/lib/checkoutFlags";
+import { SmartFreeshipBar } from "@/components/cart/SmartFreeshipBar";
 import type { Delivery } from "./checkoutTypes";
 
 type Props = {
@@ -62,6 +63,12 @@ export function CheckoutSummaryAside({
 
   return (
     <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+      {delivery === "giao_tan_noi" ? (
+        <div className="lg:hidden">
+          <SmartFreeshipBar currentAmount={goodsAfter} variant="compact" />
+        </div>
+      ) : null}
+
       <button
         type="button"
         onClick={onOpenPromotion}
@@ -105,6 +112,9 @@ export function CheckoutSummaryAside({
         <h2 className="mb-3 text-base font-extrabold text-[var(--aloha-ink)]">
           Chi tiết thanh toán
         </h2>
+        {delivery === "giao_tan_noi" ? (
+          <SmartFreeshipBar currentAmount={goodsAfter} variant="compact" className="mb-3.5" />
+        ) : null}
         <div className="space-y-2.5 text-[15px] text-slate-500">
           <div className="flex items-center justify-between gap-3">
             <span>Tổng tiền hàng</span>

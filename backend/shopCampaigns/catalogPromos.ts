@@ -9,6 +9,7 @@ import { productGifts } from "./types.js";
 import { attachCampaignPromos, type FlashStockLookup, type GiftDetails, type GiftLeft } from "./campaignPromo.js";
 import { counterSnapshot } from "./flash/flashCounters.js";
 import { giftCounterId } from "./gifts/giftLines.js";
+import type { CatalogDealInfo } from "../shopCatalog/catalog/publicProduct.js";
 
 const GIFT_NAME_TTL_MS = 60_000;
 const GIFT_LEFT_TTL_MS = 10_000;
@@ -76,6 +77,31 @@ export async function campaignDealMas(db: Db, req: Request): Promise<string[]> {
 /** Hậu tố khoá cache: đổi danh sách SP chiến dịch → cache danh sách «Ưu đãi» tự làm mới. */
 export function dealMasCacheSuffix(mas: string[]): string {
   return mas.length ? `~${createHash("sha1").update(mas.join(",")).digest("hex").slice(0, 12)}` : "";
+}
+
+/** Giá sale / giá gạch / quà của từng SP chiến dịch — để sort «Giảm giá» đưa SP đang ưu đãi lên đầu. */
+export async function campaignDealInfo(db: Db, req: Request): Promise<Map<string, CatalogDealInfo>> {
+  const out = new Map<string, CatalogDealInfo>();
+  if (!campaignEnabled()) return out;
+  const isTestBuyer = isShopTestBuyerEmail(requestShopBuyerEmail(req));
+  const { active } = await getCurrentCampaign(db, Date.now(), { isTestBuyer });
+  if (!active) return out;
+  for (const p of active.content.products) {
+    const ma = String(p.ma || "").trim().toUpperCase();
+    if (!ma || p.paused) continue;
+    out.set(ma, {
+      salePrice: Math.max(0, Math.round(Number(p.salePrice) || 0)),
+      compareAtPrice: Math.max(0, Math.round(Number(p.compareAtPrice) || 0)),
+      hasGift: productGifts(p).length > 0,
+    });
+  }
+  return out;
+}
+
+export function dealInfoCacheSuffix(deals: Map<string, CatalogDealInfo>): string {
+  return dealMasCacheSuffix(
+    [...deals].map(([ma, d]) => `${ma}:${d.salePrice}:${d.compareAtPrice}:${d.hasGift ? 1 : 0}`).sort()
+  );
 }
 
 export type CampaignPromoResult<T> = { items: T[]; noStore: boolean };

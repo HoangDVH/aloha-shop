@@ -292,8 +292,12 @@ export function usePlaceOrder({
         }),
       });
       const orderCode = displayShopOrderCode(res.data) || String(res.data?.code || "").trim();
-      // The order is committed even if a subsequent UI/profile update fails.
       orderPlacedRef.current = true;
+      try {
+        sessionStorage.removeItem("aloha_checkout_draft");
+      } catch {
+        /* ignore */
+      }
 
       // Lần đầu chưa có SĐT trên hồ sơ → lưu từ checkout (không chặn đặt hàng nếu lỗi).
       if (profilePhoneEmpty(user?.phone) && customerPhone) {

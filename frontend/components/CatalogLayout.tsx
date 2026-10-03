@@ -472,6 +472,19 @@ export function CatalogLayout({
           </div>
         ) : null}
 
+        {!filtersOnly && total === 0 && secondaryFilterCount === 0 && sort === "giam_gia" ? (
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-6 text-center">
+            <p className="text-sm font-semibold text-slate-700">Hiện chưa có sản phẩm đang giảm giá ở mục này</p>
+            <button
+              type="button"
+              className="mt-3 text-sm font-bold text-[var(--aloha-green)] underline"
+              onClick={() => pushParams({ sort: null, page: null })}
+            >
+              Xem tất cả sản phẩm
+            </button>
+          </div>
+        ) : null}
+
         {children}
 
         {!filtersOnly && (

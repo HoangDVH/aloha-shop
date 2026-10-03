@@ -5,7 +5,7 @@ import { SiPriceBadge } from "@/components/si-pricing/SiPriceBadge";
 import { Loader2, Play, ShoppingBag } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { isPreOrderTon, stockMax, useCart } from "@/lib/cart";
+import { isPreOrderTon, useCart } from "@/lib/cart";
 import { useToast } from "@/components/Toast";
 import { formatVnd, type ShopProduct } from "@/lib/api";
 import { useShopAuth } from "@/components/ShopAuthProvider";
@@ -14,8 +14,30 @@ import {
   livePropsForMa,
   useLiveProductPrices,
 } from "@/lib/useLiveProductPrices";
-import { PromoBadge, PromoListPrice, PromoMetaLine, isPromoPriceActive, promoAnchorPrice } from "@/components/campaign/CardPromo";
+import { PromoCalmLine, PromoListPrice, isPromoPriceActive, promoAnchorPrice } from "@/components/campaign/CardPromo";
 import { ProductDealCard } from "@/components/campaign/ProductDealCard";
+
+const MAX_IMAGE_BADGES = 2;
+
+type CardBadge = { label: string; tone: "sale" | "warn" };
+
+/** Nhãn trạng thái góc ảnh theo thứ tự ưu tiên; % giảm và quà nằm dưới giá, không đặt trên ảnh. */
+export function cardStatusBadges(s: {
+  preOrder: boolean;
+  lowStock: boolean;
+  manualBadge?: string;
+  promoDeal: boolean;
+  hasPromo: boolean;
+}): CardBadge[] {
+  const out: CardBadge[] = [];
+  if (s.preOrder || s.manualBadge === "dat_truoc") out.push({ label: "ĐẶT\u00A0TRƯỚC", tone: "sale" });
+  if (!s.preOrder && (s.lowStock || s.manualBadge === "ban_chay_sap_het" || s.manualBadge === "ban_chay")) {
+    out.push({ label: "SẮP\u00A0HẾT", tone: "warn" });
+  }
+  if (!s.preOrder && s.manualBadge === "giam_gia" && !s.promoDeal) out.push({ label: "SALE", tone: "sale" });
+  if (!s.preOrder && s.manualBadge === "uu_dai" && !s.hasPromo) out.push({ label: "ƯU\u00A0ĐÃI", tone: "sale" });
+  return out;
+}
 
 function ImagePendingOverlay({ active }: { active: boolean }) {
   if (!active) return null;
@@ -244,30 +266,18 @@ export function ProductCard({
         ) : null}
 
         <div className="pointer-events-none absolute left-2 top-2 z-10 flex flex-col items-start gap-1">
-          {promo ? <PromoBadge promo={promo} /> : null}
-          {preOrder || manualBadge === "dat_truoc" ? (
-            <span className="product-card__badge inline-flex h-5 w-max max-w-none shrink-0 items-center justify-center rounded-full bg-[var(--aloha-sale)] px-2.5 text-[10px] font-bold leading-none tracking-normal text-white shadow-sm whitespace-nowrap [word-break:keep-all] [overflow-wrap:normal]">
-              {"ĐẶT\u00A0TRƯỚC"}
-            </span>
-          ) : null}
-          {!preOrder && manualBadge === "giam_gia" && !promoSelling ? (
-            <span className="product-card__badge inline-flex h-5 w-max max-w-none shrink-0 items-center justify-center rounded-full bg-[var(--aloha-sale)] px-2.5 text-[10px] font-bold leading-none tracking-normal text-white shadow-sm whitespace-nowrap">
-              SALE
-            </span>
-          ) : null}
-          {!preOrder && manualBadge === "uu_dai" && !promo ? (
-            <span className="product-card__badge inline-flex h-5 w-max max-w-none shrink-0 items-center justify-center rounded-full bg-[var(--aloha-sale)] px-2.5 text-[10px] font-bold leading-none tracking-normal text-white shadow-sm whitespace-nowrap [word-break:keep-all] [overflow-wrap:normal]">
-              {"ƯU\u00A0ĐÃI"}
-            </span>
-          ) : null}
-          {!preOrder &&
-          (lowStock ||
-            manualBadge === "ban_chay_sap_het" ||
-            manualBadge === "ban_chay") ? (
-            <span className="product-card__badge inline-flex h-5 w-max max-w-none shrink-0 items-center justify-center rounded-full bg-[var(--aloha-warning,#f59e0b)] px-2.5 text-[10px] font-bold leading-none tracking-normal text-white shadow-sm whitespace-nowrap [word-break:keep-all] [overflow-wrap:normal]">
-              {"SẮP\u00A0HẾT"}
-            </span>
-          ) : null}
+          {cardStatusBadges({ preOrder, lowStock, manualBadge, promoDeal, hasPromo: Boolean(promo) })
+            .slice(0, MAX_IMAGE_BADGES)
+            .map((b) => (
+              <span
+                key={b.label}
+                className={`product-card__badge inline-flex h-5 w-max max-w-none shrink-0 items-center justify-center rounded-full px-2.5 text-[10px] font-bold leading-none tracking-normal text-white shadow-sm whitespace-nowrap [word-break:keep-all] [overflow-wrap:normal] ${
+                  b.tone === "warn" ? "bg-[var(--aloha-warning,#f59e0b)]" : "bg-[var(--aloha-sale)]"
+                }`}
+              >
+                {b.label}
+              </span>
+            ))}
         </div>
       </div>
 
@@ -307,7 +317,7 @@ export function ProductCard({
                 </span>
               ) : null}
             </div>
-            {promo ? <PromoMetaLine promo={promo} stock={stockMax(displayTon)} allowBackorder={allowBackorder} /> : <div className="mt-0.5 h-[1.05rem]" aria-hidden />}
+            {promo ? <PromoCalmLine promo={promo} price={displayGia} /> : <div className="mt-0.5 h-[1.05rem]" aria-hidden />}
           </div>
           )}
           </div>
