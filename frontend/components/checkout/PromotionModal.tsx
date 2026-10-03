@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { TicketLine, VoucherTicket } from "@/components/voucher/VoucherTicket";
 import {
   Check,
   X,
@@ -13,6 +14,7 @@ import {
   Package,
   Leaf,
 } from "lucide-react";
+import { ReturnedBadge, type VoucherReturnInfo } from "@/components/voucher/ReturnedBadge";
 import { formatVnd } from "@/lib/api";
 import dayjs from "dayjs";
 
@@ -34,6 +36,13 @@ export interface EvaluatedCandidateUI {
   targetCustomer?: "all" | "retail" | "wholesale" | "new_web";
   endDate?: string;
   description?: string;
+  /** Voucher phải lưu vào ví trước khi dùng. */
+  needsClaim?: boolean;
+  benefitType?: "goods" | "shipping";
+  /** Tiền hàng còn thiếu để đủ điều kiện, server tính theo giá server. */
+  shortfall?: number;
+  /** Voucher được hoàn về vì đơn dùng nó trước đó đã huỷ / hết hạn thanh toán. */
+  returnedFrom?: VoucherReturnInfo;
 }
 
 export interface PromotionQuoteUI {
@@ -51,6 +60,8 @@ export interface PromotionQuoteUI {
   discountTotal: number;
   finalTotal: number;
   candidates: EvaluatedCandidateUI[];
+  /** Giá sale + quà chiến dịch; `subtotal` ở trên đã là tiền hàng sau giá sale. */
+  campaign?: import("@/lib/campaign/campaignQuote").CampaignQuoteUI;
 }
 
 type Props = {
@@ -63,7 +74,19 @@ type Props = {
   onApplyCode: (code: string) => void;
   onSelectAutoMode: () => void;
   onRemoveDiscount: () => void;
+  /** Nút riêng cho vé chưa đủ điều kiện (ví dụ "Lưu" khi voucher phải lưu trước). */
+  ineligibleAction?: (cand: EvaluatedCandidateUI) => ReactNode;
 };
+
+function stubMaxLabel(c: EvaluatedCandidateUI): string | undefined {
+  return c.maxDiscountVnd && c.discountType === "percentage"
+    ? `TỐI ĐA ${Math.round(c.maxDiscountVnd / 1000)}K`
+    : undefined;
+}
+
+function minOrderText(c: EvaluatedCandidateUI): string {
+  return c.minOrderThreshold ? `Đơn từ ${formatVnd(c.minOrderThreshold)}` : "Mọi đơn hàng";
+}
 
 export function PromotionModal({
   open,
@@ -75,10 +98,12 @@ export function PromotionModal({
   onApplyCode,
   onSelectAutoMode,
   onRemoveDiscount,
+  ineligibleAction,
 }: Props) {
   const [mounted, setMounted] = useState(false);
   const [inputCode, setInputCode] = useState(selectedCode || "");
   const [submittingCode, setSubmittingCode] = useState(false);
+  const [codeOpen, setCodeOpen] = useState(Boolean(selectedCode));
   const [filterType, setFilterType] = useState<"all" | "code" | "product">("all");
   const [viewDetailCand, setViewDetailCand] = useState<EvaluatedCandidateUI | null>(null);
 
@@ -209,7 +234,17 @@ export function PromotionModal({
         {/* 2. BODY CONTENT (SCROLLABLE): Ô nhập mã, Danh mục bộ lọc, Danh sách vé    */}
         {/* ========================================================================= */}
         <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-5 py-3.5 space-y-3.5 bg-[#FAF8F5]">
-          {/* Ô nhập mã ưu đãi / voucher */}
+          {/* Ô nhập mã ưu đãi / voucher — thu gọn mặc định, hệ thống đã tự áp mã tốt nhất */}
+          {!codeOpen ? (
+            <button
+              type="button"
+              onClick={() => setCodeOpen(true)}
+              className="inline-flex min-h-[40px] items-center gap-1.5 text-sm font-semibold text-[#3B653D] hover:underline"
+            >
+              <Tag size={15} aria-hidden />
+              Nhập mã khác
+            </button>
+          ) : (
           <form onSubmit={handleApplyInput} className="flex gap-2 items-center">
             <div className="relative flex-1">
               <Tag
@@ -217,6 +252,8 @@ export function PromotionModal({
                 className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
               />
               <input
+                autoFocus
+                aria-label="Mã ưu đãi"
                 type="text"
                 value={inputCode}
                 onChange={(e) => setInputCode(e.target.value.toUpperCase())}
@@ -232,6 +269,7 @@ export function PromotionModal({
               {submittingCode ? "..." : "Áp dụng"}
             </button>
           </form>
+          )}
 
           {/* Category Filter Pills (Tất cả • Mã giảm giá • Ưu đãi sản phẩm) */}
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 shrink-0">
@@ -291,80 +329,19 @@ export function PromotionModal({
               <div className="space-y-2.5">
                 {eligibleCandidates.map((cand) => {
                   const isCurrent = applied?.promotionId === cand.promotionId;
-
-                  // Màu cuống vé (Ticket Stub Colors)
-                  let stubBg = "bg-[#D7ECDA] text-emerald-950"; // Mặc định xanh pastel
                   const isNewWeb = cand.targetCustomer === "new_web";
-                  const isFixedVnd = cand.discountType === "fixed";
-
-                  if (isNewWeb) {
-                    stubBg = "bg-[#FFE8DE] text-amber-950"; // Cam đào cho khách mới
-                  } else if (isFixedVnd) {
-                    stubBg = "bg-[#FAEED6] text-amber-950"; // Vàng be cho tiền mặt
-                  }
-
+                  const tone = isNewWeb ? "peach" : cand.discountType === "fixed" ? "cream" : "green";
                   return (
-                    <div
+                    <VoucherTicket
                       key={cand.promotionId}
-                      className={`relative flex items-stretch rounded-2xl bg-white transition shadow-2xs overflow-hidden border ${
-                        isCurrent
-                          ? "border-2 border-[#3B653D] ring-1 ring-[#3B653D]/10"
-                          : "border-slate-200/90 hover:border-slate-300"
-                      }`}
-                    >
-                      {/* Cuống vé đục lỗ (Ticket Stub) */}
-                      <div
-                        className={`relative w-[86px] sm:w-[96px] ${stubBg} flex flex-col items-center justify-center p-2 text-center shrink-0 border-r border-dashed border-slate-300/80`}
-                      >
-                        {/* Vết cắt tròn 2 bên (Ticket notches) */}
-                        <div className="absolute -left-2 top-1/2 -mt-2 h-4 w-4 rounded-full bg-[#FAF8F5] border-r border-slate-200/80" />
-                        <div className="absolute -right-2 top-1/2 -mt-2 h-4 w-4 rounded-full bg-white border-l border-slate-200/80" />
-
-                        {isNewWeb ? (
-                          <span className="text-[9px] font-extrabold uppercase tracking-tight text-red-600 mb-0.5">
-                            KHÁCH MỚI
-                          </span>
-                        ) : null}
-
-                        <span className="text-lg sm:text-xl font-black tracking-tight leading-tight">
-                          {getStubValue(cand)}
-                        </span>
-
-                        {cand.maxDiscountVnd && cand.discountType === "percentage" ? (
-                          <span className="text-[8px] sm:text-[9px] font-bold text-slate-600 uppercase tracking-tight mt-0.5">
-                            TỐI ĐA {Math.round(cand.maxDiscountVnd / 1000)}K
-                          </span>
-                        ) : null}
-                      </div>
-
-                      {/* Thân vé (Ticket Body) */}
-                      <div className="p-3 sm:p-3.5 flex-1 flex items-center justify-between gap-2.5 min-w-0 bg-white">
-                        <div className="space-y-1 min-w-0 flex-1">
-                          <h4 className="text-xs sm:text-sm font-bold text-slate-800 leading-snug line-clamp-1">
-                            {cand.title}
-                          </h4>
-
-                          <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
-                            <ShoppingCart size={11} className="text-slate-400 shrink-0" />
-                            <span>
-                              {cand.minOrderThreshold
-                                ? `Đơn từ ${formatVnd(cand.minOrderThreshold)}`
-                                : "Mọi đơn hàng"}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
-                            <Calendar size={11} className="text-slate-400 shrink-0" />
-                            <span>HSD: {formatHsd(cand.endDate)}</span>
-                          </div>
-
-                          <span className="inline-block text-[10px] font-medium bg-slate-100 text-slate-600 rounded px-1.5 py-0.5 max-w-[190px] truncate">
-                            {cand.scope === "product" ? "Sản phẩm chỉ định" : "Toàn bộ sản phẩm"}
-                          </span>
-                        </div>
-
-                        {/* Nút thao tác bên phải */}
-                        <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      tone={tone}
+                      stubTopLabel={isNewWeb ? "KHÁCH MỚI" : undefined}
+                      stubValue={getStubValue(cand)}
+                      stubSubLabel={stubMaxLabel(cand)}
+                      title={cand.title}
+                      selected={isCurrent}
+                      action={
+                        <>
                           {isCurrent ? (
                             <button
                               type="button"
@@ -399,9 +376,20 @@ export function PromotionModal({
                           >
                             Xem điều kiện ›
                           </button>
-                        </div>
-                      </div>
-                    </div>
+                        </>
+                      }
+                    >
+                      <TicketLine icon={<ShoppingCart size={11} className="text-slate-400 shrink-0" />}>
+                        {minOrderText(cand)}
+                      </TicketLine>
+                      <TicketLine icon={<Calendar size={11} className="text-slate-400 shrink-0" />}>
+                        HSD: {formatHsd(cand.endDate)}
+                      </TicketLine>
+                      <span className="inline-block text-[10px] font-medium bg-slate-100 text-slate-600 rounded px-1.5 py-0.5 max-w-[190px] truncate">
+                        {cand.scope === "product" ? "Sản phẩm chỉ định" : "Toàn bộ sản phẩm"}
+                      </span>
+                      {cand.returnedFrom ? <ReturnedBadge info={cand.returnedFrom} /> : null}
+                    </VoucherTicket>
                   );
                 })}
               </div>
@@ -427,60 +415,22 @@ export function PromotionModal({
 
               <div className="space-y-2.5">
                 {ineligibleCandidates.map((cand) => (
-                  <div
+                  <VoucherTicket
                     key={cand.promotionId}
-                    className="relative flex items-stretch rounded-2xl bg-white transition shadow-2xs overflow-hidden border border-slate-200/60 opacity-80"
-                  >
-                    {/* Cuống vé xám (Disabled stub) */}
-                    <div className="relative w-[86px] sm:w-[96px] bg-[#ECEEEF] text-slate-400 flex flex-col items-center justify-center p-2 text-center shrink-0 border-r border-dashed border-slate-300">
-                      <div className="absolute -left-2 top-1/2 -mt-2 h-4 w-4 rounded-full bg-[#FAF8F5] border-r border-slate-200" />
-                      <div className="absolute -right-2 top-1/2 -mt-2 h-4 w-4 rounded-full bg-white border-l border-slate-200" />
-
-                      <span className="text-lg sm:text-xl font-black tracking-tight leading-tight">
-                        {getStubValue(cand)}
-                      </span>
-
-                      {cand.maxDiscountVnd && cand.discountType === "percentage" ? (
-                        <span className="text-[8px] sm:text-[9px] font-bold uppercase tracking-tight mt-0.5">
-                          TỐI ĐA {Math.round(cand.maxDiscountVnd / 1000)}K
-                        </span>
-                      ) : null}
-                    </div>
-
-                    {/* Thân vé xám */}
-                    <div className="p-3 sm:p-3.5 flex-1 flex items-center justify-between gap-2.5 min-w-0 bg-white">
-                      <div className="space-y-1 min-w-0 flex-1">
-                        <h4 className="text-xs sm:text-sm font-bold text-slate-600 leading-snug line-clamp-1">
-                          {cand.title}
-                        </h4>
-
-                        <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                          <ShoppingCart size={11} className="shrink-0" />
-                          <span>
-                            {cand.minOrderThreshold
-                              ? `Đơn từ ${formatVnd(cand.minOrderThreshold)}`
-                              : "Mọi đơn hàng"}
+                    tone="gray"
+                    disabled
+                    stubValue={getStubValue(cand)}
+                    stubSubLabel={stubMaxLabel(cand)}
+                    title={cand.title}
+                    action={
+                      <>
+                        {ineligibleAction ? (
+                          ineligibleAction(cand)
+                        ) : (
+                          <span className="rounded-full bg-slate-100 px-3 py-1.5 text-[11px] font-medium text-slate-400">
+                            Chưa đủ điều kiện
                           </span>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                          <Calendar size={11} className="shrink-0" />
-                          <span>HSD: {formatHsd(cand.endDate)}</span>
-                        </div>
-
-                        {cand.ineligibleReason ? (
-                          <span className="inline-block text-[10px] font-medium bg-amber-50 text-amber-800 rounded px-1.5 py-0.5 max-w-[200px] truncate">
-                            {cand.ineligibleReason}
-                          </span>
-                        ) : null}
-                      </div>
-
-                      {/* Nút disabled */}
-                      <div className="flex flex-col items-end gap-1.5 shrink-0">
-                        <span className="rounded-full bg-slate-100 px-3 py-1.5 text-[11px] font-medium text-slate-400">
-                          Chưa đủ điều kiện
-                        </span>
-
+                        )}
                         <button
                           type="button"
                           onClick={() => setViewDetailCand(cand)}
@@ -488,9 +438,25 @@ export function PromotionModal({
                         >
                           Xem điều kiện ›
                         </button>
-                      </div>
-                    </div>
-                  </div>
+                      </>
+                    }
+                  >
+                    <TicketLine muted icon={<ShoppingCart size={11} className="shrink-0" />}>
+                      {minOrderText(cand)}
+                    </TicketLine>
+                    <TicketLine muted icon={<Calendar size={11} className="shrink-0" />}>
+                      HSD: {formatHsd(cand.endDate)}
+                    </TicketLine>
+                    {cand.shortfall && cand.shortfall > 0 ? (
+                      <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-amber-800 bg-amber-50 rounded-md px-2 py-0.5 border border-amber-200/60 max-w-full">
+                        Mua thêm {formatVnd(cand.shortfall)} để áp dụng mã
+                      </span>
+                    ) : cand.ineligibleReason ? (
+                      <span className="inline-block text-[10px] font-medium bg-amber-50 text-amber-800 rounded px-1.5 py-0.5 max-w-[200px] truncate">
+                        {cand.ineligibleReason}
+                      </span>
+                    ) : null}
+                  </VoucherTicket>
                 ))}
               </div>
             </div>

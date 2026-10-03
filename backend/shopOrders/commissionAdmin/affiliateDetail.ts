@@ -463,7 +463,7 @@ export function registerAffiliateDetail(app: Express, ctx: CommissionAdminCtx) {
       });
       try {
         const { syncBus } = await import("../../syncBus.js");
-        syncBus.publish(["aloha_shop_ctv_fraud"], "ctv-ban", { ctvCode });
+        syncBus.publish(["aloha_shop_ctv_fraud"], "ctv-ban");
       } catch {
         /* ignore */
       }

@@ -1,3 +1,5 @@
+import type { AppearancePopup } from "@/lib/appearanceTypes";
+
 /** Shared fetch for Website bán hàng admin. */
 export async function websiteApi<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
@@ -58,19 +60,7 @@ export type AppearanceTheme = {
     enableOrgJsonLd?: boolean;
     googleSiteVerification?: string;
   };
-  popup?: {
-    enabled: boolean;
-    campaignId: string;
-    title: string;
-    body: string;
-    imageUrl: string;
-    ctaLabel: string;
-    ctaHref: string;
-    couponCode: string;
-    delaySeconds: number;
-    frequencyDays: number;
-    showOncePerCampaign: boolean;
-  };
+  popup?: AppearancePopup;
   footer: {
     address: string;
     phone: string;

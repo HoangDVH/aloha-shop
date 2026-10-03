@@ -3,19 +3,12 @@
 import React from "react";
 import { Loader2, X } from "lucide-react";
 import { WbBtn, wbInput } from "../../ui";
-import {
-  fromLocalInput,
-  toLocalInput,
-  type FormState,
-  type ProductSuggest,
-} from "../articleUtils";
+import { fromLocalInput, toLocalInput, type FormState } from "../articleUtils";
+import { ProductPicker } from "../../shared/ProductPicker";
 
 export function ProductsPublishSection({
   editing,
   patchEditing,
-  prodQ,
-  setProdQ,
-  prodSuggest,
   addProduct,
   closeEdit,
   save,
@@ -24,9 +17,6 @@ export function ProductsPublishSection({
 }: {
   editing: FormState;
   patchEditing: (next: FormState) => void;
-  prodQ: string;
-  setProdQ: React.Dispatch<React.SetStateAction<string>>;
-  prodSuggest: ProductSuggest[];
   addProduct: (ma: string) => void;
   closeEdit: () => void;
   save: () => Promise<void> | void;
@@ -39,30 +29,7 @@ export function ProductsPublishSection({
       <p className="mb-4 text-[12px] text-slate-500">
         Tối đa 12 mã — hiện lưới card giống trang chủ dưới nội dung trên shop
       </p>
-      <div className="relative mb-6">
-        <input
-          className={wbInput}
-          value={prodQ}
-          onChange={(e) => setProdQ(e.target.value)}
-          placeholder="Gõ mã hoặc tên SP…"
-        />
-        {prodSuggest.length ? (
-          <ul className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg">
-            {prodSuggest.map((p) => (
-              <li key={p.ma}>
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] hover:bg-slate-50"
-                  onClick={() => addProduct(p.ma)}
-                >
-                  <span className="font-semibold text-[#0F9D58]">{p.ma}</span>
-                  <span className="truncate text-gray-600">{p.ten}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </div>
+      <ProductPicker className="mb-6" onPick={(p) => addProduct(p.ma)} />
       {editing.productMas.length ? (
         <ul className="mb-6 flex flex-wrap gap-1.5">
           {editing.productMas.map((ma) => (

@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import {
+  BarChart3,
+  CalendarHeart,
   ChevronDown,
   Coins,
   ExternalLink,
@@ -14,12 +16,23 @@ import {
   Percent,
   Search,
   Shield,
+  ShoppingBag,
+  Sparkles,
+  Store,
   Ticket,
   UserRound,
   Users,
 } from "lucide-react";
 import { useAdminSession } from "@/components/admin/auth/useAdminSession";
 import { useAdminBadgeCounts } from "@/components/admin/shell/AdminOpsSync";
+
+const PROMOTIONS_SUB = [
+  { href: "/admin/uu-dai?tab=campaigns", tab: "campaigns", label: "Chiến dịch", Icon: CalendarHeart },
+  { href: "/admin/uu-dai?tab=programs", tab: "programs", label: "Đợt phát hành voucher", Icon: Sparkles },
+  { href: "/admin/uu-dai?tab=codes", tab: "codes", label: "Danh sách mã Voucher", Icon: Ticket },
+  { href: "/admin/uu-dai?tab=reports", tab: "reports", label: "Lịch sử & Đối soát", Icon: BarChart3 },
+  { href: "/admin/uu-dai?tab=kiotviet", tab: "kiotviet", label: "Đồng bộ KiotViet", Icon: Store },
+];
 
 const CTV_SUB = [
   { href: "/admin/ctv", label: "Tổng quan", exact: true, Icon: LayoutDashboard, badgeKey: null as null | "ctv" | "orders" | "fraud" },
@@ -38,19 +51,23 @@ function normalizePath(path: string) {
   return trimmed || "/";
 }
 
+const activeNavStyle: React.CSSProperties = {
+  backgroundColor: "#2D5A27",
+  color: "#ffffff",
+};
+
 function linkClass(active: boolean, nested = false) {
   const base = nested
-    ? "flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold transition"
-    : "flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition";
+    ? "group flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold transition"
+    : "group flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition";
   if (active) {
-    // Tab con: nền xanh đậm + chữ trắng — dễ nhận biết hơn nền trắng
     return nested
-      ? `${base} !bg-[#2D5A27] !text-white shadow-sm ring-1 ring-[#2D5A27]/40`
-      : `${base} bg-[#2D5A27] text-white shadow-sm`;
+      ? `${base} !bg-[#2D5A27] !text-white shadow-sm ring-1 ring-[#2D5A27]/40 [&_svg]:!text-white`
+      : `${base} !bg-[#2D5A27] !text-white shadow-sm [&_svg]:!text-white`;
   }
   return nested
-    ? `${base} text-[#2D5A27] hover:bg-[#E8EFE4]`
-    : `${base} text-slate-600 hover:bg-[#F9FBF9] hover:text-[#1a2e1a]`;
+    ? `${base} text-slate-600 hover:!bg-[#F0F5EE] hover:!text-slate-900 [&_svg]:text-slate-400 group-hover:[&_svg]:!text-slate-700`
+    : `${base} text-slate-600 hover:!bg-[#F0F5EE] hover:!text-slate-900 [&_svg]:text-slate-400 group-hover:[&_svg]:!text-slate-700`;
 }
 
 export function AdminSidebar() {
@@ -64,9 +81,20 @@ export function AdminSidebar() {
     (pathname === "/admin/ctv" || pathname.startsWith("/admin/ctv/"));
   const [ctvOpen, setCtvOpen] = useState(onCtv);
 
+  const onPromotions =
+    pathname === "/admin/uu-dai" || pathname.startsWith("/admin/uu-dai/");
+  const [promotionsOpen, setPromotionsOpen] = useState(onPromotions);
+
+  const searchParams = useSearchParams();
+  const currentTab = searchParams?.get("tab") || "campaigns";
+
   useEffect(() => {
     if (onCtv) setCtvOpen(true);
   }, [onCtv]);
+
+  useEffect(() => {
+    if (onPromotions) setPromotionsOpen(true);
+  }, [onPromotions]);
 
   const badgeFor = (key: null | "ctv" | "orders" | "fraud") => {
     if (key === "ctv") return badges.ctvPending;
@@ -89,8 +117,9 @@ export function AdminSidebar() {
         <Link
           href="/admin"
           className={linkClass(pathname === "/admin")}
+          style={pathname === "/admin" ? activeNavStyle : undefined}
         >
-          <LayoutDashboard className="h-4 w-4 shrink-0 opacity-90" />
+          <LayoutDashboard className="h-4 w-4 shrink-0" />
           Tổng quan
         </Link>
 
@@ -98,17 +127,17 @@ export function AdminSidebar() {
           <button
             type="button"
             onClick={() => setCtvOpen((v) => !v)}
-            className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
+            className={`group flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
               onCtv
-                ? "bg-[var(--aloha-green-light)] text-[var(--aloha-ink)]"
-                : "text-slate-600 hover:bg-[var(--aloha-green-light)] hover:text-[var(--aloha-ink)]"
+                ? "!bg-[#EAF3E8] !text-[#2D5A27] font-bold ring-1 ring-[#2D5A27]/20 [&_svg]:!text-[#2D5A27]"
+                : "text-slate-600 hover:!bg-[#F0F5EE] hover:!text-slate-900 [&_svg]:text-slate-400 group-hover:[&_svg]:!text-slate-700"
             }`}
           >
-            <Users className="h-4 w-4 shrink-0 opacity-90" />
+            <Users className="h-4 w-4 shrink-0" />
             <span className="min-w-0 flex-1">Quản lý CTV</span>
             <ChevronDown
-              className={`h-4 w-4 shrink-0 text-slate-400 transition ${
-                ctvOpen ? "rotate-0" : "-rotate-90"
+              className={`h-4 w-4 shrink-0 transition ${
+                ctvOpen ? "rotate-0 text-[#2D5A27]" : "-rotate-90 text-slate-400"
               }`}
             />
           </button>
@@ -125,10 +154,11 @@ export function AdminSidebar() {
                     href={href}
                     aria-current={active ? "page" : undefined}
                     className={linkClass(active, true)}
+                    style={active ? activeNavStyle : undefined}
                   >
                     <Icon
                       className={`h-3.5 w-3.5 shrink-0 ${
-                        active ? "text-white" : "text-[#2D5A27]"
+                        active ? "!text-white" : "text-slate-400 group-hover:text-slate-700"
                       }`}
                     />
                     <span className="min-w-0 flex-1 truncate">{label}</span>
@@ -150,30 +180,80 @@ export function AdminSidebar() {
           ) : null}
         </div>
 
-        <Link href={CUSTOMERS_HREF} className={linkClass(onCustomers)}>
-          <UserRound className="h-4 w-4 shrink-0 opacity-90" />
+        <Link
+          href={CUSTOMERS_HREF}
+          className={linkClass(onCustomers)}
+          style={onCustomers ? activeNavStyle : undefined}
+        >
+          <UserRound className="h-4 w-4 shrink-0" />
           Quản lý khách hàng
+        </Link>
+
+        <Link
+          href="/admin/don-hang-web"
+          className={linkClass(pathname.startsWith("/admin/don-hang-web"))}
+          style={pathname.startsWith("/admin/don-hang-web") ? activeNavStyle : undefined}
+        >
+          <ShoppingBag className="h-4 w-4 shrink-0" />
+          Đơn hàng web
         </Link>
 
         <Link
           href="/admin/website"
           className={linkClass(pathname.startsWith("/admin/website"))}
+          style={pathname.startsWith("/admin/website") ? activeNavStyle : undefined}
         >
-          <Globe className="h-4 w-4 shrink-0 opacity-90" />
+          <Globe className="h-4 w-4 shrink-0" />
           Website bán hàng
         </Link>
-        <Link
-          href="/admin/uu-dai"
-          className={linkClass(pathname.startsWith("/admin/uu-dai"))}
-        >
-          <Ticket className="h-4 w-4 shrink-0 opacity-90" />
-          Ưu đãi & Voucher
-        </Link>
+        <div className="pt-0.5">
+          <button
+            type="button"
+            onClick={() => setPromotionsOpen((v) => !v)}
+            className={`group flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
+              onPromotions
+                ? "!bg-[#EAF3E8] !text-[#2D5A27] font-bold ring-1 ring-[#2D5A27]/20 [&_svg]:!text-[#2D5A27]"
+                : "text-slate-600 hover:!bg-[#F0F5EE] hover:!text-slate-900 [&_svg]:text-slate-400 group-hover:[&_svg]:!text-slate-700"
+            }`}
+          >
+            <Ticket className="h-4 w-4 shrink-0" />
+            <span className="min-w-0 flex-1">Ưu đãi & Voucher</span>
+            <ChevronDown
+              className={`h-4 w-4 shrink-0 transition ${
+                promotionsOpen ? "rotate-0 text-[#2D5A27]" : "-rotate-90 text-slate-400"
+              }`}
+            />
+          </button>
+          {promotionsOpen ? (
+            <div className="ml-2 mt-0.5 space-y-0.5 border-l border-[#e8e2d6] pl-2">
+              {PROMOTIONS_SUB.map(({ href, tab, label, Icon }) => {
+                const active = onPromotions && currentTab === tab;
+                return (
+                  <Link
+                    key={tab}
+                    href={href}
+                    aria-current={active ? "page" : undefined}
+                    className={linkClass(active, true)}
+                    style={active ? activeNavStyle : undefined}
+                  >
+                    <Icon
+                      className={`h-3.5 w-3.5 shrink-0 ${
+                        active ? "!text-white" : "text-slate-400 group-hover:text-slate-700"
+                      }`}
+                    />
+                    <span className="min-w-0 flex-1 truncate">{label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
         <Link
           href="/admin/seo"
           className={linkClass(pathname.startsWith("/admin/seo"))}
+          style={pathname.startsWith("/admin/seo") ? activeNavStyle : undefined}
         >
-          <Search className="h-4 w-4 shrink-0 opacity-90" />
+          <Search className="h-4 w-4 shrink-0" />
           Tối ưu SEO
         </Link>
 

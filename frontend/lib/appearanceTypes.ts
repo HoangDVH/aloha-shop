@@ -46,7 +46,15 @@ export type AppearancePopup = {
   delaySeconds: number;
   frequencyDays: number;
   showOncePerCampaign: boolean;
+  startAt?: string;
+  endAt?: string;
+  pages?: PopupPages;
+  audience?: PopupAudience;
+  reopenBadge?: boolean;
 };
+
+export type PopupPages = "home" | "home_deals" | "all";
+export type PopupAudience = "all" | "new" | "returning";
 
 export type AppearanceTheme = {
   siteName: string;

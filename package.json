@@ -12,7 +12,9 @@
     "install:all": "npm install && npm install --prefix frontend",
     "typecheck:api": "tsc -p tsconfig.backend.json",
     "typecheck:web": "npm run lint --prefix frontend",
-    "typecheck": "npm run typecheck:api && npm run typecheck:web"
+    "typecheck": "npm run typecheck:api && npm run typecheck:web",
+    "test": "tsx --test tests/*.test.ts",
+    "check:lines": "node scripts/check-max-lines.cjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

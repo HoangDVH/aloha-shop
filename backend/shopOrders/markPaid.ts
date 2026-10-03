@@ -17,11 +17,12 @@ import {
   markRedemptionUsed,
   releasePromotionHold,
 } from "../shopPromotions/redemptionService.js";
+import { recordFirstPurchaseConsumedForRegularOrder } from "../shopPromotions/claimService.js";
 
 export type MarkPaidSource = "sepay" | "admin" | "kiotqr";
 
 export type MarkPaidResult =
-  | { ok: true; alreadyPaid?: boolean; order: Record<string, unknown>; shortfall?: string[] }
+  | { ok: true; alreadyPaid?: boolean; order: Record<string, unknown>; shortfall?: string[]; error?: undefined; code?: undefined }
   | { ok: false; error: string; code?: string };
 
 function orderDetailsOf(doc: Record<string, unknown>): ShopOrderDetail[] {
@@ -310,6 +311,11 @@ export async function markShopOrderPaid(opts: {
   });
 
   await markRedemptionUsed(opts.shopDb, String(order.code || code)).catch(() => 0);
+  await recordFirstPurchaseConsumedForRegularOrder(opts.shopDb, {
+    orderCode: String(order.code || code),
+    accountId: String(order.shopAccountId || ""),
+    buyerPhone: String(order.customerPhone || ""),
+  }).catch(() => 0);
 
   return { ok: true, order, shortfall: shortfall.length ? shortfall : undefined };
 }
@@ -318,53 +324,71 @@ export async function expireUnpaidShopOrders(
   shopDb: Db,
   mainDb?: Db
 ): Promise<number> {
-  const now = new Date();
-  const nowIso = now.toISOString();
   const col = shopDb.collection(SHOP_ORDERS);
-  const expired = await col
-    .find({
-      paymentStatus: "unpaid",
-      method: "Transfer",
-      expiresAt: { $lte: now },
-    })
-    .limit(100)
-    .toArray();
+  let totalModified = 0;
+  const batchSize = 100;
 
-  if (mainDb) {
-    for (const doc of expired) {
-      const invId = (doc as any).kvInvoiceId;
-      if (invId != null && invId !== "") {
-        await cancelInvoiceForOrder(mainDb, invId).catch(() => false);
+  while (true) {
+    const now = new Date();
+    const nowIso = now.toISOString();
+
+    // 1. Chỉ tìm batch 100 đơn hết hạn
+    const expired = await col
+      .find({
+        paymentStatus: "unpaid",
+        method: "Transfer",
+        expiresAt: { $lte: now },
+      })
+      .limit(batchSize)
+      .toArray();
+
+    if (!expired.length) break;
+
+    const expiredIds = expired.map((d) => d._id);
+    const codes = expired
+      .map((d) => String((d as any).code || (d as any).id || "").trim())
+      .filter(Boolean);
+
+    if (mainDb) {
+      for (const doc of expired) {
+        const invId = (doc as any).kvInvoiceId;
+        if (invId != null && invId !== "") {
+          await cancelInvoiceForOrder(mainDb, invId).catch(() => false);
+        }
       }
     }
+
+    // 2. Chỉ chuyển trạng thái những đơn đã claim trong batch (mục 6.3 & AB21)
+    const r = await col.updateMany(
+      {
+        _id: { $in: expiredIds },
+        paymentStatus: "unpaid",
+      },
+      {
+        $set: {
+          paymentStatus: "expired",
+          orderStatus: "huy",
+          status: "huy",
+          statusValue: "Hết hạn CK",
+          updatedAt: nowIso,
+          kvInvoiceCancelledAt: nowIso,
+        },
+      }
+    );
+
+    if (codes.length) {
+      await releaseHoldsForExpiredOrders(shopDb, codes).catch(() => undefined);
+      await Promise.all(codes.map((c) => releasePromotionHold(shopDb, c).catch(() => undefined)));
+    }
+
+    totalModified += r.modifiedCount;
+    if (r.modifiedCount > 0) {
+      syncBus.publish(["shop_orders"], "shop-expire", { ids: codes });
+    }
+
+    // Nếu số đơn tìm được ít hơn batchSize thì đã xử lý hết
+    if (expired.length < batchSize) break;
   }
 
-  const r = await col.updateMany(
-    {
-      paymentStatus: "unpaid",
-      method: "Transfer",
-      expiresAt: { $lte: now },
-    },
-    {
-      $set: {
-        paymentStatus: "expired",
-        orderStatus: "huy",
-        status: "huy",
-        statusValue: "Hết hạn CK",
-        updatedAt: nowIso,
-        kvInvoiceCancelledAt: nowIso,
-      },
-    }
-  );
-  const codes = expired
-    .map((d) => String((d as any).code || (d as any).id || "").trim())
-    .filter(Boolean);
-  if (codes.length) {
-    await releaseHoldsForExpiredOrders(shopDb, codes).catch(() => undefined);
-    await Promise.all(codes.map((c) => releasePromotionHold(shopDb, c).catch(() => undefined)));
-  }
-  if (r.modifiedCount > 0) {
-    syncBus.publish(["shop_orders"], "shop-expire", { ids: codes });
-  }
-  return r.modifiedCount;
+  return totalModified;
 }

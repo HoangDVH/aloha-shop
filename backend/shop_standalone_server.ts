@@ -37,10 +37,13 @@ import { registerShopAccountsAdminRoutes } from './shopAuth/adminRoutes.js';
 import { registerShopCommissionAdminRoutes } from './shopOrders/commissionAdminRoutes.js';
 import { registerShopOrdersAdminRoutes } from './shopOrders/adminRoutes.js';
 import { registerShopPromotionsRoutes } from './shopPromotions/index.js';
+import { registerShopCampaignRoutes } from './shopCampaigns/index.js';
 import { registerShopAdminOpsRoutes } from './shopOrders/adminOpsStream.js';
 import { registerKvInvoiceWebhookRoutes } from './shopOrders/kvInvoiceWebhook.js';
 import { startKvDeliveryReconcile } from './shopOrders/kvDeliveryReconcile.js';
 import { startKvPaymentReconcile } from './shopOrders/kvPaymentReconcile.js';
+import { registerKvOrderWebhookRoutes, startKvOrderEditSync } from './shopOrders/kvOrderEditSync.js';
+import { startCampaignWorker } from './shopCampaigns/worker/campaignWorker.js';
 import { registerShopCtvApiDocs } from './shopOrders/ctvApiDocs.js';
 import { registerShopCatalogSyncFromOpsRoutes } from './shopCatalog/syncCatalogFromOps.js';
 import { registerAuthRoutes } from './auth/routes.js';
@@ -163,7 +166,13 @@ const app = express();
 
 app.use(compression());
 app.use(cookieParser());
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({
+  limit: '10mb',
+  // Chữ ký webhook KV ký trên byte gốc — JSON.stringify lại có thể lệch.
+  verify: (req, _res, buf) => {
+    if ((req as any).url?.startsWith('/api/kv-webhook/')) (req as any).rawBody = buf;
+  },
+}));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 app.use((req, res, next) => {
@@ -192,10 +201,12 @@ if (uploadsFallbackOrigin) {
       if (!dest.startsWith(path.resolve(uploadsDir) + path.sep)) return next();
       const upstream = await fetch(`${uploadsFallbackOrigin}/uploads/${rel}`);
       if (!upstream.ok) return next();
+      const ct = upstream.headers.get('content-type');
+      // Nguồn dự phòng trả trang HTML 200 cho file không có — lưu vào sẽ thành ảnh hỏng vĩnh viễn.
+      if (/^text\/html/i.test(ct || '')) return next();
       const buf = Buffer.from(await upstream.arrayBuffer());
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.writeFileSync(dest, buf);
-      const ct = upstream.headers.get('content-type');
       if (ct) res.setHeader('Content-Type', ct);
       if (req.method === 'HEAD') return res.status(200).end();
       return res.status(200).send(buf);
@@ -230,9 +241,11 @@ registerShopAccountsAdminRoutes(app, getOpsDb, getDb);
 registerShopCommissionAdminRoutes(app, getOpsDb, getDb);
 registerShopOrdersAdminRoutes(app, getOpsDb, getDb);
 registerShopPromotionsRoutes(app, getOpsDb, getDb);
+registerShopCampaignRoutes(app, getOpsDb, getDb);
 registerShopAdminOpsRoutes(app, getOpsDb, getDb);
 /** KV: CK mark-paid + COD/CK delivery → shop orderStatus → HH khi hoan_thanh */
 registerKvInvoiceWebhookRoutes(app, getDb, getOpsDb);
+registerKvOrderWebhookRoutes(app, getDb, getOpsDb);
 registerShopCtvApiDocs(app, getOpsDb);
 
 /** Nhận pub/sub Redis từ app nội bộ (patch giá) → SSE shop realtime. */
@@ -313,6 +326,8 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`   - Health: http://localhost:${PORT}/api/health\n`);
   startShopKvStockPoller(getDb);
   startKvPaymentReconcile(getDb, getOpsDb);
+  startKvOrderEditSync(getDb, getOpsDb);
+  startCampaignWorker(getDb, getOpsDb);
   startWholesaleProvisionWorker(getDb, getOpsDb);
   startWholesaleOrderSync(getDb, getOpsDb);
   startKvDeliveryReconcile(getDb, getOpsDb);

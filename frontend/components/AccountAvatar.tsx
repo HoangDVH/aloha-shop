@@ -36,7 +36,7 @@ export function AccountAvatar({
         />
       ) : (
         <span
-          className="flex h-full w-full items-center justify-center rounded-full bg-[#7C4DFF] text-white ring-2 ring-white/40"
+          className="flex h-full w-full items-center justify-center rounded-full bg-[var(--aloha-green,#2D5A27)] text-white ring-2 ring-white/40"
           style={{ fontSize: Math.max(12, Math.round(size * 0.42)), fontWeight: 800 }}
         >
           {letter}

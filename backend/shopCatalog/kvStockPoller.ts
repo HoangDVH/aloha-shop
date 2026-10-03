@@ -211,10 +211,13 @@ export async function runShopKvStockPoll(
     const raw = await fetchKvProducts(creds, token, { lastModifiedFrom });
 
     const byMa = new Map<string, Record<string, unknown>>();
+    const rawCodes = new Set<string>();
     for (const p of raw) {
-      const ma = normMa((p as any)?.code ?? (p as any)?.Code ?? (p as any)?.ma);
+      const code = String((p as any)?.code ?? (p as any)?.Code ?? (p as any)?.ma ?? "").trim();
+      const ma = normMa(code);
       if (!ma) continue;
       byMa.set(ma, p as Record<string, unknown>);
+      rawCodes.add(code);
     }
 
     let matched = 0;
@@ -223,10 +226,11 @@ export async function runShopKvStockPoll(
     const changedIds: string[] = [];
 
     if (byMa.size) {
-      const mas = [...byMa.keys()];
+      // Mã KV giữ nguyên hoa/thường («50k») — doc shop có thể lưu mã gốc hoặc mã HOA.
+      const mas = [...new Set([...byMa.keys(), ...rawCodes])];
       const shopDocs = await db
         .collection(PRODUCT_COL)
-        .find({ ma: { $in: mas } })
+        .find({ ma: { $in: mas }, mergedInto: { $exists: false } })
         .project({
           ma: 1,
           ton: 1,

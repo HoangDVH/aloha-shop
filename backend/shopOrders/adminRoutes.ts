@@ -30,6 +30,11 @@ import { migrateWebOrderCodes } from "./migrateWebCodes.js";
 import { syncShopOrderMoneyFromKv } from "./kvOrderMoneySync.js";
 import { voidCommissionsForOrder } from "./commission.js";
 import { releaseShopStockHolds } from "./stockHold.js";
+import { releasePromotionHold } from "../shopPromotions/redemptionService.js";
+import { undoCampaignHoldsForPurge } from "../shopCampaigns/orderCampaign.js";
+import { voidTestBlockReason, voidTestOrder } from "./voidTestOrder.js";
+
+const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 export function registerShopOrdersAdminRoutes(
   app: Express,
@@ -96,6 +101,14 @@ export function registerShopOrdersAdminRoutes(
       } else if (paymentStatus) {
         filter.paymentStatus = paymentStatus;
       }
+      const q = String(req.query.q || "").trim().slice(0, 40);
+      if (q) {
+        const rx = new RegExp(escapeRegex(q), "i");
+        filter.$and = [
+          ...((filter.$and as unknown[]) || []),
+          { $or: [{ code: rx }, { kvOrderCode: rx }, { kvInvoiceCode: rx }, { legacyCodes: rx }] },
+        ];
+      }
 
       const col = shopDb.collection(SHOP_ORDERS);
       const total = await col.countDocuments(filter);
@@ -156,7 +169,7 @@ export function registerShopOrdersAdminRoutes(
                 };
               })
             : rest.orderDetails;
-          return { ...rest, orderDetails: details };
+          return { ...rest, orderDetails: details, voidTestBlock: voidTestBlockReason(rest) };
         }),
       });
     } catch (e: any) {
@@ -445,6 +458,30 @@ export function registerShopOrdersAdminRoutes(
     }
   );
 
+  /** Huỷ đơn test trên KiotViet + đánh dấu test trên web. Body: { confirmCode } phải trùng mã đơn. */
+  app.post(
+    "/api/shop/admin/orders/:id/void-test",
+    ...gate,
+    async (req: AuthRequest, res: Response) => {
+      try {
+        const shopDb = await getShopDb();
+        const mainDb = await getDb();
+        await ensureIdx(shopDb);
+        const result = await voidTestOrder({
+          shopDb,
+          mainDb,
+          ref: String(req.params.id || "").trim(),
+          confirmCode: String(req.body?.confirmCode || ""),
+          actor: req.auth?.username || "admin",
+        });
+        if (result.ok === false) return res.status(result.status).json({ error: result.error });
+        return res.json(result);
+      } catch (e: any) {
+        return res.status(500).json({ error: e?.message || "void_test_failed" });
+      }
+    }
+  );
+
   /** Dry-run / chạy đổi mã WEB-… → DH (kvOrderCode). Body: { dryRun?: boolean, limit?, codes? } */
   app.post(
     "/api/shop/admin/orders/migrate-web-codes",
@@ -664,6 +701,8 @@ export function registerShopOrdersAdminRoutes(
           );
           await shopDb.collection(SHOP_COMMISSIONS).deleteMany({ orderCode: code });
           await releaseShopStockHolds(shopDb, code).catch(() => 0);
+          await releasePromotionHold(shopDb, code).catch(() => undefined);
+          await undoCampaignHoldsForPurge(shopDb, code).catch(() => undefined);
           await shopDb.collection(SHOP_ORDERS).deleteOne({ _id: doc._id });
           deletedMongo.push(code);
         }

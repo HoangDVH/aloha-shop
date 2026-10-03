@@ -7,6 +7,7 @@ import {
   type AccessPayload,
 } from "./tokens.js";
 import { isAllowedShopOrigin } from "../shopCors.js";
+import { STAFF_USERS, isStaffActive } from "./staffAccounts.js";
 
 export type AuthRequest = Request & {
   auth?: AccessPayload & { userId: string; active: boolean };
@@ -14,7 +15,7 @@ export type AuthRequest = Request & {
 
 export type GetDb = () => Promise<Db>;
 
-const USERS = "aloha_users";
+const USERS = STAFF_USERS;
 
 /**
  * Sau restore/backup, `_id` user đôi khi là string thay vì ObjectId.
@@ -55,7 +56,7 @@ export function requireAuth(getDb: GetDb) {
         userId: payload.sub,
         username: String(user.username || payload.username),
         role: user.role === "manager" ? "manager" : "staff",
-        active: user.active !== false,
+        active: isStaffActive(user),
       };
       next();
     } catch {

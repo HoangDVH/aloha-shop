@@ -5,6 +5,7 @@ export const WEB_BADGE_VALUES = [
   "giam_gia",
   "dat_truoc",
   "moi",
+  "uu_dai",
 ] as const;
 
 export type WebBadge = (typeof WEB_BADGE_VALUES)[number];
@@ -15,6 +16,7 @@ export const WEB_BADGE_LABELS: Record<WebBadge, string> = {
   giam_gia: "GIẢM GIÁ",
   dat_truoc: "ĐẶT TRƯỚC",
   moi: "MỚI",
+  uu_dai: "ƯU ĐÃI",
 };
 
 /** Nhãn hiển thị trên card — luôn viết hoa hết. */

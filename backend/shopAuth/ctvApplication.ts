@@ -54,7 +54,7 @@ export function isValidHttpUrl(raw: string): boolean {
 /** Parse + validate hồ sơ CTV từ body. */
 export function parseCtvApplicationBody(
   body: Record<string, unknown> | null | undefined
-): { ok: true; fields: CtvApplicationFields } | { ok: false; error: string } {
+): { ok: true; fields: CtvApplicationFields; error?: undefined } | { ok: false; error: string } {
   const zalo = String(body?.zalo || "").trim();
   const addressText = String(body?.addressText || body?.address || "").trim();
   const referralChannel = String(body?.referralChannel || "")

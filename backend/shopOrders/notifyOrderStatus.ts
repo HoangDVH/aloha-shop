@@ -113,7 +113,12 @@ function formatItemsRows(order: Record<string, unknown>): string {
   }
   return raw
     .map((line: any) => {
-      const name = escapeHtml(String(line?.productName || line?.productCode || "Sản phẩm"));
+      const baseName = escapeHtml(String(line?.productName || line?.productCode || "Sản phẩm"));
+      const name = line?.isGift
+        ? `&#127873; Quà tặng: ${baseName}`
+        : line?.flash
+          ? `${baseName} <span style="color:#C8102E;font-size:12px;font-weight:700;">(Flash Sale)</span>`
+          : baseName;
       const qty = Number(line?.quantity) || 0;
       const price = Number(line?.price) || 0;
       const lineTotal = price * qty;

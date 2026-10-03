@@ -36,10 +36,13 @@ export type QuoteTokenPayload = {
 
 export function hashQuoteItems(items: QuoteLineItem[]): string {
   // Chỉ khóa theo mã + SL — giá lấy lại từ catalog lúc đặt hàng (tránh lệch khi cập nhật giá web).
-  const norm = items
-    .map((i) => `${String(i.productCode || "").toUpperCase()}:${Math.max(1, Math.floor(Number(i.quantity) || 1))}`)
-    .sort()
-    .join("|");
+  // Cộng SL theo mã: đơn có thể tách 1 mã thành phần giá flash + phần giá thường.
+  const qty = new Map<string, number>();
+  for (const i of items) {
+    const code = String(i.productCode || "").toUpperCase();
+    qty.set(code, (qty.get(code) || 0) + Math.max(1, Math.floor(Number(i.quantity) || 1)));
+  }
+  const norm = [...qty].map(([code, n]) => `${code}:${n}`).sort().join("|");
   return crypto.createHash("sha256").update(norm).digest("hex").slice(0, 20);
 }
 

@@ -16,6 +16,7 @@ import {
 import { fullAddressForKv } from "./orderRouteShared.js";
 import { notifyOrderStatus } from "./notifyOrderStatus.js";
 import { shopOrderLookupFilter } from "./findShopOrder.js";
+import { markRedemptionUsed } from "../shopPromotions/redemptionService.js";
 
 export type CompleteDeliveredOpts = {
   shopDb: Db;
@@ -252,6 +253,7 @@ export async function completeShopOrderDelivered(
     if (shortfall.length) (doc as any).stockShortfall = shortfall;
   }
   await consumeShopStockHolds(shopDb, code).catch(() => 0);
+  await markRedemptionUsed(shopDb, code).catch(() => undefined);
 
   const hold = await holdCommissionsForOrder(shopDb, mainDb, doc as any);
   syncBus.publish(["shop_orders", "aloha_shop_commissions"], "delivered", {

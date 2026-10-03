@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, Play, X } from "lucide-react";
 
 type MediaItem =
@@ -31,6 +32,7 @@ export function ProductVideoLightbox({
   onClose,
   onIndexChange,
 }: Props) {
+  const [mounted, setMounted] = useState(false);
   const [idx, setIdx] = useState(startIndex);
   const [box, setBox] = useState<{ w: number; h: number }>({ w: 960, h: 540 });
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -38,6 +40,10 @@ export function ProductVideoLightbox({
   const wasOpen = useRef(false);
   const onIndexChangeRef = useRef(onIndexChange);
   onIndexChangeRef.current = onIndexChange;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const safeIdx =
     media.length > 0
@@ -129,7 +135,7 @@ export function ProductVideoLightbox({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, current?.kind, current?.src]);
 
-  if (!open || !current) return null;
+  if (!open || !current || !mounted) return null;
 
   const isImage = current.kind === "image";
   const showBlurBg = current.kind === "video" && current.file;
@@ -144,9 +150,9 @@ export function ProductVideoLightbox({
     ? "bg-white text-[var(--aloha-green)] shadow-md ring-1 ring-black/10 hover:bg-[var(--aloha-green-light)]"
     : "bg-white/15 text-white hover:bg-white/25";
 
-  return (
+  return createPortal(
     <div
-      className={`fixed inset-0 z-[95] flex flex-col ${
+      className={`fixed inset-0 z-[99999] flex flex-col ${
         isImage ? "bg-[#f5f5f5]" : "bg-[#111]"
       }`}
       role="dialog"
@@ -155,10 +161,10 @@ export function ProductVideoLightbox({
     >
       <button
         type="button"
-        className={`absolute right-3 top-[calc(0.5rem+env(safe-area-inset-top,0px))] z-20 rounded-full p-2.5 transition sm:right-5 sm:top-4 ${
+        className={`absolute right-3 top-[calc(0.5rem+env(safe-area-inset-top,0px))] z-30 rounded-full p-2.5 transition sm:right-5 sm:top-4 ${
           isImage
-            ? "bg-white text-slate-600 shadow-md ring-1 ring-black/10 hover:bg-slate-50"
-            : "bg-white/15 text-white hover:bg-white/25"
+            ? "bg-white text-slate-600 shadow-md ring-1 ring-black/10 hover:bg-slate-50 hover:text-black cursor-pointer"
+            : "bg-white/15 text-white hover:bg-white/25 cursor-pointer"
         }`}
         onClick={onClose}
         aria-label="Đóng"
@@ -168,7 +174,12 @@ export function ProductVideoLightbox({
 
       <div
         ref={stageRef}
-        className="relative flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden px-2 py-2 sm:px-14"
+        onClick={(e) => {
+          if (e.target === e.currentTarget || (e.target as HTMLElement).getAttribute("aria-hidden") === "true") {
+            onClose();
+          }
+        }}
+        className="relative flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden px-2 py-2 sm:px-14 cursor-zoom-out"
       >
         {isImage ? (
           <div className="absolute inset-0 bg-[#f5f5f5]" aria-hidden />
@@ -229,7 +240,8 @@ export function ProductVideoLightbox({
             key={current.src}
             src={current.src}
             alt={alt}
-            className="relative z-[1] max-h-full max-w-full rounded-lg bg-white object-contain shadow-2xl ring-1 ring-black/5"
+            className="relative z-[1] max-h-full max-w-full rounded-lg bg-white object-contain shadow-2xl ring-1 ring-black/5 cursor-default"
+            onClick={(e) => e.stopPropagation()}
             draggable={false}
           />
         ) : (
@@ -319,6 +331,7 @@ export function ProductVideoLightbox({
           </div>
         </div>
       ) : null}
-    </div>
+    </div>,
+    document.body
   );
 }

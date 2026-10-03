@@ -4,12 +4,15 @@ import React from "react";
 import Link from "next/link";
 import {
   Clock,
+  Gift,
   Loader2,
   MapPin,
   Package,
   ShoppingBag,
 } from "lucide-react";
 import { formatVnd } from "@/lib/api";
+import { OrderGoodsSavings, OrderLineTags, OrderSavedTotal, orderListSubtotal } from "./OrderCampaignBits";
+import { OrderShipFeeChangeNote } from "./OrderShipFeeChangeNote";
 import {
   cancelUnpaidOrder,
   displayShopOrderCode,
@@ -61,6 +64,30 @@ export function OrderPendingView({
   doRenewPayment: () => Promise<void>;
 }) {
   const Icon = hero.Icon;
+
+  const { mainWithGifts, standaloneGifts, mainQty, giftCount } = React.useMemo(() => {
+    const details = order.orderDetails || [];
+    const main = details.filter((d) => !d.isGift);
+    const gifts = details.filter((d) => d.isGift);
+
+    const matchedGiftIndices = new Set<number>();
+    const mainWithGifts = main.map((item) => {
+      const attachedGifts = gifts.filter((g, idx) => {
+        if (g.gift?.giftFor && g.gift.giftFor === item.productCode) {
+          matchedGiftIndices.add(idx);
+          return true;
+        }
+        return false;
+      });
+      return { item, gifts: attachedGifts };
+    });
+
+    const standaloneGifts = gifts.filter((_, idx) => !matchedGiftIndices.has(idx));
+    const mainQty = main.reduce((acc, d) => acc + d.quantity, 0);
+    const giftCount = gifts.reduce((acc, d) => acc + d.quantity, 0);
+
+    return { mainWithGifts, standaloneGifts, mainQty, giftCount };
+  }, [order.orderDetails]);
 
   return (
     <>
@@ -324,48 +351,102 @@ export function OrderPendingView({
           ) : null}
 
           {!isUnpaidCk && !isExpiredCk ? (
-            <section className="rounded-xl bg-[#FEF2F2] px-3 py-3 text-sm leading-snug text-[#991B1B] shadow-sm ring-1 ring-[#E8E2D6]">
-              {hero.subtitle}
+            <section
+              className={`rounded-xl p-3.5 shadow-sm ring-1 transition-all ${
+                hero.tone === "bad"
+                  ? "bg-red-50/90 text-red-900 ring-red-200"
+                  : "bg-emerald-50/80 text-emerald-950 ring-emerald-200/80"
+              }`}
+            >
+              <div className="flex items-start gap-2.5">
+                <hero.Icon
+                  size={16}
+                  className={`mt-0.5 shrink-0 ${
+                    hero.tone === "bad" ? "text-red-600" : "text-[var(--aloha-green)]"
+                  }`}
+                />
+                <div className="text-xs leading-relaxed">
+                  <span className="font-bold">
+                    {hero.tone === "bad" ? "Lưu ý: " : "Thông báo đơn hàng: "}
+                  </span>
+                  <span>{hero.subtitle}</span>
+                </div>
+              </div>
             </section>
           ) : null}
         </div>
 
         <aside className="space-y-2 lg:sticky lg:top-3">
           <section className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-[#E8E2D6]">
-            <div className="border-b border-[var(--aloha-line)] px-3 py-2.5">
-              <h2 className="text-sm font-extrabold text-[var(--aloha-ink)]">Chi tiết đơn</h2>
+            <div className="flex items-center justify-between border-b border-[var(--aloha-line)] px-3 py-2.5">
+              <h2 className="text-sm font-extrabold text-[var(--aloha-ink)]">
+                Chi tiết đơn{" "}
+                <span className="text-xs font-semibold text-slate-400">
+                  ({mainQty} sp{giftCount > 0 ? ` + ${giftCount} quà` : ""})
+                </span>
+              </h2>
+              <Package size={15} className="text-[var(--aloha-green)]" />
             </div>
-            <ul className="max-h-[22vh] divide-y divide-[var(--aloha-line)] overflow-y-auto px-3 lg:max-h-[28vh]">
-              {(order.orderDetails || []).map((d, i) => (
-                <li key={`${d.productCode}-${i}`} className="flex gap-2 py-2">
-                  {d.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={d.imageUrl}
-                      alt=""
-                      className="h-10 w-10 shrink-0 rounded-lg object-cover ring-1 ring-[#E8E2D6]"
-                    />
-                  ) : (
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--aloha-cream)]">
-                      <Package size={16} className="text-[var(--aloha-green)]" />
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="line-clamp-1 text-[13px] font-semibold text-[var(--aloha-ink)]">
-                      {d.productName}
-                    </p>
-                    {d.note ? (
-                      <p className="text-[10px] italic text-slate-500">
-                        Ghi chú: {d.note}
+            <ul className="max-h-[36vh] divide-y divide-[var(--aloha-line)] overflow-y-auto px-3 lg:max-h-[44vh]">
+              {mainWithGifts.map(({ item, gifts }, i) => (
+                <li key={`${item.productCode}-${i}`} className="py-2.5">
+                  <div className="flex gap-2">
+                    {item.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={item.imageUrl}
+                        alt=""
+                        className="h-10 w-10 shrink-0 rounded-lg object-cover ring-1 ring-[#E8E2D6]"
+                      />
+                    ) : (
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--aloha-cream)]">
+                        <Package size={16} className="text-[var(--aloha-green)]" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-1 text-[13px] font-semibold text-[var(--aloha-ink)]">
+                        {item.productName}
                       </p>
-                    ) : null}
-                    <p className="text-[10px] text-slate-500">
-                      {d.productCode} · ×{d.quantity}
+                      <OrderLineTags d={item} />
+                      {item.note ? (
+                        <p className="text-[10px] italic text-slate-500">
+                          Ghi chú: {item.note}
+                        </p>
+                      ) : null}
+                      <p className="text-[10px] text-slate-500">
+                        {item.productCode} · ×{item.quantity}
+                      </p>
+                    </div>
+                    <p className="shrink-0 text-[13px] font-bold text-[var(--aloha-ink)]">
+                      {formatVnd(item.price * item.quantity)}
                     </p>
                   </div>
-                  <p className="shrink-0 text-[13px] font-bold text-[var(--aloha-ink)]">
-                    {formatVnd(d.price * d.quantity)}
-                  </p>
+                  {gifts.length > 0 && (
+                    <div className="mt-2 space-y-1 rounded-lg border border-amber-200/60 bg-[#FFFDF7] p-2">
+                      {gifts.map((g, gi) => (
+                        <div key={gi} className="flex items-center justify-between text-[11px]">
+                          <span className="flex items-center gap-1.5 truncate pr-2 text-amber-950">
+                            <Gift size={12} className="shrink-0 text-[#C8102E]" />
+                            <span className="font-semibold text-[#C8102E]">Quà tặng:</span>
+                            <span className="truncate">{g.productName}</span>
+                            <span className="shrink-0 text-slate-400">×{g.quantity}</span>
+                          </span>
+                          <span className="shrink-0 font-bold text-[var(--aloha-green)] text-[11px]">0đ</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </li>
+              ))}
+              {standaloneGifts.map((g, gi) => (
+                <li key={`standalone-gift-${gi}`} className="flex items-center justify-between rounded-lg border border-amber-200/60 bg-[#FFFDF7] py-2 px-2.5 my-1 text-[11px]">
+                  <span className="flex items-center gap-1.5 truncate pr-2 text-amber-950">
+                    <Gift size={12} className="shrink-0 text-[#C8102E]" />
+                    <span className="font-semibold text-[#C8102E]">Quà tặng:</span>
+                    <span className="truncate">{g.productName}</span>
+                    <span className="shrink-0 text-slate-400">×{g.quantity}</span>
+                  </span>
+                  <span className="shrink-0 font-bold text-[var(--aloha-green)] text-[11px]">0đ</span>
                 </li>
               ))}
             </ul>
@@ -373,15 +454,10 @@ export function OrderPendingView({
               {order.subtotal != null ? (
                 <div className="flex justify-between text-slate-600">
                   <span>Tiền hàng</span>
-                  <span>{formatVnd(order.subtotal)}</span>
+                  <span>{formatVnd(orderListSubtotal(order) ?? 0)}</span>
                 </div>
               ) : null}
-              {order.discount ? (
-                <div className="flex justify-between text-[var(--aloha-price)] font-semibold">
-                  <span>Giảm giá ưu đãi</span>
-                  <span>-{formatVnd(order.discount)}</span>
-                </div>
-              ) : null}
+              <OrderGoodsSavings order={order} />
               {order.deliveryMethod === "nhan_cua_hang" ? (
                 <div className="flex justify-between text-slate-600">
                   <span>Phí ship</span>
@@ -413,26 +489,34 @@ export function OrderPendingView({
                   </span>
                 </div>
               )}
-              <div className="flex justify-between pt-0.5 text-sm font-extrabold">
+              <OrderShipFeeChangeNote order={order} />
+              <div className="flex items-center justify-between pt-1">
                 {order.deliveryMethod === "nhan_cua_hang" ? (
                   <>
-                    <span>Tổng tiền thanh toán</span>
-                    <span className="text-[#EE6055]">{formatVnd(order.total)}</span>
+                    <span className="text-sm font-bold text-[var(--aloha-ink)]">Tổng tiền thanh toán</span>
+                    <span className="text-base font-extrabold text-[#EE6055]">{formatVnd(order.total)}</span>
                   </>
                 ) : order.shippingEstimate?.status === "needs_confirmation" ||
                   order.shippingEstimate?.status === "unavailable" ||
                   (order.shippingFee == null && !order.freeShipApplied) ? (
                   <>
-                    <span className="text-xs font-semibold text-slate-700">Tiền hàng chưa gồm phí vận chuyển:</span>
-                    <span className="text-[#EE6055]">{formatVnd(order.total)}</span>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-[var(--aloha-ink)]">Tổng tạm tính</span>
+                      <span className="text-[11px] font-normal text-slate-500">Chưa gồm phí vận chuyển</span>
+                    </div>
+                    <span className="text-base font-extrabold text-[#EE6055]">{formatVnd(order.total)}</span>
                   </>
                 ) : (
                   <>
-                    <span>Tổng tạm tính</span>
-                    <span className="text-[#EE6055]">{formatVnd(order.total)}</span>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-[var(--aloha-ink)]">Tổng tạm tính</span>
+                      <span className="text-[11px] font-normal text-slate-500">Đã gồm phí vận chuyển</span>
+                    </div>
+                    <span className="text-base font-extrabold text-[#EE6055]">{formatVnd(order.total)}</span>
                   </>
                 )}
               </div>
+              <OrderSavedTotal order={order} />
             </div>
             {addressLine ? (
               <div className="flex gap-2 border-t border-[var(--aloha-line)] px-3 py-2 text-[12px] text-slate-600">

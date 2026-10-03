@@ -7,15 +7,16 @@ type Props = {
   title: string;
   href: string;
   products: ShopProduct[];
+  variant?: "default" | "deal";
 };
 
-export function HomeProductSection({ title, href, products }: Props) {
+export function HomeProductSection({ title, href, products, variant = "default" }: Props) {
   if (!products.length) return null;
 
   return (
     <section className="pb-2 sm:pb-4">
       <SectionTitle className="mb-5 sm:mb-7">{title}</SectionTitle>
-      <ProductGrid products={products} shopee homeRow6 />
+      <ProductGrid products={products} shopee homeRow6 variant={variant} />
       <div className="mt-4 flex justify-center pt-2 sm:mt-5 sm:pt-3">
         <Link
           href={href}

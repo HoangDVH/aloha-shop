@@ -8,7 +8,9 @@ import {
   DEFAULT_SHIPPING_REGIONS,
   canonicalDistrict,
   canonicalProvince,
+  matchRegionById,
   matchShippingRegion,
+  NATIONWIDE_REGION_ID,
 } from "../backend/shopShipping/shippingRegions.js";
 import type { PromotionDoc } from "../backend/shopPromotions/types.js";
 
@@ -97,6 +99,17 @@ test("SV-REGION-05: khớp theo mã quận GHN khi đã cấu hình", () => {
   const m = matchShippingRegion(region, { province: "", district: "", ghnDistrictId: 1442 });
   assert.equal(m.status, "matched");
   assert.equal(m.status === "matched" && m.source, "ghn_district");
+});
+
+test("SV-REGION-06: vùng Toàn quốc khớp mọi địa chỉ, vùng lạ thì ngoài vùng", () => {
+  const binhDuong = matchRegionById(DEFAULT_SHIPPING_REGIONS, NATIONWIDE_REGION_ID, { province: "Bình Dương", district: "Thủ Dầu Một" });
+  assert.equal(binhDuong.status === "matched" && binhDuong.source, "nationwide");
+  const r = evalShip({
+    promotions: [{ ...SHIP_PROMO, regionId: NATIONWIDE_REGION_ID }],
+    matchRegion: (id) => matchRegionById(DEFAULT_SHIPPING_REGIONS, id, { province: "Hà Nội", district: "Quận Ba Đình" }),
+  });
+  assert.equal(r.applied?.regionId, NATIONWIDE_REGION_ID);
+  assert.equal(matchRegionById(DEFAULT_SHIPPING_REGIONS, "khong_co", HCM_ADDRESS).status, "outside");
 });
 
 test("SV06: phí 18k < mệnh giá 30k → giảm 18k (không vượt phí ship)", () => {

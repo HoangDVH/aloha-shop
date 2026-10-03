@@ -5,7 +5,7 @@ import { SiPriceBadge } from "@/components/si-pricing/SiPriceBadge";
 import { Loader2, Play, ShoppingBag } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { isPreOrderTon, useCart } from "@/lib/cart";
+import { isPreOrderTon, stockMax, useCart } from "@/lib/cart";
 import { useToast } from "@/components/Toast";
 import { formatVnd, type ShopProduct } from "@/lib/api";
 import { useShopAuth } from "@/components/ShopAuthProvider";
@@ -14,6 +14,8 @@ import {
   livePropsForMa,
   useLiveProductPrices,
 } from "@/lib/useLiveProductPrices";
+import { PromoBadge, PromoListPrice, PromoMetaLine, isPromoPriceActive, promoAnchorPrice } from "@/components/campaign/CardPromo";
+import { ProductDealCard } from "@/components/campaign/ProductDealCard";
 
 function ImagePendingOverlay({ active }: { active: boolean }) {
   if (!active) return null;
@@ -27,21 +29,39 @@ function ImagePendingOverlay({ active }: { active: boolean }) {
 export function ProductCard({
   product,
   shopee = false,
+  variant = "default",
   liveWebPrice,
   liveGia,
   liveTon,
   livePriceKind,
   liveAllowBackorder,
+  liveCampaignPromo,
 }: {
   product: ShopProduct;
   shopee?: boolean;
+  variant?: "default" | "deal";
   /** Giá mới từ API prices — nếu có thì hiện thay product.gia */
   liveWebPrice?: number;
   liveGia?: number;
   liveTon?: number;
   livePriceKind?: ShopProduct["priceKind"];
   liveAllowBackorder?: boolean;
+  liveCampaignPromo?: ShopProduct["campaignPromo"];
 }) {
+  if (variant === "deal") {
+    return (
+      <ProductDealCard
+        product={product}
+        liveWebPrice={liveWebPrice}
+        liveGia={liveGia}
+        liveTon={liveTon}
+        livePriceKind={livePriceKind}
+        liveAllowBackorder={liveAllowBackorder}
+        liveCampaignPromo={liveCampaignPromo}
+      />
+    );
+  }
+
   const add = useCart((s) => s.add);
   const toast = useToast();
   const pathname = usePathname();
@@ -52,7 +72,11 @@ export function ProductCard({
   const manualBadge = product.webBadge;
   const [navPending, setNavPending] = useState(false);
   const navTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const displayGia = liveGia != null && liveGia >= 0 ? liveGia : product.gia;
+  const promo = liveCampaignPromo !== undefined ? liveCampaignPromo : product.campaignPromo;
+  const promoSelling = isPromoPriceActive(promo);
+  const baseGia = liveGia != null && liveGia >= 0 ? liveGia : product.gia;
+  const displayGia = promoSelling && promo?.salePrice != null ? promo.salePrice : baseGia;
+  const promoDeal = promoSelling || promoAnchorPrice(promo, displayGia) > 0;
   const priceKind = livePriceKind ?? product.priceKind;
   const allowBackorder = liveAllowBackorder ?? product.allowBackorder;
   const expectsSi = user?.siStatus === "active" && user.roles.includes("si");
@@ -220,14 +244,20 @@ export function ProductCard({
         ) : null}
 
         <div className="pointer-events-none absolute left-2 top-2 z-10 flex flex-col items-start gap-1">
+          {promo ? <PromoBadge promo={promo} /> : null}
           {preOrder || manualBadge === "dat_truoc" ? (
             <span className="product-card__badge inline-flex h-5 w-max max-w-none shrink-0 items-center justify-center rounded-full bg-[var(--aloha-sale)] px-2.5 text-[10px] font-bold leading-none tracking-normal text-white shadow-sm whitespace-nowrap [word-break:keep-all] [overflow-wrap:normal]">
               {"ĐẶT\u00A0TRƯỚC"}
             </span>
           ) : null}
-          {!preOrder && manualBadge === "giam_gia" ? (
+          {!preOrder && manualBadge === "giam_gia" && !promoSelling ? (
             <span className="product-card__badge inline-flex h-5 w-max max-w-none shrink-0 items-center justify-center rounded-full bg-[var(--aloha-sale)] px-2.5 text-[10px] font-bold leading-none tracking-normal text-white shadow-sm whitespace-nowrap">
               SALE
+            </span>
+          ) : null}
+          {!preOrder && manualBadge === "uu_dai" && !promo ? (
+            <span className="product-card__badge inline-flex h-5 w-max max-w-none shrink-0 items-center justify-center rounded-full bg-[var(--aloha-sale)] px-2.5 text-[10px] font-bold leading-none tracking-normal text-white shadow-sm whitespace-nowrap [word-break:keep-all] [overflow-wrap:normal]">
+              {"ƯU\u00A0ĐÃI"}
             </span>
           ) : null}
           {!preOrder &&
@@ -261,12 +291,13 @@ export function ProductCard({
           ) : (
           <div className="flex min-h-[2.65rem] min-w-0 flex-col justify-end">
             <div
-              className={`min-w-0 truncate font-extrabold tracking-tight text-[var(--aloha-price)] ${
+              className={`min-w-0 truncate font-extrabold tracking-tight ${promoDeal ? "text-[#C8102E]" : "text-[var(--aloha-price)]"} ${
                 shopee ? "text-[15px] sm:text-base" : "text-base sm:text-lg"
               }`}
             >
               {pricePending ? "Đang cập nhật…" : priceKind === "si_missing" ? "Liên hệ" : formatVnd(displayGia)}
-              {product.dvt ? (
+              {promo ? <PromoListPrice promo={promo} price={displayGia} /> : null}
+              {product.dvt && !promoDeal ? (
                 <span
                   className={`ml-1 font-semibold text-[var(--aloha-muted)] ${
                     shopee ? "text-[10px] sm:text-[11px]" : "text-xs"
@@ -276,7 +307,7 @@ export function ProductCard({
                 </span>
               ) : null}
             </div>
-            <div className="mt-0.5 h-[1.05rem]" aria-hidden />
+            {promo ? <PromoMetaLine promo={promo} stock={stockMax(displayTon)} allowBackorder={allowBackorder} /> : <div className="mt-0.5 h-[1.05rem]" aria-hidden />}
           </div>
           )}
           </div>
@@ -294,10 +325,12 @@ export function ProductGrid({
   shopee = false,
   /** Trang chủ: 6 SP / hàng (desktop), giữ card nhỏ gọn */
   homeRow6 = false,
+  variant = "default",
 }: {
   products: ShopProduct[];
   shopee?: boolean;
   homeRow6?: boolean;
+  variant?: "default" | "deal";
 }) {
   const liveMap = useLiveProductPrices(products);
 
@@ -309,11 +342,12 @@ export function ProductGrid({
     );
   }
 
-  const gridClass = homeRow6
-    ? "grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5 lg:gap-3"
-    : shopee
-      ? "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5 lg:gap-3"
-      : "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5 lg:gap-3";
+  const gridClass =
+    homeRow6 || variant === "deal"
+      ? "grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5 lg:gap-3"
+      : shopee
+        ? "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5 lg:gap-3"
+        : "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5 lg:gap-3";
 
   return (
     <div className={gridClass}>
@@ -321,7 +355,8 @@ export function ProductGrid({
         <ProductCard
           key={p.ma}
           product={p}
-          shopee={shopee || homeRow6}
+          variant={variant}
+          shopee={shopee || homeRow6 || variant === "deal"}
           {...livePropsForMa(liveMap, p.ma)}
         />
       ))}

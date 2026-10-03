@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useState, type ReactNode } from "react";
 import { Button, Drawer } from "antd";
 import { Toaster } from "sonner";
 import { AdminSidebar } from "@/components/admin/shell/AdminSidebar";
@@ -38,9 +38,17 @@ export function AdminShell({ children }: { children: ReactNode }) {
     <AdminAntdProvider>
       <AdminOpsSync enabled />
       <div className="flex min-h-screen bg-[#F7F8FA] text-[var(--aloha-ink)]">
-        <div className="hidden lg:block"><AdminSidebar /></div>
+        <div className="hidden lg:block">
+          <Suspense fallback={<aside className="h-screen w-[248px] shrink-0 border-r border-[#e8eaed] bg-white" />}>
+            <AdminSidebar />
+          </Suspense>
+        </div>
         <Drawer open={menuOpen} onClose={() => setMenuOpen(false)} placement="left" title="Điều hướng" size={248} styles={{ body: { padding: 0 } }} destroyOnHidden>
-          <div className="h-full [&>aside]:h-full"><AdminSidebar /></div>
+          <div className="h-full [&>aside]:h-full">
+            <Suspense fallback={null}>
+              <AdminSidebar />
+            </Suspense>
+          </div>
         </Drawer>
         <main className="min-h-screen min-w-0 flex-1 bg-[#F7F8FA]">
           <div className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:hidden">

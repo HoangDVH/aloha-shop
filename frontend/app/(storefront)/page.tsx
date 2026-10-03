@@ -11,7 +11,6 @@ import {
   renderHomeMainSections,
   renderProductBlocks,
   renderTopBlocks,
-  splitHomeBlocks,
 } from "@/components/blocks/HomeBlockRenderer";
 import { HomeSpQueryRedirect } from "@/components/HomeSpQueryRedirect";
 
@@ -64,7 +63,6 @@ export async function generateMetadata({
 
 async function HomeSections() {
   const appearance = await fetchAppearance();
-  const { top } = splitHomeBlocks(appearance.blocks);
   let err = "";
   let main: ReactNode = null;
   try {
@@ -75,7 +73,7 @@ async function HomeSections() {
 
   return (
     <>
-      {await renderTopBlocks(top)}
+      {await renderTopBlocks(appearance.blocks)}
       {err ? (
         <div className="mx-auto max-w-7xl px-4 py-4">
           <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-200">
@@ -100,7 +98,6 @@ async function HomeCatalog({
   }
 
   const appearance = await fetchAppearance();
-  const { top } = splitHomeBlocks(appearance.blocks);
 
   const q = String(sp.q || "").trim();
   const nhomList = parseNhomList(sp);
@@ -165,7 +162,7 @@ async function HomeCatalog({
 
   return (
     <>
-      {await renderTopBlocks(top)}
+      {await renderTopBlocks(appearance.blocks)}
       <div className="mx-auto max-w-7xl px-4 py-4 sm:py-6">
         <CatalogLayout
           total={total}

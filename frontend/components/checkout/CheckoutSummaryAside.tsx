@@ -9,7 +9,12 @@ type Props = {
   delivery: Delivery;
   total: number;
   discount?: number;
+  /** Giảm do giá flash so với giá thường (`total` là tiền hàng giá thường). */
+  flashDiscount?: number;
+  /** Giá trước KM − giá web: chỉ hiển thị, không trừ thêm (`total` đã là giá web). */
+  anchorDiscount?: number;
   appliedTitle?: string;
+  voucherPromo?: { discountType?: string; discountValue?: number } | null;
   onOpenPromotion?: () => void;
   shippingFee: number | null;
   shippingDiscount?: number;
@@ -33,7 +38,10 @@ export function CheckoutSummaryAside({
   delivery,
   total,
   discount = 0,
+  flashDiscount = 0,
+  anchorDiscount = 0,
   appliedTitle,
+  voucherPromo,
   onOpenPromotion,
   shippingFee,
   shippingDiscount = 0,
@@ -49,6 +57,8 @@ export function CheckoutSummaryAside({
   onPlaceOrder,
 }: Props) {
   const showShip = shopShowCheckoutShipping();
+  const goodsAfter = Math.max(0, total - flashDiscount - discount);
+  const saved = anchorDiscount + flashDiscount + discount + (showShip ? shippingDiscount : 0);
 
   return (
     <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
@@ -98,11 +108,23 @@ export function CheckoutSummaryAside({
         <div className="space-y-2.5 text-[15px] text-slate-500">
           <div className="flex items-center justify-between gap-3">
             <span>Tổng tiền hàng</span>
-            <span className="tabular-nums">{formatVnd(total)}</span>
+            <span className="tabular-nums">{formatVnd(total + anchorDiscount)}</span>
           </div>
+          {anchorDiscount > 0 ? (
+            <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold">
+              <span>Giảm giá sản phẩm</span>
+              <span className="tabular-nums">-{formatVnd(anchorDiscount)}</span>
+            </div>
+          ) : null}
+          {flashDiscount > 0 ? (
+            <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold">
+              <span>Giảm Flash Sale</span>
+              <span className="tabular-nums">-{formatVnd(flashDiscount)}</span>
+            </div>
+          ) : null}
           {discount > 0 ? (
             <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold">
-              <span>Giảm giá ưu đãi</span>
+              <span>Voucher shop</span>
               <span className="tabular-nums">-{formatVnd(discount)}</span>
             </div>
           ) : null}
@@ -143,9 +165,6 @@ export function CheckoutSummaryAside({
               </div>
             )
           ) : null}
-          {showShip && delivery === "giao_tan_noi" && !shippingDiscount && !freeShipApplied && shippingPromotionHint ? (
-            <p className="text-[12px] leading-snug text-slate-500">{shippingPromotionHint}</p>
-          ) : null}
 
           <div className="border-t border-slate-200/90" />
 
@@ -154,7 +173,7 @@ export function CheckoutSummaryAside({
             <div className="flex items-center justify-between gap-3">
               <span>Tổng tiền thanh toán</span>
               <span className="text-base font-bold tabular-nums text-[var(--aloha-price)]">
-                {formatVnd(Math.max(0, total - discount))}
+                {formatVnd(goodsAfter)}
               </span>
             </div>
           ) : shippingFee != null ? (
@@ -168,10 +187,15 @@ export function CheckoutSummaryAside({
             <div className="flex items-center justify-between gap-3">
               <span className="text-xs font-semibold text-slate-700 leading-snug">Tiền hàng chưa gồm phí vận chuyển:</span>
               <span className="text-base font-bold tabular-nums text-[var(--aloha-price)]">
-                {formatVnd(Math.max(0, total - discount))}
+                {formatVnd(goodsAfter)}
               </span>
             </div>
           )}
+          {saved > 0 ? (
+            <p className="rounded-lg bg-[var(--aloha-green-light)] px-3 py-1.5 text-center text-xs font-bold text-[var(--aloha-green-mid)]">
+              Bạn đã tiết kiệm {formatVnd(saved)}
+            </p>
+          ) : null}
         </div>
 
         {error ? (

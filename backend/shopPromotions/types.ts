@@ -41,7 +41,12 @@ export interface PromotionDoc {
   heldCount: number; // Lượt đang giữ
   status: PromotionStatus; // "draft" | "active" | "paused" | "archived"
   isPublic?: boolean; // Hiển thị trong danh sách ưu đãi công khai
-  combineWithShip?: boolean; // Cho phép kết hợp cùng chính sách miễn ship
+  combineWithShip?: boolean; // Dùng chung với voucher hỗ trợ ship (thiếu = có)
+  excludeFlash?: boolean; // Không giảm trên dòng đang giá flash (thiếu = có giảm)
+  claimRequired?: boolean; // Khách phải bấm "Lưu mã" vào ví mới dùng được
+  claimLimitTotal?: number | null; // Tổng lượt lưu tối đa; thiếu / 0 = không giới hạn
+  claimedCount?: number; // Số lượt đã lưu
+  claimStartDate?: string | null; // Mở lưu từ (ISO UTC), có thể sớm hơn startDate
   priority: number; // Độ ưu tiên khi chọn ưu đãi tự động tốt nhất (số càng cao ưu tiên càng lớn)
   revision: number; // Phiên bản sửa đổi để chống ghi đè đồng thời
   createdAt: string;
@@ -98,6 +103,8 @@ export interface CartItemToEvaluate {
   categoryId?: string;
   categorySlug?: string;
   nhom?: string;
+  /** Dòng đang tính giá sale chiến dịch. */
+  flash?: boolean;
 }
 
 export interface BuyerContext {
@@ -127,6 +134,11 @@ export interface EvaluatedCandidate {
   targetCustomer?: TargetCustomer;
   endDate?: string;
   description?: string;
+  /** Voucher phải lưu mà khách chưa lưu — giao diện hiện nút "Lưu" ngay trong modal. */
+  needsClaim?: boolean;
+  benefitType?: PromotionBenefitType;
+  /** Tiền hàng còn thiếu để đủ "Đơn từ X" (chỉ có khi đó là lý do duy nhất). */
+  shortfall?: number;
 }
 
 export interface PromotionQuoteResult {
@@ -164,7 +176,7 @@ export interface ShippingPromotionResult {
     discountAmount: number;
     regionId: string;
     regionVersion: number;
-    regionSource: "ghn_district" | "name";
+    regionSource: "ghn_district" | "name" | "nationwide";
   };
   /** Đủ điều kiện nhưng phí ship chưa có (chờ shop báo phí) — chưa trừ tiền, chưa giữ lượt. */
   pending?: { promotionId: string; title: string; maxDiscount: number };

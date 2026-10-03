@@ -8,8 +8,8 @@ import {
   buildCategoryTreeFromKv,
   flattenKvCategories,
   type CategoryNode,
-} from "../utils/categoryTree.ts";
-import { CATEGORY_COL } from "./categoryCollection.ts";
+} from "../utils/categoryTree.js";
+import { CATEGORY_COL } from "./categoryCollection.js";
 
 export type CategoryMeta = {
   name: string;

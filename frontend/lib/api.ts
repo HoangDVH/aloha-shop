@@ -1,3 +1,5 @@
+import type { CampaignPromoUI } from "./campaign/campaignApi";
+
 export type ShopProductAttr = {
   attributeName: string;
   attributeValue: string;
@@ -41,10 +43,13 @@ export type ShopProduct = {
     | "giam_gia"
     | "dat_truoc"
     | "moi"
+    | "uu_dai"
     | "ban_chay";
   /** Override SEO — ưu tiên hơn template appearance */
   seoTitle?: string;
   seoDescription?: string;
+  /** Ưu đãi chiến dịch do server tính; null / thiếu = card thường. */
+  campaignPromo?: CampaignPromoUI | null;
 };
 
 export type ShopVariantModel = {
@@ -232,8 +237,10 @@ export async function fetchProducts(
     loai?: string;
     /** Phạm vi trang chủ: bán chạy ∪ cây thành phẩm */
     home?: boolean;
-    /** Lọc theo nhãn tay: ban_chay_sap_het | giam_gia | dat_truoc | moi */
-    badge?: "ban_chay_sap_het" | "giam_gia" | "dat_truoc" | "moi" | "ban_chay" | "noi_bat";
+    /** Lọc theo nhãn tay: ban_chay_sap_het | giam_gia | dat_truoc | moi | uu_dai */
+    badge?: "ban_chay_sap_het" | "giam_gia" | "dat_truoc" | "moi" | "uu_dai" | "ban_chay" | "noi_bat";
+    /** Chỉ SP áp dụng voucher này (nút "Dùng ngay") */
+    voucher?: string;
     signal?: AbortSignal;
   },
   /** Mặc định no-store (danh sách cần tồn mới). SP liên quan trên PDP: truyền revalidate. */
@@ -266,6 +273,7 @@ export async function fetchProducts(
   if (opts.sort) sp.set("sort", opts.sort);
   if (opts.loai) sp.set("loai", String(opts.loai).trim());
   if (opts.badge) sp.set("badge", opts.badge);
+  if (opts.voucher) sp.set("voucher", opts.voucher);
   for (const a of opts.attr || []) {
     const t = String(a || "").trim();
     if (t) sp.append("attr", t);
@@ -287,6 +295,7 @@ export async function fetchProducts(
     page: number;
     limit: number;
     pages: number;
+    voucher?: { id: string; title: string };
   }>(`/api/shop/products${qs ? `?${qs}` : ""}`, {
     ...fetchInit,
     headers: cacheOpts?.headers,

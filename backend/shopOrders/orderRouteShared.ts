@@ -74,7 +74,7 @@ export async function applyCatalogPrices(
   details: ShopOrderDetail[],
   opts?: { buyerEmail?: string | null; account?: Record<string, unknown> | null; quoteOnly?: boolean }
 ): Promise<
-  | { ok: true; details: ShopOrderDetail[] }
+  | { ok: true; details: ShopOrderDetail[]; error?: undefined }
   | { ok: false; error: string }
 > {
   const allowZeroPrice = isShopTestBuyerEmail(opts?.buyerEmail);

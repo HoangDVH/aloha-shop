@@ -20,7 +20,8 @@ import {
   compactAttributeFacets,
   compactDvtFacetLabels,
 } from "../../shopVariantGroup.js";
-import { normalizeWebBadge } from "../webBadge.js";
+import { normalizeWebBadge, webBadgeMongoFilter } from "../webBadge.js";
+import { campaignDealMas, dealMasCacheSuffix } from "../../shopCampaigns/catalogPromos.js";
 
 export function registerFacetRoutes(app: Express, ctx: CatalogCtx) {
   app.get("/api/shop/facets", async (req, res) => {
@@ -42,7 +43,8 @@ export function registerFacetRoutes(app: Express, ctx: CatalogCtx) {
         homeScope ||
         allCatalog ||
         Boolean(badge);
-      const cacheKey = `shop:facets:v7:${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|all=${allCatalog ? 1 : 0}|badge=${badge}|${scoped ? "1" : "0"}`;
+      const dealMas = badge === "uu_dai" ? await campaignDealMas(await ctx.catalogDb(), req) : [];
+      const cacheKey = `shop:facets:v7:${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|all=${allCatalog ? 1 : 0}|badge=${badge}${dealMasCacheSuffix(dealMas)}|${scoped ? "1" : "0"}`;
       const { body, cache } = await cachedJson(cacheKey, async () => {
         if (!scoped) {
           return { attributes: {}, dvt: ["Cái", "Cây", "Thùng", "Gói", "Bao"] };
@@ -61,11 +63,8 @@ export function registerFacetRoutes(app: Express, ctx: CatalogCtx) {
             ],
           });
         }
-        if (badge === "ban_chay_sap_het") {
-          and.push({ webBadge: { $in: ["ban_chay_sap_het", "ban_chay"] } });
-        } else if (badge) {
-          and.push({ webBadge: badge });
-        }
+        const badgeMongo = webBadgeMongoFilter(badge, dealMas);
+        if (badgeMongo) and.push(badgeMongo);
         if (categoryIdList.length) {
           const catIds = await resolveCategoryIdsForRootIds(db, categoryIdList);
           if (catIds.length) and.push({ categoryId: { $in: catIds } });

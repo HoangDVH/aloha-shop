@@ -11,7 +11,7 @@ import {
   DatePicker,
   Tag,
   Space,
-  message,
+  App,
   Card,
 } from "antd";
 import { Plus, Ticket, Copy, Check, User, Calendar } from "lucide-react";
@@ -38,6 +38,7 @@ type Props = {
 };
 
 export function PromotionCodeModal({ open, onClose, promotion }: Props) {
+  const { message } = App.useApp();
   const [codes, setCodes] = useState<PromotionCode[]>([]);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -128,7 +129,7 @@ export function PromotionCodeModal({ open, onClose, promotion }: Props) {
         </div>
       }
       footer={[
-        <Button key="close" onClick={onClose}>
+        <Button key="close" onClick={onClose} className="!h-9 !rounded-lg px-4 text-xs font-medium">
           Đóng
         </Button>,
       ]}
@@ -149,7 +150,7 @@ export function PromotionCodeModal({ open, onClose, promotion }: Props) {
             >
               <Input
                 placeholder="VD: ALOHA50"
-                className="font-mono uppercase font-bold"
+                className="font-mono uppercase font-bold !h-9 !rounded-lg text-xs"
                 style={{ width: 140 }}
               />
             </Form.Item>
@@ -157,19 +158,32 @@ export function PromotionCodeModal({ open, onClose, promotion }: Props) {
               name="maxUses"
               label={<span className="text-xs font-semibold">Lượt dùng</span>}
             >
-              <InputNumber min={1} placeholder="Vô hạn" style={{ width: 100 }} />
+              <InputNumber
+                min={1}
+                placeholder="Vô hạn"
+                className="!h-9 !rounded-lg text-xs [&_.ant-input-number-input]:!h-[34px]"
+                style={{ width: 100 }}
+              />
             </Form.Item>
             <Form.Item
               name="assignedBuyerPhone"
               label={<span className="text-xs font-semibold">SĐT chỉ định</span>}
             >
-              <Input placeholder="Tùy chọn" style={{ width: 130 }} />
+              <Input
+                placeholder="Tùy chọn"
+                className="!h-9 !rounded-lg text-xs"
+                style={{ width: 130 }}
+              />
             </Form.Item>
             <Form.Item
               name="expiresAt"
               label={<span className="text-xs font-semibold">Hạn dùng</span>}
             >
-              <DatePicker size="middle" placeholder="Chọn ngày" style={{ width: 130 }} />
+              <DatePicker
+                placeholder="Chọn ngày"
+                className="!h-9 !rounded-lg text-xs"
+                style={{ width: 130 }}
+              />
             </Form.Item>
             <Form.Item>
               <Button
@@ -177,7 +191,7 @@ export function PromotionCodeModal({ open, onClose, promotion }: Props) {
                 htmlType="submit"
                 icon={<Plus size={14} />}
                 loading={creating}
-                className="!bg-[var(--aloha-green)] font-semibold"
+                className="!h-9 !rounded-lg !bg-[#2D5A27] hover:!bg-[#23481e] font-semibold text-white shadow-xs text-xs px-3.5"
               >
                 Tạo mã
               </Button>

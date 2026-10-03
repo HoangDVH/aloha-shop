@@ -48,6 +48,17 @@ export function buildDefaultAppearanceLayout(): AppearanceLayout {
         props: { variant: "why_aloha" },
       },
       {
+        id: id("uu_dai"),
+        type: "product_section",
+        enabled: true,
+        props: {
+          title: "Sản phẩm ưu đãi",
+          source: "uu_dai",
+          limit: 15,
+          sort: "ten",
+        },
+      },
+      {
         id: id("hot"),
         type: "product_section",
         enabled: true,

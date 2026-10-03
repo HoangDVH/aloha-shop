@@ -53,6 +53,11 @@ export type ShopOrderDetail = {
   availableQty?: number;
   pendingQty?: number;
   priceKind?: "web" | "si" | "si_missing";
+  /** Dòng tính giá sale chiến dịch (giá thường lưu ở `flash.listPrice`). */
+  flash?: import("../shopCampaigns/flash/flashTypes.js").FlashLineMeta;
+  /** Dòng quà 0đ do server tạo. */
+  isGift?: boolean;
+  gift?: import("../shopCampaigns/flash/flashTypes.js").GiftLineMeta;
 };
 
 export function newAddressId(): string {

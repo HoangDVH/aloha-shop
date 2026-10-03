@@ -83,8 +83,13 @@ function sharedBrowser(db = database()) {
   let lockQueue = Promise.resolve();
   let mergeCalls = 0; let saveCalls = 0; let loseResponse = false;
   let gate: Promise<void> | undefined;
+  let failing = { left: 0, code: "" };
   const api = {
-    fetchServerCart: async () => { if (gate) await gate; return db.get(); },
+    fetchServerCart: async () => {
+      if (gate) await gate;
+      if (failing.left > 0) { failing.left--; throw Object.assign(new Error("Mạng chậm"), { code: failing.code }); }
+      return db.get();
+    },
     mergeServerCart: async (guest: any, userId: string, key: string) => {
       mergeCalls++;
       const result = await mergeCart(db.collection, userId, guest, key);
@@ -121,6 +126,7 @@ function sharedBrowser(db = database()) {
       advance: () => { generation++; }, timers };
   }
   return { tab, db, storage, calls: () => ({ mergeCalls, saveCalls }), loseNextResponse: () => { loseResponse = true; },
+    failFetches: (left: number, code: string) => { failing = { left, code }; },
     pause: () => { let release!: () => void; gate = new Promise<void>(resolve => { release = resolve; }); return () => { gate = undefined; release(); }; } };
 }
 
@@ -167,6 +173,22 @@ test("failed sync can retry in the same tab without a second increment", async (
   await assert.rejects(tab.onShopUserChanged("u1"));
   await tab.onShopUserChanged("u1");
   assert.equal(env.db.get().lines[0].qty, 2); assert.equal(tab.useCartSyncStatus.getState().error, "");
+});
+const settle = async () => { for (let i = 0; i < 30; i++) await new Promise(r => setImmediate(r)); };
+const runTimers = async (tab: any) => { while (tab.timers.length) { tab.timers.shift()(); await settle(); } };
+test("transient timeout retries silently and recovers without showing an error", async () => {
+  const env = sharedBrowser(); const tab = env.tab(); env.failFetches(1, "timeout");
+  await assert.rejects(tab.onShopUserChanged("u1"));
+  assert.equal(tab.useCartSyncStatus.getState().error, "");
+  await runTimers(tab);
+  assert.equal(env.db.get().lines[0].qty, 2); assert.equal(tab.useCartSyncStatus.getState().error, "");
+});
+test("persistent network failure reports after the silent retries run out", async () => {
+  const env = sharedBrowser(); const tab = env.tab(); env.failFetches(10, "network");
+  await assert.rejects(tab.onShopUserChanged("u1"));
+  await runTimers(tab);
+  assert.equal(tab.useCartSyncStatus.getState().error, "Mạng chậm");
+  assert.equal(env.calls().mergeCalls, 0);
 });
 test("logout during a fetch prevents the stale response from merging or hydrating", async () => {
   const env = sharedBrowser(); const tab = env.tab(); const release = env.pause();

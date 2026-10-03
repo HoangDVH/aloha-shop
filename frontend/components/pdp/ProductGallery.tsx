@@ -105,9 +105,9 @@ export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
   };
 
   return (
-    <div className="flex min-h-0 w-full min-w-0 max-w-full flex-col gap-2 p-3 sm:p-4 lg:h-full lg:p-5">
+    <div className="flex w-full min-w-0 max-w-full flex-col gap-1.5 p-3 sm:p-4 lg:p-3 xl:p-4">
       <div
-        className="relative aspect-square w-full min-w-0 max-w-full flex-none overflow-hidden rounded-xl bg-[var(--aloha-cream)] lg:aspect-auto lg:min-h-[280px] lg:flex-1 lg:min-h-0"
+        className="relative aspect-square w-full max-w-[330px] sm:max-w-[350px] lg:max-w-[360px] xl:max-w-[380px] mx-auto min-w-0 overflow-hidden rounded-xl bg-[var(--aloha-cream)] shadow-2xs"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
@@ -196,9 +196,9 @@ export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
       </div>
 
       {media.length > 0 ? (
-        <div className="flex min-w-0 max-w-full flex-col gap-1.5">
+        <div className="flex min-w-0 max-w-full flex-col gap-1">
           {media.length > 1 ? (
-            <p className="text-center text-[11px] tabular-nums text-slate-400">
+            <p className="text-center text-[11px] leading-tight tabular-nums text-slate-400">
               {idx + 1}/{media.length}
             </p>
           ) : null}
@@ -209,7 +209,7 @@ export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
                   key={`thumb-${item.kind}-${item.src}-${i}`}
                   type="button"
                   onClick={() => goTo(i)}
-                  className={`relative aspect-square h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 bg-[var(--aloha-cream)] transition sm:h-16 sm:w-16 ${
+                  className={`relative aspect-square h-12 w-12 shrink-0 overflow-hidden rounded-lg border-2 bg-[var(--aloha-cream)] transition sm:h-13 sm:w-13 lg:h-14 lg:w-14 ${
                     i === idx
                       ? "border-[var(--aloha-green)]"
                       : "border-transparent hover:border-[var(--aloha-line)]"

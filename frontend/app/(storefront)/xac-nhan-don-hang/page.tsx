@@ -23,8 +23,12 @@ import { CheckoutAddressSection } from "@/components/checkout/CheckoutAddressSec
 import { CheckoutLineItems } from "@/components/checkout/CheckoutLineItems";
 import { CheckoutStickyBar } from "@/components/checkout/CheckoutStickyBar";
 import { CheckoutSummaryAside } from "@/components/checkout/CheckoutSummaryAside";
-import { PromotionModal, type PromotionQuoteUI } from "@/components/checkout/PromotionModal";
-import { quotePromotions } from "@/lib/promotions";
+import { PromotionModal } from "@/components/checkout/PromotionModal";
+import { useCandidateClaim } from "@/components/checkout/useCandidateClaim";
+import { useManualCodeFallback } from "@/components/checkout/useManualCodeFallback";
+import { onShopCampaignChanged } from "@/lib/catalogSync";
+import { usePromotionQuote } from "@/lib/usePromotionQuote";
+import { useCampaignCartNotices, useCampaignRequoteKey } from "@/lib/campaign/campaignQuote";
 import { PreOrderCodConfirmModal } from "@/components/checkout/BackorderConfirmModal";
 import {
   EMPTY_DRAFT,
@@ -95,7 +99,7 @@ function CheckoutConfirm() {
   const showShip = shopShowCheckoutShipping();
 
   const selected = useMemo(() => lines.filter((l) => l.selected), [lines]);
-  const total = selected.reduce((n, l) => n + l.gia * l.qty, 0);
+  const localTotal = selected.reduce((n, l) => n + l.gia * l.qty, 0);
 
   const [addresses, setAddresses] = useState<ShopAddress[]>([]);
   const [selectedAddrId, setSelectedAddrId] = useState<string>("");
@@ -113,14 +117,24 @@ function CheckoutConfirm() {
   const [promoModalOpen, setPromoModalOpen] = useState(false);
   const [promoCode, setPromoCode] = useState("");
   const [promoAutoMode, setPromoAutoMode] = useState(true);
-  const [promoQuote, setPromoQuote] = useState<PromotionQuoteUI | null>(null);
-  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoNonce, setPromoNonce] = useState(0);
+  const candidateClaim = useCandidateClaim(() => setPromoNonce((n) => n + 1));
+  useEffect(
+    () => onShopCampaignChanged((kind) => kind === "campaign" && setPromoNonce((n) => n + 1)),
+    []
+  );
+  const requoteKey = useCampaignRequoteKey();
 
   useShopLoadingWhile(submitting);
 
   const [draft, setDraft] = useState<AddressDraft>(EMPTY_DRAFT);
 
   const selectedAddr = addresses.find((a) => a.id === selectedAddrId);
+  // Cùng SĐT với đơn gửi lên: giới hạn suất sale mỗi khách tính theo SĐT người nhận.
+  const receiverPhone =
+    delivery === "giao_tan_noi" && !showNewForm && selectedAddr
+      ? selectedAddr.phone
+      : draft.phone || user?.phone || "";
 
   const cartMasKey = useMemo(
     () =>
@@ -137,37 +151,36 @@ function CheckoutConfirm() {
     });
   }, [cartMasKey]);
 
-  useEffect(() => {
-    if (!selected.length) {
-      setPromoQuote(null);
-      return;
-    }
-    let cancelled = false;
-    setPromoLoading(true);
-    quotePromotions({
-      items: selected.map((l) => ({
-        ma: l.ma,
-        ten: l.ten,
-        price: l.gia,
-        quantity: l.qty,
-      })),
-      selectedCode: promoCode,
-      autoMode: promoAutoMode,
-      phone: draft.phone || user?.phone || undefined,
-      email: user?.email || undefined,
-    })
-      .then((q) => {
-        if (!cancelled) setPromoQuote(q);
-      })
-      .finally(() => {
-        if (!cancelled) setPromoLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [selected, promoCode, promoAutoMode, draft.phone, user?.phone, user?.email]);
+  const {
+    quote: promoQuote,
+    loading: promoLoading,
+    stale: promoStale,
+  } = usePromotionQuote({
+    lines: selected,
+    selectedCode: promoCode,
+    autoMode: promoAutoMode,
+    phone: receiverPhone,
+    email: user?.email,
+    refreshKey: `${promoNonce}:${requoteKey}`,
+  });
+
+  useManualCodeFallback({
+    quote: promoQuote,
+    code: promoCode,
+    autoMode: promoAutoMode,
+    fallback: () => {
+      setPromoCode("");
+      setPromoAutoMode(true);
+    },
+  });
 
   const discountAmount = promoQuote?.discountTotal || 0;
+  const campaign = promoQuote?.campaign;
+  useCampaignCartNotices(campaign);
+  const flashSavings = campaign?.flashSavings || 0;
+  const anchorSavings = campaign?.anchorSavings || 0;
+  // Có báo giá server thì dùng giá server (giá trong giỏ máy có thể cũ / bị sửa).
+  const total = promoQuote ? promoQuote.subtotal + flashSavings : localTotal;
 
   const {
     shippingQuote,
@@ -185,7 +198,7 @@ function CheckoutConfirm() {
     showNewForm,
     draft,
     enabled: showShip,
-    discountTotal: discountAmount,
+    discountTotal: discountAmount + flashSavings,
     promotionCode: promoQuote?.applied?.code,
     autoPromotion: promoAutoMode,
     customerPhone: draft.phone || user?.phone || undefined,
@@ -194,7 +207,7 @@ function CheckoutConfirm() {
   const effectiveShippingFee = showShip ? shippingFee : null;
   const effectiveShippingDiscount = showShip ? shippingDiscount : 0;
   const grandTotal =
-    Math.max(0, total - discountAmount) +
+    Math.max(0, total - flashSavings - discountAmount) +
     Math.max(0, (effectiveShippingFee ?? 0) - effectiveShippingDiscount);
 
   useEffect(() => {
@@ -279,6 +292,8 @@ function CheckoutConfirm() {
     promotionCode: promoQuote?.applied?.code,
     promotionId: promoQuote?.applied?.promotionId,
     autoPromotion: promoAutoMode,
+    expectedSubtotal: promoQuote?.subtotal,
+    onCampaignPriceChanged: () => setPromoNonce((n) => n + 1),
     note,
     user,
     replace: (href) => router.replace(href),
@@ -332,6 +347,8 @@ function CheckoutConfirm() {
     : !catalogState.ready ? (catalogState.error || "Đang cập nhật giá giỏ hàng…") : selected.some(l => l.priceKind === "si_missing" || !(l.gia > 0)) ? "Có sản phẩm chưa có giá. Vui lòng liên hệ báo giá hoặc bỏ sản phẩm đó khỏi đơn." :
     selected.length === 0
       ? "Chưa chọn sản phẩm trong giỏ — quay lại giỏ hàng và tick sản phẩm."
+      : promoStale
+        ? "Đang cập nhật ưu đãi và quà tặng, vui lòng chờ vài giây…"
       : receiverBlock
         ? receiverBlock
         : showShip && delivery === "giao_tan_noi" && shippingLoading
@@ -361,6 +378,7 @@ function CheckoutConfirm() {
               selected={selected}
               note={note}
               onNoteChange={setNote}
+              campaign={campaign}
             />
 
             <CheckoutAddressSection
@@ -389,7 +407,10 @@ function CheckoutConfirm() {
             delivery={delivery}
             total={total}
             discount={discountAmount}
+            flashDiscount={flashSavings}
+            anchorDiscount={anchorSavings}
             appliedTitle={promoQuote?.applied?.title}
+            voucherPromo={promoQuote?.applied}
             onOpenPromotion={() => setPromoModalOpen(true)}
             shippingFee={effectiveShippingFee}
             shippingDiscount={effectiveShippingDiscount}
@@ -443,8 +464,8 @@ function CheckoutConfirm() {
 
       {/* Ngoài khối animate — portal body để fixed không bị kéo theo cuộn */}
       <CheckoutStickyBar
-        total={total}
-        discount={discountAmount}
+        total={total + anchorSavings}
+        discount={discountAmount + flashSavings + anchorSavings}
         grandTotal={grandTotal}
         shippingFee={effectiveShippingFee}
         shippingDiscount={effectiveShippingDiscount}
@@ -474,9 +495,10 @@ function CheckoutConfirm() {
         onRemoveDiscount={() => {
           setPromoCode("");
           setPromoAutoMode(false);
-          setPromoQuote(null);
         }}
+        ineligibleAction={candidateClaim.ineligibleAction}
       />
+      {candidateClaim.loginSheet}
     </>
   );
 }

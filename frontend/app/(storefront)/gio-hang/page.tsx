@@ -10,8 +10,22 @@ import { formatVnd } from "@/lib/api";
 import { formatVariantLabel } from "@/lib/cartVariant";
 import { useShopAuth } from "@/components/ShopAuthProvider";
 import { refreshCartPricesFromCatalog } from "@/lib/cartPriceRefresh";
-import { PromotionModal, type PromotionQuoteUI } from "@/components/checkout/PromotionModal";
-import { quotePromotions } from "@/lib/promotions";
+import { PromotionModal } from "@/components/checkout/PromotionModal";
+import { useCandidateClaim } from "@/components/checkout/useCandidateClaim";
+import { CartVoucherProgress } from "@/components/checkout/CartVoucherProgress";
+import { SmartFreeshipBar } from "@/components/cart/SmartFreeshipBar";
+
+import { useManualCodeFallback } from "@/components/checkout/useManualCodeFallback";
+import { onShopCampaignChanged } from "@/lib/catalogSync";
+import { usePromotionQuote } from "@/lib/usePromotionQuote";
+import {
+  flashLineFor,
+  giftLinesOf,
+  useCampaignCartNotices,
+  useCampaignRequoteKey,
+} from "@/lib/campaign/campaignQuote";
+import { CampaignGiftRows, CartUnitPrice, SavingsRows } from "@/components/checkout/CampaignLineBits";
+import { useStickyBarHeight } from "@/lib/floatingStack";
 
 export default function CartPage() {
   const router = useShopRouter();
@@ -22,6 +36,7 @@ export default function CartPage() {
   const toggleSelected = useCart((s) => s.toggleSelected);
   const setAllSelected = useCart((s) => s.setAllSelected);
   const removeSelected = useCart((s) => s.removeSelected);
+  const stickyRef = useStickyBarHeight<HTMLDivElement>();
   const [priceNote, setPriceNote] = useState("");
   const masKey = useMemo(
     () =>
@@ -66,46 +81,46 @@ export default function CartPage() {
   const selectedLines = useMemo(() => lines.filter((l) => l.selected), [lines]);
   const allSelected = lines.length > 0 && lines.every((l) => l.selected);
   const selectedQty = selectedLines.reduce((n, l) => n + l.qty, 0);
-  const tamTinh = selectedLines.reduce((n, l) => n + l.gia * l.qty, 0);
+  const localTamTinh = selectedLines.reduce((n, l) => n + l.gia * l.qty, 0);
 
   const [promoModalOpen, setPromoModalOpen] = useState(false);
   const [promoCode, setPromoCode] = useState("");
   const [promoAutoMode, setPromoAutoMode] = useState(true);
-  const [promoQuote, setPromoQuote] = useState<PromotionQuoteUI | null>(null);
-  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoNonce, setPromoNonce] = useState(0);
+  const candidateClaim = useCandidateClaim(() => setPromoNonce((n) => n + 1));
+  useEffect(
+    () => onShopCampaignChanged((kind) => kind === "campaign" && setPromoNonce((n) => n + 1)),
+    []
+  );
+  const requoteKey = useCampaignRequoteKey();
 
-  useEffect(() => {
-    if (!selectedLines.length) {
-      setPromoQuote(null);
-      return;
-    }
-    let cancelled = false;
-    setPromoLoading(true);
-    quotePromotions({
-      items: selectedLines.map((l) => ({
-        ma: l.ma,
-        ten: l.ten,
-        price: l.gia,
-        quantity: l.qty,
-      })),
-      selectedCode: promoCode,
-      autoMode: promoAutoMode,
-      phone: user?.phone || undefined,
-      email: user?.email || undefined,
-    })
-      .then((q) => {
-        if (!cancelled) setPromoQuote(q);
-      })
-      .finally(() => {
-        if (!cancelled) setPromoLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedLines, promoCode, promoAutoMode, user?.phone, user?.email]);
+  const { quote: promoQuote, loading: promoLoading } = usePromotionQuote({
+    lines: selectedLines,
+    selectedCode: promoCode,
+    autoMode: promoAutoMode,
+    phone: user?.phone,
+    email: user?.email,
+    refreshKey: `${promoNonce}:${requoteKey}`,
+  });
 
+  useManualCodeFallback({
+    quote: promoQuote,
+    code: promoCode,
+    autoMode: promoAutoMode,
+    fallback: () => {
+      setPromoCode("");
+      setPromoAutoMode(true);
+    },
+  });
+
+  const campaign = promoQuote?.campaign;
+  useCampaignCartNotices(campaign);
+  const flashSavings = campaign?.flashSavings || 0;
+  const anchorSavings = campaign?.anchorSavings || 0;
   const discountAmount = promoQuote?.discountTotal || 0;
-  const tongSauGiam = Math.max(0, tamTinh - discountAmount);
+  // Có báo giá server thì dùng giá server (giá trong giỏ máy có thể cũ / bị sửa).
+  const tamTinh = promoQuote ? promoQuote.subtotal + flashSavings : localTamTinh;
+  const tongSauGiam = Math.max(0, tamTinh - flashSavings - discountAmount);
 
   const handleCheckout = () => {
     if (selectedQty <= 0) return;
@@ -134,6 +149,11 @@ export default function CartPage() {
         <p className="rounded-lg bg-[var(--aloha-green-light)] px-3 py-2 text-sm font-medium text-[var(--aloha-green-mid)]">
           {priceNote}
         </p>
+      ) : null}
+
+      {/* THANH TIẾN TRÌNH FREESHIP THÔNG MINH (CHO CẢ DESKTOP LẪN MOBILE) */}
+      {lines.length > 0 ? (
+        <SmartFreeshipBar currentAmount={tamTinh} />
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
@@ -230,7 +250,10 @@ export default function CartPage() {
               </div>
 
               <ul className="divide-y divide-[var(--aloha-line)]">
-                {lines.map((l) => (
+                {lines.map((l) => {
+                  const fl = l.selected ? flashLineFor(campaign, l.ma) : null;
+                  const lineTotal = fl ? fl.lineTotal : l.gia * l.qty;
+                  return (
                   <li
                     key={l.ma}
                     className="grid grid-cols-[auto_1fr] items-start gap-3 px-3 py-4 md:grid-cols-[auto_1fr_110px_130px_110px_36px] md:items-center md:px-4"
@@ -270,7 +293,9 @@ export default function CartPage() {
                         </div>
                         {/* Mobile price/qty */}
                         <div className="mt-2 flex flex-wrap items-center gap-3 md:hidden">
-                          <span className="text-sm text-slate-700">{formatVnd(l.gia)}</span>
+                          <span className="text-sm text-slate-700">
+                            <CartUnitPrice gia={l.gia} qty={l.qty} flash={fl} />
+                          </span>
                           <QtyCtrl
                             qty={l.qty}
                             plusDisabled={
@@ -282,7 +307,7 @@ export default function CartPage() {
                             onPlus={() => setQty(l.ma, l.qty + 1)}
                           />
                           <span className="ml-auto text-sm font-bold text-[var(--aloha-price)]">
-                            {formatVnd(l.gia * l.qty)}
+                            {formatVnd(lineTotal)}
                           </span>
                           <button
                             type="button"
@@ -296,7 +321,7 @@ export default function CartPage() {
                       </div>
                     </div>
                     <div className="hidden text-center text-sm text-slate-700 md:block">
-                      {formatVnd(l.gia)}
+                      <CartUnitPrice gia={l.gia} qty={l.qty} flash={fl} />
                     </div>
                     <div className="hidden flex-col items-center md:flex">
                       <QtyCtrl
@@ -320,7 +345,7 @@ export default function CartPage() {
                       ) : null}
                     </div>
                     <div className="hidden text-right text-sm font-bold text-[var(--aloha-price)] md:block">
-                      {formatVnd(l.gia * l.qty)}
+                      {formatVnd(lineTotal)}
                     </div>
                     <button
                       type="button"
@@ -331,14 +356,17 @@ export default function CartPage() {
                       <Trash2 size={16} />
                     </button>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
+              <CampaignGiftRows gifts={giftLinesOf(campaign)} />
             </>
           )}
         </section>
 
         {/* Cột phải — tóm tắt */}
         <aside className="space-y-3">
+          {selectedLines.length ? <CartVoucherProgress quote={promoQuote} onClaim={candidateClaim.claim} /> : null}
           <div
             onClick={() => setPromoModalOpen(true)}
             className="flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-[var(--aloha-line)] cursor-pointer hover:bg-slate-50 transition"
@@ -372,14 +400,9 @@ export default function CartPage() {
           <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-[var(--aloha-line)]">
             <div className="flex items-center justify-between text-sm text-slate-600">
               <span>Tạm tính</span>
-              <span>{formatVnd(tamTinh)}</span>
+              <span>{formatVnd(tamTinh + anchorSavings)}</span>
             </div>
-            {discountAmount > 0 ? (
-              <div className="flex items-center justify-between text-sm font-semibold text-[var(--aloha-price)] mt-1.5">
-                <span>Giảm giá ưu đãi</span>
-                <span>-{formatVnd(discountAmount)}</span>
-              </div>
-            ) : null}
+            <SavingsRows flash={flashSavings} voucher={discountAmount} anchor={anchorSavings} voucherPromo={promoQuote?.applied} />
             <div className="my-3 border-t border-[var(--aloha-line)]" />
             <div className="flex items-center justify-between">
               <div>
@@ -408,7 +431,7 @@ export default function CartPage() {
       </div>
 
       {lines.length > 0 ? (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--aloha-line)] bg-white/95 px-3 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(0,0,0,0.08)] backdrop-blur lg:hidden">
+        <div ref={stickyRef} className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--aloha-line)] bg-white/95 px-3 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(0,0,0,0.08)] backdrop-blur lg:hidden">
           <div className="mx-auto flex max-w-7xl items-center gap-3">
             <label className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-slate-600">
               <input
@@ -421,7 +444,9 @@ export default function CartPage() {
             </label>
             <div className="min-w-0 flex-1 text-right">
               <p className="text-[11px] text-slate-500">
-                {discountAmount > 0 ? `Đã giảm ${formatVnd(discountAmount)}` : `Tổng (${selectedQty})`}
+                {discountAmount + flashSavings + anchorSavings > 0
+                  ? `Tiết kiệm ${formatVnd(discountAmount + flashSavings + anchorSavings)}`
+                  : `Tổng (${selectedQty})`}
               </p>
               <p className="truncate text-base font-black text-[var(--aloha-price)]">{formatVnd(tongSauGiam)}</p>
             </div>
@@ -459,9 +484,10 @@ export default function CartPage() {
         onRemoveDiscount={() => {
           setPromoCode("");
           setPromoAutoMode(false);
-          setPromoQuote(null);
         }}
+        ineligibleAction={candidateClaim.ineligibleAction}
       />
+      {candidateClaim.loginSheet}
     </div>
   );
 }

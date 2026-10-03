@@ -152,6 +152,8 @@ export function HomePanel({
                                 ? "Sản phẩm giảm giá"
                                 : source === "dat_truoc"
                                   ? "Sản phẩm đặt trước"
+                                  : source === "uu_dai"
+                                    ? "Sản phẩm ưu đãi"
                                   : source === "ban_chay_sap_het"
                                     ? "Sản phẩm bán chạy và sắp hết"
                                     : source === "ban_chay"
@@ -174,6 +176,7 @@ export function HomePanel({
                               "Sản phẩm nổi bật",
                               "Sản phẩm giảm giá",
                               "Sản phẩm đặt trước",
+                              "Sản phẩm ưu đãi",
                               "Sản phẩm bán chạy và sắp hết",
                             ].includes(String(b.props.title)))
                             ? { title: labelTitle }
@@ -189,6 +192,7 @@ export function HomePanel({
                       </option>
                       <option value="giam_gia">Theo nhãn: Giảm giá</option>
                       <option value="dat_truoc">Theo nhãn: Đặt trước</option>
+                      <option value="uu_dai">Theo nhãn: Ưu đãi</option>
                       <option value="category">Theo nhóm hàng (categoryId)</option>
                     </select>
                   </WbField>

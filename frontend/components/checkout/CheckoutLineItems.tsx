@@ -7,18 +7,22 @@ import { formatVnd } from "@/lib/api";
 import type { CartLine } from "@/lib/cart";
 import { stockMax, useCart } from "@/lib/cart";
 import { formatVariantLabel } from "@/lib/cartVariant";
+import { flashLineFor, giftLinesOf, type CampaignQuoteUI } from "@/lib/campaign/campaignQuote";
+import { CampaignGiftRows, CartUnitPrice } from "./CampaignLineBits";
 
 type Props = {
   selected: CartLine[];
   note: string;
   onNoteChange: (v: string) => void;
   shopName?: string;
+  campaign?: CampaignQuoteUI | null;
 };
 
 /** Khối SP + ghi chú từng dòng + thành tiền. */
 export function CheckoutLineItems({
   selected,
   shopName = "ALOHA THẾ GIỚI CHẬU CÂY",
+  campaign,
 }: Props) {
   const setQty = useCart((s) => s.setQty);
   const setLineNote = useCart((s) => s.setLineNote);
@@ -51,7 +55,8 @@ export function CheckoutLineItems({
           const variant = formatVariantLabel(l);
           const max = stockMax(l.ton);
           const atMax = l.qty >= 10000 || (l.allowBackorder === false && max != null && l.qty >= max);
-          const lineTotal = l.gia * l.qty;
+          const fl = flashLineFor(campaign, l.ma);
+          const lineTotal = fl ? fl.lineTotal : l.gia * l.qty;
           const editing = editingMa === l.ma;
           const hasLineNote = Boolean(l.lineNote?.trim());
 
@@ -104,7 +109,7 @@ export function CheckoutLineItems({
                     <div className="min-w-0 space-y-0.5">
                       <p className="text-xs tabular-nums text-slate-500">
                         <span className="font-medium text-slate-400">Đơn giá </span>
-                        {formatVnd(l.gia)}
+                        <CartUnitPrice gia={l.gia} qty={l.qty} flash={fl} />
                         {l.qty > 1 ? (
                           <span className="text-slate-400"> × {l.qty}</span>
                         ) : null}
@@ -186,9 +191,9 @@ export function CheckoutLineItems({
                     ) : null}
                   </div>
                 </div>
-                <p className="text-right text-sm leading-none text-[var(--aloha-ink)]">
-                  {formatVnd(l.gia)}
-                </p>
+                <div className="text-right text-sm leading-none text-[var(--aloha-ink)]">
+                  <CartUnitPrice gia={l.gia} qty={l.qty} flash={fl} />
+                </div>
                 <div className="flex justify-center">
                   <div className="inline-flex h-8 items-center rounded-md bg-[#f3f4f6] px-0.5">
                     <button
@@ -247,6 +252,7 @@ export function CheckoutLineItems({
           );
         })}
       </ul>
+      <CampaignGiftRows gifts={giftLinesOf(campaign)} />
     </section>
   );
 }

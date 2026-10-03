@@ -8,7 +8,7 @@ import {
 } from "../auth/middleware.js";
 import { redisInvalidateShopCache } from "../redis.js";
 import { syncBus } from "../syncBus.js";
-import { normalizeString } from "../utils/helpers.ts";
+import { normalizeString } from "../utils/helpers.js";
 import {
   buildShopCategoryMongoFilter,
   parseCategoryIdList,
@@ -65,6 +65,21 @@ function productMatchesQuery(
     return hay.includes(needle) || hay.replace(/\s+/g, "").includes(needle);
   }
   return tokens.every((t) => hay.includes(t) || hay.replace(/\s+/g, "").includes(t));
+}
+
+/** Khớp đúng mã trước — KV có thể có 2 doc chỉ khác hoa/thường («50K» cũ vs «50k» từ KV). */
+async function findProductByMa(
+  col: import("mongodb").Collection,
+  ma: string,
+  projection: Record<string, 1>
+) {
+  return (
+    (await col.findOne({ ma } as any, { projection })) ||
+    (await col.findOne(
+      { $or: [{ ma: ma.toUpperCase() }, { ma: ma.toLowerCase() }] } as any,
+      { projection }
+    ))
+  );
 }
 
 export function registerShopProductsAdminRoutes(
@@ -243,12 +258,7 @@ export function registerShopProductsAdminRoutes(
           return;
         }
         const col = db.collection(COL);
-        const maFilter = {
-          $or: [{ ma }, { ma: ma.toUpperCase() }, { ma: ma.toLowerCase() }],
-        } as any;
-        const cur = await col.findOne(maFilter, {
-          projection: { ma: 1, webBadge: 1, webPin: 1 },
-        });
+        const cur = await findProductByMa(col, ma, { ma: 1, webBadge: 1, webPin: 1 });
         if (!cur) {
           res.status(404).json({ error: "not_found" });
           return;
@@ -291,7 +301,7 @@ export function registerShopProductsAdminRoutes(
             .find({
               webPin: nextPin,
               webBadge: { $in: badgeIn },
-              ma: { $nin: [ma, ma.toUpperCase(), ma.toLowerCase()] },
+              _id: { $ne: cur._id },
             } as any)
             .project({ ma: 1 })
             .toArray();
@@ -300,7 +310,7 @@ export function registerShopProductsAdminRoutes(
             if (!rm) continue;
             clearedMas.push(rm);
             await col.updateOne(
-              { ma: rm } as any,
+              { _id: r._id } as any,
               {
                 $set: {
                   webPin: 0,
@@ -311,14 +321,14 @@ export function registerShopProductsAdminRoutes(
           }
         }
 
-        await col.updateOne(maFilter, { $set });
+        await col.updateOne({ _id: cur._id } as any, { $set });
         await redisInvalidateShopCache();
         syncBus.publish(["aloha_products"], "web-merchandising", {
-          ids: [ma, ...clearedMas],
+          ids: [String(cur.ma || ma), ...clearedMas],
         });
         res.json({
           ok: true,
-          ma,
+          ma: String(cur.ma || ma),
           webPin: nextPin,
           webBadge: nextBadge,
           clearedMas,
@@ -351,16 +361,13 @@ export function registerShopProductsAdminRoutes(
             .trim()
             .slice(0, 320);
         }
-        const r = await db.collection(COL).updateOne(
-          {
-            $or: [{ ma }, { ma: ma.toUpperCase() }, { ma: ma.toLowerCase() }],
-          } as any,
-          { $set }
-        );
-        if (!r.matchedCount) {
+        const col = db.collection(COL);
+        const cur = await findProductByMa(col, ma, { ma: 1 });
+        if (!cur) {
           res.status(404).json({ error: "not_found" });
           return;
         }
+        await col.updateOne({ _id: cur._id } as any, { $set });
         await redisInvalidateShopCache();
         syncBus.publish(["aloha_products"], "web-seo", { ids: [ma] });
         res.json({ ok: true, ma, ...$set });
@@ -382,16 +389,16 @@ export function registerShopProductsAdminRoutes(
           return;
         }
         const hienThiWeb = req.body?.hienThiWeb !== false;
-        const r = await db.collection(COL).updateOne(
-          {
-            $or: [{ ma }, { ma: ma.toUpperCase() }, { ma: ma.toLowerCase() }],
-          } as any,
-          { $set: { hienThiWeb, hienThiWebUpdatedAt: new Date().toISOString() } }
-        );
-        if (!r.matchedCount) {
+        const col = db.collection(COL);
+        const cur = await findProductByMa(col, ma, { ma: 1 });
+        if (!cur) {
           res.status(404).json({ error: "not_found" });
           return;
         }
+        await col.updateOne(
+          { _id: cur._id } as any,
+          { $set: { hienThiWeb, hienThiWebUpdatedAt: new Date().toISOString() } }
+        );
         await redisInvalidateShopCache();
         syncBus.publish(["aloha_products"], "hienThiWeb", { ids: [ma] });
         res.json({ ok: true, ma, hienThiWeb });
@@ -479,10 +486,7 @@ export function registerShopProductsAdminRoutes(
         }
 
         await redisInvalidateShopCache();
-        syncBus.publish(["aloha_products"], "web-badge-defaults", {
-          banChaySapHet,
-          datTruoc,
-        });
+        syncBus.publish(["aloha_products"], "web-badge-defaults");
 
         res.json({
           ok: true,

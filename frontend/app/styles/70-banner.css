@@ -286,3 +286,107 @@
     transition: none !important;
   }
 }
+
+/* Welcome popup: soft bounce on open, then a single light sweep clipped to the artwork shape */
+@keyframes aloha-popup-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.86);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.03);
+  }
+  80% {
+    transform: translateY(1px) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes aloha-popup-shine {
+  from {
+    transform: translateX(-120%) skewX(-18deg);
+  }
+  to {
+    transform: translateX(220%) skewX(-18deg);
+  }
+}
+
+.aloha-popup-pop {
+  animation: aloha-popup-pop 0.56s cubic-bezier(0.22, 0.9, 0.32, 1.12) both;
+}
+
+.aloha-popup-shine {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: 1rem;
+  -webkit-mask-image: var(--popup-mask);
+  mask-image: var(--popup-mask);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.aloha-popup-shine::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 42%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+  transform: translateX(-120%) skewX(-18deg);
+  animation: aloha-popup-shine 1.1s ease-in-out 0.75s 1 both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aloha-popup-pop,
+  .aloha-popup-shine::before {
+    animation: none !important;
+  }
+}
+
+/* Announcement marquee ticker cho thanh thong bao dau trang */
+@keyframes aloha-marquee {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.aloha-marquee-track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation-name: aloha-marquee;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.aloha-marquee-track:hover,
+.aloha-marquee-track:active,
+.aloha-marquee-track:focus-within {
+  animation-play-state: paused;
+}
+
+.aloha-marquee-mask {
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8px, black calc(100% - 10px), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0%, black 8px, black calc(100% - 10px), transparent 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aloha-marquee-track {
+    animation: none !important;
+  }
+}
+

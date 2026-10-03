@@ -37,6 +37,7 @@ import {
 } from "../../shopOrders/stockHold.js";
 import { isShopTestBuyerEmail } from "../../shopOrders/checkoutFlags.js";
 import { requestShopBuyerEmail } from "../catalog/priceContext.js";
+import { withCampaignPromos } from "../../shopCampaigns/catalogPromos.js";
 
 export function registerProductDetailRoutes(app: Express, ctx: CatalogCtx) {
   /** Biến thể + ĐVT — chỉ đọc Mongo. */
@@ -173,7 +174,8 @@ export function registerProductDetailRoutes(app: Express, ctx: CatalogCtx) {
       }
       ton = await availableTonAfterHold(db, item.ma, ton);
       res.setHeader("X-Shop-Cache", "BYPASS");
-      res.json({ item: ton !== item.ton ? { ...item, ton } : item });
+      const [withPromo] = (await withCampaignPromos(db, req, [ton !== item.ton ? { ...item, ton } : item])).items;
+      res.json({ item: withPromo });
     } catch (e: any) {
       res.status(500).json({ error: e?.message || "product_failed" });
     }
@@ -218,7 +220,8 @@ export function registerProductDetailRoutes(app: Express, ctx: CatalogCtx) {
       }
       const ton = await availableTonAfterHold(db, item.ma, item.ton);
       res.setHeader("X-Shop-Cache", "BYPASS");
-      res.json({ item: ton !== item.ton ? { ...item, ton } : item });
+      const [withPromo] = (await withCampaignPromos(db, req, [ton !== item.ton ? { ...item, ton } : item])).items;
+      res.json({ item: withPromo });
     } catch (e: any) {
       res.status(500).json({ error: e?.message || "resolve_failed" });
     }

@@ -323,6 +323,7 @@ export async function pushShopInvoiceToKiotViet(
       quantity: it.quantity,
       price: it.price,
       discount: it.discount || 0,
+      ...(it.note ? { note: it.note } : {}),
     })
   );
 

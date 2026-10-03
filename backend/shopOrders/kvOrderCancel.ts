@@ -60,6 +60,13 @@ export async function cancelShopOrderOnKiotViet(
     }
 
     try {
+      const cur = await fetchJson(`${api}/orders/${numericId}`, { method: "GET", headers, timeout: 60_000 });
+      if (Number((cur?.data ?? cur)?.status) === 4) return { ok: true };
+    } catch {
+      /* không đọc được trạng thái → vẫn thử huỷ */
+    }
+
+    try {
       await fetchJson(`${api}/orders/${numericId}`, {
         method: "DELETE",
         headers,

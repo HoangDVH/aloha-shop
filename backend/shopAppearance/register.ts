@@ -17,16 +17,15 @@ import {
   APPEARANCE_COL,
   APPEARANCE_ID,
   APPEARANCE_HISTORY_MAX,
-  defaultPopup,
   defaultSeo,
   type AppearanceDoc,
   type AppearanceFontFamily,
   type AppearanceHistoryEntry,
   type AppearanceLayout,
-  type AppearancePopup,
   type AppearanceSeo,
   type NavConfig,
 } from "./types.js";
+import { normalizePopup, registerPopupStatsRoutes } from "./popup.js";
 import type { GetShopDb } from "../shopOrders/routes.js";
 
 const FONT_IDS = new Set<AppearanceFontFamily>([
@@ -79,30 +78,6 @@ function bumpShopAppearance(source: string) {
 
 function emptyNav(): NavConfig {
   return { hiddenCategoryPaths: [], customItems: [] };
-}
-
-function normalizePopup(raw: Partial<AppearancePopup> | null | undefined): AppearancePopup {
-  const base = defaultPopup();
-  const p = raw && typeof raw === "object" ? raw : {};
-  const delay = Number(p.delaySeconds);
-  const freq = Number(p.frequencyDays);
-  return {
-    enabled: p.enabled === true,
-    campaignId: String(p.campaignId || base.campaignId).trim() || base.campaignId,
-    title: String(p.title ?? base.title),
-    body: String(p.body ?? base.body),
-    imageUrl: String(p.imageUrl || ""),
-    ctaLabel: String(p.ctaLabel ?? base.ctaLabel),
-    ctaHref: String(p.ctaHref || base.ctaHref),
-    couponCode: String(p.couponCode || ""),
-    delaySeconds: Number.isFinite(delay)
-      ? Math.max(0, Math.min(30, Math.round(delay)))
-      : base.delaySeconds,
-    frequencyDays: Number.isFinite(freq)
-      ? Math.max(1, Math.min(90, Math.round(freq)))
-      : base.frequencyDays,
-    showOncePerCampaign: p.showOncePerCampaign !== false,
-  };
 }
 
 function normalizeLayout(raw: Partial<AppearanceLayout> | null | undefined): AppearanceLayout {
@@ -281,6 +256,10 @@ export function registerShopAppearanceRoutes(
 ) {
   const gate = [requireAuth(_getDb), requireActive, requireManager];
   startScheduleTicker(getShopDb);
+  registerPopupStatsRoutes(app, gate, getShopDb, async () => {
+    const doc = await ensureDoc(await getShopDb());
+    return normalizeLayout(doc.published).theme.popup;
+  });
 
   app.get("/api/shop/appearance", async (_req, res: Response) => {
     try {

@@ -58,7 +58,17 @@ export type AppearancePopup = {
   delaySeconds: number;
   frequencyDays: number;
   showOncePerCampaign: boolean;
+  /** ISO; "" = không giới hạn. */
+  startAt: string;
+  endAt: string;
+  pages: PopupPages;
+  audience: PopupAudience;
+  /** Sau khi đóng, để lại ảnh nhỏ ở góc để mở lại. */
+  reopenBadge: boolean;
 };
+
+export type PopupPages = "home" | "home_deals" | "all";
+export type PopupAudience = "all" | "new" | "returning";
 
 export type AppearanceTheme = {
   siteName: string;
@@ -144,6 +154,11 @@ export function defaultPopup(): AppearancePopup {
     delaySeconds: 3,
     frequencyDays: 7,
     showOncePerCampaign: true,
+    startAt: "",
+    endAt: "",
+    pages: "home",
+    audience: "all",
+    reopenBadge: true,
   };
 }
 

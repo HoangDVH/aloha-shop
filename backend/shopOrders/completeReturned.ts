@@ -9,6 +9,7 @@ import { syncBus } from "../syncBus.js";
 import { notifyOrderStatus } from "./notifyOrderStatus.js";
 import { shopOrderLookupFilter } from "./findShopOrder.js";
 import { clawbackPaidOutCommissions } from "./commissionClawback.js";
+import { releasePromotionHold } from "../shopPromotions/redemptionService.js";
 
 export type CompleteReturnedOpts = {
   shopDb: Db;
@@ -80,6 +81,7 @@ export async function completeShopOrderReturned(
 
   if (fullReturn) {
     await releaseShopStockHolds(shopDb, code).catch(() => 0);
+    await releasePromotionHold(shopDb, code).catch(() => undefined);
   }
 
   const voided = await voidCommissionsForOrder(shopDb, code, {

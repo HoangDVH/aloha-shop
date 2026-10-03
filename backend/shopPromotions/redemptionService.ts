@@ -8,6 +8,12 @@ import {
   type PromotionRedemptionDoc,
 } from "./types.js";
 import { customerUsageId } from "./checkoutPromotions.js";
+import {
+  consumeFirstPurchaseClaims,
+  releaseFirstPurchaseClaims,
+} from "./claimService.js";
+import { releaseWalletForOrder, renameWalletOrderCode, useWalletForOrder } from "./wallet/walletService.js";
+import { reclaimAfterLatePayment, settleCampaignHolds } from "../shopCampaigns/orderCampaign.js";
 
 function newRedemptionId(): string {
   return `red_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -125,7 +131,7 @@ export async function holdPromotion(
   const now = new Date();
   const expiresAt = new Date(now.getTime() + ttlMinutes * 60 * 1000).toISOString();
 
-  // Atomically update promo held counts
+  // Atomically update promo held counts & budget
   const promoUpdateRes = await promoCol.updateOne(
     {
       id: promotionId,
@@ -174,15 +180,39 @@ export async function holdPromotion(
     };
   }
 
-  // Nếu có code, tăng heldCount của code
+  // Nếu có code, kiểm tra và tăng heldCount của code có điều kiện (mục 7 & AB16)
   if (promotionCode) {
     const cleanCode = promotionCode.trim().toUpperCase();
-    await codeCol.updateOne(
-      { code: cleanCode },
+    const codeUpdateRes = await codeCol.updateOne(
+      {
+        code: cleanCode,
+        active: { $ne: false },
+        $or: [
+          { maxUses: { $exists: false } },
+          { maxUses: null },
+          { $expr: { $lt: [{ $add: ["$usedCount", "$heldCount"] }, "$maxUses"] } },
+        ],
+      },
       {
         $inc: { heldCount: 1 },
       }
     );
+
+    if (codeUpdateRes.matchedCount === 0) {
+      // Rollback promo update
+      await promoCol.updateOne(
+        { id: promotionId },
+        {
+          $inc: { heldCount: -1, budgetHeld: -discountAmount },
+          $set: { updatedAt: now.toISOString() },
+        }
+      );
+      if (usageKey) await returnCustomerUsage(shopDb, promotionId, usageKey);
+      return {
+        ok: false,
+        error: "Mã giảm giá đã hết lượt sử dụng",
+      };
+    }
   }
 
   const redemptionId = newRedemptionId();
@@ -252,6 +282,19 @@ async function transitionHeldRedemptions(
       await returnCustomerUsage(shopDb, String(redemption.promotionId), String(redemption.customerKey));
     }
   }
+
+  // Đồng bộ với bảng claims quyền khách mới (mục 6) và ví voucher
+  if (status === "used") {
+    await consumeFirstPurchaseClaims(shopDb, orderCode).catch(() => 0);
+    await useWalletForOrder(shopDb, orderCode).catch(() => 0);
+    const sold = await settleCampaignHolds(shopDb, orderCode, "sold").catch(() => false);
+    if (!sold) await reclaimAfterLatePayment(shopDb, orderCode).catch(() => "skip");
+  } else if (status === "released") {
+    await releaseFirstPurchaseClaims(shopDb, orderCode).catch(() => 0);
+    await releaseWalletForOrder(shopDb, orderCode).catch(() => 0);
+    await settleCampaignHolds(shopDb, orderCode, "released").catch(() => false);
+  }
+
   return changed;
 }
 
@@ -279,4 +322,38 @@ export async function renameRedemptionOrderCode(
   await shopDb
     .collection(PROMOTION_REDEMPTIONS_COL)
     .updateMany({ orderCode: fromCode }, { $set: { orderCode: toCode, updatedAt: new Date().toISOString() } });
+  await renameWalletOrderCode(shopDb, fromCode, toCode);
+}
+
+/**
+ * Worker claim từng batch bằng ID chính xác, xử lý đủ danh sách không bỏ sót (mục 6.3 & AB21).
+ */
+export async function expirePendingPromotionHolds(
+  shopDb: Db,
+  batchSize = 100
+): Promise<{ expiredCount: number }> {
+  const redCol = shopDb.collection(PROMOTION_REDEMPTIONS_COL);
+  const nowIso = new Date().toISOString();
+  let totalExpired = 0;
+
+  while (true) {
+    const candidates = await redCol
+      .find({ status: "held", expiresAt: { $lte: nowIso } })
+      .limit(batchSize)
+      .toArray();
+
+    if (!candidates.length) break;
+
+    const orderCodes = [...new Set(candidates.map((c) => String(c.orderCode)).filter(Boolean))];
+    for (const code of orderCodes) {
+      const changed = await transitionHeldRedemptions(shopDb, code, "released");
+      if (changed > 0) {
+        totalExpired += changed;
+      }
+    }
+
+    if (candidates.length < batchSize) break;
+  }
+
+  return { expiredCount: totalExpired };
 }

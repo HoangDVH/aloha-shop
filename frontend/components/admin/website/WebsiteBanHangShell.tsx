@@ -72,10 +72,14 @@ export default function WebsiteBanHangShell() {
                   onClick={() => setSub(id)}
                   className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border-0 px-3.5 text-[13px] font-semibold transition ${
                     active
-                      ? "bg-[var(--aloha-green)] text-white shadow-sm"
-                      : "bg-transparent text-slate-600 hover:bg-[var(--aloha-green-light)] hover:text-[var(--aloha-ink)]"
+                      ? "!bg-[#2D5A27] !text-white shadow-sm [&_svg]:!text-white"
+                      : "bg-transparent text-slate-600 hover:!bg-[#F0F5EE] hover:!text-slate-900 [&_svg]:text-slate-400"
                   }`}
-                  style={{ border: "none" }}
+                  style={
+                    active
+                      ? { backgroundColor: "#2D5A27", color: "#ffffff", border: "none" }
+                      : { border: "none" }
+                  }
                 >
                   <Icon className="h-4 w-4" />
                   {label}

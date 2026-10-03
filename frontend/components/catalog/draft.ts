@@ -79,6 +79,7 @@ export function useDraftPreviewTotal({
               | "giam_gia"
               | "dat_truoc"
               | "moi"
+              | "uu_dai"
               | "noi_bat"
               | "ban_chay"
               | undefined,

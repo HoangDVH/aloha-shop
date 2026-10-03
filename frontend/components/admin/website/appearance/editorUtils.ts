@@ -44,6 +44,11 @@ export function emptyPopup(): NonNullable<AppearanceTheme["popup"]> {
     delaySeconds: 3,
     frequencyDays: 7,
     showOncePerCampaign: true,
+    startAt: "",
+    endAt: "",
+    pages: "home",
+    audience: "all",
+    reopenBadge: true,
   };
 }
 
@@ -86,7 +91,7 @@ export function formatScheduleVi(iso: string | null | undefined): string {
   return `${gio} ngày ${ngay}`;
 }
 
-/** Đảm bảo có khối «Sản phẩm nổi bật» + «Sản phẩm mới» trong danh sách trang chủ. */
+/** Đảm bảo có khối «Sản phẩm nổi bật» + «Sản phẩm ưu đãi» + «Sản phẩm mới» trong danh sách trang chủ. */
 export function ensureCoreHomeProductBlocks(
   layout: AppearanceLayout
 ): AppearanceLayout {
@@ -119,6 +124,30 @@ export function ensureCoreHomeProductBlocks(
     else {
       const featureIdx = blocks.findIndex((b) => b.type === "feature_strip");
       blocks.splice(featureIdx >= 0 ? featureIdx + 1 : 0, 0, noiBatBlock);
+    }
+  }
+
+  const hasUuDai = blocks.some(
+    (b) =>
+      b.type === "product_section" && String(b.props?.source || "") === "uu_dai"
+  );
+  if (!hasUuDai) {
+    const uuDaiBlock: AppearanceBlock = {
+      id: newId("uu_dai"),
+      type: "product_section",
+      enabled: true,
+      props: {
+        title: "Sản phẩm ưu đãi",
+        source: "uu_dai",
+        limit: 15,
+        sort: "ten",
+      },
+    };
+    const hotIdx = blocks.findIndex(isHot);
+    if (hotIdx >= 0) blocks.splice(hotIdx, 0, uuDaiBlock);
+    else {
+      const featureIdx = blocks.findIndex((b) => b.type === "feature_strip");
+      blocks.splice(featureIdx >= 0 ? featureIdx + 1 : 0, 0, uuDaiBlock);
     }
   }
 

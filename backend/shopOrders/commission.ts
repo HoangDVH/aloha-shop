@@ -496,7 +496,7 @@ export type EligiblePeriodPreview = {
 export async function buildEligiblePeriodPreview(
   shopDb: Db,
   period: string
-): Promise<{ ok: true; preview: EligiblePeriodPreview } | { ok: false; error: string }> {
+): Promise<{ ok: true; preview: EligiblePeriodPreview; error?: undefined } | { ok: false; error: string }> {
   const m = /^(\d{4})-(\d{2})(?:-(K[12]))?$/.exec(String(period || "").trim());
   if (!m) return { ok: false, error: "period_invalid" };
   const y = Number(m[1]);

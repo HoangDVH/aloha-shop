@@ -13,8 +13,8 @@ import {
 } from "../auth/middleware.js";
 import { memoryCacheClear, redisInvalidateShopCache } from "../redis.js";
 import { syncBus } from "../syncBus.js";
-import { invalidateCategoryMetaCache } from "./categoryMeta.ts";
-import { CATEGORY_COL } from "./categoryCollection.ts";
+import { invalidateCategoryMetaCache } from "./categoryMeta.js";
+import { CATEGORY_COL } from "./categoryCollection.js";
 import { parseKvDate } from "../utils/productCreatedAt.js";
 
 const OPS_CAT_COL = "categories";

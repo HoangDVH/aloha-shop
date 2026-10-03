@@ -15,7 +15,7 @@ import {
   type ShippingPromotionResult,
 } from "./types.js";
 import { evaluatePromotions, evaluateShippingPromotions, isShippingPromotion } from "./evaluator.js";
-import { loadShippingRegions, matchShippingRegion } from "../shopShipping/shippingRegions.js";
+import { loadShippingRegions, matchRegionById } from "../shopShipping/shippingRegions.js";
 
 /** Cờ tính năng voucher hỗ trợ phí ship; mặc định tắt. */
 export function shipVoucherEnabled(): boolean {
@@ -131,11 +131,7 @@ export async function evaluateShippingForCheckout(
     freeShipApplied: args.freeShipApplied,
     customerUsage,
     now: args.now,
-    matchRegion: (regionId) => {
-      const region = regions.find((r) => r.id === regionId);
-      if (!region) return { status: "outside", reason: "Vùng áp dụng của ưu đãi chưa được cấu hình." };
-      return matchShippingRegion(region, args.address);
-    },
+    matchRegion: (regionId) => matchRegionById(regions, regionId, args.address),
   });
 }
 

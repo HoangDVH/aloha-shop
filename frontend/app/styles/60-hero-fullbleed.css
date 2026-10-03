@@ -294,3 +294,41 @@
     display: none;
   }
 }
+
+/* Cụm HomeBannerGrid trên mobile/tablet: banner chiến dịch 1600×600 hiện đủ (8:3), không cắt hai bên */
+@media (max-width: 1023px) {
+  .home-banner-grid .hero-banner__stage {
+    aspect-ratio: 8 / 3 !important;
+    min-height: 0 !important;
+    max-height: none !important;
+  }
+}
+
+/* Khi nằm trong cụm HomeBannerGrid (có banner phụ bên cạnh) */
+@media (min-width: 1024px) {
+  .home-banner-grid .hero-banner--full,
+  .home-banner-grid .hero-banner__full-inner,
+  .home-banner-grid .hero-banner__stage {
+    height: 100% !important;
+    min-height: 100% !important;
+    max-height: none !important;
+    aspect-ratio: auto !important;
+  }
+
+  .home-banner-grid .hero-banner__stage .embla,
+  .home-banner-grid .hero-banner__stage .embla__container,
+  .home-banner-grid .hero-banner__stage .embla__slide {
+    height: 100% !important;
+  }
+
+  .home-banner-grid .hero-banner__frame {
+    height: 100% !important;
+  }
+
+  .home-banner-grid .hero-banner__img {
+    height: 100% !important;
+    width: 100% !important;
+    object-fit: cover !important;
+    object-position: center center !important;
+  }
+}

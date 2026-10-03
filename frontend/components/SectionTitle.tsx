@@ -23,7 +23,7 @@ export function SectionTitle({
       </Tag>
       <span className="section-title-ornament" aria-hidden>
         <span className="section-title-line" />
-        <Leaf className="section-title-leaf" strokeWidth={2.25} />
+        <Leaf className="section-title-leaf -scale-x-100" strokeWidth={2.25} />
         <span className="section-title-line" />
       </span>
     </div>

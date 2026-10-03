@@ -52,6 +52,12 @@ export function registerCatalogStreamRoutes(app: Express, _ctx: CatalogCtx) {
           at: Date.now(),
         });
       }
+      if (cols.includes("aloha_shop_campaigns")) {
+        writeEvent("campaign", { ids: payload.ids || [], source: payload.source || "", at: Date.now() });
+      }
+      if (cols.includes("aloha_shop_flash_counters")) {
+        writeEvent("flash", { ids: payload.ids || [], at: Date.now() });
+      }
       const hit = cols.some(
         (c) =>
           c === "aloha_products" ||

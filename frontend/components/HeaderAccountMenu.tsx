@@ -8,6 +8,7 @@ import {
   LogOut,
   MapPin,
   Receipt,
+  TicketPercent,
   User as UserIcon,
   Wallet,
 } from "lucide-react";
@@ -128,6 +129,15 @@ export function HeaderAccountMenu() {
             >
               <Receipt size={18} className="text-[var(--aloha-green)]" />
               Đơn mua
+            </Link>
+            <Link
+              href="/tai-khoan?tab=voucher"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className={itemClass}
+            >
+              <TicketPercent size={18} className="text-[var(--aloha-green)]" />
+              Voucher của tôi
             </Link>
             <Link
               href="/tai-khoan?tab=thanh-toan"

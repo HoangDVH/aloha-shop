@@ -10,8 +10,8 @@ import {
   flattenKvCategories,
   resolveCategoryIdsFromPathIndex,
   type CategoryNode,
-} from "../utils/categoryTree.ts";
-import { CATEGORY_COL } from "./categoryCollection.ts";
+} from "../utils/categoryTree.js";
+import { CATEGORY_COL } from "./categoryCollection.js";
 
 async function loadCategoryTree(db: Db): Promise<CategoryNode[]> {
   const cats = await db

@@ -24,6 +24,7 @@ export function isItemInScope(
   promo: PromotionDoc
 ): boolean {
   const ma = normalizeMa(item.ma);
+  if (promo.excludeFlash && item.flash) return false;
   if (promo.excludedProductMas && promo.excludedProductMas.length > 0) {
     const excluded = promo.excludedProductMas.map(normalizeMa);
     if (excluded.includes(ma)) return false;
@@ -60,9 +61,10 @@ function checkCommonEligibility(
   items: CartItemToEvaluate[],
   buyer: BuyerContext,
   nowIso: string
-): { eligible: boolean; ineligibleReason: string; eligibleSubtotal: number } {
+): { eligible: boolean; ineligibleReason: string; eligibleSubtotal: number; shortfall: number } {
   let eligible = true;
   let ineligibleReason = "";
+  let shortfall = 0;
 
   // 1. Kiểm tra thời gian hiệu lực
   if (promo.startDate && promo.startDate > nowIso) {
@@ -127,6 +129,7 @@ function checkCommonEligibility(
     if (!thresholdMet) {
       eligible = false;
       const diff = Math.max(1, promo.minOrderThreshold - eligibleSubtotal);
+      shortfall = op === ">" ? diff + 1 : diff;
       ineligibleReason =
         op === ">"
           ? `Cần mua thêm trên ${formatVnd(diff)} hàng áp dụng để nhận ưu đãi.`
@@ -134,7 +137,7 @@ function checkCommonEligibility(
     }
   }
 
-  return { eligible, ineligibleReason, eligibleSubtotal };
+  return { eligible, ineligibleReason, eligibleSubtotal, shortfall };
 }
 
 /**
@@ -306,17 +309,19 @@ export function evaluatePromotions(args: {
   for (const promo of promotions) {
     if (promo.status !== "active" || isShippingPromotion(promo)) continue;
 
-    let { eligible, ineligibleReason, eligibleSubtotal } = checkCommonEligibility(
+    let { eligible, ineligibleReason, eligibleSubtotal, shortfall } = checkCommonEligibility(
       promo,
       items,
       buyer,
       nowIso
     );
     const perCustomerLimit = Number(promo.usageLimitPerCustomer) || 0;
-    if (eligible && perCustomerLimit > 0 && (customerUsage[promo.id] || 0) >= perCustomerLimit) {
+    const exhausted = perCustomerLimit > 0 && (customerUsage[promo.id] || 0) >= perCustomerLimit;
+    if (eligible && exhausted) {
       eligible = false;
       ineligibleReason = "Bạn đã dùng hết lượt của ưu đãi này.";
     }
+    if (exhausted) shortfall = 0;
 
     // 6. Tính số tiền giảm dự kiến
     let calculatedDiscount = 0;
@@ -352,6 +357,7 @@ export function evaluatePromotions(args: {
       targetCustomer: promo.targetCustomer,
       endDate: promo.endDate,
       description: promo.description,
+      ...(shortfall > 0 ? { shortfall } : {}),
     });
   }
 
@@ -495,18 +501,20 @@ export function evaluatePromotions(args: {
 
     if (eligibleSubtotal > 0) {
       let allocatedTotal = 0;
-      const fractions: Array<{ ma: string; fractional: number; maxLineValue: number }> = [];
+      const fractions: Array<{ ma: string; fractional: number; maxLineValue: number; given: number }> = [];
 
+      // Cùng mã có thể có 2 dòng (phần giá flash + phần giá thường): cộng dồn theo mã.
       eligibleItems.forEach((it) => {
         const lineTotal = Math.max(0, it.price) * Math.max(1, it.quantity);
         const rawLineDiscount = (appliedDiscountAmount * lineTotal) / eligibleSubtotal;
         const floorDiscount = Math.floor(rawLineDiscount);
-        lineDiscounts[it.ma] = floorDiscount;
+        lineDiscounts[it.ma] += floorDiscount;
         allocatedTotal += floorDiscount;
         fractions.push({
           ma: it.ma,
           fractional: rawLineDiscount - floorDiscount,
           maxLineValue: lineTotal,
+          given: floorDiscount,
         });
       });
 
@@ -520,7 +528,8 @@ export function evaluatePromotions(args: {
 
         for (let i = 0; i < fractions.length && remainder > 0; i++) {
           const item = fractions[i];
-          if (lineDiscounts[item.ma] < item.maxLineValue) {
+          if (item.given < item.maxLineValue) {
+            item.given += 1;
             lineDiscounts[item.ma] += 1;
             remainder -= 1;
           }

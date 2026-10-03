@@ -71,3 +71,37 @@
 .animate-fade-up {
   animation: fade-up 0.45s ease-out both;
 }
+
+/* Cột nút nổi góc phải (Zalo dưới cùng, bong bóng voucher / lên đầu trang xếp trên): đứng trên tab bar + thanh dính đáy của trang. */
+:root {
+  --shop-float-bottom: calc(
+    var(--shop-mobile-tab-h) + var(--shop-sticky-h, 0px) + 0.75rem + env(safe-area-inset-bottom, 0px)
+  );
+  --shop-float-step: 4rem;
+}
+@media (min-width: 1024px) {
+  :root {
+    --shop-sticky-h: 0px !important;
+    --shop-float-bottom: 1.5rem;
+    --shop-float-step: 4.5rem;
+  }
+}
+
+@keyframes aloha-zalo-ring {
+  0% { box-shadow: 0 0 0 0 rgba(0, 104, 255, 0.5); }
+  70% { box-shadow: 0 0 0 14px rgba(0, 104, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 104, 255, 0); }
+}
+.aloha-zalo-ring {
+  animation: aloha-zalo-ring 2.4s ease-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .aloha-zalo-ring {
+    animation: none;
+  }
+}
+
+/* Popup reopen badge visible: hide the floating voucher bubble so two floating buttons never stack */
+html[data-popup-badge] .voucher-float-bubble {
+  display: none;
+}

@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 type Props = {
@@ -11,18 +13,24 @@ type Props = {
 
 /** Xem ảnh phóng to — nền sáng kiểu sàn TMĐT (không viền đen). */
 export function ProductLightbox({ open, src, alt, onClose }: Props) {
-  if (!open || !src) return null;
+  const [mounted, setMounted] = useState(false);
 
-  return (
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!open || !src || !mounted) return null;
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-[90] flex items-center justify-center bg-[#f5f5f5]/95 p-4 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[99999] flex items-center justify-center bg-[#f5f5f5]/95 p-4 backdrop-blur-[2px]"
       onClick={onClose}
       role="dialog"
       aria-modal
     >
       <button
         type="button"
-        className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top,0px))] rounded-full bg-white p-2 text-slate-600 shadow-md ring-1 ring-black/10 hover:bg-slate-50"
+        className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top,0px))] z-30 rounded-full bg-white p-2 text-slate-600 shadow-md ring-1 ring-black/10 hover:bg-slate-50 cursor-pointer"
         onClick={onClose}
         aria-label="Đóng"
       >
@@ -35,6 +43,7 @@ export function ProductLightbox({ open, src, alt, onClose }: Props) {
         className="max-h-[90vh] max-w-full rounded-lg bg-white object-contain shadow-lg ring-1 ring-black/5"
         onClick={(e) => e.stopPropagation()}
       />
-    </div>
+    </div>,
+    document.body
   );
 }

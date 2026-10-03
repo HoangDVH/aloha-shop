@@ -19,6 +19,9 @@ import {
   ChevronRight,
   Home,
   Sparkles,
+  Zap,
+  Building2,
+  Users,
 } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { fetchCategoryTreeCached, shopApiBase, type ShopCategoryNavNode } from "@/lib/api";
@@ -32,6 +35,12 @@ import { applyThemeCssVars } from "@/lib/themeCss";
 import { onShopAppearanceChanged } from "@/lib/catalogSync";
 import { SHOP_OPEN_MOBILE_CATS } from "@/components/ShopMobileTabBar";
 import { SHOP_BRAND, shopBrand } from "@/lib/brand";
+import { AnnouncementBar } from "@/components/campaign/AnnouncementBar";
+import { PreviewBar } from "@/components/campaign/PreviewBar";
+import { HeaderVoucherPill } from "@/components/campaign/HeaderVoucherPill";
+import { ZaloFloatButton } from "@/components/ZaloFloatButton";
+import { useCampaignView } from "@/lib/campaign/useCampaignView";
+import { useDealsNavAccent } from "@/lib/campaign/navAccent";
 const LOGO_HEADER_SRC = "/brand/logo-header-on-theme.png?v=1";
 const LOGO_WIDTH = 976;
 const LOGO_HEIGHT = 194;
@@ -42,6 +51,14 @@ const DEFAULT_FOOTER = {
   email: "alohathegioichaucay01@gmail.com",
   zalo: "079 490 1233",
 };
+
+const FEATURED_DEALS_HREF = "/tim?badge=noi_bat&inStock=1";
+
+/** Menu «Ưu đãi»: có chiến dịch đang chạy → /uu-dai; không thì trang SP nổi bật như trước. */
+function useDealsNavHref() {
+  const { running } = useCampaignView();
+  return running ? "/uu-dai" : FEATURED_DEALS_HREF;
+}
 
 function zaloHref(zalo: string) {
   const raw = String(zalo || "").trim();
@@ -95,6 +112,8 @@ function AlohaLogo({
 export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNode[] }) {
   const pathname = usePathname() || "/";
   const searchParams = useSearchParams();
+  const dealsNavHref = useDealsNavHref();
+  const dealsAccent = useDealsNavAccent();
   const count = useCart((s) => s.lines.reduce((n, l) => n + l.qty, 0));
   const [tree, setTree] = useState<ShopCategoryNavNode[]>(() =>
     categoryTree?.length ? categoryTree : []
@@ -109,6 +128,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
     if (pathname === "/tuyen-ctv" || pathname.startsWith("/tuyen-ctv/")) return "tuyen-ctv";
     if (pathname === "/bai-viet" || pathname.startsWith("/bai-viet/")) return "bai-viet";
     if (pathname === "/ve-aloha" || pathname.startsWith("/ve-aloha/")) return "ve-aloha";
+    if (pathname === "/uu-dai" || pathname.startsWith("/uu-dai/")) return "noi-bat-uu-dai";
     if (pathname === "/tim") {
       const sort = searchParams.get("sort") || "";
       const badge = searchParams.get("badge") || "";
@@ -220,6 +240,8 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
       className="sticky top-0 z-50 shadow-sm"
       style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
     >
+      <PreviewBar />
+      <AnnouncementBar />
       {/* Hàng logo + search — kem ấm #FDF6E3 */}
       <div className="border-b border-[var(--aloha-border-brown)]/40 bg-[#FDF6E3]">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-2 gap-y-2 px-3 py-2 sm:gap-x-3 sm:px-4 sm:py-2.5 md:flex-nowrap md:gap-4 lg:gap-5">
@@ -243,8 +265,10 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
               <BadgePercent size={18} strokeWidth={2.25} aria-hidden className={iconClass} />
               <span className="hidden sm:inline">Đăng ký sỉ</span>
             </a>
+            <HeaderVoucherPill />
             <Link
               href="/gio-hang"
+              data-cart-target=""
               className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-2 text-[var(--aloha-green-dark)] ${chromeHover} sm:px-3`}
               onClick={closeMenus}
               aria-label={`Giỏ hàng${count ? `, ${count} sản phẩm` : ""}`}
@@ -282,7 +306,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                 { href: "/", label: "Trang chủ", key: "trang-chu", kind: "link" as const },
                 { kind: "mega" as const, key: "danh-muc" },
                 {
-                  href: "/tim?badge=noi_bat&inStock=1",
+                  href: dealsNavHref,
                   label: "Ưu đãi",
                   key: "noi-bat-uu-dai",
                   kind: "link" as const,
@@ -314,18 +338,31 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                 );
               }
               const active = item.key === navActiveKey;
-              const cls = `group relative inline-flex h-full shrink-0 items-center justify-center whitespace-nowrap px-2 text-[15px] xl:px-2.5 xl:text-[16px] ${
-                active
-                  ? "font-bold text-[var(--aloha-green)]"
-                  : "font-semibold text-[var(--aloha-ink)] hover:text-[var(--aloha-green)]"
+              const accent = item.key === "noi-bat-uu-dai" && dealsAccent.on ? dealsAccent.color : null;
+              const cls = `group relative inline-flex h-full shrink-0 items-center justify-center gap-1 whitespace-nowrap px-2 text-[15px] xl:px-2.5 xl:text-[16px] ${
+                accent
+                  ? "font-bold"
+                  : active
+                    ? "font-bold text-[var(--aloha-green)]"
+                    : "font-semibold text-[var(--aloha-ink)] hover:text-[var(--aloha-green)]"
               }`;
               const underline = (
                 <span
-                  className={`pointer-events-none absolute inset-x-2 bottom-0 h-[2.5px] rounded-full bg-[var(--aloha-green)] transition-opacity ${
-                    active ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                  }`}
+                  className={`pointer-events-none absolute inset-x-2 bottom-0 h-[2.5px] rounded-full transition-opacity ${
+                    accent ? "" : "bg-[var(--aloha-green)]"
+                  } ${active ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+                  style={accent ? { backgroundColor: accent } : undefined}
                   aria-hidden
                 />
+              );
+              const label = accent ? (
+                <>
+                  <Zap size={16} strokeWidth={2.2} fill="currentColor" className="shrink-0" aria-hidden />
+                  {item.label}
+                  <span className="sr-only">, đang có chương trình</span>
+                </>
+              ) : (
+                item.label
               );
               if ("external" in item && item.external) {
                 return (
@@ -348,9 +385,10 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                   href={item.href}
                   onClick={closeMenus}
                   className={cls}
+                  style={accent ? { color: accent } : undefined}
                   aria-current={active ? "page" : undefined}
                 >
-                  {item.label}
+                  {label}
                   {underline}
                 </Link>
               );
@@ -415,73 +453,78 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                     <p className="px-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
                       Khám phá ALOHA
                     </p>
-                    <div className="mt-2 divide-y divide-slate-100 rounded-2xl border border-slate-100 bg-white shadow-sm">
+                    <div className="mt-2 divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
                       <Link
                         href="/"
                         onClick={closeMenus}
-                        className="flex items-center justify-between p-3.5 transition hover:bg-[var(--aloha-cream)]/50"
+                        className="flex items-center justify-between p-3.5 transition hover:bg-[var(--aloha-cream)]/50 active:bg-[var(--aloha-cream)]"
                       >
                         <div className="flex items-center gap-3">
-                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-[var(--aloha-green)]">
-                            <Home size={18} />
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[var(--aloha-green)]">
+                            <Home size={18} strokeWidth={2} />
                           </span>
                           <div>
                             <p className="text-sm font-bold text-[var(--aloha-ink)]">Trang chủ</p>
-                            <p className="text-xs text-slate-500">Mua sắm, cây mới & khuyến mãi</p>
+                            <p className="text-xs text-slate-500">Cây cảnh, chậu cây & phụ kiện</p>
                           </div>
                         </div>
-                        <ChevronRight size={16} className="text-slate-400" />
+                        <ChevronRight size={16} className="text-slate-300" />
                       </Link>
 
                       <Link
-                        href="/tim?badge=noi_bat&inStock=1"
+                        href={dealsNavHref}
                         onClick={closeMenus}
-                        className="flex items-center justify-between p-3.5 transition hover:bg-[var(--aloha-cream)]/50"
+                        className="flex items-center justify-between p-3.5 transition hover:bg-[var(--aloha-cream)]/50 active:bg-[var(--aloha-cream)]"
                       >
                         <div className="flex items-center gap-3">
-                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
-                            <BadgePercent size={18} />
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[var(--aloha-green)]">
+                            <BadgePercent size={18} strokeWidth={2} />
                           </span>
                           <div>
-                            <p className="text-sm font-bold text-[var(--aloha-ink)]">Ưu đãi nổi bật</p>
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-sm font-bold text-[var(--aloha-ink)]">Ưu đãi nổi bật</p>
+                              <span className="rounded-full bg-gradient-to-r from-red-500 to-rose-500 px-1.5 py-0.5 text-[9.5px] font-black uppercase text-white shadow-xs">
+                                HOT
+                              </span>
+                            </div>
                             <p className="text-xs text-slate-500">Sản phẩm giá tốt, sẵn hàng giao ngay</p>
                           </div>
                         </div>
-                        <ChevronRight size={16} className="text-slate-400" />
+                        <ChevronRight size={16} className="text-slate-300" />
                       </Link>
 
                       <Link
                         href="/bai-viet"
                         onClick={closeMenus}
-                        className="flex items-center justify-between p-3.5 transition hover:bg-[var(--aloha-cream)]/50"
+                        className="flex items-center justify-between p-3.5 transition hover:bg-[var(--aloha-cream)]/50 active:bg-[var(--aloha-cream)]"
                       >
                         <div className="flex items-center gap-3">
-                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                            <FileText size={18} />
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[var(--aloha-green)]">
+                            <FileText size={18} strokeWidth={2} />
                           </span>
                           <div>
                             <p className="text-sm font-bold text-[var(--aloha-ink)]">Bài viết & Cẩm nang</p>
                             <p className="text-xs text-slate-500">Mẹo chăm sóc cây, phối chậu đẹp</p>
                           </div>
                         </div>
-                        <ChevronRight size={16} className="text-slate-400" />
+                        <ChevronRight size={16} className="text-slate-300" />
                       </Link>
 
                       <Link
                         href="/ve-aloha"
                         onClick={closeMenus}
-                        className="flex items-center justify-between p-3.5 transition hover:bg-[var(--aloha-cream)]/50"
+                        className="flex items-center justify-between p-3.5 transition hover:bg-[var(--aloha-cream)]/50 active:bg-[var(--aloha-cream)]"
                       >
                         <div className="flex items-center gap-3">
-                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
-                            <Leaf size={18} />
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[var(--aloha-green)]">
+                            <Leaf size={18} strokeWidth={2} />
                           </span>
                           <div>
                             <p className="text-sm font-bold text-[var(--aloha-ink)]">Về ALOHA</p>
                             <p className="text-xs text-slate-500">Thế giới chậu cây & câu chuyện thương hiệu</p>
                           </div>
                         </div>
-                        <ChevronRight size={16} className="text-slate-400" />
+                        <ChevronRight size={16} className="text-slate-300" />
                       </Link>
                     </div>
                   </div>
@@ -490,39 +533,44 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                     <p className="px-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
                       Hợp tác & Dịch vụ
                     </p>
-                    <div className="mt-2 divide-y divide-slate-100 rounded-2xl border border-slate-100 bg-white shadow-sm">
+                    <div className="mt-2 divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
                       <a
                         href="/dang-ky-si"
                         onClick={closeMenus}
-                        className="flex items-center justify-between p-3.5 transition hover:bg-[var(--aloha-cream)]/50"
+                        className="flex items-center justify-between p-3.5 transition hover:bg-[var(--aloha-cream)]/50 active:bg-[var(--aloha-cream)]"
                       >
                         <div className="flex items-center gap-3">
-                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
-                            <BadgePercent size={18} />
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[var(--aloha-green)]">
+                            <Building2 size={18} strokeWidth={2} />
                           </span>
                           <div>
-                            <p className="text-sm font-bold text-[var(--aloha-ink)]">Đăng ký mua sỉ (B2B)</p>
-                            <p className="text-xs text-slate-500">Chính sách giá sỉ ưu đãi đặc biệt</p>
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-sm font-bold text-[var(--aloha-ink)]">Đăng ký mua sỉ (B2B)</p>
+                              <span className="rounded-md bg-emerald-100/70 px-1.5 py-0.5 text-[9.5px] font-bold text-[var(--aloha-green-dark)]">
+                                Đại lý
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-500">Chính sách chiết khấu & giá sỉ đặc quyền</p>
                           </div>
                         </div>
-                        <ChevronRight size={16} className="text-slate-400" />
+                        <ChevronRight size={16} className="text-slate-300" />
                       </a>
 
                       <Link
                         href="/tuyen-ctv"
                         onClick={closeMenus}
-                        className="flex items-center justify-between p-3.5 transition hover:bg-[var(--aloha-cream)]/50"
+                        className="flex items-center justify-between p-3.5 transition hover:bg-[var(--aloha-cream)]/50 active:bg-[var(--aloha-cream)]"
                       >
                         <div className="flex items-center gap-3">
-                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
-                            <UserRound size={18} />
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[var(--aloha-green)]">
+                            <Users size={18} strokeWidth={2} />
                           </span>
                           <div>
                             <p className="text-sm font-bold text-[var(--aloha-ink)]">Tuyển Cộng tác viên (CTV)</p>
                             <p className="text-xs text-slate-500">Kiếm thêm thu nhập hoa hồng cùng Aloha</p>
                           </div>
                         </div>
-                        <ChevronRight size={16} className="text-slate-400" />
+                        <ChevronRight size={16} className="text-slate-300" />
                       </Link>
                     </div>
                   </div>
@@ -572,6 +620,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
 
 export function SiteFooter() {
   const [theme, setTheme] = useState<AppearanceTheme | null>(null);
+  const dealsNavHref = useDealsNavHref();
 
   useEffect(() => {
     let cancelled = false;
@@ -605,6 +654,8 @@ export function SiteFooter() {
   };
 
   return (
+    <>
+    <ZaloFloatButton href={zaloHref(footer.zalo || footer.phone)} />
     <footer
       id="ve-chung-toi"
       className="relative isolate mt-10 overflow-hidden border-t border-[#e7dfc7] bg-[#FDF6E3] text-[#284d32] md:mt-14"
@@ -661,7 +712,7 @@ export function SiteFooter() {
           <ul className="mt-4 divide-y divide-[#e7dfc7]/60">
             {[
               { href: "/tim", label: "Tất cả sản phẩm", icon: LayoutGrid },
-              { href: "/tim?badge=noi_bat&inStock=1", label: "Ưu đãi", icon: BadgePercent },
+              { href: dealsNavHref, label: "Ưu đãi", icon: BadgePercent },
               { href: "/ve-aloha", label: "Về Aloha", icon: UserRound },
               { href: "/bai-viet", label: "Bài viết", icon: FileText },
             ].map(({ href, label, icon: Icon }) => (
@@ -683,5 +734,6 @@ export function SiteFooter() {
         <p className="mt-3 text-center text-xs leading-6 text-stone-600">© {new Date().getFullYear()} {siteName}</p>
       </div>
     </footer>
+    </>
   );
 }

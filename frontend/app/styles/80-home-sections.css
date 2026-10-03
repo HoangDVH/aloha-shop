@@ -294,3 +294,15 @@
   height: 100%;
   object-fit: cover;
 }
+
+/* Vệt sáng chạy trên thanh Flash Sale khi chưa có suất nào bán (FlashSaleBar). */
+@keyframes aloha-shimmer {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(320%); }
+}
+.aloha-shimmer {
+  animation: aloha-shimmer 1.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .aloha-shimmer { animation: none; opacity: 0; }
+}

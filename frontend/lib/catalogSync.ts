@@ -2,6 +2,15 @@
 
 export const SHOP_CATALOG_CHANGED = "aloha-shop-catalog-changed";
 export const SHOP_APPEARANCE_CHANGED = "aloha-shop-appearance-changed";
+export const SHOP_CAMPAIGN_CHANGED = "aloha-shop-campaign-changed";
+
+/** Chiến dịch đổi (áp dụng / tạm dừng) hoặc suất flash đổi. */
+export function onShopCampaignChanged(onChange: (kind: "campaign" | "flash") => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  const handler = (ev: Event) => onChange((ev as CustomEvent<{ kind: "campaign" | "flash" }>).detail?.kind || "campaign");
+  window.addEventListener(SHOP_CAMPAIGN_CHANGED, handler);
+  return () => window.removeEventListener(SHOP_CAMPAIGN_CHANGED, handler);
+}
 
 export type ShopCatalogChangeDetail = {
   ids: string[];
@@ -159,6 +168,14 @@ export function startShopCatalogStream(): () => void {
         emitAppearance({ at: Date.now() });
       }
     });
+    const forwardCampaign = (kind: "campaign" | "flash") => () => {
+      sseOk = true;
+      reconnectAttempt = 0;
+      clearFallback();
+      window.dispatchEvent(new CustomEvent(SHOP_CAMPAIGN_CHANGED, { detail: { kind, at: Date.now() } }));
+    };
+    es.addEventListener("campaign", forwardCampaign("campaign"));
+    es.addEventListener("flash", forwardCampaign("flash"));
     es.onerror = () => {
       sseOk = false;
       try {

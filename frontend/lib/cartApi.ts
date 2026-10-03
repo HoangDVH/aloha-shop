@@ -15,20 +15,30 @@ async function cartFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15_000);
   try {
-    const res = await fetch(`/api/shop/cart${path}`, {
-      ...init,
-      signal: controller.signal,
-      cache: "no-store",
-      credentials: "include",
-      headers: {
-        Accept: "application/json",
-        ...(init?.body ? { "Content-Type": "application/json" } : {}),
-        ...(init?.headers || {}),
-      },
-    });
+    let res: Response;
+    try {
+      res = await fetch(`/api/shop/cart${path}`, {
+        ...init,
+        signal: controller.signal,
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          Accept: "application/json",
+          ...(init?.body ? { "Content-Type": "application/json" } : {}),
+          ...(init?.headers || {}),
+        },
+      });
+    } catch {
+      const timedOut = controller.signal.aborted;
+      throw Object.assign(
+        new Error(timedOut ? "Mạng chậm, chưa đồng bộ được giỏ hàng." : "Mất kết nối, chưa đồng bộ được giỏ hàng."),
+        { code: timedOut ? "timeout" : "network" },
+      );
+    }
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw Object.assign(new Error((data as { error?: string }).error || `HTTP ${res.status}`), { status: res.status, code: data.code });
+      const fallback = res.status >= 500 ? "Máy chủ đang bận, chưa đồng bộ được giỏ hàng." : `HTTP ${res.status}`;
+      throw Object.assign(new Error((data as { error?: string }).error || fallback), { status: res.status, code: data.code });
     }
     return data as T;
   } finally {

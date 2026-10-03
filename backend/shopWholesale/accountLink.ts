@@ -19,7 +19,7 @@ export function phoneOwnerFilter(phone: string) {
   };
 }
 
-export function accountOwnsPhone(account: { phone?: unknown; phoneNorm?: unknown } | null | undefined, phone: string): boolean {
+export function accountOwnsPhone(account: { phone?: unknown; phoneNorm?: unknown; [key: string]: unknown } | null | undefined, phone: string): boolean {
   if (!account) return false;
   const wanted = new Set(wholesalePhoneVariants(phone));
   for (const value of [account.phone, account.phoneNorm]) {

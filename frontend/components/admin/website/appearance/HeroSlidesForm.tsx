@@ -2,6 +2,7 @@
 
 import React, { useMemo } from "react";
 import { Plus, Trash2 } from "lucide-react";
+import { CampaignPinnedSlides } from "./CampaignPinnedSlides";
 import { ImageUploadField } from "./ImageUploadField";
 import { WbBtn, WbField, wbInput } from "../ui";
 
@@ -114,6 +115,8 @@ export function HeroSlidesForm({
           </WbBtn>
         ) : null}
       </div>
+
+      <CampaignPinnedSlides />
 
       {list.map((slide, idx) => (
         <div

@@ -30,7 +30,7 @@ function isShopProductionRuntime(): boolean {
   );
 }
 
-function verifyKvWebhookSignature(req: Request): boolean {
+export function verifyKvWebhookSignature(req: Request): boolean {
   const secret = String(process.env.KIOTVIET_WEBHOOK_SECRET || "").trim();
   if (!secret) {
     if (isShopProductionRuntime()) return false;
@@ -44,7 +44,7 @@ function verifyKvWebhookSignature(req: Request): boolean {
       ""
   ).trim();
   if (!sig) {
-    console.warn("[kv-webhook/invoices] missing signature header");
+    console.warn("[kv-webhook] missing signature header", req.path);
     return false;
   }
   const rawBody: Buffer =
@@ -78,7 +78,8 @@ function verifyKvWebhookSignature(req: Request): boolean {
     (c) => safeEqualStr(sig, c) || safeEqualStr(sig.toLowerCase(), c.toLowerCase())
   );
   if (!ok) {
-    console.warn("[kv-webhook/invoices] invalid signature (vẫn đối soát qua API KV)", {
+    console.warn("[kv-webhook] invalid signature (vẫn đối soát qua API KV)", {
+      path: req.path,
       sigLen: sig.length,
       sigHead: sig.slice(0, 12),
       bodyLen: rawBody.length,
@@ -87,7 +88,7 @@ function verifyKvWebhookSignature(req: Request): boolean {
   return ok;
 }
 
-function flattenInvoiceNotifications(body: any): any[] {
+export function flattenInvoiceNotifications(body: any): any[] {
   const notifications: any[] = Array.isArray(body?.Notifications)
     ? body.Notifications
     : Array.isArray(body?.notifications)

@@ -29,7 +29,7 @@ export function heroFor(o: ShopOrder): {
       Icon: Clock,
       title: "Aloha đã nhận đơn",
       subtitle:
-        "Aloha đã nhận đơn và sẽ gửi hình xác nhận trước khi đóng gói. Sau khi bạn xác nhận ảnh, Aloha gửi hướng dẫn thanh toán trước toàn bộ đơn hoặc đặt cọc tối thiểu bằng phí ship.",
+        "Aloha đang chuẩn bị cây và sẽ gửi ảnh chụp thực tế qua Zalo/SĐT để bạn duyệt trước khi đóng gói & gửi hàng.",
       tone: "wait",
     };
   }

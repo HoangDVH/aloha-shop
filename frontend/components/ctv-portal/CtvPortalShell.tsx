@@ -34,11 +34,16 @@ function normalizePath(path: string) {
   return trimmed || "/";
 }
 
+const activeNavStyle: React.CSSProperties = {
+  backgroundColor: "#2D5A27",
+  color: "#ffffff",
+};
+
 function linkClass(active: boolean) {
   const base =
-    "flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition";
-  if (active) return `${base} bg-[#2D5A27] text-white shadow-sm`;
-  return `${base} text-slate-600 hover:bg-[#F3F7F2] hover:text-[#1a2e1a]`;
+    "group flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition";
+  if (active) return `${base} !bg-[#2D5A27] !text-white shadow-sm [&_svg]:!text-white`;
+  return `${base} text-slate-600 hover:!bg-[#F0F5EE] hover:!text-slate-900 [&_svg]:text-slate-400 group-hover:[&_svg]:!text-slate-700`;
 }
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
@@ -71,8 +76,14 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
               href={href}
               onClick={onNavigate}
               className={linkClass(active)}
+              style={active ? activeNavStyle : undefined}
+              aria-current={active ? "page" : undefined}
             >
-              <Icon className="h-4 w-4 shrink-0 opacity-90" />
+              <Icon
+                className={`h-4 w-4 shrink-0 ${
+                  active ? "!text-white" : "text-slate-400 group-hover:text-slate-700"
+                }`}
+              />
               {label}
             </Link>
           );
@@ -84,7 +95,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
           onClick={onNavigate}
           className={linkClass(false)}
         >
-          <Store className="h-4 w-4 shrink-0" />
+          <Store className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-slate-700" />
           Về cửa hàng
         </Link>
         <button
@@ -93,9 +104,9 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
             onNavigate?.();
             void logout();
           }}
-          className={`${linkClass(false)} w-full text-left text-red-600 hover:bg-red-50 hover:text-red-700`}
+          className="group flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-red-600 transition hover:bg-red-50 hover:text-red-700"
         >
-          <LogOut className="h-4 w-4 shrink-0" />
+          <LogOut className="h-4 w-4 shrink-0 text-red-500 group-hover:text-red-700" />
           Đăng xuất
         </button>
       </div>

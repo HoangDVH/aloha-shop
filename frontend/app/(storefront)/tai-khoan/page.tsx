@@ -13,8 +13,10 @@ import {
   LogOut,
   MapPin,
   Receipt,
+  Ticket,
   User as UserIcon,
 } from "lucide-react";
+import { MyVouchersPanel } from "@/components/voucher/MyVouchersPanel";
 import { useShopAuth } from "@/components/ShopAuthProvider";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { AccountMobileNav } from "@/components/AccountMobileNav";
@@ -26,12 +28,13 @@ import { profileSchema, type ProfileInput } from "@/lib/authSchemas";
 import { ShopPageLoader } from "@/components/ShopPageLoader";
 import { shopAccountRoleLabel } from "@/lib/accountRoleLabel";
 
-type Tab = "tai-khoan" | "dia-chi" | "don-mua" | "thanh-toan";
+type Tab = "tai-khoan" | "dia-chi" | "don-mua" | "voucher" | "thanh-toan";
 
 function parseTab(raw: string | null): Tab {
   if (
     raw === "dia-chi" ||
     raw === "don-mua" ||
+    raw === "voucher" ||
     raw === "thanh-toan" ||
     raw === "tai-khoan"
   ) {
@@ -127,6 +130,7 @@ function AccountPageInner() {
     { id: "tai-khoan", label: "Thông tin tài khoản", icon: <UserIcon size={16} /> },
     { id: "dia-chi", label: "Sổ địa chỉ", icon: <MapPin size={16} /> },
     { id: "don-mua", label: "Đơn mua", icon: <Receipt size={16} /> },
+    { id: "voucher", label: "Voucher của tôi", icon: <Ticket size={16} /> },
     { id: "thanh-toan", label: "Thanh toán", icon: <CreditCard size={16} /> },
   ];
 
@@ -184,6 +188,7 @@ function AccountPageInner() {
             {navBtn("tai-khoan", "Tài khoản", <UserIcon size={18} />)}
             {navBtn("dia-chi", "Sổ địa chỉ", <MapPin size={18} />)}
             {navBtn("don-mua", "Đơn mua", <Receipt size={18} />)}
+            {navBtn("voucher", "Voucher của tôi", <Ticket size={18} />)}
             {navBtn("thanh-toan", "Thanh toán", <CreditCard size={18} />)}
             {user.roles.includes("ctv") && user.ctvStatus === "active" ? (
               <Link
@@ -340,6 +345,8 @@ function AccountPageInner() {
           {tab === "dia-chi" ? <AddressBookPanel /> : null}
 
           {tab === "don-mua" ? <OrdersPanel highlightCode={datCode || undefined} /> : null}
+
+          {tab === "voucher" ? <MyVouchersPanel /> : null}
 
           {tab === "thanh-toan" ? (
             <section className="rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-[var(--aloha-line)]">

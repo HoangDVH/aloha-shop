@@ -27,8 +27,27 @@ function read<T>(key: string): T | null {
   const raw = localStorage.getItem(key);
   return raw ? JSON.parse(raw) as T : null;
 }
-function report(error: unknown) {
-  useCartSyncStatus.setState({ error: error instanceof Error ? error.message : "Chưa đồng bộ được giỏ hàng. Vui lòng thử lại." });
+const MAX_SILENT_RETRIES = 3;
+let silentRetries = 0;
+function isTransient(error: unknown) {
+  const e = error as { code?: string; status?: number } | null;
+  return e?.code === "timeout" || e?.code === "network" || Number(e?.status) >= 500;
+}
+function clearError() {
+  silentRetries = 0;
+  useCartSyncStatus.setState({ error: "" });
+}
+/** Lỗi tạm thời (API khởi động lại, mạng chập chờn) → tự thử lại vài lần rồi mới báo khách. */
+function report(error: unknown, userId: string) {
+  if (isTransient(error) && silentRetries < MAX_SILENT_RETRIES) {
+    silentRetries += 1;
+    setTimeout(() => {
+      if (activeUserId === userId) void retryCartSync(userId).catch(() => {});
+    }, 2000 * silentRetries);
+    return;
+  }
+  const message = (error as { message?: unknown } | null)?.message;
+  useCartSyncStatus.setState({ error: typeof message === "string" && message ? message : "Chưa đồng bộ được giỏ hàng. Vui lòng thử lại." });
 }
 function valid(userId: string, generation: number) {
   return activeUserId === userId && generation === priceSessionGeneration();
@@ -99,7 +118,7 @@ async function pullOrMerge(userId: string, generation: number) {
   hydrate(response, intent?.key);
   if (intent) localStorage.removeItem(MERGE_KEY);
   syncedUserId = userId;
-  useCartSyncStatus.setState({ error: "" });
+  clearError();
   if (changed) {
     useCart.getState().replaceLines(applyLocalDelta(response.lines, baseline, after));
     pushAgain = true;
@@ -118,7 +137,7 @@ export function syncCartForUser(userId: string): Promise<void> {
       const needsMerge = Boolean(read<MergeIntent>(MERGE_KEY)?.userId === userId || (!read<Meta>(META_KEY) && useCart.getState().lines.length));
       await locked(async () => { if (valid(userId, generation)) await pullOrMerge(userId, generation); }, needsMerge);
     } catch (error) {
-      if (valid(userId, generation)) report(error);
+      if (valid(userId, generation)) report(error, userId);
       throw error;
     } finally {
       if (syncInFlight === task) {
@@ -159,7 +178,7 @@ export function pushCartToServerNow(userId: string): Promise<void> {
             if (!valid(userId, generation)) return;
             verifyResponse(saved, userId);
             remember(saved);
-            useCartSyncStatus.setState({ error: "" });
+            clearError();
             if (signature(lines) !== signature(useCart.getState().lines)) pushAgain = true;
           } catch (error: any) {
             if (!valid(userId, generation)) return;
@@ -175,7 +194,7 @@ export function pushCartToServerNow(userId: string): Promise<void> {
         });
       }
     } catch (error) {
-      if (valid(userId, generation)) { pushAgain = false; report(error); }
+      if (valid(userId, generation)) { pushAgain = false; report(error, userId); }
     } finally {
       pushInFlight = null;
       if (pushAgain && activeUserId && syncedUserId === activeUserId) scheduleCartPushToServer(activeUserId);
@@ -185,7 +204,7 @@ export function pushCartToServerNow(userId: string): Promise<void> {
 }
 export async function retryCartSync(userId: string) {
   if (syncedUserId === userId) {
-    if (signature(useCart.getState().lines) === acknowledgedSignature) useCartSyncStatus.setState({ error: "" });
+    if (signature(useCart.getState().lines) === acknowledgedSignature) clearError();
     else await pushCartToServerNow(userId);
   }
   else await syncCartForUser(userId);
@@ -198,7 +217,7 @@ export async function onShopUserChanged(userId: string | null): Promise<void> {
     if (pushTimer) clearTimeout(pushTimer);
     pushTimer = null;
     pushAgain = false;
-    useCartSyncStatus.setState({ error: "" });
+    clearError();
     if (wasAccountCart) {
       // Clear persisted lines before removing ownership/intent; a crash must not
       // turn an account cart into a new guest cart eligible for another merge.

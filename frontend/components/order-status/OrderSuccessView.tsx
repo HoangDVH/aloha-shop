@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   CheckCircle2,
   CreditCard,
+  Gift,
   MapPin,
   Package,
   Phone,
@@ -12,6 +13,8 @@ import {
   Truck,
 } from "lucide-react";
 import { formatVnd } from "@/lib/api";
+import { OrderGoodsSavings, OrderLineTags, OrderSavedTotal, orderListSubtotal } from "./OrderCampaignBits";
+import { OrderShipFeeChangeNote } from "./OrderShipFeeChangeNote";
 import { displayShopOrderCode, type ShopOrder } from "@/lib/orders";
 import { BackorderProposal } from "@/components/BackorderProposal";
 import { OrderStatusTimeline } from "@/components/OrderStatusTimeline";
@@ -37,6 +40,30 @@ export function OrderSuccessView({
   justConfirmed: boolean;
   reload: (silent?: boolean) => Promise<void>;
 }) {
+  const { mainWithGifts, standaloneGifts, mainQty, giftCount } = React.useMemo(() => {
+    const details = order.orderDetails || [];
+    const main = details.filter((d) => !d.isGift);
+    const gifts = details.filter((d) => d.isGift);
+
+    const matchedGiftIndices = new Set<number>();
+    const mainWithGifts = main.map((item) => {
+      const attachedGifts = gifts.filter((g, idx) => {
+        if (g.gift?.giftFor && g.gift.giftFor === item.productCode) {
+          matchedGiftIndices.add(idx);
+          return true;
+        }
+        return false;
+      });
+      return { item, gifts: attachedGifts };
+    });
+
+    const standaloneGifts = gifts.filter((_, idx) => !matchedGiftIndices.has(idx));
+    const mainQty = main.reduce((acc, d) => acc + d.quantity, 0);
+    const giftCount = gifts.reduce((acc, d) => acc + d.quantity, 0);
+
+    return { mainWithGifts, standaloneGifts, mainQty, giftCount };
+  }, [order.orderDetails]);
+
   return (
     <div className="space-y-3 sm:space-y-4">
       <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[#E8E2D6]">
@@ -189,41 +216,72 @@ export function OrderSuccessView({
             <div className="flex items-center justify-between border-b border-[var(--aloha-line)] px-4 py-3">
               <h2 className="text-sm font-extrabold text-[var(--aloha-ink)]">
                 Sản phẩm{" "}
-                <span className="font-semibold text-slate-400">({itemCount})</span>
+                <span className="font-semibold text-slate-400">
+                  ({mainQty} sp{giftCount > 0 ? ` + ${giftCount} quà` : ""})
+                </span>
               </h2>
               <Package size={16} className="text-[var(--aloha-green)]" />
             </div>
-            <ul className="max-h-[40vh] divide-y divide-[var(--aloha-line)] overflow-y-auto px-4">
-              {(order.orderDetails || []).map((d, i) => (
-                <li key={`${d.productCode}-${i}`} className="flex gap-3 py-3">
-                  {d.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={d.imageUrl}
-                      alt=""
-                      className="h-14 w-14 shrink-0 rounded-xl object-cover ring-1 ring-[#E8E2D6]"
-                    />
-                  ) : (
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[var(--aloha-cream)]">
-                      <Package size={20} className="text-[var(--aloha-green)]" />
+            <ul className="max-h-[40vh] divide-y divide-[var(--aloha-line)] overflow-y-auto px-4 lg:max-h-[48vh]">
+              {mainWithGifts.map(({ item, gifts }, i) => (
+                <li key={`${item.productCode}-${i}`} className="py-3">
+                  <div className="flex gap-3">
+                    {item.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={item.imageUrl}
+                        alt=""
+                        className="h-14 w-14 shrink-0 rounded-xl object-cover ring-1 ring-[#E8E2D6]"
+                      />
+                    ) : (
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[var(--aloha-cream)]">
+                        <Package size={20} className="text-[var(--aloha-green)]" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-2 text-sm font-semibold text-[var(--aloha-ink)]">
+                        {item.productName}
+                      </p>
+                      <OrderLineTags d={item} />
+                      {item.note ? (
+                        <p className="mt-0.5 text-xs italic text-slate-500">
+                          Ghi chú: {item.note}
+                        </p>
+                      ) : null}
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {item.productCode} · ×{item.quantity}
+                      </p>
+                      <p className="mt-1 text-sm font-bold text-[var(--aloha-ink)]">
+                        {formatVnd(item.price * item.quantity)}
+                      </p>
+                    </div>
+                  </div>
+                  {gifts.length > 0 && (
+                    <div className="mt-2.5 space-y-1.5 rounded-lg border border-amber-200/60 bg-[#FFFDF7] p-2 sm:ml-4">
+                      {gifts.map((g, gi) => (
+                        <div key={gi} className="flex items-center justify-between text-xs">
+                          <span className="flex items-center gap-1.5 truncate pr-2 text-amber-950">
+                            <Gift size={13} className="shrink-0 text-[#C8102E]" />
+                            <span className="font-semibold text-[#C8102E]">Quà tặng:</span>
+                            <span className="truncate">{g.productName}</span>
+                            <span className="shrink-0 text-slate-400">×{g.quantity}</span>
+                          </span>
+                          <span className="shrink-0 font-bold text-[var(--aloha-green)]">0đ</span>
+                        </div>
+                      ))}
                     </div>
                   )}
-                  <div className="min-w-0 flex-1">
-                    <p className="line-clamp-2 text-sm font-semibold text-[var(--aloha-ink)]">
-                      {d.productName}
-                    </p>
-                    {d.note ? (
-                      <p className="mt-0.5 text-xs italic text-slate-500">
-                        Ghi chú: {d.note}
-                      </p>
-                    ) : null}
-                    <p className="mt-0.5 text-xs text-slate-500">
-                      {d.productCode} · ×{d.quantity}
-                    </p>
-                    <p className="mt-1 text-sm font-bold text-[var(--aloha-ink)]">
-                      {formatVnd(d.price * d.quantity)}
-                    </p>
-                  </div>
+                </li>
+              ))}
+              {standaloneGifts.map((g, gi) => (
+                <li key={`standalone-gift-${gi}`} className="flex items-center justify-between rounded-lg border border-amber-200/60 bg-[#FFFDF7] py-2.5 px-3 my-1.5 text-xs">
+                  <span className="flex items-center gap-1.5 truncate pr-2 text-amber-950">
+                    <Gift size={13} className="shrink-0 text-[#C8102E]" />
+                    <span className="font-semibold text-[#C8102E]">Quà tặng:</span>
+                    <span className="truncate">{g.productName}</span>
+                    <span className="shrink-0 text-slate-400">×{g.quantity}</span>
+                  </span>
+                  <span className="shrink-0 font-bold text-[var(--aloha-green)]">0đ</span>
                 </li>
               ))}
             </ul>
@@ -231,15 +289,10 @@ export function OrderSuccessView({
               {order.subtotal != null ? (
                 <div className="flex justify-between text-slate-600">
                   <span>Tiền hàng</span>
-                  <span>{formatVnd(order.subtotal)}</span>
+                  <span>{formatVnd(orderListSubtotal(order) ?? 0)}</span>
                 </div>
               ) : null}
-              {order.discount ? (
-                <div className="flex justify-between text-[var(--aloha-price)] font-semibold">
-                  <span>Giảm giá ưu đãi</span>
-                  <span>-{formatVnd(order.discount)}</span>
-                </div>
-              ) : null}
+              <OrderGoodsSavings order={order} />
               {order.deliveryMethod === "nhan_cua_hang" ? (
                 <div className="flex justify-between text-slate-600">
                   <span>Phí vận chuyển</span>
@@ -271,6 +324,7 @@ export function OrderSuccessView({
                   </span>
                 </div>
               )}
+              <OrderShipFeeChangeNote order={order} />
               <div className="flex items-center justify-between border-t border-dashed border-[var(--aloha-line)] pt-2">
                 {order.deliveryMethod === "nhan_cua_hang" ? (
                   <>
@@ -281,16 +335,23 @@ export function OrderSuccessView({
                   order.shippingEstimate?.status === "unavailable" ||
                   (order.shippingFee == null && !order.freeShipApplied) ? (
                   <>
-                    <span className="text-xs font-semibold text-slate-700">Tiền hàng chưa gồm phí vận chuyển:</span>
+                    <div className="flex flex-col">
+                      <span className="font-extrabold text-[var(--aloha-ink)]">Tổng tạm tính</span>
+                      <span className="text-[11px] font-normal text-slate-500">Chưa gồm phí vận chuyển</span>
+                    </div>
                     <span className="text-lg font-extrabold text-[#EE6055]">{formatVnd(order.total)}</span>
                   </>
                 ) : (
                   <>
-                    <span className="font-extrabold text-[var(--aloha-ink)]">Tổng tạm tính</span>
+                    <div className="flex flex-col">
+                      <span className="font-extrabold text-[var(--aloha-ink)]">Tổng tạm tính</span>
+                      <span className="text-[11px] font-normal text-slate-500">Đã gồm phí vận chuyển</span>
+                    </div>
                     <span className="text-lg font-extrabold text-[#EE6055]">{formatVnd(order.total)}</span>
                   </>
                 )}
               </div>
+              <OrderSavedTotal order={order} />
             </div>
           </section>
 

@@ -8,7 +8,7 @@ import { CoverSection } from "./form/CoverSection";
 import { VideoSection } from "./form/VideoSection";
 import { SummaryContentSection } from "./form/SummaryContentSection";
 import { ProductsPublishSection } from "./form/ProductsPublishSection";
-import type { FormState, ProductSuggest } from "./articleUtils";
+import type { FormState } from "./articleUtils";
 import type { normalizeVideoInput } from "./articleMediaUtils";
 
 export function ArticleEditView({
@@ -34,9 +34,6 @@ export function ArticleEditView({
   videoNorm,
   videoPreviewSrc,
   setEditorBusy,
-  prodQ,
-  setProdQ,
-  prodSuggest,
   addProduct,
 }: {
   editing: FormState;
@@ -61,9 +58,6 @@ export function ArticleEditView({
   videoNorm: ReturnType<typeof normalizeVideoInput> | null;
   videoPreviewSrc: string;
   setEditorBusy: React.Dispatch<React.SetStateAction<boolean>>;
-  prodQ: string;
-  setProdQ: React.Dispatch<React.SetStateAction<string>>;
-  prodSuggest: ProductSuggest[];
   addProduct: (ma: string) => void;
 }) {
   const titleLen = editing.title.length;
@@ -121,9 +115,6 @@ export function ArticleEditView({
           <ProductsPublishSection
             editing={editing}
             patchEditing={patchEditing}
-            prodQ={prodQ}
-            setProdQ={setProdQ}
-            prodSuggest={prodSuggest}
             addProduct={addProduct}
             closeEdit={closeEdit}
             save={save}

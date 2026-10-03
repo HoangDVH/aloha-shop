@@ -1,54 +1,83 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Flame } from "lucide-react";
 import { ProductCard } from "@/components/ProductCard";
 import type { ShopProduct } from "@/lib/api";
 import {
   livePropsForMa,
   useLiveProductPrices,
 } from "@/lib/useLiveProductPrices";
+import { endOfTodayMs, useCountdown } from "@/lib/hooks/useCountdown";
+import { useCampaignView } from "@/lib/campaign/useCampaignView";
+import type { CampaignUI } from "@/lib/campaign/campaignApi";
 
 type Props = {
   products: ShopProduct[];
 };
 
-/** Flash sale kết thúc cuối ngày hôm nay (+ hiện đủ Ngày/Giờ/Phút/Giây như mock). */
-function endOfTodayMs() {
-  const d = new Date();
-  d.setHours(23, 59, 59, 999);
-  return d.getTime();
-}
-
-function pad(n: number) {
-  return String(Math.max(0, n)).padStart(2, "0");
-}
-
-function useFlashCountdown() {
-  const [left, setLeft] = useState({ d: "00", h: "00", m: "00", s: "00" });
-  useEffect(() => {
-    const tick = () => {
-      const ms = Math.max(0, endOfTodayMs() - Date.now());
-      const totalSec = Math.floor(ms / 1000);
-      const d = Math.floor(totalSec / 86400);
-      const h = Math.floor((totalSec % 86400) / 3600);
-      const m = Math.floor((totalSec % 3600) / 60);
-      const s = totalSec % 60;
-      setLeft({ d: pad(d), h: pad(h), m: pad(m), s: pad(s) });
+function parseSlotTarget(slots: CampaignUI["slots"] | undefined, nowMs: number) {
+  if (!slots?.length) {
+    return {
+      target: endOfTodayMs,
+      label: "Ưu đãi trong ngày — số lượng có hạn, chốt nhanh kẻo hết!",
+      isLive: true,
     };
-    tick();
-    const id = window.setInterval(tick, 1000);
-    return () => window.clearInterval(id);
-  }, []);
-  return left;
+  }
+  const d = new Date(nowMs + 7 * 3600_000);
+  const curMins = d.getUTCHours() * 60 + d.getUTCMinutes();
+  const toMin = (hhmm: string) => {
+    const [h, m] = hhmm.split(":").map(Number);
+    return (h || 0) * 60 + (m || 0);
+  };
+  const y = d.getUTCFullYear();
+  const m = d.getUTCMonth();
+  const day = d.getUTCDate();
+
+  // Khung giờ đang mở
+  for (const s of slots) {
+    const a = toMin(s.start);
+    const b = toMin(s.end);
+    const isOpen = a < b ? curMins >= a && curMins < b : curMins >= a || curMins < b;
+    if (isOpen) {
+      let endUtc = Date.UTC(y, m, day, Math.floor(b / 60), b % 60) - 7 * 3600_000;
+      if (b < a && curMins >= a) endUtc += 86_400_000;
+      return {
+        target: endUtc,
+        label: `Đang mở khung giờ ${s.start}–${s.end} · Chốt nhanh kẻo hết!`,
+        isLive: true,
+      };
+    }
+  }
+
+  // Khung giờ kế tiếp
+  const sorted = [...slots].sort((s1, s2) => toMin(s1.start) - toMin(s2.start));
+  const next = sorted.find((s) => toMin(s.start) > curMins) || sorted[0];
+  const nextStartMin = toMin(next.start);
+  let startUtc = Date.UTC(y, m, day, Math.floor(nextStartMin / 60), nextStartMin % 60) - 7 * 3600_000;
+  if (nextStartMin <= curMins) startUtc += 86_400_000;
+
+  return {
+    target: startUtc,
+    label: `Khung giờ kế tiếp ${next.start}–${next.end} sắp mở bán`,
+    isLive: false,
+  };
 }
 
 export function HomeLowStockSale({ products }: Props) {
   const items = products.slice(0, 6);
   const desktopItems = items.slice(0, 3);
   const liveMap = useLiveProductPrices(items);
+  const { campaign, offsetMs } = useCampaignView();
+
+  const slotInfo = useMemo(() => {
+    return parseSlotTarget(campaign?.slots, Date.now() + offsetMs);
+  }, [campaign?.slots, offsetMs]);
+
+  const cd = useCountdown(slotInfo.target, offsetMs);
+
   const [emblaRef, emblaApi] = useEmblaCarousel({
     align: "start",
     dragFree: false,
@@ -56,7 +85,6 @@ export function HomeLowStockSale({ products }: Props) {
   });
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(false);
-  const cd = useFlashCountdown();
 
   const onSelect = useCallback(() => {
     if (!emblaApi) return;
@@ -119,8 +147,8 @@ export function HomeLowStockSale({ products }: Props) {
                 </span>
               </h2>
 
-              <p className="mt-2 max-w-xs text-sm font-medium text-[var(--aloha-green-dark)]/75 sm:text-[15px] lg:max-w-none">
-                Ưu đãi trong ngày — số lượng có hạn, chốt nhanh kẻo hết!
+              <p className="mt-2 max-w-xs text-sm font-semibold text-[var(--aloha-green-dark)] sm:text-[15px] lg:max-w-none">
+                {slotInfo.label}
               </p>
 
               <div
@@ -149,7 +177,7 @@ export function HomeLowStockSale({ products }: Props) {
               <div className="home-flash-sale__grid">
                 {desktopItems.map((p) => (
                   <div className="home-flash-sale__card" key={p.ma}>
-                    <ProductCard product={p} shopee {...livePropsForMa(liveMap, p.ma)} />
+                    <ProductCard product={p} variant="deal" shopee {...livePropsForMa(liveMap, p.ma)} />
                   </div>
                 ))}
               </div>
@@ -159,7 +187,7 @@ export function HomeLowStockSale({ products }: Props) {
                   {items.map((p) => (
                     <div className="embla__slide" key={p.ma}>
                       <div className="home-flash-sale__card">
-                        <ProductCard product={p} shopee {...livePropsForMa(liveMap, p.ma)} />
+                        <ProductCard product={p} variant="deal" shopee {...livePropsForMa(liveMap, p.ma)} />
                       </div>
                     </div>
                   ))}

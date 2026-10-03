@@ -7,6 +7,8 @@
 import type { Db } from "mongodb";
 
 export const SHIPPING_REGIONS_CONFIG_ID = "shipping_regions";
+/** Vùng ảo: mọi địa chỉ giao tận nơi đều khớp, không cần cấu hình quận/huyện. */
+export const NATIONWIDE_REGION_ID = "toan_quoc";
 const MEM_TTL_MS = 30_000;
 
 export type ShippingRegion = {
@@ -19,7 +21,7 @@ export type ShippingRegion = {
 };
 
 export type RegionMatch =
-  | { status: "matched"; regionId: string; regionVersion: number; source: "ghn_district" | "name" }
+  | { status: "matched"; regionId: string; regionVersion: number; source: "ghn_district" | "name" | "nationwide" }
   | { status: "outside"; reason: string }
   | { status: "unknown"; reason: string };
 
@@ -128,4 +130,17 @@ export function matchShippingRegion(
     return { status: "matched", regionId: region.id, regionVersion: region.version, source: "name" };
   }
   return { status: "outside", reason: `Chỉ áp dụng cho đơn giao tới ${region.name}` };
+}
+
+export function matchRegionById(
+  regions: ShippingRegion[],
+  regionId: string,
+  address: { province?: string; district?: string; ghnDistrictId?: number | null }
+): RegionMatch {
+  if (regionId === NATIONWIDE_REGION_ID) {
+    return { status: "matched", regionId, regionVersion: 1, source: "nationwide" };
+  }
+  const region = regions.find((r) => r.id === regionId);
+  if (!region) return { status: "outside", reason: "Vùng áp dụng của ưu đãi chưa được cấu hình." };
+  return matchShippingRegion(region, address);
 }

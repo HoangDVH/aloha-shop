@@ -60,6 +60,10 @@ type Args = {
   promotionCode?: string;
   promotionId?: string;
   autoPromotion?: boolean;
+  /** Tiền hàng sau giá sale ở lần báo giá gần nhất. */
+  expectedSubtotal?: number;
+  /** Server báo giá sale đổi (hết khung giờ / hết suất): trang báo giá lại. */
+  onCampaignPriceChanged?: () => void;
   note: string;
   user: ShopUserLike;
   replace: (href: string) => void;
@@ -92,6 +96,8 @@ export function usePlaceOrder({
   promotionCode,
   promotionId,
   autoPromotion = true,
+  expectedSubtotal,
+  onCampaignPriceChanged,
   note,
   user,
   replace,
@@ -269,6 +275,7 @@ export function usePlaceOrder({
         promotionCode: promotionCode || undefined,
         promotionId: promotionId || undefined,
         autoPromotion,
+        expectedSubtotal: expectedSubtotal && expectedSubtotal > 0 ? expectedSubtotal : undefined,
         orderDetails: selected.map((l) => {
           const variant = formatVariantLabel(l);
           const lineNote = String(l.lineNote || "").trim();
@@ -309,7 +316,11 @@ export function usePlaceOrder({
       if (e.code === "backorder_confirmation_required" && Array.isArray(e.details)) {
         useCart.getState().patchCatalog(e.details.map((d: any) => ({ ma: d.productCode, ton: d.availableQty, gia: d.price, priceKind: d.priceKind })));
       }
-      if (e.code === "price_changed" && Array.isArray(e.details)) {
+      if (e.code === "price_changed" && Array.isArray(e.notices)) {
+        // Giá sale đổi: giỏ giữ giá thường, chỉ cần báo giá lại để khách thấy tổng mới.
+        onCampaignPriceChanged?.();
+        Modal.confirm({ title: "Giá đã cập nhật", content: e.message, okText: "Xem giá mới", cancelText: "Quay lại giỏ", onCancel: () => replace("/gio-hang") });
+      } else if (e.code === "price_changed" && Array.isArray(e.details)) {
         Modal.confirm({ title: "Giá đã cập nhật", content: e.details.map((d: any) => `${d.productName}: ${formatVnd(d.price)}`).join(" · "), okText: "Xác nhận giá mới", cancelText: "Quay lại giỏ", onOk: () => { useCart.getState().patchCatalog(e.details.map((d: any) => ({ ma: d.productCode, gia: d.price, priceKind: d.priceKind }))); setError("Đã cập nhật giá. Vui lòng kiểm tra tổng tiền và bấm đặt hàng lại."); } });
       }
       setError(e?.message || "Đặt hàng thất bại");

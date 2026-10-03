@@ -52,7 +52,7 @@ function readTon(doc: Record<string, unknown>): number {
 export async function resolveDetailDisplayTon(
   mainDb: Db,
   ma: string
-): Promise<{ ok: true; displayTon: number } | { ok: false; error: string }> {
+): Promise<{ ok: true; displayTon: number; error?: undefined } | { ok: false; error: string }> {
   const code = String(ma || "").trim().toUpperCase();
   if (!code) return { ok: false, error: "Thiếu mã sản phẩm" };
   const product = await mainDb.collection(PRODUCTS_COL).findOne(productQuery(code));
@@ -80,7 +80,7 @@ export async function annotatePreOrderDetails(
   shopDb?: Db,
   opts?: { excludeOrderId?: string }
 ): Promise<
-  { ok: true; details: ShopOrderDetail[] } | { ok: false; error: string }
+  { ok: true; details: ShopOrderDetail[]; error?: undefined } | { ok: false; error: string }
 > {
   const mas = details
     .map((d) => String(d.productCode || "").trim().toUpperCase())
@@ -98,7 +98,7 @@ export async function annotatePreOrderDetails(
       continue;
     }
     const tonRes = await resolveDetailDisplayTon(mainDb, ma);
-    if (!tonRes.ok) return tonRes;
+    if (!tonRes.ok) return { ok: false, error: tonRes.error };
     const held = heldByMa.get(ma) || 0;
     const available = Math.max(0, tonRes.displayTon - held);
     const allocation = stockAllocation(d.quantity, available);
@@ -141,7 +141,7 @@ export async function assertStockAvailable(
   details: ShopOrderDetail[],
   shopDb?: Db,
   opts?: { excludeOrderId?: string }
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<{ ok: true; error?: undefined } | { ok: false; error: string }> {
   const col = mainDb.collection(PRODUCTS_COL);
   const checkDetails = details.filter((d) => !d.preOrder);
   const mas = checkDetails

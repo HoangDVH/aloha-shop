@@ -4,8 +4,12 @@ const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:3001").r
   /\/$/,
   ""
 );
+/** Webhook KV vào domain công khai → backend cùng máy; không dùng API_BASE vì có thể là chính domain này (lặp vô hạn). */
+const API_INTERNAL = (process.env.SHOP_API_INTERNAL || "http://127.0.0.1:3001").replace(/\/$/, "");
 
 const nextConfig: NextConfig = {
+  /** Chỉ `next dev --turbopack` (local); build production dùng webpack nên bỏ qua. */
+  ...(process.env.TURBOPACK ? { turbopack: { root: process.cwd() } } : {}),
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "**" },
@@ -77,6 +81,10 @@ const nextConfig: NextConfig = {
       {
         source: "/uploads/:path*",
         destination: `${API_BASE}/uploads/:path*`,
+      },
+      {
+        source: "/api/kv-webhook/:path*",
+        destination: `${API_INTERNAL}/api/kv-webhook/:path*`,
       },
     ];
   },

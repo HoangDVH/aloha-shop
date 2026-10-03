@@ -14,8 +14,13 @@ import {
   useProductVariants,
 } from "@/components/ProductVariantPicker";
 import { ProductGallery } from "@/components/pdp/ProductGallery";
+import { ProductPromotionBadges } from "@/components/pdp/ProductPromotionBadges";
 import { ProductStickyCta } from "@/components/pdp/ProductStickyCta";
+import { ProductCampaignBox } from "@/components/pdp/ProductCampaignBox";
+import { useCampaignRequoteKey } from "@/lib/campaign/campaignQuote";
+import { useCampaignView } from "@/lib/campaign/useCampaignView";
 import { ProductPurchaseSheet } from "@/components/pdp/ProductPurchaseSheet";
+import { isPromoSelling, promoAnchorPrice } from "@/components/campaign/CardPromo";
 import {
   buildProductShareUrl,
   getAffiliateCtvCode,
@@ -176,6 +181,9 @@ export function ProductDetailView({
   const [liveWebPrice, setLiveWebPrice] = useState(product.webPrice);
   const [liveTon, setLiveTon] = useState(product.ton);
   const [livePriceKind, setLivePriceKind] = useState(product.priceKind);
+  const [livePromo, setLivePromo] = useState(product.campaignPromo ?? null);
+  const campaignKey = useCampaignRequoteKey();
+  const campaignViewer = useCampaignView().viewer;
   const [ctvRate, setCtvRate] = useState<number | null>(null);
   const variantsLoading = selection.loading;
   const needPick =
@@ -237,6 +245,7 @@ export function ProductDetailView({
         if (Number(hit.gia) >= 0) setLiveGia(Number(hit.gia) || 0);
         setLiveWebPrice(hit.webPrice);
         setLivePriceKind(hit.priceKind);
+        if (hit.campaignPromo !== undefined) setLivePromo(hit.campaignPromo);
         if (hit.ton != null && Number.isFinite(Number(hit.ton))) {
           const next = Number(hit.ton) || 0;
           setLiveTon(next);
@@ -249,7 +258,8 @@ export function ProductDetailView({
     void load();
 
     let off: (() => void) | undefined;
-    void import("@/lib/catalogSync").then(({ onShopCatalogChanged }) => {
+    let offCampaign: (() => void) | undefined;
+    void import("@/lib/catalogSync").then(({ onShopCatalogChanged, onShopCampaignChanged }) => {
       if (cancelled) return;
       off = onShopCatalogChanged((detail) => {
         const ids = (detail.ids || []).map((x) => String(x).toUpperCase());
@@ -257,13 +267,17 @@ export function ProductDetailView({
         if (ids.length && !ids.includes(key)) return;
         void load();
       });
+      offCampaign = onShopCampaignChanged(() => {
+        window.setTimeout(() => void load(), Math.floor(Math.random() * 2000));
+      });
     });
 
     return () => {
       cancelled = true;
       off?.();
+      offCampaign?.();
     };
-  }, [activeProduct.ma, user?.id, user?.siStatus, user?.siRegion]);
+  }, [activeProduct.ma, user?.id, user?.siStatus, user?.siRegion, campaignKey]);
   // CTV đã đăng nhập (có mã) → tự điền mã khi copy/chia sẻ link SP
   useEffect(() => {
     const code = normalizeCtvCode(user?.ctvCode || "");
@@ -418,10 +432,31 @@ export function ProductDetailView({
     );
   };
 
+  const hasPromo = Boolean(
+    livePromo &&
+    (isPromoSelling(livePromo) ||
+     (livePromo.salePrice != null && livePromo.salePrice < (livePromo.listPrice || liveGia)) ||
+     promoAnchorPrice(livePromo, liveGia) > 0 ||
+     Boolean(livePromo.giftLabel) ||
+     (Array.isArray(livePromo.gifts) && livePromo.gifts.length > 0))
+  );
+
+  const isCampaignSaleOpen = Boolean(
+    livePromo &&
+    isPromoSelling(livePromo) &&
+    livePromo.remaining !== 0
+  );
+  // Ưu đãi giá trước KM (không flash): nút mua nằm trong khung chiến dịch; tài khoản bị khoá vẫn dùng nút xanh.
+  const isCampaignDealOpen = Boolean(
+    livePromo && !isPromoSelling(livePromo) && promoAnchorPrice(livePromo, liveGia) > 0 &&
+    !(campaignViewer?.loggedIn && !campaignViewer.canUse)
+  );
+  const campaignBuyInBox = isCampaignSaleOpen || isCampaignDealOpen;
+
   return (
     <div className="shop-pb-sticky mx-auto w-full min-w-0 max-w-7xl space-y-2 overflow-x-clip px-4 py-2 sm:py-3">
       {/* Chiều rộng khung = navbar (max-w-7xl) */}
-      <div className="flex min-w-0 max-w-full flex-col gap-2 lg:h-[calc(100svh-var(--shop-chrome-h,7.5rem))] lg:max-h-[calc(100svh-var(--shop-chrome-h,7.5rem))] lg:overflow-hidden">
+      <div className="flex min-w-0 max-w-full flex-col gap-2">
         <nav className="flex min-w-0 shrink-0 flex-wrap items-center gap-1 px-1 text-xs text-slate-500">
           {crumbs.map((c, i) => (
             <span key={c.href + i} className="inline-flex max-w-full items-center gap-1">
@@ -444,45 +479,80 @@ export function ProductDetailView({
           ))}
         </nav>
 
-        {/* Khung chi tiết — flex-1 lấp phần còn lại, nội dung không tràn */}
-        <div className="flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-hidden rounded-2xl bg-white shadow-[0_2px_16px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
-          <div className="grid min-h-0 min-w-0 max-w-full flex-1 gap-0 lg:h-full lg:grid-cols-2">
-            {/* Cột ảnh */}
-            <div className="min-w-0 max-w-full">
-            <ProductGallery
-              images={gallery}
-              videos={galleryVideos}
-              alt={product.ten}
-              resetKey={activeProduct.ma}
-            />
+        {/* Khung chi tiết — hiển thị toàn bộ thông tin tự nhiên, không thanh cuộn bên trong */}
+        <div className="flex min-w-0 max-w-full flex-col rounded-2xl bg-white shadow-[0_2px_16px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
+          <div className="grid min-w-0 max-w-full gap-0 lg:grid-cols-2">
+            {/* Cột ảnh - sticky trên desktop theo chuẩn Shopee/Lazada */}
+            <div className="min-w-0 max-w-full lg:sticky lg:top-20 lg:self-start">
+              <ProductGallery
+                images={gallery}
+                videos={galleryVideos}
+                alt={product.ten}
+                resetKey={activeProduct.ma}
+              />
             </div>
 
-            {/* Cột thông tin — nút mua luôn hiện cuối cột */}
-            <div className="flex min-h-0 min-w-0 flex-col border-t border-[#eee] p-3 sm:p-4 lg:h-full lg:border-l lg:border-t-0 lg:p-6">
-              <div className="min-h-0 flex-1 space-y-3 overflow-visible lg:overflow-y-auto lg:pr-1">
+            {/* Cột thông tin — thông tin hiển thị tự nhiên, không bị cuộn */}
+            <div className="flex min-w-0 flex-col border-t border-[#eee] p-3 sm:p-4 lg:border-l lg:border-t-0 lg:p-6">
+              <div className="space-y-3.5">
                 <h1 className="text-xl font-extrabold leading-tight tracking-tight text-[var(--aloha-ink)] sm:text-2xl sm:uppercase">
                   {activeProduct.ten}
                 </h1>
 
-                <div className="flex flex-wrap items-center gap-3">
-                  {expectsSi && !pricePending && livePriceKind === "si" ? (
-                    <SiPriceBadge
-                      price={liveGia}
-                      webPrice={liveWebPrice}
-                      unit={activeProduct.dvt}
-                      variant={user.siRegion === "HCM" || user.siRegion === "TINH" ? "wholesale-detail" : "detail"}
-                    />
-                  ) : (
-                  <div className="flex flex-wrap items-baseline gap-x-2 text-2xl font-bold text-[var(--aloha-price)] sm:text-[1.75rem]">
-                    <span>{pricePending ? "Đang cập nhật…" : livePriceKind === "si_missing" ? "Liên hệ báo giá" : formatVnd(liveGia)}</span>
-                    {activeProduct.dvt ? (
-                      <span className="text-base font-semibold text-[var(--aloha-muted)] sm:text-lg">
-                        / {activeProduct.dvt}
-                      </span>
-                    ) : null}
+                {/* NẾU CÓ ƯU ĐÃI THÌ GIÁ ĐƯỢC GỘP THẲNG VÀO PRODUCTCAMPAIGNBOX PHÍA DƯỚI */}
+                {!hasPromo ? (
+                  <div className="flex flex-wrap items-center gap-3">
+                    {expectsSi && !pricePending && livePriceKind === "si" ? (
+                      <SiPriceBadge
+                        price={liveGia}
+                        webPrice={liveWebPrice}
+                        unit={activeProduct.dvt}
+                        variant={user.siRegion === "HCM" || user.siRegion === "TINH" ? "wholesale-detail" : "detail"}
+                      />
+                    ) : (
+                      <div className="flex flex-wrap items-baseline gap-x-2.5 text-2xl font-bold text-[var(--aloha-price)] sm:text-[1.75rem]">
+                        <span>{pricePending ? "Đang cập nhật…" : livePriceKind === "si_missing" ? "Liên hệ báo giá" : formatVnd(liveGia)}</span>
+                        {activeProduct.dvt ? (
+                          <span className="text-base font-semibold text-[var(--aloha-muted)] sm:text-lg">
+                            / {activeProduct.dvt}
+                          </span>
+                        ) : null}
+                        {!pricePending && liveWebPrice && liveWebPrice > liveGia ? (
+                          <span className="text-sm font-normal text-slate-400 line-through sm:text-base">
+                            {formatVnd(liveWebPrice)}
+                          </span>
+                        ) : null}
+                        {!pricePending && liveWebPrice && liveWebPrice > liveGia ? (
+                          <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-semibold text-rose-600 ring-1 ring-rose-500/10">
+                            Tiết kiệm {formatVnd(liveWebPrice - liveGia)} (-{Math.round(((liveWebPrice - liveGia) / liveWebPrice) * 100)}%)
+                          </span>
+                        ) : null}
+                      </div>
+                    )}
                   </div>
-                  )}
-                </div>
+                ) : null}
+
+                <ProductCampaignBox
+                  ma={activeProduct.ma}
+                  promo={livePromo}
+                  dvt={activeProduct.dvt}
+                  regularPrice={liveGia}
+                  webPrice={liveWebPrice}
+                  ton={liveTon}
+                  allowBackorder={activeProduct.allowBackorder}
+                  onBuyNow={() => addCart(true)}
+                  onAddCart={() => addCart(false)}
+                  purchaseDisabled={purchaseDisabled}
+                  isPreOrder={isPreOrder}
+                />
+
+                {!expectsSi ? (
+                  <ProductPromotionBadges
+                    product={activeProduct}
+                    livePrice={liveGia}
+                    isWholesale={false}
+                  />
+                ) : null}
 
                 {isCtvAccount ? (
                 <div className="space-y-1.5 pt-1">
@@ -663,24 +733,26 @@ export function ProductDetailView({
                 </div>
               </div>
 
-              <div className="mt-3 hidden shrink-0 gap-3 border-t border-[var(--aloha-line)] pt-3 lg:mt-4 lg:flex lg:pt-4">
-                <button
-                  type="button"
-                  disabled={purchaseDisabled}
-                  onClick={() => addCart(false)}
-                  className="flex min-h-12 flex-1 items-center justify-center rounded-xl bg-[var(--aloha-green-light)] px-4 py-3 text-sm font-bold text-[var(--aloha-green-mid)] hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {isPreOrder ? "Đặt trước" : "Thêm giỏ hàng"}
-                </button>
-                <button
-                  type="button"
-                  disabled={purchaseDisabled}
-                  onClick={() => addCart(true)}
-                  className="flex min-h-12 flex-1 items-center justify-center rounded-xl bg-[var(--aloha-green)] px-4 py-3 text-sm font-bold text-white hover:bg-[var(--aloha-green-hover)] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {isPreOrder ? "Đặt trước ngay" : "Mua ngay"}
-                </button>
-              </div>
+              {!campaignBuyInBox ? (
+                <div className="mt-3 hidden shrink-0 gap-3 border-t border-[var(--aloha-line)] pt-3 lg:mt-4 lg:flex lg:pt-4">
+                  <button
+                    type="button"
+                    disabled={purchaseDisabled}
+                    onClick={() => addCart(false)}
+                    className="flex min-h-12 flex-1 items-center justify-center rounded-xl bg-[var(--aloha-green-light)] px-4 py-3 text-sm font-bold text-[var(--aloha-green-mid)] hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {isPreOrder ? "Đặt trước" : "Thêm giỏ hàng"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={purchaseDisabled}
+                    onClick={() => addCart(true)}
+                    className="flex min-h-12 flex-1 items-center justify-center rounded-xl bg-[var(--aloha-green)] px-4 py-3 text-sm font-bold text-white hover:bg-[var(--aloha-green-hover)] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {isPreOrder ? "Đặt trước ngay" : "Mua ngay"}
+                  </button>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -697,6 +769,9 @@ export function ProductDetailView({
         onAddCart={() => addCart(false)}
         buyDisabled={false}
         onBuyNow={() => setPurchaseSheetOpen(true)}
+        isCampaignSale={campaignBuyInBox}
+        campaignBuyLabel={isCampaignSaleOpen ? "Mua Giờ Vàng" : isPreOrder ? "Đặt ngay" : "Mua ngay"}
+        productName={activeProduct.ten} productImage={activeProduct.anh}
       />
       {purchaseSheetOpen && (
         <ProductPurchaseSheet

@@ -175,7 +175,7 @@
 
 /*
  * Typo b�i vi?t ? kh?p app n?i b? (Be Vietnam Pro, KH�NG b? Tailwind preflight).
- * Shop d�ng @import "tailwindcss" ? p/h*/ul b? margin:0 + list-style:none.
+ * Shop d�ng @import "tailwindcss" ? p, h1-h6, ul bị reset margin:0 + list-style:none.
  */
 .article-body {
   font-family: var(

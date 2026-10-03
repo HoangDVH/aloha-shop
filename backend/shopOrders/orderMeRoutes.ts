@@ -60,7 +60,7 @@ export function registerShopOrderMeRoutes(
         const mainDb = await getMainDb();
         const data: Record<string, unknown>[] = [];
         for (const d of docs) {
-          const { _id, ...rest } = d as any;
+          const { _id, campaignHolds: _holds, ...rest } = d as any;
           const details = Array.isArray(rest.orderDetails) ? rest.orderDetails : [];
           rest.orderDetails = await enrichOrderDetailsImages(mainDb, details);
           if (rest.paymentStatus === "unpaid" && (rest.paymentCode || rest.kvInvoiceCode)) {
@@ -136,7 +136,7 @@ export function registerShopOrderMeRoutes(
           }
         }
 
-        const { _id, ...rest } = (doc || {}) as any;
+        const { _id, campaignHolds: _holds, kvMoneyConflict: _conflict, ...rest } = (doc || {}) as any;
         const details = Array.isArray(rest.orderDetails) ? rest.orderDetails : [];
         rest.orderDetails = await enrichOrderDetailsImages(mainDb, details);
         noStoreOrderJson(req, res);

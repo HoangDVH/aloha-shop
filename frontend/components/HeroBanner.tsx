@@ -8,6 +8,8 @@ import { useCallback, useEffect, useState } from "react";
 
 export type HeroSlide = {
   src: string;
+  /** Ảnh riêng cho màn hình < 768px (mobile chỉ tải ảnh này). */
+  mobileSrc?: string;
   alt: string;
   href?: string;
   label?: string;
@@ -78,19 +80,39 @@ function pickText(override: string | undefined, fallback: string) {
   return t || fallback;
 }
 
-/** Hero full-bleed: cao = 1 viewport trừ header+nav, ngang 100%. */
-export function HeroBanner({ slides }: { slides?: HeroSlide[] }) {
-  // Giữ thứ tự và đích đến của bộ banner; cấu hình cũ không ghi đè liên kết.
-  // Ghép nội dung theo ảnh, không theo vị trí cũ sau khi đổi thứ tự.
-  const items = BRAND_BANNERS.map((brand) => {
-    const s = slides?.find((slide) => String(slide.src || "").split("?")[0] === brand.src.split("?")[0]);
+const srcKey = (src: string) => String(src || "").split("?")[0];
+
+/**
+ * Giữ thứ tự và đích đến của bộ banner; cấu hình cũ không ghi đè liên kết.
+ * Ghép nội dung theo ảnh, không theo vị trí cũ sau khi đổi thứ tự.
+ */
+function baseSlides(slides?: HeroSlide[]): HeroSlide[] {
+  return BRAND_BANNERS.map((brand) => {
+    const s = slides?.find((slide) => srcKey(slide.src) === srcKey(brand.src));
     if (!s || isLegacyBannerSrc(String(s.src || ""))) return brand;
-    return {
-      ...brand,
-      label: pickText(s.label, brand.label || ""),
-      alt: pickText(s.alt, brand.alt),
-    };
+    return { ...brand, label: pickText(s.label, brand.label || ""), alt: pickText(s.alt, brand.alt) };
   });
+}
+
+/**
+ * Banner chính trang chủ:
+ * - Khi CÓ chiến dịch: Chỉ hiển thị 1 tấm banner chính duy nhất (tĩnh, không slider qua lại, không nút điều hướng).
+ * - Khi KHÔNG CÓ chiến dịch: Sử dụng slider qua lại với các banner thương hiệu như bình thường.
+ */
+export function HeroBanner({
+  slides,
+  leading,
+  single,
+}: {
+  slides?: HeroSlide[];
+  leading?: HeroSlide[];
+  single?: boolean;
+}) {
+  const isSingle = single ?? Boolean(leading && leading.length > 0);
+  const singleSlide = leading?.[0] || (slides?.length ? baseSlides(slides)[0] : BRAND_BANNERS[0]);
+
+  const items = baseSlides(slides);
+  const itemsKey = items.map((s) => s.src).join("|");
 
   const [emblaRef, emblaApi] = useEmblaCarousel(
     {
@@ -118,7 +140,7 @@ export function HeroBanner({ slides }: { slides?: HeroSlide[] }) {
   }, [emblaApi]);
 
   useEffect(() => {
-    if (!emblaApi) return;
+    if (isSingle || !emblaApi) return;
     onSelect();
     emblaApi.on("select", onSelect);
     emblaApi.on("reInit", onSelect);
@@ -131,8 +153,53 @@ export function HeroBanner({ slides }: { slides?: HeroSlide[] }) {
       emblaApi.off("select", onSelect);
       emblaApi.off("reInit", onSelect);
     };
-  }, [emblaApi, onSelect]);
+  }, [isSingle, emblaApi, onSelect]);
 
+  useEffect(() => {
+    if (isSingle || !emblaApi) return;
+    emblaApi.reInit();
+    emblaApi.scrollTo(0, true);
+  }, [isSingle, emblaApi, itemsKey]);
+
+  // 1. Khi có chiến dịch: Chỉ hiển thị duy nhất 1 tấm banner chính tĩnh
+  if (isSingle) {
+    return (
+      <section
+        className="hero-banner hero-banner--full"
+        aria-label="Banner cửa hàng"
+      >
+        <div className="hero-banner__full-inner">
+          <div className="hero-banner__stage">
+            <Link
+              href={singleSlide.href || "/tim"}
+              className="hero-banner__frame block h-full w-full"
+              aria-label={singleSlide.cta || "Mua ngay"}
+            >
+              <picture className="block h-full w-full">
+                {singleSlide.mobileSrc ? <source media="(max-width: 767px)" srcSet={singleSlide.mobileSrc} /> : null}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={singleSlide.src}
+                  alt={singleSlide.alt}
+                  className="hero-banner__img"
+                  loading="eager"
+                  fetchPriority="high"
+                />
+              </picture>
+            </Link>
+
+            {/* Ảnh đã có chữ + CTA — chỉ giữ h1 ẩn cho SEO/a11y */}
+            <h1 className="absolute h-px w-px overflow-hidden whitespace-nowrap border-0 p-0 [clip:rect(0,0,0,0)]">
+              {singleSlide?.eyebrow ? `${singleSlide.eyebrow}. ` : ""}
+              {singleSlide?.title || "ALOHA THẾ GIỚI CHẬU CÂY"}
+            </h1>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // 2. Khi không có chiến dịch: Dùng slider qua lại như bình thường
   const active = items[selected] || items[0];
 
   return (
@@ -154,14 +221,17 @@ export function HeroBanner({ slides }: { slides?: HeroSlide[] }) {
                     className="hero-banner__frame block h-full w-full"
                     aria-label={slide.cta || "Mua ngay"}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={slide.src}
-                      alt={slide.alt}
-                      className="hero-banner__img"
-                      loading={i === 0 ? "eager" : "lazy"}
-                      fetchPriority={i === 0 ? "high" : undefined}
-                    />
+                    <picture className="block h-full w-full">
+                      {slide.mobileSrc ? <source media="(max-width: 767px)" srcSet={slide.mobileSrc} /> : null}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={slide.src}
+                        alt={slide.alt}
+                        className="hero-banner__img"
+                        loading={i === 0 ? "eager" : "lazy"}
+                        fetchPriority={i === 0 ? "high" : undefined}
+                      />
+                    </picture>
                   </Link>
                 </div>
               ))}

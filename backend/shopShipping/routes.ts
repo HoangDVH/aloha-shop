@@ -17,9 +17,11 @@ import {
   customerKeyFor,
   evaluateGoodsPromotions,
   evaluateShippingForCheckout,
-  loadActivePromotions,
   shippingPromotionHint,
 } from "../shopPromotions/checkoutPromotions.js";
+import { loadBuyerPromotions } from "../shopPromotions/wallet/walletRules.js";
+import { resolveGoodsShipCombo } from "../shopPromotions/combineShip.js";
+import { quoteWithCampaign } from "../shopCampaigns/quoteCampaign.js";
 
 function parseQuoteItems(raw: unknown) {
   if (!Array.isArray(raw)) return [];
@@ -181,12 +183,13 @@ export function registerShopShippingRoutes(
         const userId = req.shopAuth!.userId;
         const buyerPhone = String(body.customerPhone || buyer?.phone || "").trim();
         const buyerEmail = buyer?.email ? String(buyer.email) : "";
-        const evalItems = items.map((i) => ({
-          ma: i.productCode,
-          ten: i.productName,
-          price: i.price,
-          quantity: i.quantity,
-        }));
+        // Cùng giá flash với lúc tạo đơn: voucher, ngưỡng hỗ trợ ship và miễn ship đều tính trên giá khách trả.
+        const campaign = await quoteWithCampaign(
+          shopDb,
+          items.map((i) => ({ ma: i.productCode, ten: i.productName, price: i.price, quantity: i.quantity })),
+          { accountId: userId, account: buyer, phone: buyerPhone, email: buyerEmail }
+        );
+        const evalItems = campaign.items;
         const buyerCtx = {
           phone: buyerPhone,
           email: buyerEmail,
@@ -195,41 +198,68 @@ export function registerShopShippingRoutes(
           isWholesale: Boolean(req.shopAuth?.roles?.includes("si") || req.shopAuth?.roles?.includes("wholesale")),
         };
         const customerKey = customerKeyFor(userId);
-        const promotions = await loadActivePromotions(shopDb, now);
-        const goods = await evaluateGoodsPromotions(shopDb, {
-          items: evalItems,
-          buyer: buyerCtx,
-          customerKey,
-          promotions,
-          selectedCode: body.promotionCode,
-          autoMode: body.autoPromotion !== false,
+        const selectedCode = String(body.promotionCode || "").trim().toUpperCase();
+        const buyerPromos = await loadBuyerPromotions(shopDb, {
           now,
+          accountId: userId,
+          account: buyer,
+          phone: buyerPhone,
+          email: buyerEmail,
+          selectedCode,
         });
-        const quote = await getShippingQuote(db, {
-          items,
-          province,
-          district,
-          ward,
-          ghnDistrictId,
-          ghnWardCode,
-          preferredCarrier: preferred,
-          discountTotal: goods.discountTotal,
-        });
-        const ship =
-          quote.shippingEstimateStatus === "unavailable"
-            ? null
-            : await evaluateShippingForCheckout(shopDb, db, {
+        const promotions = buyerPromos.promotions;
+        const evalGoods = (list: typeof promotions) =>
+          evaluateGoodsPromotions(shopDb, {
+            items: evalItems,
+            buyer: buyerCtx,
+            customerKey,
+            promotions: list,
+            selectedCode,
+            autoMode: body.autoPromotion !== false,
+            now,
+          });
+        const quoteFor = (discountTotal: number) =>
+          getShippingQuote(db, {
+            items,
+            province,
+            district,
+            ward,
+            ghnDistrictId,
+            ghnWardCode,
+            preferredCarrier: preferred,
+            discountTotal: campaign.flashSavings + discountTotal,
+            freeShipItems: campaign.lines,
+          });
+        const evalShip = (q: Awaited<ReturnType<typeof quoteFor>>) =>
+          q.shippingEstimateStatus === "unavailable"
+            ? Promise.resolve(null)
+            : evaluateShippingForCheckout(shopDb, db, {
                 items: evalItems,
                 buyer: buyerCtx,
                 customerKey,
                 promotions,
                 deliveryMethod,
-                shippingFee:
-                  quote.shippingEstimateStatus === "needs_confirmation" ? null : quote.estimatedShippingFee,
-                freeShipApplied: quote.freeShipApplied,
+                shippingFee: q.shippingEstimateStatus === "needs_confirmation" ? null : q.estimatedShippingFee,
+                freeShipApplied: q.freeShipApplied,
                 address: { province, district, ghnDistrictId },
                 now,
               });
+        const firstGoods = await evalGoods(promotions);
+        let quote = await quoteFor(firstGoods.discountTotal);
+        const combo = await resolveGoodsShipCombo({
+          goods: firstGoods,
+          ship: await evalShip(quote),
+          promotions,
+          manualCode: Boolean(selectedCode),
+          reevaluateGoods: evalGoods,
+        });
+        const goods = combo.goods;
+        let ship = combo.ship;
+        if (goods !== firstGoods) {
+          // Giảm hàng thay đổi → ngưỡng miễn ship có thể đổi; báo giá lại với số giảm mới.
+          quote = await quoteFor(goods.discountTotal);
+          ship = await evalShip(quote);
+        }
         return res.json({
           ...quote,
           goodsDiscountTotal: goods.discountTotal,

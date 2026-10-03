@@ -11,12 +11,40 @@ import {
 } from "./types.js";
 import { isShippingPromotion } from "./evaluator.js";
 import { checkIsNewWebBuyer } from "./customerEligibility.js";
-import {
-  customerKeyFor,
-  evaluateGoodsPromotions,
-  loadActivePromotions,
-  shipVoucherEnabled,
-} from "./checkoutPromotions.js";
+import { customerKeyFor, evaluateGoodsPromotions, shipVoucherEnabled } from "./checkoutPromotions.js";
+import { shopRateLimitOrReject } from "../shopRateLimit.js";
+import { requestPromotionReview } from "./reviewService.js";
+import { loadVoucherReturns, type VoucherReturn } from "./voucherHistory.js";
+import { loadBuyerPromotions, withBuyerNotices } from "./wallet/walletRules.js";
+import { applyCatalogPrices, parseOrderDetails } from "../shopOrders/orderRouteShared.js";
+import { quoteWithCampaign } from "../shopCampaigns/quoteCampaign.js";
+
+/**
+ * Giá tính ưu đãi luôn lấy từ catalog (giá client gửi lên bị bỏ qua).
+ * Sản phẩm không còn trong catalog bị loại khỏi báo giá thay vì làm hỏng cả giỏ.
+ */
+async function withServerPrices(
+  shopDb: Db,
+  items: CartItemToEvaluate[],
+  account: Record<string, unknown> | null
+): Promise<CartItemToEvaluate[]> {
+  const valid = items.filter((it) => it.ma);
+  const price = (list: CartItemToEvaluate[]) =>
+    applyCatalogPrices(
+      shopDb,
+      parseOrderDetails(list.map((it) => ({ productCode: it.ma, quantity: it.quantity }))),
+      { account, quoteOnly: true }
+    );
+  if (!valid.length) return [];
+  const all = await price(valid);
+  if (all.ok) return valid.map((it, i) => ({ ...it, price: all.details[i].price }));
+  const out: CartItemToEvaluate[] = [];
+  for (const it of valid) {
+    const one = await price([it]);
+    if (one.ok && one.details[0]) out.push({ ...it, price: one.details[0].price });
+  }
+  return out;
+}
 
 export function registerShopPromotionsPublicRoutes(
   app: Express,
@@ -75,6 +103,9 @@ export function registerShopPromotionsPublicRoutes(
           minOrderThreshold: p.minOrderThreshold,
           thresholdOperator: p.thresholdOperator || ">",
           targetCustomer: p.targetCustomer,
+          scope: p.scope || "all",
+          categoryIds: p.categoryIds,
+          productMas: p.productMas,
           startDate: p.startDate,
           endDate: p.endDate,
         })),
@@ -90,16 +121,19 @@ export function registerShopPromotionsPublicRoutes(
     async (req: Request, res: Response) => {
       applyShopCors(req, res);
       try {
+        if (!(await shopRateLimitOrReject(req as any, res as any, "shop_promo_quote", 60, 60_000))) {
+          return;
+        }
         const shopDb = await getShopDb();
         const body = req.body || {};
         const itemsRaw = Array.isArray(body.items) ? body.items : [];
         const selectedCode = String(body.selectedCode || "").trim().toUpperCase();
         const autoMode = body.autoMode !== false;
 
-        const items: CartItemToEvaluate[] = itemsRaw.map((it: any) => ({
+        const clientItems: CartItemToEvaluate[] = itemsRaw.map((it: any) => ({
           ma: String(it.ma || it.productCode || "").trim().toUpperCase(),
           ten: String(it.ten || it.productName || "").trim(),
-          price: Math.max(0, Number(it.price ?? it.gia ?? 0) || 0),
+          price: 0,
           quantity: Math.max(1, Math.floor(Number(it.quantity ?? it.qty ?? 1) || 1)),
           categoryId: it.categoryId ? String(it.categoryId).trim() : undefined,
           categorySlug: it.categorySlug ? String(it.categorySlug).trim() : undefined,
@@ -140,8 +174,23 @@ export function registerShopPromotionsPublicRoutes(
         });
 
         const now = new Date();
+        const items = await withServerPrices(shopDb, clientItems, userAccount);
+        const campaign = await quoteWithCampaign(shopDb, items, {
+          accountId: buyerUserId,
+          account: userAccount,
+          phone: buyerPhone,
+          email: buyerEmail,
+        });
+        const buyerPromos = await loadBuyerPromotions(shopDb, {
+          now,
+          accountId: buyerUserId,
+          account: userAccount,
+          phone: buyerPhone,
+          email: buyerEmail,
+          selectedCode,
+        });
         const quote = await evaluateGoodsPromotions(shopDb, {
-          items,
+          items: campaign.items,
           buyer: {
             phone: buyerPhone,
             email: buyerEmail,
@@ -150,18 +199,70 @@ export function registerShopPromotionsPublicRoutes(
             isWholesale,
           },
           customerKey: customerKeyFor(buyerUserId),
-          promotions: await loadActivePromotions(shopDb, now),
+          promotions: buyerPromos.promotions,
           selectedCode,
           autoMode,
           now,
         });
 
+        const returns = await loadVoucherReturns(shopDb, customerKeyFor(buyerUserId)).catch(
+          () => new Map<string, VoucherReturn>()
+        );
+        const noticed = withBuyerNotices(quote, buyerPromos, selectedCode);
         res.json({
           ok: true,
-          quote,
+          quote: returns.size
+            ? {
+                ...noticed,
+                candidates: noticed.candidates.map((c) => {
+                  const r = c.eligible ? returns.get(c.promotionId) : undefined;
+                  return r ? { ...c, returnedFrom: { orderCode: r.orderCode, reason: r.reason } } : c;
+                }),
+              }
+            : noticed,
+          prices: Object.fromEntries(items.map((it) => [it.ma, it.price])),
+          lines: campaign.lines,
+          flashSavings: campaign.flashSavings,
+          anchorSavings: campaign.anchorSavings,
+          campaignNotices: campaign.notices,
         });
       } catch (e: any) {
         res.status(500).json({ ok: false, error: e?.message || "Lỗi tính ưu đãi" });
+      }
+    }
+  );
+
+  // POST /api/shop/promotions/review/request — Khách hàng gửi yêu cầu xem xét lại ưu đãi (mục 8, 9, 10)
+  app.post(
+    "/api/shop/promotions/review/request",
+    async (req: Request, res: Response) => {
+      applyShopCors(req, res);
+      try {
+        const shopDb = await getShopDb();
+        const body = req.body || {};
+        const orderId = String(body.orderId || "").trim();
+        const accountId = String(body.accountId || "").trim();
+        const buyerPhone = String(body.buyerPhone || "").trim();
+        const reason = String(body.reason || "").trim();
+
+        if (!orderId || !accountId || !buyerPhone) {
+          return res.status(400).json({ ok: false, error: "Thiếu thông tin đơn hàng hoặc số điện thoại" });
+        }
+
+        const result = await requestPromotionReview(shopDb, {
+          orderId,
+          accountId,
+          buyerPhone,
+          reason,
+        });
+
+        if (!result.ok) {
+          return res.status((result as any).code === "rate_limited" ? 429 : 400).json(result);
+        }
+
+        res.json(result);
+      } catch (e: any) {
+        res.status(500).json({ ok: false, error: e?.message || "Lỗi gửi yêu cầu xem xét" });
       }
     }
   );

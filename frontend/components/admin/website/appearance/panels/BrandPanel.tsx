@@ -10,6 +10,7 @@ import {
 } from "../../api";
 import { BrandAccordion, type BrandSectionId } from "../BrandAccordion";
 import { ImageUploadField } from "../ImageUploadField";
+import { PopupFields } from "../../shared/PopupFields";
 import {
   COLOR_PRESETS,
   HEADER_FOR_PRIMARY,
@@ -227,106 +228,11 @@ export function BrandPanel({
               <div className="space-y-3">
                 <p className="text-[11px] leading-snug text-amber-800/90">
                   Kiểu sàn: <strong>chỉ hiện ảnh</strong>. Cần ảnh +{" "}
-                  <strong>Áp dụng</strong>. API (:3000) phải chạy. Đã đóng rồi →
-                  đổi mã chiến dịch, hoặc mở{" "}
+                  <strong>Áp dụng</strong>. Đã đóng rồi → đổi mã chiến dịch, hoặc mở{" "}
                   <code className="rounded bg-amber-100 px-1">?popup=1</code>{" "}
-                  để xem lại.
+                  để xem thử (bỏ qua lịch, trang và đối tượng).
                 </p>
-                <label className="flex items-center gap-2 text-[13px] text-gray-800">
-                  <input
-                    type="checkbox"
-                    checked={!!popup.enabled}
-                    onChange={(e) =>
-                      patchPopup({ enabled: e.target.checked })
-                    }
-                  />
-                  Bật popup khuyến mãi trên web
-                </label>
-                <WbField
-                  label="Ảnh khuyến mãi (bắt buộc)"
-                  hint="Chữ KM nên nằm sẵn trong ảnh. Ảnh đứng/vuông đẹp nhất."
-                >
-                  <ImageUploadField
-                    kind="banner"
-                    value={popup.imageUrl || ""}
-                    onChange={(url) => patchPopup({ imageUrl: url })}
-                    previewClassName="overflow-hidden rounded-lg border border-gray-200"
-                  />
-                </WbField>
-                <WbField
-                  label="Link khi bấm ảnh"
-                  hint="VD trang SP: /sp/V1T hoặc /tim"
-                >
-                  <input
-                    className={wbInput}
-                    value={popup.ctaHref || ""}
-                    onChange={(e) =>
-                      patchPopup({ ctaHref: e.target.value })
-                    }
-                    placeholder="/sp/..."
-                  />
-                </WbField>
-                <WbField
-                  label="Mã chiến dịch"
-                  hint="Đổi mã khi muốn khách thấy popup lại."
-                >
-                  <input
-                    className={wbInput}
-                    value={popup.campaignId || ""}
-                    onChange={(e) =>
-                      patchPopup({ campaignId: e.target.value })
-                    }
-                    placeholder="promo"
-                  />
-                </WbField>
-                <div className="grid grid-cols-2 gap-2">
-                  <WbField label="Trễ (giây)">
-                    <input
-                      type="number"
-                      min={0}
-                      max={120}
-                      className={wbInput}
-                      value={Number(popup.delaySeconds) || 0}
-                      onChange={(e) =>
-                        patchPopup({
-                          delaySeconds: Math.max(
-                            0,
-                            Math.min(120, Number(e.target.value) || 0)
-                          ),
-                        })
-                      }
-                    />
-                  </WbField>
-                  <WbField label="Hiện lại sau (ngày)">
-                    <input
-                      type="number"
-                      min={1}
-                      max={365}
-                      className={wbInput}
-                      value={Number(popup.frequencyDays) || 7}
-                      onChange={(e) =>
-                        patchPopup({
-                          frequencyDays: Math.max(
-                            1,
-                            Math.min(365, Number(e.target.value) || 7)
-                          ),
-                        })
-                      }
-                    />
-                  </WbField>
-                </div>
-                <label className="flex items-center gap-2 text-[12px] text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={popup.showOncePerCampaign !== false}
-                    onChange={(e) =>
-                      patchPopup({
-                        showOncePerCampaign: e.target.checked,
-                      })
-                    }
-                  />
-                  Mỗi chiến dịch chỉ hiện 1 lần (sau khi đóng)
-                </label>
+                <PopupFields popup={popup} onChange={patchPopup} />
               </div>
             ),
           },

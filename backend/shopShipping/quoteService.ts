@@ -78,6 +78,8 @@ export async function getShippingQuote(
     ghnWardCode?: string;
     preferredCarrier?: ShippingCarrier;
     discountTotal?: number;
+    /** Dòng giá khách thực trả (giá flash, gồm dòng quà) — tạo đơn xét miễn ship trên các dòng này. */
+    freeShipItems?: Array<{ price?: number; quantity?: number }>;
   }
 ): Promise<ShippingQuoteResponse> {
   const built = await buildCarrierQuoteInput(db, input.items, {
@@ -138,7 +140,7 @@ export async function getShippingQuote(
   // Xét điều kiện miễn ship theo tiền hàng sau ưu đãi N = G - D (Section 15.2 & LK06).
   // discountTotal phải do server tính (routes.ts), không lấy từ client.
   const subtotalAfterDiscount = Math.max(0, built.subtotal - (Number(input.discountTotal) || 0));
-  const freeShip = qualifiesFreeShip(subtotalAfterDiscount, built.items);
+  const freeShip = qualifiesFreeShip(subtotalAfterDiscount, input.freeShipItems ?? built.items);
 
   const [ghtk, ghn, spx] = await Promise.all([
     quoteGhtk(built.package).catch(() => null),

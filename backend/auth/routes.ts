@@ -1,7 +1,6 @@
 import type { Express, Response } from "express";
 import type { Db } from "mongodb";
 import { ObjectId } from "mongodb";
-import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import {
   loginBodySchema,
@@ -32,8 +31,15 @@ import {
   type GetDb,
 } from "./middleware.js";
 import { syncBus } from "../syncBus.js";
+import {
+  STAFF_USERS as USERS,
+  STAFF_READ_ONLY_MSG,
+  isStaffActive,
+  readLoginState,
+  verifyStaffPassword,
+  writeLoginState,
+} from "./staffAccounts.js";
 
-const USERS = "aloha_users";
 const REFRESH = "aloha_refresh_tokens";
 const LOGIN_IP = "aloha_login_ip";
 const MAX_FAILS = 5;
@@ -42,7 +48,7 @@ const IP_WINDOW_MS = 60 * 1000;
 const IP_MAX = 30;
 
 function toPublicUser(doc: any): PublicUser {
-  const active = doc.active !== false;
+  const active = isStaffActive(doc);
   let approvalStatus: "pending" | "approved" | "rejected" | undefined;
   if (doc.approvalStatus === "pending" || doc.approvalStatus === "approved" || doc.approvalStatus === "rejected") {
     approvalStatus = doc.approvalStatus;
@@ -54,7 +60,7 @@ function toPublicUser(doc: any): PublicUser {
   return {
     id: String(doc._id),
     username: String(doc.username || ""),
-    fullName: String(doc.fullName || doc.username || ""),
+    fullName: String(doc.fullName || doc.name || doc.username || ""),
     role: doc.role === "manager" ? "manager" : "staff",
     permissions: Array.isArray(doc.permissions) ? doc.permissions.map(String) : [],
     active,
@@ -125,27 +131,28 @@ export function registerAuthRoutes(app: Express, getDb: GetDb) {
       // Lỗi chung — không lộ user có/không
       const failMsg = "Tài khoản hoặc mật khẩu không đúng";
 
-      if (!user || user.active === false) {
+      if (!user || !isStaffActive(user)) {
         return res.status(401).json({ error: failMsg });
       }
 
-      if (user.lockUntil && new Date(user.lockUntil).getTime() > Date.now()) {
-        const until = new Date(user.lockUntil);
+      const state = await readLoginState(db, username);
+      if (state?.lockUntil && new Date(state.lockUntil).getTime() > Date.now()) {
+        const until = new Date(state.lockUntil);
         return res.status(403).json({
           error: `Tài khoản đang tạm khóa đến ${until.toLocaleString("vi-VN")}`,
           lockUntil: until.toISOString(),
         });
       }
 
-      const ok = await bcrypt.compare(parsed.data.password, String(user.passwordHash || ""));
+      const ok = await verifyStaffPassword(parsed.data.password, user);
       if (!ok) {
-        const fails = Number(user.failedLoginCount || 0) + 1;
-        const patch: Record<string, unknown> = { failedLoginCount: fails };
+        const fails = Number(state?.failedLoginCount || 0) + 1;
+        const patch: { failedLoginCount: number; lockUntil?: Date } = { failedLoginCount: fails };
         if (fails >= MAX_FAILS) {
           patch.lockUntil = new Date(Date.now() + LOCK_MS);
           patch.failedLoginCount = 0;
         }
-        await db.collection(USERS).updateOne({ _id: user._id }, { $set: patch });
+        await writeLoginState(db, username, patch);
         if (fails >= MAX_FAILS) {
           return res.status(403).json({
             error: "Sai mật khẩu quá 5 lần. Tài khoản khóa 15 phút.",
@@ -158,10 +165,7 @@ export function registerAuthRoutes(app: Express, getDb: GetDb) {
         });
       }
 
-      await db.collection(USERS).updateOne(
-        { _id: user._id },
-        { $set: { failedLoginCount: 0, lockUntil: null, lastLoginAt: new Date() } }
-      );
+      await writeLoginState(db, username, { failedLoginCount: 0, lockUntil: null, lastLoginAt: new Date() });
 
       const body = await issueSession(res, db, user);
       return res.json(body);
@@ -254,29 +258,7 @@ export function registerAuthRoutes(app: Express, getDb: GetDb) {
             error: parsed.error.issues[0]?.message || "Dữ liệu không hợp lệ",
           });
         }
-        const db = await getDb();
-        const username = parsed.data.username.trim().toLowerCase();
-        const exists = await db.collection(USERS).findOne({ username });
-        if (exists) return res.status(409).json({ error: "Tài khoản đã tồn tại" });
-        const passwordHash = await bcrypt.hash(parsed.data.password, 10);
-        const doc = {
-          username,
-          passwordHash,
-          fullName: parsed.data.fullName.trim(),
-          role: parsed.data.role,
-          permissions: parsed.data.permissions || [],
-          zaloId: parsed.data.zaloId || null,
-          active: true,
-          approvalStatus: "approved",
-          failedLoginCount: 0,
-          lockUntil: null,
-          createdAt: new Date(),
-        };
-        const result = await db.collection(USERS).insertOne(doc);
-        return res.status(201).json({
-          ok: true,
-          user: toPublicUser({ ...doc, _id: result.insertedId }),
-        });
+        return res.status(409).json({ error: STAFF_READ_ONLY_MSG });
       } catch (e: any) {
         return res.status(500).json({ error: e?.message || "Lỗi tạo tài khoản" });
       }
@@ -291,10 +273,7 @@ export function registerAuthRoutes(app: Express, getDb: GetDb) {
       const parsed = unlockBodySchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "Thiếu username" });
       const db = await getDb();
-      await db.collection(USERS).updateOne(
-        { username: parsed.data.username.trim().toLowerCase() },
-        { $set: { failedLoginCount: 0, lockUntil: null } }
-      );
+      await writeLoginState(db, parsed.data.username.trim().toLowerCase(), { failedLoginCount: 0, lockUntil: null });
       return res.json({ ok: true });
     }
   );
@@ -306,13 +285,7 @@ export function registerAuthRoutes(app: Express, getDb: GetDb) {
     async (req: AuthRequest, res) => {
       const parsed = linkZaloBodySchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "Thiếu username hoặc zaloId" });
-      const db = await getDb();
-      const r = await db.collection(USERS).updateOne(
-        { username: parsed.data.username.trim().toLowerCase() },
-        { $set: { zaloId: parsed.data.zaloId.trim() } }
-      );
-      if (!r.matchedCount) return res.status(404).json({ error: "Không tìm thấy user" });
-      return res.json({ ok: true });
+      return res.status(409).json({ error: STAFF_READ_ONLY_MSG });
     }
   );
 
@@ -347,29 +320,7 @@ export function registerAuthRoutes(app: Express, getDb: GetDb) {
       try {
         const id = String(req.params.id || "");
         if (!ObjectId.isValid(id)) return res.status(400).json({ error: "ID không hợp lệ" });
-        const db = await getDb();
-        const user = await db.collection(USERS).findOneAndUpdate(
-          {
-            $and: [
-              userIdQuery(id),
-              { $or: [{ approvalStatus: "pending" }, { active: false, approvalStatus: { $ne: "rejected" } }] },
-            ],
-          },
-          {
-            $set: {
-              active: true,
-              approvalStatus: "approved",
-              approvedAt: new Date(),
-              approvedBy: req.auth!.userId,
-            },
-          },
-          { returnDocument: "after" }
-        );
-        if (!user) {
-          return res.status(404).json({ error: "Không tìm thấy tài khoản chờ duyệt" });
-        }
-        syncBus.publish(["aloha_users_pending"], "auth_approve", { ids: [id] });
-        return res.json({ ok: true, user: toPublicUser(user) });
+        return res.status(409).json({ error: STAFF_READ_ONLY_MSG });
       } catch (e: any) {
         return res.status(500).json({ error: e?.message || "Lỗi duyệt" });
       }
@@ -384,28 +335,7 @@ export function registerAuthRoutes(app: Express, getDb: GetDb) {
       try {
         const id = String(req.params.id || "");
         if (!ObjectId.isValid(id)) return res.status(400).json({ error: "ID không hợp lệ" });
-        const db = await getDb();
-        const user = await db.collection(USERS).findOneAndUpdate(
-          userIdQuery(id),
-          {
-            $set: {
-              active: false,
-              approvalStatus: "rejected",
-              rejectedAt: new Date(),
-              rejectedBy: req.auth!.userId,
-            },
-          },
-          { returnDocument: "after" }
-        );
-        if (!user) {
-          return res.status(404).json({ error: "Không tìm thấy tài khoản" });
-        }
-        await db.collection(REFRESH).updateMany(
-          { userId: id, revokedAt: null },
-          { $set: { revokedAt: new Date() } }
-        );
-        syncBus.publish(["aloha_users_pending"], "auth_reject", { ids: [id] });
-        return res.json({ ok: true, user: toPublicUser(user) });
+        return res.status(409).json({ error: STAFF_READ_ONLY_MSG });
       } catch (e: any) {
         return res.status(500).json({ error: e?.message || "Lỗi từ chối" });
       }
@@ -495,7 +425,7 @@ export function registerAuthRoutes(app: Express, getDb: GetDb) {
         return res.redirect("/?auth_error=" + encodeURIComponent("Không lấy được Zalo ID"));
       }
       const db = await getDb();
-      let user = await db.collection(USERS).findOne({ zaloId });
+      const user = await db.collection(USERS).findOne({ zaloId });
       if (user && user.approvalStatus === "rejected") {
         return res.redirect(
           "/?auth_error=" +
@@ -503,35 +433,6 @@ export function registerAuthRoutes(app: Express, getDb: GetDb) {
               "Tài khoản Zalo này đã bị Quản lý từ chối trước đó. Liên hệ ALOHA để mở lại (không phải lỗi Zalo)."
             )
         );
-      }
-      // Zalo lần đầu → tạo tài khoản staff CHỜ DUYỆT (tắt bằng ZALO_OPEN_SIGNUP=0)
-      const openSignup =
-        process.env.ZALO_OPEN_SIGNUP !== "0" &&
-        process.env.ZALO_OPEN_SIGNUP !== "false";
-      if (!user && openSignup) {
-        const displayName = String(meJson?.name || "").trim() || `Zalo ${zaloId.slice(-6)}`;
-        let username = `zalo_${zaloId}`.slice(0, 64);
-        const clash = await db.collection(USERS).findOne({ username });
-        if (clash) username = `zalo_${zaloId}_${Date.now().toString(36)}`.slice(0, 64);
-        const doc = {
-          username,
-          passwordHash: null,
-          fullName: displayName,
-          role: "staff" as const,
-          permissions: [] as string[],
-          zaloId,
-          active: false,
-          approvalStatus: "pending" as const,
-          failedLoginCount: 0,
-          lockUntil: null,
-          createdAt: new Date(),
-          createdVia: "zalo_open_signup",
-        };
-        const ins = await db.collection(USERS).insertOne(doc);
-        user = { ...doc, _id: ins.insertedId };
-        syncBus.publish(["aloha_users_pending"], "zalo_signup", {
-          ids: [String(ins.insertedId)],
-        });
       }
       if (!user) {
         return res.redirect(
@@ -562,8 +463,6 @@ export function registerAuthRoutes(app: Express, getDb: GetDb) {
   void (async () => {
     try {
       const db = await getDb();
-      await db.collection(USERS).createIndex({ username: 1 }, { unique: true });
-      await db.collection(USERS).createIndex({ zaloId: 1 }, { sparse: true });
       await db.collection(REFRESH).createIndex({ jti: 1 }, { unique: true });
       await db.collection(REFRESH).createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
     } catch (e) {

@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, LayoutGrid, ShoppingCart, UserRound } from "lucide-react";
+import { Home, LayoutGrid, ShoppingCart, TicketPercent, UserRound, Zap } from "lucide-react";
 import { useCart } from "@/lib/cart";
+import { useDealsNavAccent } from "@/lib/campaign/navAccent";
 
 const OPEN_CATS = "aloha:open-mobile-cats";
 
@@ -20,11 +21,12 @@ function shouldHideTabBar(pathname: string) {
   );
 }
 
-/** Sticky tab bar mobile — Trang chủ / Danh mục / Giỏ / Tài khoản. */
+/** Sticky tab bar mobile — Trang chủ / Danh mục / Ưu đãi / Giỏ / Tài khoản. */
 export function ShopMobileTabBar() {
   const pathname = usePathname() || "/";
   const count = useCart((s) => s.lines.reduce((n, l) => n + l.qty, 0));
   const hide = shouldHideTabBar(pathname);
+  const deals = useDealsNavAccent();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -54,6 +56,7 @@ export function ShopMobileTabBar() {
     pathname.startsWith("/dang-nhap") ||
     pathname.startsWith("/dang-ky");
   const cartBadge = mounted && count > 0 ? count : 0;
+  const dealsActive = pathname.startsWith("/uu-dai");
 
   return (
     <nav
@@ -82,7 +85,23 @@ export function ShopMobileTabBar() {
         </button>
 
         <Link
+          href="/uu-dai"
+          className={`shop-mobile-tab ${dealsActive ? "is-active" : ""}`}
+          style={deals.on ? { color: deals.color } : undefined}
+          aria-current={dealsActive ? "page" : undefined}
+          aria-label={deals.on ? "Ưu đãi, đang có chương trình" : "Ưu đãi"}
+        >
+          {deals.on ? (
+            <Zap size={22} strokeWidth={2.2} fill="currentColor" aria-hidden />
+          ) : (
+            <TicketPercent size={22} strokeWidth={dealsActive ? 2.4 : 1.9} aria-hidden />
+          )}
+          <span className={deals.on ? "font-bold" : undefined}>Ưu đãi</span>
+        </Link>
+
+        <Link
           href="/gio-hang"
+          data-cart-target=""
           className={`shop-mobile-tab ${cartActive ? "is-active" : ""}`}
           aria-current={cartActive ? "page" : undefined}
           aria-label={`Giỏ hàng${cartBadge ? `, ${cartBadge} sản phẩm` : ""}`}

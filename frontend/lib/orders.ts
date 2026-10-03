@@ -25,6 +25,11 @@ export type ShopOrderDetail = {
   variantLabel?: string;
   imageUrl?: string;
   ctvCode?: string;
+  /** Dòng tính giá sale chiến dịch. */
+  flash?: { listPrice: number; salePrice: number };
+  /** Dòng quà 0đ do server tạo. */
+  isGift?: boolean;
+  gift?: { giftFor: string };
 };
 
 export type ShopBankInfo = {
@@ -56,10 +61,22 @@ export type ShopOrder = {
   shippingAddress?: string;
   orderDetails: ShopOrderDetail[];
   ctvCodes?: string[];
+  /** Tiền hàng sau giá sale (chưa trừ voucher). */
   subtotal?: number;
+  /** Phần giảm do giá sale so với giá thường. */
+  flashSavings?: number;
+  anchorSavings?: number;
   /** Phí ship khách trả (đã trừ hỗ trợ ship). */
   shippingFee?: number;
   shippingFeeOriginal?: number;
+  /** Lịch sử nhân viên sửa tiền đơn trên KiotViet (mới nhất ở cuối). */
+  moneyChanges?: Array<{
+    at: string;
+    source?: string;
+    shippingFee?: { from: number; to: number };
+    total?: { from: number; to: number };
+    linesChanged?: boolean;
+  }>;
   shippingDiscount?: number;
   shippingPromotion?: { promotionId: string; title: string; discountAmount: number } | null;
   shippingCarrier?: string;
@@ -146,7 +163,7 @@ async function shopFetch<T>(path: string, init?: RequestInit): Promise<T> {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw Object.assign(new Error((data as { error?: string }).error || `HTTP ${res.status}`), { code: data.code, details: data.details });
+    throw Object.assign(new Error((data as { error?: string }).error || `HTTP ${res.status}`), { code: data.code, details: data.details, notices: data.notices });
   }
   return data as T;
 }
@@ -201,6 +218,8 @@ export type PlaceOrderInput = {
   promotionId?: string;
   /** false = khách đã bỏ ưu đãi tự động; server không tự áp lại. */
   autoPromotion?: boolean;
+  /** Tiền hàng khách đã thấy ở báo giá (sau giá sale); server tính cao hơn thì trả 409 `price_changed`. */
+  expectedSubtotal?: number;
   /** Chống đặt trùng khi retry / mất response */
   idempotencyKey?: string;
 };

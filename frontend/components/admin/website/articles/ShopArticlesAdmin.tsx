@@ -17,7 +17,6 @@ import {
   slugifyVi,
   type Article,
   type FormState,
-  type ProductSuggest,
 } from "./articleUtils";
 import { ArticleEditView } from "./ArticleEditView";
 import { ArticleTable } from "./ArticleTable";
@@ -35,8 +34,6 @@ export function ShopArticlesAdmin() {
   const [preview, setPreview] = useState<Article | null>(null);
   const [saving, setSaving] = useState(false);
   const [slugManual, setSlugManual] = useState(false);
-  const [prodQ, setProdQ] = useState("");
-  const [prodSuggest, setProdSuggest] = useState<ProductSuggest[]>([]);
   const [coverBusy, setCoverBusy] = useState(false);
   const [videoBusy, setVideoBusy] = useState(false);
   const [editorBusy, setEditorBusy] = useState(false);
@@ -79,33 +76,12 @@ export function ShopArticlesAdmin() {
     void load();
   }, [load]);
 
-  useEffect(() => {
-    const term = prodQ.trim();
-    if (!term || !editing) {
-      setProdSuggest([]);
-      return;
-    }
-    const t = setTimeout(() => {
-      const params = new URLSearchParams({
-        page: "1",
-        limit: "8",
-        q: term,
-        visible: "1",
-      });
-      void websiteApi<{ items: ProductSuggest[] }>(`/api/shop/admin/products?${params}`)
-        .then((r) => setProdSuggest(r.items || []))
-        .catch(() => setProdSuggest([]));
-    }, 220);
-    return () => clearTimeout(t);
-  }, [prodQ, editing]);
-
   const openNew = () => {
     setPreview(null);
     setSlugManual(false);
     setEditing(emptyForm());
     setDirty(false);
     setSlugManual(false);
-    setProdQ("");
   };
 
   const openPreview = async (row: Article) => {
@@ -152,7 +128,6 @@ export function ShopArticlesAdmin() {
       publishedAt: row.publishedAt,
       visible: row.visible,
     });
-    setProdQ("");
   };
 
   const closeEdit = () => {
@@ -353,8 +328,6 @@ export function ShopArticlesAdmin() {
       return;
     }
     patchEditing({ ...editing, productMas: [...editing.productMas, ma] });
-    setProdQ("");
-    setProdSuggest([]);
   };
 
   const pages = Math.max(1, Math.ceil(total / 40));
@@ -395,9 +368,6 @@ export function ShopArticlesAdmin() {
         videoNorm={videoNorm}
         videoPreviewSrc={videoPreviewSrc}
         setEditorBusy={setEditorBusy}
-        prodQ={prodQ}
-        setProdQ={setProdQ}
-        prodSuggest={prodSuggest}
         addProduct={addProduct}
       />
     );

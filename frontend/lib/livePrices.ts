@@ -2,6 +2,7 @@
 
 import { priceSessionGeneration } from "./priceSession";
 import { shopApiBase } from "./api";
+import type { CampaignPromoUI } from "./campaign/campaignApi";
 
 export type LivePriceRow = {
   ma: string;
@@ -12,10 +13,15 @@ export type LivePriceRow = {
   ton?: number;
   ten?: string;
   anh?: string;
+  images?: string[];
+  videos?: string[];
+  videoUrl?: string;
   path?: string;
   dvt?: string;
   trongLuong?: number;
   isActive?: boolean;
+  categoryId?: number;
+  campaignPromo?: CampaignPromoUI | null;
 };
 
 type Pending = {

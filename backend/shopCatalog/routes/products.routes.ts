@@ -41,7 +41,7 @@ import {
   resolveShopDisplayTon,
 } from "../../shopVariantGroup.js";
 import { mongoLoaiFilter } from "../../utils/kvProductLoai.js";
-import { normalizeWebBadge } from "../webBadge.js";
+import { normalizeWebBadge, webBadgeMongoFilter } from "../webBadge.js";
 import { resolvePinBadgeScope, arrangeByAbsolutePin } from "../pinArrange.js";
 import { isShopTestBuyerEmail } from "../../shopOrders/checkoutFlags.js";
 import {
@@ -53,6 +53,8 @@ import {
   overlayProductCategoryFields,
 } from "../categoryMeta.js";
 import { subtractHeldFromPublicItems } from "../../shopOrders/stockHold.js";
+import { campaignDealMas, dealMasCacheSuffix, withCampaignPromos } from "../../shopCampaigns/catalogPromos.js";
+import { parseVoucherQuery, voucherProductFilter } from "../../shopPromotions/voucherProductFilter.js";
 
 export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
   app.get("/api/shop/products", async (req, res) => {
@@ -94,7 +96,10 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
         attrFilters.length > 0 ||
         dvtFilters.length > 0 ||
         Boolean(loai);
-      const cacheKey = `shop:products:v37:${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|maxTon=${maxTon}|${sort}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
+      const dealMas = badge === "uu_dai" ? await campaignDealMas(await ctx.catalogDb(), req) : [];
+      const voucherId = parseVoucherQuery(req.query.voucher);
+      const voucher = voucherId ? await voucherProductFilter(await ctx.catalogDb(), voucherId) : null;
+      const cacheKey = `shop:products:v37:${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}${dealMasCacheSuffix(dealMas)}|v=${voucherId}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|maxTon=${maxTon}|${sort}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
       const pinScope = resolvePinBadgeScope({ sort, badge, maxTon });
 
       const { body, cache } = await cachedJson(cacheKey, async () => {
@@ -143,11 +148,9 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
         if (dvtMongo) and.push(dvtMongo);
         const loaiMongo = mongoLoaiFilter(loai);
         if (loaiMongo) and.push(loaiMongo);
-        if (badge === "ban_chay_sap_het") {
-          and.push({ webBadge: { $in: ["ban_chay_sap_het", "ban_chay"] } });
-        } else if (badge) {
-          and.push({ webBadge: badge });
-        }
+        const badgeMongo = webBadgeMongoFilter(badge, dealMas);
+        if (badgeMongo) and.push(badgeMongo);
+        if (voucher && Object.keys(voucher.filter).length) and.push(voucher.filter);
         filter.$and = and;
 
         const col = db.collection(COL);
@@ -366,7 +369,8 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
           sortMode: sort,
         };
       }, TTL_SEC);
-      if (cache === "BYPASS") {
+      const promo = await withCampaignPromos(await ctx.catalogDb(), req, (body as any)?.items || []);
+      if (cache === "BYPASS" || promo.noStore) {
         res.setHeader("Cache-Control", "no-store");
       } else {
         res.setHeader(
@@ -375,7 +379,8 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
         );
       }
       res.setHeader("X-Shop-Cache", cache);
-      res.json(body);
+      const voucherInfo = voucher ? { voucher: { id: voucherId, title: voucher.title } } : {};
+      res.json(Array.isArray((body as any)?.items) ? { ...(body as any), items: promo.items, ...voucherInfo } : body);
     } catch (e: any) {
       res.status(500).json({ error: e?.message || "products_failed" });
     }
@@ -486,7 +491,8 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
       }
 
       res.setHeader("Cache-Control", "no-store");
-      res.json({ items: await subtractHeldFromPublicItems(db, items) });
+      const available = await subtractHeldFromPublicItems(db, items);
+      res.json({ items: (await withCampaignPromos(db, req, available)).items });
     } catch (e: any) {
       res.status(500).json({ error: e?.message || "prices_failed" });
     }
