@@ -110,6 +110,32 @@ async function returnClaimSlot(db: Db, promotionId: string): Promise<void> {
 const isDuplicateKey = (e: unknown) => (e as { code?: number })?.code === 11000;
 
 /**
+ * Túi mù khách đã lưu từ trước khi voucher thành túi mù (chưa có mức): bóc 1 lần, không tốn thêm lượt lưu.
+ * Chỉ ghi khi bản ghi vẫn `saved` và chưa có mức; tranh chấp thua thì trả lại suất của mức vừa bốc.
+ */
+async function openSavedMystery(
+  db: Db,
+  promo: PromotionDoc,
+  _id: string,
+  nowIso: string,
+  alreadyResult: () => Promise<ClaimResult>
+): Promise<ClaimResult> {
+  const drawnPercent = await drawMysteryPercent(db, promo);
+  if (drawnPercent == null) return alreadyResult();
+  const r = await db
+    .collection<WalletDoc>(VOUCHER_WALLET_COL)
+    .updateOne(
+      { _id, status: "saved", drawnPercent: { $exists: false } },
+      { $set: { drawnPercent, updatedAt: nowIso } }
+    );
+  if (r.modifiedCount === 0) {
+    await returnMysteryDraw(db, promo.id, drawnPercent);
+    return alreadyResult();
+  }
+  return { ok: true, already: false, promotionId: promo.id, message: WALLET_MESSAGES.saved, drawnPercent };
+}
+
+/**
  * Ghi 1 bản ghi ví cho voucher đã qua mọi kiểm tra điều kiện.
  * Thứ tự: đã có trong ví → giữ lượt → ghi ví; ghi ví lỗi thì trả lại lượt (bước bù).
  */
@@ -132,7 +158,11 @@ export async function insertWalletEntry(
       ...(row?.drawnPercent ? { drawnPercent: row.drawnPercent } : {}),
     };
   };
-  if (await col.findOne({ _id }, { projection: { _id: 1 } })) return alreadyResult();
+  const existing = await col.findOne({ _id }, { projection: { status: 1, drawnPercent: 1 } });
+  if (existing) {
+    const unopened = isMystery(promo) && existing.status === "saved" && !existing.drawnPercent;
+    return unopened ? openSavedMystery(db, promo, _id, nowIso, alreadyResult) : alreadyResult();
+  }
   if (!(await reserveClaimSlot(db, promo.id))) {
     return fail("claim_limit", 409, CAMPAIGN_ERROR_MESSAGES.claim_limit, promo.id);
   }

@@ -126,6 +126,9 @@ async function walletHandler(getDb: GetDb, req: Request, res: Response) {
     counts,
     claimedIds: saved.map((r) => r.promotionId),
     drawn: Object.fromEntries(saved.filter((r) => r.drawnPercent).map((r) => [r.promotionId, r.drawnPercent])),
+    unopened: saved
+      .filter((r) => r.status === "saved" && !r.drawnPercent && isMystery(byId.get(r.promotionId)))
+      .map((r) => r.promotionId),
   });
 }
 

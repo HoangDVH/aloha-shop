@@ -229,6 +229,29 @@ test("MU10: lưu ví → bốc 1 mức, lưu % vào ví; lưu lại trả đúng
   assert.equal(drawnTotal, 1);
 });
 
+test("MU14: khách lưu trước khi voucher thành túi mù → bóc 1 lần, không tốn lượt; đang giữ cho đơn thì không bóc", { skip: TEST_MONGO_SKIP }, async () => {
+  const plain = MYSTERY({ mystery: undefined });
+  await t.db.collection(PROMOTIONS_COL).insertOne(MYSTERY() as any);
+  await insertWalletEntry(t.db, plain, "acc_1", "vault", nowIso());
+  await insertWalletEntry(t.db, plain, "acc_2", "vault", nowIso());
+  await t.db.collection(VOUCHER_WALLET_COL).updateOne({ accountId: "acc_2" }, { $set: { status: "held" } });
+  const claimedBefore = Number((await t.db.collection(PROMOTIONS_COL).findOne({ id: "VMU" }))?.claimedCount || 0);
+
+  const opened = await Promise.all([1, 2, 3].map(() => insertWalletEntry(t.db, MYSTERY(), "acc_1", "vault", nowIso())));
+  const fresh = opened.filter((r) => r.ok && !r.already);
+  assert.equal(fresh.length, 1);
+  const pct = fresh[0].ok ? fresh[0].drawnPercent : undefined;
+  assert.ok(pct && pct >= 10 && pct <= 15);
+  for (const r of opened) assert.equal(r.ok ? r.drawnPercent : undefined, pct);
+  assert.equal((await drawnPercentsFor(t.db, "acc_1")).get("VMU"), pct);
+
+  const held = await insertWalletEntry(t.db, MYSTERY(), "acc_2", "vault", nowIso());
+  assert.equal(held.ok && held.already && !held.drawnPercent, true);
+
+  assert.equal((await tiersInDb()).reduce((s, x) => s + x.drawn, 0), 1);
+  assert.equal(Number((await t.db.collection(PROMOTIONS_COL).findOne({ id: "VMU" }))?.claimedCount || 0), claimedBefore);
+});
+
 test("MU11: 30 khách tranh 2 mức giới hạn (1+1 suất) → đúng 2 người trúng, còn lại hết lượt", { skip: TEST_MONGO_SKIP }, async () => {
   const doc = MYSTERY({ mystery: config([{ percent: 10, weight: 1, limit: 1 }, { percent: 15, weight: 1, limit: 1 }]) });
   await t.db.collection(PROMOTIONS_COL).insertOne(doc as any);

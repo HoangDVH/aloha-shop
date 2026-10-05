@@ -60,8 +60,17 @@ export function useVoucherClaims(opts: { onClaimed?: () => void } = {}) {
     const r = await claimAll.mutateAsync(batchKey.current).catch(() => null);
     batchKey.current = newKey();
     if (!r) return toast.push("Mất kết nối, vui lòng thử lại.");
-    toast.push(r.ok ? r.message : r.error);
-    if (r.ok) onClaimedRef.current?.();
+    if (!r.ok) return toast.push(r.error);
+    const opened = r.results.filter((x) => x.ok && !x.already && x.drawnPercent);
+    if (opened.length) {
+      setJustDrawn((m) => ({
+        ...m,
+        ...Object.fromEntries(opened.map((x) => [x.promotionId, (x.ok && x.drawnPercent) || 0])),
+      }));
+      setClaimedVoucherId(opened[0].promotionId);
+    }
+    toast.push(r.message);
+    onClaimedRef.current?.();
   }, [claimAll, toast]);
 
   const claim = (promotionId: string) => {
@@ -99,8 +108,11 @@ export function useVoucherClaims(opts: { onClaimed?: () => void } = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
+  const unopened = new Set((wallet.data?.unopened || []).filter((id) => !justDrawn[id]));
+
   return {
-    claimedIds: new Set(wallet.data?.claimedIds || []),
+    /** Túi mù đang giữ mà chưa bóc không tính là đã lưu → nút hiện "Bóc ngay". */
+    claimedIds: new Set((wallet.data?.claimedIds || []).filter((id) => !unopened.has(id))),
     /** Voucher túi mù đã bóc: promotionId → % trúng. */
     drawn: { ...wallet.data?.drawn, ...justDrawn },
     claim,

@@ -37,6 +37,8 @@ export type WalletResponse = {
   claimedIds: string[];
   /** Voucher túi mù khách đã bóc: promotionId → % trúng. */
   drawn?: Record<string, number>;
+  /** Túi mù khách đang giữ nhưng chưa bóc (lưu từ trước khi voucher thành túi mù). */
+  unopened?: string[];
 };
 
 export type ClaimFailCode =
