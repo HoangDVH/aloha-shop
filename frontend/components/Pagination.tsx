@@ -8,10 +8,12 @@ export function Pagination({
   page,
   pages,
   total,
+  unit = "SP",
 }: {
   page: number;
   pages: number;
   total: number;
+  unit?: string;
 }) {
   const pathname = usePathname();
   const sp = useSearchParams();
@@ -95,7 +97,7 @@ export function Pagination({
       </Link>
 
       <span className="w-full text-center text-xs text-slate-500 sm:w-auto sm:ml-2">
-        Trang {page}/{pages} · {total} SP
+        Trang {page}/{pages} · {total} {unit}
       </span>
     </div>
   );

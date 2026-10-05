@@ -22,6 +22,7 @@ import {
   Zap,
   Building2,
   Users,
+  Briefcase,
 } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { fetchCategoryTreeCached, shopApiBase, type ShopCategoryNavNode } from "@/lib/api";
@@ -715,6 +716,7 @@ export function SiteFooter() {
               { href: dealsNavHref, label: "Ưu đãi", icon: BadgePercent },
               { href: "/ve-aloha", label: "Về Aloha", icon: UserRound },
               { href: "/bai-viet", label: "Bài viết", icon: FileText },
+              { href: "/tuyen-dung", label: "Tuyển dụng", icon: Briefcase },
             ].map(({ href, label, icon: Icon }) => (
               <li key={href}>
                 <Link href={href} className="group flex min-h-12 items-center gap-3 rounded-md py-2 text-sm text-stone-600 transition hover:text-[#2e7139] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-800">

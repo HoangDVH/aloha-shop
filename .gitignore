@@ -27,6 +27,7 @@ Thumbs.db
 
 # Uploads / local data
 uploads/
+private/
 *.local
 
 # Refactor test snapshots

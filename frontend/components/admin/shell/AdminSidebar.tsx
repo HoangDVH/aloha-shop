@@ -5,7 +5,9 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import {
   BarChart3,
+  Briefcase,
   CalendarHeart,
+  Inbox,
   ChevronDown,
   Coins,
   ExternalLink,
@@ -41,6 +43,11 @@ const CTV_SUB = [
   { href: "/admin/ctv/cau-hinh-hoa-hong", label: "Cấu hình hoa hồng", Icon: Percent, badgeKey: null },
   { href: "/admin/ctv/don-hang", label: "Đơn hàng", Icon: FileText, badgeKey: "orders" as const },
   { href: "/admin/ctv/chong-gian", label: "Chống gian lận", Icon: Shield, badgeKey: "fraud" as const },
+];
+
+const RECRUITMENT_SUB = [
+  { href: "/admin/tuyen-dung/ho-so", label: "Hồ sơ ứng viên", Icon: Inbox },
+  { href: "/admin/tuyen-dung/viec-lam", label: "Tin tuyển dụng", Icon: FileText },
 ];
 
 const CUSTOMERS_HREF = "/admin/ctv/khach-hang";
@@ -85,6 +92,9 @@ export function AdminSidebar() {
     pathname === "/admin/uu-dai" || pathname.startsWith("/admin/uu-dai/");
   const [promotionsOpen, setPromotionsOpen] = useState(onPromotions);
 
+  const onRecruitment = pathname.startsWith("/admin/tuyen-dung");
+  const [recruitmentOpen, setRecruitmentOpen] = useState(onRecruitment);
+
   const searchParams = useSearchParams();
   const currentTab = searchParams?.get("tab") || "campaigns";
 
@@ -95,6 +105,10 @@ export function AdminSidebar() {
   useEffect(() => {
     if (onPromotions) setPromotionsOpen(true);
   }, [onPromotions]);
+
+  useEffect(() => {
+    if (onRecruitment) setRecruitmentOpen(true);
+  }, [onRecruitment]);
 
   const badgeFor = (key: null | "ctv" | "orders" | "fraud") => {
     if (key === "ctv") return badges.ctvPending;
@@ -248,6 +262,45 @@ export function AdminSidebar() {
             </div>
           ) : null}
         </div>
+        <div className="pt-0.5">
+          <button
+            type="button"
+            onClick={() => setRecruitmentOpen((v) => !v)}
+            className={`group flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
+              onRecruitment
+                ? "!bg-[#EAF3E8] !text-[#2D5A27] font-bold ring-1 ring-[#2D5A27]/20 [&_svg]:!text-[#2D5A27]"
+                : "text-slate-600 hover:!bg-[#F0F5EE] hover:!text-slate-900 [&_svg]:text-slate-400 group-hover:[&_svg]:!text-slate-700"
+            }`}
+          >
+            <Briefcase className="h-4 w-4 shrink-0" />
+            <span className="min-w-0 flex-1">Tuyển dụng</span>
+            <ChevronDown
+              className={`h-4 w-4 shrink-0 transition ${
+                recruitmentOpen ? "rotate-0 text-[#2D5A27]" : "-rotate-90 text-slate-400"
+              }`}
+            />
+          </button>
+          {recruitmentOpen ? (
+            <div className="ml-2 mt-0.5 space-y-0.5 border-l border-[#e8e2d6] pl-2">
+              {RECRUITMENT_SUB.map(({ href, label, Icon }) => {
+                const active = pathname === href || pathname.startsWith(`${href}/`);
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    aria-current={active ? "page" : undefined}
+                    className={linkClass(active, true)}
+                    style={active ? activeNavStyle : undefined}
+                  >
+                    <Icon className={`h-3.5 w-3.5 shrink-0 ${active ? "!text-white" : "text-slate-400 group-hover:text-slate-700"}`} />
+                    <span className="min-w-0 flex-1 truncate">{label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
+
         <Link
           href="/admin/seo"
           className={linkClass(pathname.startsWith("/admin/seo"))}

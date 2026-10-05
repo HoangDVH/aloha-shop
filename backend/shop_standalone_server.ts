@@ -31,6 +31,7 @@ import { registerShopShippingRoutes } from './shopShipping/routes.js';
 import { registerShopCtvMeRoutes } from './shopOrders/ctvMeRoutes.js';
 import { registerShopAppearanceRoutes } from './shopAppearance/register.js';
 import { registerShopArticlesRoutes } from './shopArticles/register.js';
+import { registerShopRecruitmentRoutes, startRecruitmentWorker } from './shopRecruitment/register.js';
 import { registerShopProductsAdminRoutes } from './shopAppearance/productsAdmin.js';
 import { registerShopSeoRedirectRoutes } from './shopSeo/redirects.js';
 import { registerShopAccountsAdminRoutes } from './shopAuth/adminRoutes.js';
@@ -234,6 +235,7 @@ registerShopShippingRoutes(app, getDb, getOpsDb);
 registerShopCtvMeRoutes(app, getDb, getOpsDb);
 registerShopAppearanceRoutes(app, getOpsDb, getDb);
 registerShopArticlesRoutes(app, getOpsDb, getDb);
+registerShopRecruitmentRoutes(app, getOpsDb, getDb);
 registerShopProductsAdminRoutes(app, getOpsDb, getDb, getCatalogSourceDb);
 registerShopCatalogSyncFromOpsRoutes(app, getOpsDb, getDb, getCatalogSourceDb);
 registerShopSeoRedirectRoutes(app, getOpsDb, getDb);
@@ -332,6 +334,7 @@ app.listen(PORT, '0.0.0.0', () => {
   startWholesaleOrderSync(getDb, getOpsDb);
   startKvDeliveryReconcile(getDb, getOpsDb);
   startProductVideoReconcileWorker(getDb, getOpsDb);
+  startRecruitmentWorker(getDb);
   // Ephemeral đã chuyển Redis — bỏ collection Mongo cũ nếu còn.
   void getDb()
     .then(async (db) => {

@@ -40,6 +40,7 @@ const RESERVED_ROOT = new Set([
   "tai-khoan",
   "tim",
   "tuyen-ctv",
+  "tuyen-dung",
   "uploads",
   "ve-aloha",
   "xac-nhan-don-hang",
