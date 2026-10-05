@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { Collapse, Input } from "antd";
-import { Image as ImageIcon, Palette, BellRing, Settings2, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
+import { Image as ImageIcon, Palette, BellRing, Settings2, ChevronDown, ChevronUp, ChevronRight, Flame, Zap } from "lucide-react";
 import type { CampaignBannerUI } from "@/lib/campaign/campaignApi";
 import type { CampaignContentAdmin, FieldError } from "@/lib/campaign/campaignAdminApi";
-import { FLASH_STAGE_BG, FLASH_STAGE_DEFAULT } from "@/lib/campaign/flashSlots";
+import { FLASH_STAGE_BG, FLASH_STAGE_DEFAULT, flashStageText } from "@/lib/campaign/flashSlots";
 import { CAMPAIGN_PALETTES, matchPalette } from "@/lib/campaign/campaignPalettes";
 import { fieldErrorsFor } from "../wizardModel";
 import { CampaignBannerField } from "./CampaignBannerField";
@@ -200,7 +200,8 @@ function FlashStageFields({
 }) {
   const stage = display.flashStage || FLASH_STAGE_DEFAULT;
   const set = (patch: Partial<typeof stage>) => setDisplay({ flashStage: { ...stage, ...patch } });
-  const chips = content.slots.slice(0, 4);
+  const shown = flashStageText(display.flashStage);
+  const hasSlots = content.slots.length > 0;
 
   return (
     <div className="space-y-3 pt-2">
@@ -214,6 +215,9 @@ function FlashStageFields({
             placeholder={FLASH_STAGE_DEFAULT.title}
             className="!h-9 !rounded-lg text-xs"
           />
+          <p className="mt-1 text-[11px] text-slate-400">
+            Trang chủ + trang Ưu đãi (tab Flash Sale) trên máy tính. Điện thoại luôn hiện gọn &quot;Flash Sale&quot;.
+          </p>
         </div>
         <div>
           <label className="text-xs font-bold text-slate-700 block mb-1">Nhãn nổi bật (Huy hiệu)</label>
@@ -224,6 +228,7 @@ function FlashStageFields({
             placeholder={FLASH_STAGE_DEFAULT.badge}
             className="!h-9 !rounded-lg text-xs"
           />
+          <p className="mt-1 text-[11px] text-slate-400">Ô vàng cạnh tiêu đề, chỉ hiện trên máy tính. Để trống thì ẩn.</p>
         </div>
       </div>
       <div>
@@ -235,40 +240,64 @@ function FlashStageFields({
           placeholder={FLASH_STAGE_DEFAULT.subtitle}
           className="!h-9 !rounded-lg text-xs"
         />
+        <p className="mt-1 text-[11px] text-slate-400">
+          Chỉ hiện dưới tiêu đề ở trang Ưu đãi → tab Flash Sale (máy tính). Dải trang chủ không hiện dòng này.
+        </p>
       </div>
 
-      {/* Xem trước dải Flash Stage */}
-      <div
-        className="flex flex-col gap-2 rounded-xl p-3 text-white md:flex-row md:items-center md:justify-between shadow-2xs"
-        style={{ background: FLASH_STAGE_BG }}
-      >
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-black uppercase">{stage.title || "—"}</span>
-            {stage.badge ? (
-              <span className="rounded bg-[#FEF3C7] px-1.5 py-0.5 text-[9px] font-black uppercase text-[#92400E]">
-                {stage.badge}
-              </span>
-            ) : null}
-          </div>
-          {stage.subtitle ? <p className="text-[11px] text-white/85 mt-0.5">{stage.subtitle}</p> : null}
+      {/* Xem trước: giống dải Flash Sale trang chủ */}
+      <div className="space-y-1.5">
+        <div className="text-[11px] font-semibold text-slate-500">
+          Xem trước trang chủ{hasSlots ? " (đồng hồ chỉ hiện khi đang trong khung giờ mở bán)" : ""}
         </div>
-        {chips.length > 0 ? (
-          <div className="flex gap-1.5">
-            {chips.map((s, i) => (
-              <span
-                key={s.key}
-                className={`rounded-lg px-2 py-0.5 text-center text-[10px] font-black ${
-                  i === 0 ? "bg-white text-[#CE2D37]" : "bg-white/10"
-                }`}
-              >
-                {s.start}
-                <span className="block text-[8px] font-medium">{i === 0 ? "Đang diễn ra" : "Sắp tới"}</span>
-              </span>
-            ))}
-          </div>
+        <FlashStagePreview title={shown.title} badge={shown.badge} countdown={hasSlots} />
+        <div className="max-w-[360px]">
+          <FlashStagePreview title="Flash Sale" countdown={hasSlots} compact />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FlashStagePreview({
+  title,
+  badge,
+  countdown,
+  compact = false,
+}: {
+  title: string;
+  badge?: string;
+  countdown: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <div
+      className="flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5 text-white shadow-2xs"
+      style={{ background: FLASH_STAGE_BG }}
+      aria-label={compact ? "Xem trước trên điện thoại" : "Xem trước trên máy tính"}
+    >
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white">
+          <Zap className="h-4 w-4 fill-[#CE2D37] text-[#CE2D37]" aria-hidden />
+        </span>
+        <span className="truncate text-[13px] font-black uppercase tracking-wide">{title}</span>
+        {badge ? (
+          <span className="shrink-0 rounded-md bg-[#FEF3C7] px-1.5 py-0.5 text-[10px] font-black uppercase text-[#92400E]">
+            {badge}
+          </span>
+        ) : null}
+        {countdown ? (
+          <span className="flex shrink-0 items-center gap-1 rounded-lg border border-white/15 bg-black/25 px-2 py-1 text-[11px] font-black tabular-nums">
+            <Flame size={12} className="fill-[#FFD54F] text-[#FFD54F]" aria-hidden />
+            <span className="rounded bg-black/40 px-1 leading-tight">01</span>:
+            <span className="rounded bg-black/40 px-1 leading-tight">24</span>:
+            <span className="rounded bg-black/40 px-1 leading-tight">38</span>
+          </span>
         ) : null}
       </div>
+      <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-bold text-white/95">
+        Xem tất cả <ChevronRight size={14} aria-hidden />
+      </span>
     </div>
   );
 }
@@ -356,7 +385,7 @@ export function DisplayStep({ content, update, errors }: Props) {
               label: (
                 <div className="flex items-center gap-2 py-1 text-slate-800 font-bold text-sm">
                   <Settings2 size={16} className="text-slate-500" />
-                  <span>Tuỳ chỉnh nâng cao: Dải Flash Sale trang chủ, Tiêu đề lớn, Ô lối tắt</span>
+                  <span>Tuỳ chỉnh nâng cao: Dải Flash Sale, Tiêu đề lớn trang ưu đãi, Nút Header</span>
                 </div>
               ),
               children: (
@@ -381,6 +410,9 @@ export function DisplayStep({ content, update, errors }: Props) {
                         onChange={(e) => setDisplay({ hero: { ...display.hero, subtitle: e.target.value } })}
                         className="!h-9 !rounded-lg text-xs"
                       />
+                      <p className="mt-1 text-[11px] text-slate-400">
+                        Chỉ hiện trên banner khi chưa có ảnh banner chính; luôn dùng làm mô tả khi chia sẻ link.
+                      </p>
                     </div>
                     <div className="sm:col-span-2">
                       <label className="text-xs font-bold text-slate-700 block mb-1">Hạn đặt để giao kịp (dải dưới banner trang ưu đãi)</label>
@@ -403,6 +435,9 @@ export function DisplayStep({ content, update, errors }: Props) {
                       onChange={(e) => setDisplay({ headerPill: { ...display.headerPill, text: e.target.value } })}
                       className="!h-9 !rounded-lg text-xs max-w-xs"
                     />
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      Điện thoại tự bỏ chữ &quot;Voucher&quot; ở đầu cho gọn (ví dụ &quot;Voucher 50K&quot; → &quot;50K&quot;).
+                    </p>
                   </div>
                 </div>
               ),

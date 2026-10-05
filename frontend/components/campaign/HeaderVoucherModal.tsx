@@ -19,7 +19,7 @@ import type {
   CampaignUI,
 } from "@/lib/campaign/campaignApi";
 import { useVoucherClaims } from "@/lib/campaign/useVoucherClaims";
-import { formatCompactVnd, pctText, shipSupportText, voucherUseHref, withDrawn } from "@/lib/voucherFormat";
+import { formatCompactVnd, pctText, shipSupportText, sortVouchersGrouped, voucherUseHref, withDrawn } from "@/lib/voucherFormat";
 import { LoginSheet } from "@/components/campaign/LoginSheet";
 import { claimStateOf } from "@/components/voucher/ClaimButton";
 import { ClaimSuccessModal } from "@/components/voucher/ClaimSuccessModal";
@@ -108,9 +108,10 @@ export function HeaderVoucherModal({
   const drawnKey = JSON.stringify(claims.drawn);
   const visibleVouchers = useMemo(() => {
     const drawn = JSON.parse(drawnKey) as Record<string, number>;
-    return vouchers
+    const list = vouchers
       .filter((v) => viewer?.newBuyer !== false || v.targetCustomer !== "new_web")
       .map((v) => withDrawn(v, drawn));
+    return sortVouchersGrouped(list);
   }, [vouchers, viewer, drawnKey]);
   const justClaimed = claims.claimedVoucherId
     ? visibleVouchers.find((v) => v.id === claims.claimedVoucherId) ?? null

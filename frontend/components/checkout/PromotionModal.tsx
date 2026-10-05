@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { TicketLine, VoucherTicket } from "@/components/voucher/VoucherTicket";
 import {
@@ -13,10 +13,13 @@ import {
   Percent,
   Package,
   Leaf,
+  Truck,
 } from "lucide-react";
 import { ReturnedBadge, type VoucherReturnInfo } from "@/components/voucher/ReturnedBadge";
 import { formatVnd } from "@/lib/api";
-import { pctText, type MysteryInfo } from "@/lib/voucherFormat";
+import { pctText, sortVouchersGrouped, type MysteryInfo } from "@/lib/voucherFormat";
+import { getAvailablePromotions, DEFAULT_SHIP_TIERS, type AvailablePromotionUI } from "@/lib/promotions";
+import { PromotionDetailModal } from "./PromotionDetailModal";
 import dayjs from "dayjs";
 
 export interface EvaluatedCandidateUI {
@@ -78,6 +81,11 @@ type Props = {
   onRemoveDiscount: () => void;
   /** Nút riêng cho vé chưa đủ điều kiện (ví dụ "Lưu" khi voucher phải lưu trước). */
   ineligibleAction?: (cand: EvaluatedCandidateUI) => ReactNode;
+  /** Mức hỗ trợ ship thực tế và thông tin voucher ship từ trang checkout. */
+  shippingDiscount?: number;
+  shippingPromotionTitle?: string;
+  shippingPromotionId?: string;
+  shippingFee?: number | null;
 };
 
 function stubMaxLabel(c: EvaluatedCandidateUI): string | undefined {
@@ -90,6 +98,8 @@ function minOrderText(c: EvaluatedCandidateUI): string {
   return c.minOrderThreshold ? `Đơn từ ${formatVnd(c.minOrderThreshold)}` : "Mọi đơn hàng";
 }
 
+const NO_CANDIDATES: EvaluatedCandidateUI[] = [];
+
 export function PromotionModal({
   open,
   onClose,
@@ -101,17 +111,40 @@ export function PromotionModal({
   onSelectAutoMode,
   onRemoveDiscount,
   ineligibleAction,
+  shippingDiscount,
+  shippingPromotionTitle,
+  shippingPromotionId,
+  shippingFee,
 }: Props) {
   const [mounted, setMounted] = useState(false);
   const [inputCode, setInputCode] = useState(selectedCode || "");
   const [submittingCode, setSubmittingCode] = useState(false);
   const [codeOpen, setCodeOpen] = useState(Boolean(selectedCode));
-  const [filterType, setFilterType] = useState<"all" | "code" | "product">("all");
+  const [filterType, setFilterType] = useState<"all" | "goods" | "shipping">("all");
   const [viewDetailCand, setViewDetailCand] = useState<EvaluatedCandidateUI | null>(null);
+  const [availableShipPromos, setAvailableShipPromos] = useState<AvailablePromotionUI[]>([]);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Tải danh sách voucher hỗ trợ ship từ server khi mở popup
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    getAvailablePromotions()
+      .then((items) => {
+        if (!alive) return;
+        const ships = items.filter((p) => p.benefitType === "shipping");
+        if (ships.length > 0) {
+          setAvailableShipPromos(ships);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [open]);
 
   // Sync input when selectedCode prop changes
   useEffect(() => {
@@ -130,20 +163,156 @@ export function PromotionModal({
     };
   }, [open]);
 
-  if (!open || !mounted) return null;
-
   const applied = quote?.applied;
-  const candidates = quote?.candidates || [];
+  const subtotal = quote?.subtotal || 0;
+  const quoteCandidates = quote?.candidates ?? NO_CANDIDATES;
 
-  // Filter according to category pills: "Tất cả" | "Mã giảm giá" | "Ưu đãi sản phẩm"
-  const filteredCandidates = candidates.filter((c) => {
-    if (filterType === "code") return c.type === "code";
-    if (filterType === "product") return c.scope === "product";
-    return true;
-  });
+  // Nguồn danh sách các voucher ship
+  const baseShipPromos = useMemo(() => {
+    return availableShipPromos.length > 0 ? availableShipPromos : DEFAULT_SHIP_TIERS;
+  }, [availableShipPromos]);
 
-  const eligibleCandidates = filteredCandidates.filter((c) => c.eligible);
-  const ineligibleCandidates = filteredCandidates.filter((c) => !c.eligible);
+  // Đánh giá tất cả voucher ship theo điều kiện đơn hàng hoặc kết quả tính phí ship từ checkout
+  const shipCandidates: EvaluatedCandidateUI[] = useMemo(() => {
+    const evaluated: EvaluatedCandidateUI[] = baseShipPromos.map((p) => {
+      const minOrder = p.minOrderThreshold || 0;
+      // Khớp voucher nếu checkout đã tính và áp dụng
+      const isMatchedByCheckout =
+        shippingDiscount != null &&
+        shippingDiscount > 0 &&
+        (p.id === shippingPromotionId ||
+          p.title === shippingPromotionTitle ||
+          p.discountValue === shippingDiscount);
+
+      const meetsThreshold =
+        minOrder <= 0
+          ? true
+          : p.thresholdOperator === ">"
+          ? subtotal > minOrder
+          : subtotal >= minOrder;
+
+      const eligible = isMatchedByCheckout || meetsThreshold;
+      const shortfall = eligible ? 0 : Math.max(0, minOrder - subtotal);
+
+      // Xem voucher này có notice riêng trong quote không
+      const quoteNotice = quoteCandidates.find(
+        (c) => c.promotionId === p.id && !c.eligible
+      );
+
+      const finalEligible = isMatchedByCheckout ? true : (quoteNotice ? false : eligible);
+      const finalReason = isMatchedByCheckout
+        ? undefined
+        : (quoteNotice?.ineligibleReason || (!eligible && shortfall > 0 ? `Cần mua thêm ${formatVnd(shortfall)} để nhận ưu đãi.` : undefined));
+
+      return {
+        promotionId: p.id,
+        title: p.title,
+        type: p.type || "auto",
+        discountType: p.discountType || "fixed",
+        discountValue: p.discountValue,
+        minOrderThreshold: minOrder,
+        thresholdOperator: p.thresholdOperator || ">=",
+        eligible: finalEligible,
+        ineligibleReason: finalReason,
+        calculatedDiscount: finalEligible ? p.discountValue : 0,
+        benefitType: "shipping" as const,
+        scope: "all" as const,
+        targetCustomer: ("targetCustomer" in p ? p.targetCustomer : undefined) || "all",
+        endDate: "endDate" in p ? p.endDate : undefined,
+        description: p.description,
+        needsClaim: quoteNotice?.needsClaim,
+        ...(shortfall > 0 && !quoteNotice ? { shortfall } : {}),
+      };
+    });
+
+    // Nếu checkout đã áp dụng mã ship nhưng chưa có trong danh sách
+    if (shippingDiscount != null && shippingDiscount > 0 && shippingPromotionTitle) {
+      const alreadyHas = evaluated.some(
+        (v) =>
+          v.promotionId === shippingPromotionId ||
+          v.title === shippingPromotionTitle ||
+          v.discountValue === shippingDiscount
+      );
+      if (!alreadyHas) {
+        evaluated.push({
+          promotionId: shippingPromotionId || "ship_applied_checkout",
+          title: shippingPromotionTitle,
+          type: "auto",
+          discountType: "fixed",
+          discountValue: shippingDiscount,
+          minOrderThreshold: 0,
+          thresholdOperator: ">=",
+          eligible: true,
+          calculatedDiscount: shippingDiscount,
+          benefitType: "shipping",
+          scope: "all",
+          targetCustomer: "all",
+          description: "Mã hỗ trợ phí vận chuyển áp dụng cho đơn hàng",
+        });
+      }
+    }
+
+    // Deduplicate: Mỗi mức giảm giá ship chỉ giữ 1 mã đại diện tốt nhất (tránh trùng lặp 2 mã 30k)
+    const deduped: EvaluatedCandidateUI[] = [];
+    for (const cand of evaluated) {
+      const existing = deduped.find(
+        (d) => d.discountValue === cand.discountValue || d.title === cand.title
+      );
+      if (!existing) {
+        deduped.push(cand);
+      } else if (!existing.eligible && cand.eligible) {
+        const idx = deduped.indexOf(existing);
+        deduped[idx] = cand;
+      }
+    }
+
+    return deduped;
+  }, [
+    baseShipPromos,
+    subtotal,
+    shippingDiscount,
+    shippingPromotionId,
+    shippingPromotionTitle,
+    quoteCandidates,
+  ]);
+
+  // Tách biệt rành mạch 2 nhóm voucher chuẩn sàn TMĐT (Shopee / TikTok Shop)
+  const goodsCandidates = useMemo(() => {
+    return quoteCandidates.filter((c) => c.benefitType !== "shipping");
+  }, [quoteCandidates]);
+
+  const eligibleGoods = useMemo(() => {
+    return sortVouchersGrouped(goodsCandidates.filter((c) => c.eligible));
+  }, [goodsCandidates]);
+
+  const ineligibleGoods = useMemo(() => {
+    return sortVouchersGrouped(goodsCandidates.filter((c) => !c.eligible));
+  }, [goodsCandidates]);
+
+  const eligibleShips = useMemo(() => {
+    return shipCandidates.filter((c) => c.eligible);
+  }, [shipCandidates]);
+
+  const ineligibleShips = useMemo(() => {
+    return shipCandidates.filter((c) => !c.eligible);
+  }, [shipCandidates]);
+
+  // Tìm voucher ship tốt nhất đã đủ điều kiện để tự động áp dụng
+  const bestEligibleShip = useMemo(() => {
+    if (shippingDiscount != null && shippingDiscount > 0) {
+      const matched = eligibleShips.find(
+        (v) =>
+          v.promotionId === shippingPromotionId ||
+          v.title === shippingPromotionTitle ||
+          v.discountValue === shippingDiscount
+      );
+      if (matched) return matched;
+    }
+    return eligibleShips.reduce<EvaluatedCandidateUI | null>((best, cur) => {
+      if (!best) return cur;
+      return (cur.discountValue || 0) > (best.discountValue || 0) ? cur : best;
+    }, null);
+  }, [eligibleShips, shippingDiscount, shippingPromotionId, shippingPromotionTitle]);
 
   const handleApplyInput = (e: React.FormEvent) => {
     e.preventDefault();
@@ -169,6 +338,9 @@ export function PromotionModal({
     }
     return formatVnd(val);
   };
+
+  // Mọi hook (useState/useEffect/useMemo) phải nằm TRÊN dòng này, nếu không React báo "Rendered more hooks".
+  if (!open || !mounted) return null;
 
   const modalContent = (
     <div
@@ -273,331 +445,341 @@ export function PromotionModal({
           </form>
           )}
 
-          {/* Category Filter Pills (Tất cả • Mã giảm giá • Ưu đãi sản phẩm) */}
+          {/* Category Filter Pills (Tất cả • Mã giảm giá • Hỗ trợ ship) */}
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 shrink-0">
             <button
               type="button"
               onClick={() => setFilterType("all")}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer shrink-0 ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer shrink-0 ${
                 filterType === "all"
-                  ? "bg-[#E6EFE4] text-[#2E5B32] border border-[#3B653D]/30 shadow-2xs"
+                  ? "bg-[#E6EFE4] text-[#2E5B32] border border-[#3B653D]/30 shadow-2xs font-bold"
                   : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
               }`}
             >
-              <Leaf size={13} className="text-emerald-700" />
+              <Leaf size={12} className="text-emerald-700" />
               Tất cả
             </button>
 
             <button
               type="button"
-              onClick={() => setFilterType("code")}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer shrink-0 ${
-                filterType === "code"
-                  ? "bg-[#E6EFE4] text-[#2E5B32] border border-[#3B653D]/30 shadow-2xs"
+              onClick={() => setFilterType("goods")}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                filterType === "goods"
+                  ? "bg-rose-50 text-[#C8102E] border border-rose-300 shadow-2xs font-bold"
                   : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
               }`}
             >
-              <Tag size={13} className="text-purple-600" />
+              <Tag size={12} className="text-[#C8102E]" />
               Mã giảm giá
+              {eligibleGoods.length > 0 ? (
+                <span className="rounded-full bg-rose-100 text-[#C8102E] px-1.5 py-0.2 text-[10px] font-bold">
+                  {eligibleGoods.length}
+                </span>
+              ) : null}
             </button>
 
             <button
               type="button"
-              onClick={() => setFilterType("product")}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer shrink-0 ${
-                filterType === "product"
-                  ? "bg-[#E6EFE4] text-[#2E5B32] border border-[#3B653D]/30 shadow-2xs"
+              onClick={() => setFilterType("shipping")}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                filterType === "shipping"
+                  ? "bg-sky-50 text-[#0284C7] border border-sky-300 shadow-2xs font-bold"
                   : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
               }`}
             >
-              <Package size={13} className="text-blue-600" />
-              Ưu đãi sản phẩm
+              <Truck size={12} className="text-[#0284C7]" />
+              <span>Hỗ trợ ship</span>
+              {bestEligibleShip ? (
+                <span className="inline-flex items-center justify-center rounded-full bg-[#0284C7] text-white text-[9px] font-bold px-1.5 py-0.2">
+                  ✓
+                </span>
+              ) : null}
             </button>
           </div>
 
           {/* ========================================================================= */}
-          {/* 3. SECTION: CÓ THỂ SỬ DỤNG (ELIGIBLE TICKETS)                             */}
+          {/* KHỐI 1: 🚚 MÃ MIỄN PHÍ VẬN CHUYỂN (FREESHIP - CHUẨN SHOPEE)               */}
           {/* ========================================================================= */}
-          <div className="space-y-2.5 pt-1">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
-              <Leaf size={14} className="text-emerald-700" />
-              <span>Có thể sử dụng</span>
-              <span className="rounded-full bg-[#E2EDD0] text-[#2E5B32] px-2 py-0.2 text-[11px] font-black">
-                {eligibleCandidates.length}
-              </span>
-            </div>
+          {(filterType === "all" || filterType === "shipping") && (
+            <div className="space-y-2 pt-0.5">
+              <div className="flex items-center justify-between px-0.5">
+                <div className="flex items-center gap-1.5">
+                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-100 text-teal-800">
+                    <Truck size={12} strokeWidth={2.5} />
+                  </div>
+                  <span className="text-xs font-bold text-slate-800">Mã Miễn Phí Vận Chuyển</span>
+                </div>
+                <span className="text-[11px] text-slate-400 font-medium">Áp dụng tối đa 1 mã</span>
+              </div>
 
-            {eligibleCandidates.length > 0 ? (
-              <div className="space-y-2.5">
-                {eligibleCandidates.map((cand) => {
-                  const isCurrent = applied?.promotionId === cand.promotionId;
-                  const isNewWeb = cand.targetCustomer === "new_web";
-                  const tone = isNewWeb ? "peach" : cand.discountType === "fixed" ? "cream" : "green";
-                  return (
+              {eligibleShips.length > 0 ? (
+                <div className="space-y-2">
+                  {eligibleShips.map((cand) => {
+                    const isShipApplied = Boolean(
+                      cand.eligible && bestEligibleShip?.promotionId === cand.promotionId
+                    );
+                    return (
+                      <VoucherTicket
+                        key={cand.promotionId}
+                        tone="green"
+                        stubTopLabel="FREESHIP"
+                        stubValue={getStubValue(cand)}
+                        stubSubLabel="HỖ TRỢ SHIP"
+                        title={cand.title}
+                        selected={isShipApplied}
+                        action={
+                          <div className="flex flex-col items-end gap-1.5">
+                            {isShipApplied ? (
+                              <div
+                                className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-800 px-3 py-1 text-xs font-bold shadow-2xs"
+                                title="Đã tự động áp dụng mức hỗ trợ ship tốt nhất"
+                              >
+                                <Check size={12} strokeWidth={3} />
+                                <span>Đã áp dụng</span>
+                              </div>
+                            ) : (
+                              <span className="text-[11px] font-medium text-slate-400">Khả dụng</span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setViewDetailCand(cand)}
+                              className="text-[11px] text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                            >
+                              Điều kiện ›
+                            </button>
+                          </div>
+                        }
+                      >
+                        <TicketLine icon={<ShoppingCart size={11} className="text-slate-400 shrink-0" />}>
+                          {minOrderText(cand)}
+                        </TicketLine>
+                        <TicketLine icon={<Calendar size={11} className="text-slate-400 shrink-0" />}>
+                          HSD: {formatHsd(cand.endDate)}
+                        </TicketLine>
+                      </VoucherTicket>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-slate-200 bg-white p-3 text-center text-xs text-slate-400">
+                  Chưa có mã hỗ trợ ship khả dụng cho đơn hàng này
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* KHỐI 2: 🏷️ MÃ GIẢM GIÁ ĐƠN HÀNG (SHOP VOUCHER - CHUẨN SHOPEE)              */}
+          {/* ========================================================================= */}
+          {(filterType === "all" || filterType === "goods") && (
+            <div className="space-y-2 pt-2 border-t border-slate-200/60">
+              <div className="flex items-center justify-between px-0.5">
+                <div className="flex items-center gap-1.5">
+                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-rose-100 text-rose-800">
+                    <Tag size={12} strokeWidth={2.5} />
+                  </div>
+                  <span className="text-xs font-bold text-slate-800">Mã Giảm Giá Shop</span>
+                </div>
+                <span className="text-[11px] text-slate-400 font-medium">Áp dụng tối đa 1 mã</span>
+              </div>
+
+              {eligibleGoods.length > 0 ? (
+                <div className="space-y-2">
+                  {eligibleGoods.map((cand) => {
+                    const isCurrent = applied?.promotionId === cand.promotionId;
+                    return (
+                      <VoucherTicket
+                        key={cand.promotionId}
+                        tone="red"
+                        stubTopLabel="GIẢM"
+                        stubValue={getStubValue(cand)}
+                        stubSubLabel={stubMaxLabel(cand)}
+                        title={cand.title}
+                        selected={isCurrent}
+                        action={
+                          <div className="flex flex-col items-end gap-1.5">
+                            {isCurrent ? (
+                              <button
+                                type="button"
+                                onClick={onRemoveDiscount}
+                                className="inline-flex items-center gap-1 rounded-full bg-rose-100 text-[#C8102E] px-3 py-1 text-xs font-bold shadow-2xs hover:bg-rose-200 transition cursor-pointer group"
+                                title="Bấm để bỏ chọn ưu đãi này"
+                              >
+                                <Check size={12} strokeWidth={3} className="group-hover:hidden" />
+                                <span className="group-hover:hidden">Đã chọn</span>
+                                <span className="hidden group-hover:inline">Bỏ chọn</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (cand.code) {
+                                    onApplyCode(cand.code);
+                                  } else {
+                                    onSelectAutoMode();
+                                  }
+                                }}
+                                className="rounded-full bg-[#C8102E] hover:bg-[#A00C24] active:scale-95 px-3.5 py-1 text-xs font-bold text-white transition shadow-2xs cursor-pointer"
+                              >
+                                Áp dụng
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setViewDetailCand(cand)}
+                              className="text-[11px] text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                            >
+                              Điều kiện ›
+                            </button>
+                          </div>
+                        }
+                      >
+                        <TicketLine icon={<ShoppingCart size={11} className="text-slate-400 shrink-0" />}>
+                          {minOrderText(cand)}
+                        </TicketLine>
+                        <TicketLine icon={<Calendar size={11} className="text-slate-400 shrink-0" />}>
+                          HSD: {formatHsd(cand.endDate)}
+                        </TicketLine>
+                        {cand.returnedFrom ? <ReturnedBadge info={cand.returnedFrom} /> : null}
+                      </VoucherTicket>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-slate-200 bg-white p-3 text-center text-xs text-slate-400">
+                  Không có mã giảm giá khả dụng cho đơn hàng hiện tại
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* KHỐI 3: CHƯA ĐỦ ĐIỀU KIỆN (INELIGIBLE TICKETS)                            */}
+          {/* ========================================================================= */}
+          {(() => {
+            const allIneligible = [
+              ...(filterType !== "shipping" ? ineligibleGoods : []),
+              ...(filterType !== "goods" ? ineligibleShips : []),
+            ];
+            if (allIneligible.length === 0) return null;
+            return (
+              <div className="space-y-2 pt-2 border-t border-slate-200/60">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400 px-0.5">
+                  <AlertCircle size={13} />
+                  <span>Chưa đủ điều kiện ({allIneligible.length})</span>
+                </div>
+                <div className="space-y-2">
+                  {allIneligible.map((cand) => (
                     <VoucherTicket
                       key={cand.promotionId}
-                      tone={tone}
-                      stubTopLabel={isNewWeb ? "KHÁCH MỚI" : undefined}
+                      tone="gray"
+                      disabled
+                      stubTopLabel={cand.benefitType === "shipping" ? "FREESHIP" : "GIẢM"}
                       stubValue={getStubValue(cand)}
-                      stubSubLabel={stubMaxLabel(cand)}
+                      stubSubLabel={cand.benefitType === "shipping" ? "HỖ TRỢ SHIP" : stubMaxLabel(cand)}
                       title={cand.title}
-                      selected={isCurrent}
                       action={
-                        <>
-                          {isCurrent ? (
-                            <button
-                              type="button"
-                              onClick={onRemoveDiscount}
-                              className="inline-flex items-center gap-1 rounded-full bg-[#D7ECDA] px-3.5 py-1.5 text-xs font-bold text-[#204E25] shadow-2xs hover:bg-rose-50 hover:text-rose-700 hover:ring-1 hover:ring-rose-200 transition cursor-pointer group"
-                              title="Bấm để bỏ chọn ưu đãi này"
-                            >
-                              <Check size={12} strokeWidth={3} className="group-hover:hidden" />
-                              <span className="group-hover:hidden">Đã chọn</span>
-                              <span className="hidden group-hover:inline">Bỏ chọn</span>
-                            </button>
+                        <div className="flex flex-col items-end gap-1.5">
+                          {ineligibleAction ? (
+                            ineligibleAction(cand)
                           ) : (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (cand.code) {
-                                  onApplyCode(cand.code);
-                                } else {
-                                  onSelectAutoMode();
-                                }
-                              }}
-                              className="rounded-full bg-[#3B653D] hover:bg-[#2E5B32] active:scale-95 px-4 py-1.5 text-xs font-bold text-white transition shadow-2xs cursor-pointer"
-                            >
-                              Áp dụng
-                            </button>
+                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-400">
+                              Chưa đủ ĐK
+                            </span>
                           )}
-
                           <button
                             type="button"
                             onClick={() => setViewDetailCand(cand)}
-                            className="text-[11px] text-slate-500 hover:text-slate-800 transition flex items-center cursor-pointer"
+                            className="text-[11px] text-slate-400 hover:text-slate-600 transition cursor-pointer"
                           >
-                            Xem điều kiện ›
+                            Điều kiện ›
                           </button>
-                        </>
+                        </div>
                       }
                     >
-                      <TicketLine icon={<ShoppingCart size={11} className="text-slate-400 shrink-0" />}>
+                      <TicketLine muted icon={<ShoppingCart size={11} className="shrink-0" />}>
                         {minOrderText(cand)}
                       </TicketLine>
-                      <TicketLine icon={<Calendar size={11} className="text-slate-400 shrink-0" />}>
+                      <TicketLine muted icon={<Calendar size={11} className="shrink-0" />}>
                         HSD: {formatHsd(cand.endDate)}
                       </TicketLine>
-                      <span className="inline-block text-[10px] font-medium bg-slate-100 text-slate-600 rounded px-1.5 py-0.5 max-w-[190px] truncate">
-                        {cand.scope === "product" ? "Sản phẩm chỉ định" : "Toàn bộ sản phẩm"}
-                      </span>
-                      {cand.returnedFrom ? <ReturnedBadge info={cand.returnedFrom} /> : null}
+                      {cand.shortfall && cand.shortfall > 0 ? (
+                        <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-amber-800 bg-amber-50 rounded-md px-2 py-0.5 border border-amber-200/60 max-w-full">
+                          Mua thêm {formatVnd(cand.shortfall)} để nhận ưu đãi
+                        </span>
+                      ) : cand.ineligibleReason ? (
+                        <span className="inline-block text-[10px] font-medium bg-amber-50 text-amber-800 rounded px-1.5 py-0.5 max-w-[200px] truncate">
+                          {cand.ineligibleReason}
+                        </span>
+                      ) : null}
                     </VoucherTicket>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
-            ) : (
-              <div className="rounded-xl border border-slate-200/80 bg-white p-4 text-center text-xs text-slate-500">
-                Không có ưu đãi nào thuộc danh mục này khả dụng cho đơn hàng hiện tại.
-              </div>
-            )}
-          </div>
-
-          {/* ========================================================================= */}
-          {/* 4. SECTION: CHƯA ĐỦ ĐIỀU KIỆN (INELIGIBLE TICKETS)                         */}
-          {/* ========================================================================= */}
-          {ineligibleCandidates.length > 0 ? (
-            <div className="space-y-2.5 pt-2">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500">
-                <AlertCircle size={14} className="text-slate-400" />
-                <span>Chưa đủ điều kiện</span>
-                <span className="rounded-full bg-slate-200 text-slate-600 px-2 py-0.2 text-[11px] font-bold">
-                  {ineligibleCandidates.length}
-                </span>
-              </div>
-
-              <div className="space-y-2.5">
-                {ineligibleCandidates.map((cand) => (
-                  <VoucherTicket
-                    key={cand.promotionId}
-                    tone="gray"
-                    disabled
-                    stubValue={getStubValue(cand)}
-                    stubSubLabel={stubMaxLabel(cand)}
-                    title={cand.title}
-                    action={
-                      <>
-                        {ineligibleAction ? (
-                          ineligibleAction(cand)
-                        ) : (
-                          <span className="rounded-full bg-slate-100 px-3 py-1.5 text-[11px] font-medium text-slate-400">
-                            Chưa đủ điều kiện
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => setViewDetailCand(cand)}
-                          className="text-[11px] text-slate-400 hover:text-slate-600 transition flex items-center cursor-pointer"
-                        >
-                          Xem điều kiện ›
-                        </button>
-                      </>
-                    }
-                  >
-                    <TicketLine muted icon={<ShoppingCart size={11} className="shrink-0" />}>
-                      {minOrderText(cand)}
-                    </TicketLine>
-                    <TicketLine muted icon={<Calendar size={11} className="shrink-0" />}>
-                      HSD: {formatHsd(cand.endDate)}
-                    </TicketLine>
-                    {cand.shortfall && cand.shortfall > 0 ? (
-                      <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-amber-800 bg-amber-50 rounded-md px-2 py-0.5 border border-amber-200/60 max-w-full">
-                        Mua thêm {formatVnd(cand.shortfall)} để áp dụng mã
-                      </span>
-                    ) : cand.ineligibleReason ? (
-                      <span className="inline-block text-[10px] font-medium bg-amber-50 text-amber-800 rounded px-1.5 py-0.5 max-w-[200px] truncate">
-                        {cand.ineligibleReason}
-                      </span>
-                    ) : null}
-                  </VoucherTicket>
-                ))}
-              </div>
-            </div>
-          ) : null}
+            );
+          })()}
         </div>
 
         {/* ========================================================================= */}
         {/* 5. FOOTER CHUẨN DESIGN & TIKTOK SHOP MOBILE: % Icon + Đã giảm + Nút Xong  */}
-        {/* Cực kỳ thông thoáng trên mobile, có safe-area padding chống bị dính đáy    */}
         {/* ========================================================================= */}
-        <div className="relative border-t border-slate-200/90 px-5 pt-3.5 pb-[max(1rem,env(safe-area-inset-bottom))] flex items-center justify-between bg-white shrink-0 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] rounded-b-none sm:rounded-b-[28px]">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EEF5ED] text-[#3B653D] shrink-0">
-              <Percent size={18} strokeWidth={2.6} />
-            </div>
-
-            <div>
-              <span className="text-[11px] text-slate-500 font-medium block leading-none">
-                Đã giảm:
-              </span>
-              <p className="text-xl sm:text-2xl font-black text-slate-900 tabular-nums leading-tight mt-0.5">
-                {formatVnd(quote?.discountTotal || 0)}
-              </p>
-            </div>
-          </div>
-
-          {/* Decorative leaf bottom on desktop */}
-          <div className="hidden sm:block text-[#3B653D]/20 pointer-events-none">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22l1-2.3A4.49 4.49 0 0 0 8 20C19 20 22 3 22 3c-1 2-8 2.52-11 4 2 2 4 4 6 1z" />
-            </svg>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl bg-[#3B653D] hover:bg-[#2E5B32] active:scale-95 px-7 sm:px-8 py-2.5 sm:py-3 text-sm font-bold text-white shadow-xs transition cursor-pointer"
-          >
-            Xong
-          </button>
-        </div>
-
-        {/* ========================================================================= */}
-        {/* 6. POPUP XEM CHI TIẾT ĐIỀU KIỆN KHI BẤM "Xem điều kiện ›"                  */}
-        {/* ========================================================================= */}
-        {viewDetailCand ? (
-          <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50 p-4 backdrop-blur-2xs animate-in fade-in duration-200">
-            <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl space-y-3 border border-slate-200">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-                    Chi tiết điều kiện ưu đãi
-                  </span>
-                  <h3 className="text-sm font-bold text-slate-800 mt-1">
-                    {viewDetailCand.title}
-                  </h3>
+        {(() => {
+          const goodsDiscount = quote?.discountTotal || 0;
+          const shipDiscount =
+            shippingDiscount != null && shippingDiscount > 0
+              ? shippingDiscount
+              : bestEligibleShip
+              ? bestEligibleShip.discountValue || 0
+              : 0;
+          const totalDiscount = goodsDiscount + shipDiscount;
+          return (
+            <div className="relative border-t border-slate-200/90 px-5 pt-3.5 pb-[max(1rem,env(safe-area-inset-bottom))] flex items-center justify-between bg-white shrink-0 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] rounded-b-none sm:rounded-b-[28px]">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EEF5ED] text-[#3B653D] shrink-0">
+                  <Percent size={18} strokeWidth={2.6} />
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setViewDetailCand(null)}
-                  className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
-                >
-                  <X size={16} />
-                </button>
+
+                <div>
+                  <span className="text-[11px] text-slate-500 font-medium block leading-none">
+                    Đã giảm:
+                  </span>
+                  <p className="text-xl sm:text-2xl font-black text-slate-900 tabular-nums leading-tight mt-0.5">
+                    {formatVnd(totalDiscount)}
+                  </p>
+                  {totalDiscount > 0 ? (
+                    <span className="text-[10.5px] text-slate-500 font-medium block mt-0.5">
+                      {goodsDiscount > 0 && shipDiscount > 0
+                        ? `Gồm ${formatVnd(goodsDiscount)} giảm hàng + ${formatVnd(shipDiscount)} hỗ trợ ship`
+                        : shipDiscount > 0
+                        ? `Đã gồm ${formatVnd(shipDiscount)} hỗ trợ ship`
+                        : `Giảm ${formatVnd(goodsDiscount)} tiền hàng`}
+                    </span>
+                  ) : null}
+                </div>
               </div>
 
-              <div className="space-y-2 text-xs text-slate-600 border-t border-slate-100 pt-2.5">
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Hình thức:</span>
-                  <span className="font-semibold text-slate-800">
-                    {viewDetailCand.type === "code" ? "Mã giảm giá (Coupon)" : "Tự động áp dụng"}
-                  </span>
-                </div>
-
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Mức giảm:</span>
-                  <span className="font-bold text-red-600">
-                    {viewDetailCand.discountType === "percentage"
-                      ? `${pctText(viewDetailCand)} ${viewDetailCand.maxDiscountVnd ? `(tối đa ${formatVnd(viewDetailCand.maxDiscountVnd)})` : ""}`
-                      : formatVnd(viewDetailCand.discountValue)}
-                  </span>
-                </div>
-
-                {viewDetailCand.mystery && !viewDetailCand.mystery.drawnPercent ? (
-                  <div className="flex justify-between gap-3">
-                    <span className="text-slate-400 shrink-0">Tỉ lệ túi mù:</span>
-                    <span className="text-right font-medium text-slate-700">
-                      {viewDetailCand.mystery.tiers.map((t) => `${t.percent}%: ${t.chance}%`).join(" · ")}
-                    </span>
-                  </div>
-                ) : null}
-
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Đơn tối thiểu:</span>
-                  <span className="font-semibold text-slate-800">
-                    {viewDetailCand.minOrderThreshold
-                      ? `${viewDetailCand.thresholdOperator === ">=" ? "Từ" : "Trên"} ${formatVnd(viewDetailCand.minOrderThreshold)}`
-                      : "Không giới hạn"}
-                  </span>
-                </div>
-
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Phạm vi áp dụng:</span>
-                  <span className="font-semibold text-slate-800">
-                    {viewDetailCand.scope === "product" ? "Sản phẩm chỉ định" : "Toàn bộ cửa hàng"}
-                  </span>
-                </div>
-
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Hạn sử dụng:</span>
-                  <span className="font-semibold text-slate-800">
-                    {formatHsd(viewDetailCand.endDate)}
-                  </span>
-                </div>
-
-                {viewDetailCand.description ? (
-                  <div className="pt-1.5 border-t border-slate-100 text-[11px] text-slate-500">
-                    {viewDetailCand.description}
-                  </div>
-                ) : null}
-
-                {viewDetailCand.ineligibleReason ? (
-                  <div className="rounded-lg bg-amber-50 p-2 text-[11px] text-amber-800 font-medium flex items-start gap-1.5 mt-2">
-                    <AlertCircle size={13} className="shrink-0 mt-0.5 text-amber-600" />
-                    <span>{viewDetailCand.ineligibleReason}</span>
-                  </div>
-                ) : null}
+              {/* Decorative leaf bottom on desktop */}
+              <div className="hidden sm:block text-[#3B653D]/20 pointer-events-none">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22l1-2.3A4.49 4.49 0 0 0 8 20C19 20 22 3 22 3c-1 2-8 2.52-11 4 2 2 4 4 6 1z" />
+                </svg>
               </div>
 
               <button
                 type="button"
-                onClick={() => setViewDetailCand(null)}
-                className="w-full rounded-xl bg-slate-100 hover:bg-slate-200 py-2.5 text-xs font-bold text-slate-700 transition cursor-pointer"
+                onClick={onClose}
+                className="rounded-xl bg-[#3B653D] hover:bg-[#2E5B32] active:scale-95 px-7 sm:px-8 py-2.5 sm:py-3 text-sm font-bold text-white shadow-xs transition cursor-pointer"
               >
-                Đóng
+                Xong
               </button>
             </div>
-          </div>
-        ) : null}
+          );
+        })()}
+
+        {/* ========================================================================= */}
+        {/* 6. POPUP XEM CHI TIẾT ĐIỀU KIỆN KHI BẤM "Xem điều kiện ›"                  */}
+        {/* ========================================================================= */}
+        <PromotionDetailModal cand={viewDetailCand} onClose={() => setViewDetailCand(null)} />
       </div>
     </div>
   );

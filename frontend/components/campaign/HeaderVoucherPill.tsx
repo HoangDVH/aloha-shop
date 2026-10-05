@@ -21,11 +21,11 @@ export function HeaderVoucherPill({ className = "" }: { className?: string }) {
         onClick={() => setModalOpen(true)}
         aria-haspopup="dialog"
         aria-expanded={modalOpen}
-        className={`hidden min-[390px]:inline-flex h-8 sm:h-9 max-w-[8rem] sm:max-w-[12rem] cursor-pointer items-center gap-1 sm:gap-1.5 rounded-full px-2.5 sm:px-3 text-[11px] sm:text-xs font-bold text-white shadow-sm transition hover:brightness-110 active:scale-95 select-none ${className}`}
+        className={`inline-flex h-8 sm:h-9 max-w-[7.25rem] sm:max-w-[12rem] cursor-pointer items-center gap-1 sm:gap-1.5 rounded-full px-2.5 sm:px-3 text-[11px] sm:text-xs font-bold text-white shadow-xs transition hover:brightness-110 active:scale-95 select-none ${className}`}
         style={{ background: campaign.display.colors.primary }}
         title="Nhận voucher ưu đãi"
       >
-        <TicketPercent size={14} aria-hidden className="shrink-0 sm:h-4 sm:w-4" />
+        <TicketPercent size={13} aria-hidden className="shrink-0 sm:h-4 sm:w-4" />
         <span className="truncate sm:hidden">{pill.text.replace(/^Voucher\s+/i, "")}</span>
         <span className="truncate hidden sm:inline">{pill.text}</span>
       </button>

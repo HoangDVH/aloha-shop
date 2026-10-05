@@ -22,6 +22,7 @@ import {
   Zap,
   Building2,
   Users,
+  Stethoscope,
   Briefcase,
 } from "lucide-react";
 import { useCart } from "@/lib/cart";
@@ -30,6 +31,7 @@ import { HeaderSearch } from "@/components/HeaderSearch";
 import { HeaderAccountMenu } from "@/components/HeaderAccountMenu";
 import { CategoryMobileNav } from "@/components/CategoryNavMenu";
 import { CategoryMegaMenu } from "@/components/CategoryMegaMenu";
+import { RecruitmentNavDropdown } from "@/components/RecruitmentNavDropdown";
 import { applyNavConfig } from "@/lib/navConfig";
 import type { NavConfig, AppearanceTheme } from "@/lib/appearanceTypes";
 import { applyThemeCssVars } from "@/lib/themeCss";
@@ -126,9 +128,15 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
   const chromeRef = useRef<HTMLElement | null>(null);
 
   const navActiveKey = useMemo(() => {
-    if (pathname === "/tuyen-ctv" || pathname.startsWith("/tuyen-ctv/")) return "tuyen-ctv";
+    if (
+      pathname.startsWith("/tuyen-dung") ||
+      pathname.startsWith("/tuyen-ctv") ||
+      pathname === "/dang-ky-si"
+    )
+      return "tuyen-dung";
     if (pathname === "/bai-viet" || pathname.startsWith("/bai-viet/")) return "bai-viet";
     if (pathname === "/ve-aloha" || pathname.startsWith("/ve-aloha/")) return "ve-aloha";
+    if (pathname === "/bac-si-cay") return "bac-si-cay";
     if (pathname === "/uu-dai" || pathname.startsWith("/uu-dai/")) return "noi-bat-uu-dai";
     if (pathname === "/tim") {
       const sort = searchParams.get("sort") || "";
@@ -245,19 +253,56 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
       <AnnouncementBar />
       {/* Hàng logo + search — kem ấm #FDF6E3 */}
       <div className="border-b border-[var(--aloha-border-brown)]/40 bg-[#FDF6E3]">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-2 gap-y-2 px-3 py-2 sm:gap-x-3 sm:px-4 sm:py-2.5 md:flex-nowrap md:gap-4 lg:gap-5">
-          <AlohaLogo
-            onNavigate={closeMenus}
-            logoUrl={theme?.logoUrl}
-            siteName={theme?.siteName}
-          />
+        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-3 py-2 sm:px-4 sm:py-2.5 md:flex-row md:items-center md:gap-4 lg:gap-5">
+          {/* HÀNG 1 TRÊN MOBILE (MD+: NẰM CÙNG HÀNG BÊN TRÁI) */}
+          <div className="flex w-full items-center justify-between gap-2 md:w-auto">
+            <AlohaLogo
+              onNavigate={closeMenus}
+              logoUrl={theme?.logoUrl}
+              siteName={theme?.siteName}
+            />
 
-          {/* Mobile (< 768px): hàng riêng full ngang. Tablet (≥ 768px) & Desktop: cùng hàng giữa logo và icon. */}
-          <div className="order-last w-full basis-full md:order-none md:min-w-0 md:flex-1 md:basis-auto">
+            {/* CỤM NÚT ACTION TRÊN MOBILE (< 768px): VOUCHER + GIỎ HÀNG + MENU TIỆN ÍCH */}
+            <div className="flex items-center gap-1 sm:gap-1.5 md:hidden" style={{ color: chromeInk }}>
+              <HeaderVoucherPill />
+              <Link
+                href="/gio-hang"
+                data-cart-target=""
+                className={`flex h-9 w-9 items-center justify-center rounded-full text-[var(--aloha-green-dark)] ${chromeHover} transition active:scale-95`}
+                onClick={closeMenus}
+                aria-label={`Giỏ hàng${count ? `, ${count} sản phẩm` : ""}`}
+              >
+                <span className="relative inline-flex">
+                  <ShoppingCart size={21} strokeWidth={1.8} aria-hidden />
+                  {count > 0 ? (
+                    <span className="absolute -right-2 -top-1.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-[var(--aloha-green)] px-1 text-[9.5px] font-black text-white shadow-xs">
+                      {count > 99 ? "99+" : count}
+                    </span>
+                  ) : null}
+                </span>
+              </Link>
+              <button
+                type="button"
+                className={`flex h-9 w-9 items-center justify-center rounded-full ${linkTextClass} ${chromeHover} transition active:scale-95`}
+                onClick={() => {
+                  setMobileNavTab("pages");
+                  setMobileNav((v) => !v);
+                }}
+                aria-label="Menu Khám phá & Tiện ích"
+                aria-expanded={mobileNav}
+              >
+                {mobileNav ? <X size={21} /> : <Menu size={21} />}
+              </button>
+            </div>
+          </div>
+
+          {/* HÀNG 2 TRÊN MOBILE (MD+: NẰM Ở GIỮA LOGO VÀ ICON) */}
+          <div className="w-full min-w-0 md:flex-1">
             <HeaderSearch onSubmitExtra={closeMenus} />
           </div>
 
-          <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-2" style={{ color: chromeInk }}>
+          {/* CỤM NÚT ACTION TRÊN DESKTOP/TABLET (MD+) */}
+          <div className="hidden md:flex ml-auto shrink-0 items-center gap-1 sm:gap-2" style={{ color: chromeInk }}>
             <a
               href="/dang-ky-si"
               className={`hidden min-h-11 items-center gap-1 rounded-xl px-2 text-sm font-bold sm:inline-flex ${linkTextClass} ${chromeHover} lg:hidden`}
@@ -285,23 +330,14 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
               <span className="hidden text-sm font-semibold sm:inline">Giỏ hàng</span>
             </Link>
             <HeaderAccountMenu />
-            <button
-              type="button"
-              className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl ${linkTextClass} ${chromeHover} lg:hidden`}
-              onClick={() => setMobileNav((v) => !v)}
-              aria-label="Menu"
-              aria-expanded={mobileNav}
-            >
-              {mobileNav ? <X size={22} /> : <Menu size={22} />}
-            </button>
           </div>
         </div>
       </div>
 
       {/* Hàng menu — Trang chủ → Danh mục → Ưu đãi */}
-      <nav className="hidden overflow-visible border-b border-[var(--aloha-line)] bg-white text-[var(--aloha-ink)] lg:block">
-        <div className="mx-auto flex max-w-7xl items-stretch overflow-visible px-3 sm:px-4">
-          <div className="flex min-w-0 flex-1 items-stretch justify-between gap-0.5 xl:gap-1">
+      <nav className="hidden overflow-visible border-b border-[var(--aloha-line)] bg-white text-[var(--aloha-ink)] lg:block shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+        <div className="mx-auto flex max-w-7xl items-center overflow-visible px-3 sm:px-4 py-1.5 min-h-[50px]">
+          <div className="flex min-w-0 flex-1 items-center justify-between gap-1 xl:gap-1.5">
             {(
               [
                 { href: "/", label: "Trang chủ", key: "trang-chu", kind: "link" as const },
@@ -313,45 +349,43 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                   kind: "link" as const,
                 },
                 { href: "/bai-viet", label: "Bài viết", key: "bai-viet", kind: "link" as const },
+                { href: "/bac-si-cay", label: "Bác sĩ cây", key: "bac-si-cay", kind: "link" as const },
                 { href: "/ve-aloha", label: "Về Aloha", key: "ve-aloha", kind: "link" as const },
-                {
-                  href: "/dang-ky-si",
-                  label: "Đăng ký sỉ",
-                  key: "bao-gia",
-                  kind: "link" as const,
-                },
-                {
-                  href: "/tuyen-ctv",
-                  label: "Tuyển CTV",
-                  key: "tuyen-ctv",
-                  kind: "link" as const,
-                },
+                { kind: "recruitment" as const, key: "tuyen-dung" },
               ] as const
             ).map((item) => {
               if (item.kind === "mega") {
                 return (
-                  <div
-                    key="danh-muc"
-                    className="flex shrink-0 items-stretch"
-                  >
+                  <div key="danh-muc" className="flex shrink-0 items-center">
                     <CategoryMegaMenu tree={navApplied.tree} onNavigate={closeMenus} />
+                  </div>
+                );
+              }
+              if (item.kind === "recruitment") {
+                return (
+                  <div key="tuyen-dung" className="flex shrink-0 items-center">
+                    <RecruitmentNavDropdown active={navActiveKey === "tuyen-dung"} onNavigate={closeMenus} />
                   </div>
                 );
               }
               const active = item.key === navActiveKey;
               const accent = item.key === "noi-bat-uu-dai" && dealsAccent.on ? dealsAccent.color : null;
-              const cls = `group relative inline-flex h-full shrink-0 items-center justify-center gap-1 whitespace-nowrap px-2 text-[15px] xl:px-2.5 xl:text-[16px] ${
+              const cls = `group relative inline-flex min-h-[38px] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap px-3 py-2 text-[15px] xl:px-3.5 xl:text-[15.5px] rounded-xl transition-all duration-150 select-none cursor-pointer active:scale-95 ${
                 accent
-                  ? "font-bold"
+                  ? "font-bold hover:bg-rose-50/80 active:bg-rose-100"
                   : active
-                    ? "font-bold text-[var(--aloha-green)]"
-                    : "font-semibold text-[var(--aloha-ink)] hover:text-[var(--aloha-green)]"
+                    ? "font-bold text-[var(--aloha-green)] bg-emerald-50/80 hover:bg-emerald-100/70 active:bg-emerald-100"
+                    : "font-semibold text-[var(--aloha-ink)] hover:text-[var(--aloha-green)] hover:bg-slate-100/70 active:bg-slate-200/70"
               }`;
               const underline = (
                 <span
-                  className={`pointer-events-none absolute inset-x-2 bottom-0 h-[2.5px] rounded-full transition-opacity ${
+                  className={`pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 h-[3px] rounded-full transition-all duration-300 ease-out ${
                     accent ? "" : "bg-[var(--aloha-green)]"
-                  } ${active ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+                  } ${
+                    active
+                      ? "w-4/5 opacity-100 shadow-xs"
+                      : "w-0 opacity-0 group-hover:w-3/5 group-hover:opacity-80"
+                  }`}
                   style={accent ? { backgroundColor: accent } : undefined}
                   aria-hidden
                 />
@@ -458,7 +492,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                       <Link
                         href="/"
                         onClick={closeMenus}
-                        className="flex items-center justify-between p-3.5 transition hover:bg-[var(--aloha-cream)]/50 active:bg-[var(--aloha-cream)]"
+                        className="flex items-center justify-between p-3.5 transition-all duration-150 hover:bg-[var(--aloha-cream)]/50 active:bg-emerald-50/70 active:scale-[0.98]"
                       >
                         <div className="flex items-center gap-3">
                           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[var(--aloha-green)]">
@@ -475,7 +509,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                       <Link
                         href={dealsNavHref}
                         onClick={closeMenus}
-                        className="flex items-center justify-between p-3.5 transition hover:bg-[var(--aloha-cream)]/50 active:bg-[var(--aloha-cream)]"
+                        className="flex items-center justify-between p-3.5 transition-all duration-150 hover:bg-[var(--aloha-cream)]/50 active:bg-emerald-50/70 active:scale-[0.98]"
                       >
                         <div className="flex items-center gap-3">
                           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[var(--aloha-green)]">
@@ -497,7 +531,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                       <Link
                         href="/bai-viet"
                         onClick={closeMenus}
-                        className="flex items-center justify-between p-3.5 transition hover:bg-[var(--aloha-cream)]/50 active:bg-[var(--aloha-cream)]"
+                        className="flex items-center justify-between p-3.5 transition-all duration-150 hover:bg-[var(--aloha-cream)]/50 active:bg-emerald-50/70 active:scale-[0.98]"
                       >
                         <div className="flex items-center gap-3">
                           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[var(--aloha-green)]">
@@ -511,10 +545,21 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                         <ChevronRight size={16} className="text-slate-300" />
                       </Link>
 
+                      <Link href="/bac-si-cay" onClick={closeMenus} className="flex items-center justify-between p-3.5 transition-all duration-150 hover:bg-[var(--aloha-cream)]/50 active:bg-emerald-50/70 active:scale-[0.98]">
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[var(--aloha-green)]"><Stethoscope size={18} strokeWidth={2} /></span>
+                          <div>
+                            <p className="text-sm font-bold text-[var(--aloha-ink)]">Bác sĩ cây cảnh</p>
+                            <p className="text-xs text-slate-500">Chụp ảnh cây bệnh, AI bắt bệnh miễn phí</p>
+                          </div>
+                        </div>
+                        <ChevronRight size={16} className="text-slate-300" />
+                      </Link>
+
                       <Link
                         href="/ve-aloha"
                         onClick={closeMenus}
-                        className="flex items-center justify-between p-3.5 transition hover:bg-[var(--aloha-cream)]/50 active:bg-[var(--aloha-cream)]"
+                        className="flex items-center justify-between p-3.5 transition-all duration-150 hover:bg-[var(--aloha-cream)]/50 active:bg-emerald-50/70 active:scale-[0.98]"
                       >
                         <div className="flex items-center gap-3">
                           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[var(--aloha-green)]">
@@ -532,47 +577,39 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
 
                   <div>
                     <p className="px-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                      Hợp tác & Dịch vụ
+                      Tuyển dụng & Hợp tác
                     </p>
                     <div className="mt-2 divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
-                      <a
-                        href="/dang-ky-si"
-                        onClick={closeMenus}
-                        className="flex items-center justify-between p-3.5 transition hover:bg-[var(--aloha-cream)]/50 active:bg-[var(--aloha-cream)]"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[var(--aloha-green)]">
-                            <Building2 size={18} strokeWidth={2} />
-                          </span>
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <p className="text-sm font-bold text-[var(--aloha-ink)]">Đăng ký mua sỉ (B2B)</p>
-                              <span className="rounded-md bg-emerald-100/70 px-1.5 py-0.5 text-[9.5px] font-bold text-[var(--aloha-green-dark)]">
-                                Đại lý
-                              </span>
+                      {(
+                        [
+                          { href: "/tuyen-dung", label: "Tuyển dụng nhân viên", badge: "Việc làm", sub: "Cơ hội việc làm & gia nhập đội ngũ Aloha", icon: Briefcase },
+                          { href: "/tuyen-ctv", label: "Tuyển Cộng tác viên (CTV)", badge: "CTV", sub: "Kiếm thêm thu nhập hoa hồng cùng Aloha", icon: Users },
+                          { href: "/dang-ky-si", label: "Đăng ký mua sỉ (B2B)", badge: "Đại lý", sub: "Chính sách chiết khấu & giá sỉ đặc quyền", icon: Building2 },
+                        ] as const
+                      ).map((item) => (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={closeMenus}
+                          className="flex items-center justify-between p-3.5 transition hover:bg-[var(--aloha-cream)]/50 active:bg-[var(--aloha-cream)]"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[var(--aloha-green)]">
+                              <item.icon size={18} strokeWidth={2} />
+                            </span>
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-sm font-bold text-[var(--aloha-ink)]">{item.label}</p>
+                                <span className="rounded-md bg-stone-100 px-1.5 py-0.5 text-[9.5px] font-bold text-stone-600">
+                                  {item.badge}
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-500">{item.sub}</p>
                             </div>
-                            <p className="text-xs text-slate-500">Chính sách chiết khấu & giá sỉ đặc quyền</p>
                           </div>
-                        </div>
-                        <ChevronRight size={16} className="text-slate-300" />
-                      </a>
-
-                      <Link
-                        href="/tuyen-ctv"
-                        onClick={closeMenus}
-                        className="flex items-center justify-between p-3.5 transition hover:bg-[var(--aloha-cream)]/50 active:bg-[var(--aloha-cream)]"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[var(--aloha-green)]">
-                            <Users size={18} strokeWidth={2} />
-                          </span>
-                          <div>
-                            <p className="text-sm font-bold text-[var(--aloha-ink)]">Tuyển Cộng tác viên (CTV)</p>
-                            <p className="text-xs text-slate-500">Kiếm thêm thu nhập hoa hồng cùng Aloha</p>
-                          </div>
-                        </div>
-                        <ChevronRight size={16} className="text-slate-300" />
-                      </Link>
+                          <ChevronRight size={16} className="text-slate-300" />
+                        </Link>
+                      ))}
                     </div>
                   </div>
 
@@ -716,6 +753,7 @@ export function SiteFooter() {
               { href: dealsNavHref, label: "Ưu đãi", icon: BadgePercent },
               { href: "/ve-aloha", label: "Về Aloha", icon: UserRound },
               { href: "/bai-viet", label: "Bài viết", icon: FileText },
+              { href: "/bac-si-cay", label: "Bác sĩ cây cảnh", icon: Stethoscope },
               { href: "/tuyen-dung", label: "Tuyển dụng", icon: Briefcase },
             ].map(({ href, label, icon: Icon }) => (
               <li key={href}>

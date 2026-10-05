@@ -84,12 +84,16 @@ export function QuickTiles({
   offsetMs,
   activeTab,
   activeLoai,
+  className,
+  variant = "tiles",
 }: {
   campaign: CampaignUI;
   vouchers: CampaignVoucherUI[];
   offsetMs: number;
   activeTab?: string | null;
   activeLoai?: string | null;
+  className?: string;
+  variant?: "tiles" | "tabs";
 }) {
   const hasHot = campaign.products.some((p) => p.dealHot);
   // Ô "Deal hot" chỉ hiện khi chiến dịch có SP gắn deal hot (tránh dẫn tới trang trống).
@@ -101,10 +105,76 @@ export function QuickTiles({
     })
     .slice(0, 8);
   if (!tiles.length) return null;
+
+  // DẠNG THANH TAB MỎNG NGANG (CHUẨN SHOPEE/LAZADA PC)
+  if (variant === "tabs") {
+    return (
+      <nav
+        aria-label="Chuyển tab ưu đãi"
+        className={`w-full ${className || ""}`}
+        style={{ "--campaign-primary": campaign.display.colors.primary } as React.CSSProperties}
+      >
+        <div className="flex items-center justify-center">
+          <ul
+            role="tablist"
+            className="inline-flex max-w-full items-center gap-1.5 sm:gap-2 rounded-2xl bg-white/95 p-1.5 shadow-sm border border-rose-100/90 backdrop-blur-xs overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {tiles.map((t) => {
+              const tab = tabOf(dealsHref(t.href));
+              const kind = KIND_BY_ICON[t.icon] || (tab ? KIND_BY_TAB[tab] : undefined) || "other";
+              const tone = TONE[kind];
+              const Icon = ICONS[t.icon] || Sparkles;
+
+              const isShip = kind === "ship";
+              const isVoucherTab = tab === "voucher" || kind === "voucher";
+              const isActive = Boolean(
+                activeTab &&
+                  (isShip
+                    ? activeTab === "voucher" && activeLoai === "ship"
+                    : isVoucherTab
+                      ? activeTab === "voucher" && (!activeLoai || activeLoai === "all")
+                      : tab === activeTab)
+              );
+
+              return (
+                <li key={`${t.href}-${t.label}`} role="presentation">
+                  <Link
+                    href={tileHref(t.href, kind)}
+                    role="tab"
+                    aria-selected={isActive}
+                    className={`inline-flex min-h-[38px] sm:min-h-[42px] items-center gap-2 rounded-xl px-3.5 sm:px-5 py-1.5 text-xs sm:text-sm font-bold transition-all duration-200 select-none whitespace-nowrap cursor-pointer ${
+                      isActive
+                        ? "bg-gradient-to-r from-[var(--campaign-primary,#C8102E)] via-[#E11D48] to-[#C8102E] text-white shadow-sm shadow-rose-950/20 scale-[1.02]"
+                        : "text-slate-700 hover:text-[var(--campaign-primary,#C8102E)] hover:bg-rose-50/70"
+                    }`}
+                  >
+                    <Icon
+                      size={17}
+                      strokeWidth={2.2}
+                      aria-hidden
+                      className={isActive ? "text-white" : tone.icon}
+                    />
+                    <span>{t.label}</span>
+                    {isActive ? (
+                      <span className="hidden md:inline-flex items-center rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-bold text-white uppercase tracking-wider">
+                        Đang xem
+                      </span>
+                    ) : null}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </nav>
+    );
+  }
+
+  // DẠNG Ô VUÔNG LỐI TẮT TRUYỀN THỐNG (TRANG CHỦ)
   return (
     <nav
       aria-label="Lối tắt ưu đãi"
-      className="mx-auto max-w-7xl px-4"
+      className={`mx-auto max-w-7xl px-4 ${className || ""}`}
       style={{ "--campaign-primary": campaign.display.colors.primary } as React.CSSProperties}
     >
       <ul

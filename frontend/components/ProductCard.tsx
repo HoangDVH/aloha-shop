@@ -48,17 +48,7 @@ function ImagePendingOverlay({ active }: { active: boolean }) {
   );
 }
 
-export function ProductCard({
-  product,
-  shopee = false,
-  variant = "default",
-  liveWebPrice,
-  liveGia,
-  liveTon,
-  livePriceKind,
-  liveAllowBackorder,
-  liveCampaignPromo,
-}: {
+type ProductCardProps = {
   product: ShopProduct;
   shopee?: boolean;
   variant?: "default" | "deal";
@@ -69,21 +59,35 @@ export function ProductCard({
   livePriceKind?: ShopProduct["priceKind"];
   liveAllowBackorder?: boolean;
   liveCampaignPromo?: ShopProduct["campaignPromo"];
-}) {
+};
+
+export function ProductCard({ variant = "default", ...props }: ProductCardProps) {
   if (variant === "deal") {
     return (
       <ProductDealCard
-        product={product}
-        liveWebPrice={liveWebPrice}
-        liveGia={liveGia}
-        liveTon={liveTon}
-        livePriceKind={livePriceKind}
-        liveAllowBackorder={liveAllowBackorder}
-        liveCampaignPromo={liveCampaignPromo}
+        product={props.product}
+        liveWebPrice={props.liveWebPrice}
+        liveGia={props.liveGia}
+        liveTon={props.liveTon}
+        livePriceKind={props.livePriceKind}
+        liveAllowBackorder={props.liveAllowBackorder}
+        liveCampaignPromo={props.liveCampaignPromo}
       />
     );
   }
+  return <ProductCardDefault {...props} />;
+}
 
+function ProductCardDefault({
+  product,
+  shopee = false,
+  liveWebPrice,
+  liveGia,
+  liveTon,
+  livePriceKind,
+  liveAllowBackorder,
+  liveCampaignPromo,
+}: Omit<ProductCardProps, "variant">) {
   const add = useCart((s) => s.add);
   const toast = useToast();
   const pathname = usePathname();

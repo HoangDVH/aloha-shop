@@ -16,13 +16,13 @@ export function DealsSectionHead({
   moreLabel?: string;
 }) {
   return (
-    <div className="flex items-center gap-3">
-      <span className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--campaign-primary,#C8102E)] to-[#E11D48] text-white shadow-sm shadow-rose-900/20">
-        <Icon size={18} aria-hidden />
+    <div className="flex items-center gap-2 sm:gap-3">
+      <span className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-[var(--campaign-primary,#C8102E)] to-[#E11D48] text-white shadow-sm shadow-rose-900/20">
+        <Icon size={16} className="sm:w-[18px] sm:h-[18px]" aria-hidden />
       </span>
       <div className="min-w-0 flex-1">
-        <h2 className="text-base font-black uppercase leading-tight tracking-tight text-slate-900 sm:text-lg">{title}</h2>
-        {subtitle ? <p className="mt-0.5 text-xs leading-snug text-slate-500 sm:text-[13px] font-medium">{subtitle}</p> : null}
+        <h2 className="text-sm sm:text-lg font-black uppercase leading-tight tracking-tight text-slate-900 truncate">{title}</h2>
+        {subtitle ? <p className="hidden sm:block mt-0.5 text-xs leading-snug text-slate-500 sm:text-[13px] font-medium">{subtitle}</p> : null}
       </div>
       {moreHref ? (
         <Link

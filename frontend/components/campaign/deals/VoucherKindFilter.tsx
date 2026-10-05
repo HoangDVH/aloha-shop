@@ -23,10 +23,12 @@ export function VoucherKindFilter({
   vouchers,
   active,
   hrefFor,
+  className = "",
 }: {
   vouchers: CampaignVoucherUI[];
   active: VoucherKind;
   hrefFor: (kind: VoucherKind) => string;
+  className?: string;
 }) {
   const ship = vouchers.filter(isShip).length;
   const giam = vouchers.length - ship;
@@ -37,7 +39,11 @@ export function VoucherKindFilter({
     { kind: "ship", label: "Hỗ trợ ship", count: ship },
   ];
   return (
-    <div role="group" aria-label="Loại voucher" className="mb-3 flex flex-wrap gap-2">
+    <div
+      role="group"
+      aria-label="Loại voucher"
+      className={`flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${className}`}
+    >
       {chips.map((c) => {
         const on = c.kind === active;
         return (
@@ -47,8 +53,8 @@ export function VoucherKindFilter({
             replace
             scroll={false}
             aria-pressed={on}
-            className={`inline-flex min-h-[36px] items-center gap-1 rounded-full px-3.5 text-[13px] font-semibold transition-colors ${
-              on ? "bg-slate-900 text-white" : "bg-white text-slate-700 ring-1 ring-black/10 hover:bg-slate-50"
+            className={`inline-flex min-h-[32px] sm:min-h-[36px] shrink-0 items-center gap-1 rounded-full px-3 py-1 text-xs sm:text-[13px] font-semibold transition-colors ${
+              on ? "bg-slate-900 text-white shadow-xs" : "bg-white text-slate-700 ring-1 ring-black/10 hover:bg-slate-50"
             }`}
           >
             {c.label}

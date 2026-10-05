@@ -199,3 +199,55 @@ export const MOBILE_ROOT_ORDER = [
 ] as const;
 
 export const MOBILE_CAT_ACTIVE_KEY = "aloha:mobile-cat-active";
+
+/** Nhánh con L2 ưu tiên hiển thị trước theo từng nhóm mẹ L1 */
+export const L2_PREFERRED_BY_L1: Record<string, readonly string[]> = {
+  "PHỤ KIỆN TRANG TRÍ": ["PHỤ KIỆN TIỂU CẢNH"],
+  "CHẬU TRỒNG CÂY": ["CHẬU COMBO THEO BỘ"],
+};
+
+/**
+ * Sắp xếp các nhánh con L2 bên phải danh mục:
+ * 1. Ưu tiên các nhánh được cấu hình ưu tiên (vd. "Chậu combo theo bộ", "Phụ kiện tiểu cảnh").
+ * 2. Ưu tiên các nhánh có nhiều nhóm con L3 hơn lên đầu (subs.length giảm dần).
+ * 3. Nếu cùng số nhóm con, ưu tiên nhánh có nhiều sản phẩm hơn (count giảm dần).
+ * 4. Các nhánh ít/không có con (chỉ 1 ảnh đơn) sẽ nằm ở dưới.
+ */
+export function orderL2Nodes(
+  parentName: string,
+  nodes: ShopCategoryNavNode[]
+): ShopCategoryNavNode[] {
+  let preferred: readonly string[] = [];
+  for (const [key, list] of Object.entries(L2_PREFERRED_BY_L1)) {
+    if (nameMatchesAny(parentName, [key])) {
+      preferred = list;
+      break;
+    }
+  }
+
+  const preferredMap = new Map<number, number>();
+  nodes.forEach((n) => {
+    const idx = preferred.findIndex((pName) => nameMatchesAny(n.name, [pName]));
+    if (idx !== -1) {
+      preferredMap.set(n.id, idx);
+    }
+  });
+
+  return [...nodes].sort((a, b) => {
+    const aPref = preferredMap.has(a.id);
+    const bPref = preferredMap.has(b.id);
+    if (aPref && !bPref) return -1;
+    if (!aPref && bPref) return 1;
+    if (aPref && bPref) {
+      return (preferredMap.get(a.id) ?? 0) - (preferredMap.get(b.id) ?? 0);
+    }
+
+    const aKids = nodeSubs(a).length;
+    const bKids = nodeSubs(b).length;
+    if (bKids !== aKids) return bKids - aKids;
+
+    const aCount = Number.isFinite(a.count) ? a.count : 0;
+    const bCount = Number.isFinite(b.count) ? b.count : 0;
+    return bCount - aCount;
+  });
+}

@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check, ChevronRight, Flame, Gift, Lock, Sparkles, TicketPercent, Truck, Zap } from "lucide-react";
 import type { CampaignVoucherUI, CampaignViewerUI } from "@/lib/campaign/campaignApi";
 import { useVoucherClaims } from "@/lib/campaign/useVoucherClaims";
-import { formatCompactVnd, isUnopenedMystery, pctText, withDrawn } from "@/lib/voucherFormat";
+import { formatCompactVnd, isUnopenedMystery, pctText, sortVouchersGrouped, withDrawn } from "@/lib/voucherFormat";
 import { LoginSheet } from "@/components/campaign/LoginSheet";
 import { claimStateOf, type ClaimState } from "@/components/voucher/ClaimButton";
 import { ClaimSuccessModal } from "@/components/voucher/ClaimSuccessModal";
@@ -201,45 +201,47 @@ export function DealsVoucherStrip({
     const i = focusIds.indexOf(v.id);
     return i < 0 ? focusIds.length : i;
   };
-  const list = [...visible].sort((a, b) => rank(a) - rank(b));
+  const grouped = sortVouchersGrouped(visible);
+  const list = focusIds.length ? [...grouped].sort((a, b) => rank(a) - rank(b)) : grouped;
   const states = new Map(list.map((v) => [v.id, claimStateOf(v, viewer, claims.claimedIds.has(v.id), nowMs)]));
   const claimable = [...states.values()].filter((s) => s === "claimable").length;
 
   return (
     <section id="kho-voucher" aria-label="Kho voucher" className="scroll-mt-24 space-y-3.5 rounded-3xl bg-white p-4 sm:p-6 shadow-sm border border-rose-100/80">
-      {/* Header section */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--campaign-primary,#C2185B)]/10 text-[var(--campaign-primary,#C2185B)]">
-            <TicketPercent size={17} strokeWidth={2.5} aria-hidden />
+      {/* Header section - Mobile First layout */}
+      <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--campaign-primary,#C2185B)]/10 text-[var(--campaign-primary,#C2185B)]">
+            <TicketPercent size={16} strokeWidth={2.5} aria-hidden />
           </span>
-          <h2 className="text-sm font-black uppercase tracking-tight text-slate-900 sm:text-base">
+          <h2 className="text-sm font-black tracking-tight text-slate-900 whitespace-nowrap sm:text-base">
             Voucher ưu đãi
           </h2>
-          <span className="rounded-full bg-rose-100/80 px-2 py-0.5 text-[10.5px] font-extrabold text-[var(--campaign-primary,#C2185B)]">
+          <span className="shrink-0 rounded-full bg-rose-100/80 px-1.5 py-0.5 text-[10px] font-extrabold text-[var(--campaign-primary,#C2185B)] whitespace-nowrap">
             {list.length} mã
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           {claimable >= 2 ? (
             <button
               type="button"
               onClick={claims.collectAll}
               disabled={claims.collecting}
-              className="group inline-flex h-7.5 items-center gap-1.5 rounded-full bg-gradient-to-r from-[var(--campaign-primary,#C8102E)] via-[#E11D48] to-[#C8102E] bg-[length:200%_auto] px-3.5 text-xs font-bold text-white shadow-xs transition-all duration-300 hover:bg-right hover:shadow-sm active:scale-95 disabled:opacity-60 select-none cursor-pointer"
+              className="group inline-flex h-7 shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-[var(--campaign-primary,#C8102E)] via-[#E11D48] to-[#C8102E] bg-[length:200%_auto] px-2.5 sm:px-3 text-[11px] sm:text-xs font-bold text-white shadow-xs transition-all duration-300 hover:bg-right hover:shadow-sm active:scale-95 disabled:opacity-60 select-none cursor-pointer whitespace-nowrap"
             >
-              <Sparkles size={13} className="text-amber-300 transition-transform duration-300 group-hover:scale-110" aria-hidden />
-              <span>{claims.collecting ? "Đang lưu…" : "Thu thập tất cả"}</span>
+              <Sparkles size={12} className="text-amber-300 shrink-0 transition-transform duration-300 group-hover:scale-110" aria-hidden />
+              <span>{claims.collecting ? "Đang lưu…" : "Lưu tất cả"}</span>
             </button>
           ) : null}
 
           <Link
             href="/uu-dai?tab=voucher"
-            className="inline-flex min-h-[32px] items-center gap-0.5 text-xs font-bold text-[var(--campaign-primary,#C2185B)] hover:underline"
+            className="inline-flex h-7 shrink-0 items-center gap-0.5 text-xs font-bold text-[var(--campaign-primary,#C2185B)] hover:underline whitespace-nowrap"
+            title="Xem tất cả voucher"
           >
-            <span>Chi tiết</span>
-            <ChevronRight size={14} aria-hidden />
+            <span className="hidden min-[360px]:inline">Chi tiết</span>
+            <ChevronRight size={14} className="shrink-0" aria-hidden />
           </Link>
         </div>
       </div>

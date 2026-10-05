@@ -525,6 +525,10 @@ function CheckoutConfirm() {
           setPromoAutoMode(false);
         }}
         ineligibleAction={candidateClaim.ineligibleAction}
+        shippingDiscount={effectiveShippingDiscount}
+        shippingPromotionTitle={shippingQuote?.shippingPromotion?.title}
+        shippingPromotionId={shippingQuote?.shippingPromotion?.promotionId}
+        shippingFee={effectiveShippingFee}
       />
       {candidateClaim.loginSheet}
     </>

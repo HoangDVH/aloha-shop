@@ -69,7 +69,7 @@ export function ShopMobileTabBar() {
           className={`shop-mobile-tab ${homeActive ? "is-active" : ""}`}
           aria-current={homeActive ? "page" : undefined}
         >
-          <Home size={22} strokeWidth={homeActive ? 2.4 : 1.9} aria-hidden />
+          <Home size={22} strokeWidth={homeActive ? 2.5 : 1.85} className={homeActive ? "fill-current/15" : ""} aria-hidden />
           <span>Trang chủ</span>
         </Link>
 
@@ -80,7 +80,7 @@ export function ShopMobileTabBar() {
             window.dispatchEvent(new CustomEvent(OPEN_CATS));
           }}
         >
-          <LayoutGrid size={22} strokeWidth={1.9} aria-hidden />
+          <LayoutGrid size={22} strokeWidth={1.85} aria-hidden />
           <span>Danh mục</span>
         </button>
 
@@ -94,7 +94,7 @@ export function ShopMobileTabBar() {
           {deals.on ? (
             <Zap size={22} strokeWidth={2.2} fill="currentColor" aria-hidden />
           ) : (
-            <TicketPercent size={22} strokeWidth={dealsActive ? 2.4 : 1.9} aria-hidden />
+            <TicketPercent size={22} strokeWidth={dealsActive ? 2.5 : 1.85} className={dealsActive ? "fill-current/15" : ""} aria-hidden />
           )}
           <span className={deals.on ? "font-bold" : undefined}>Ưu đãi</span>
         </Link>
@@ -107,9 +107,9 @@ export function ShopMobileTabBar() {
           aria-label={`Giỏ hàng${cartBadge ? `, ${cartBadge} sản phẩm` : ""}`}
         >
           <span className="relative inline-flex">
-            <ShoppingCart size={22} strokeWidth={cartActive ? 2.4 : 1.9} aria-hidden />
+            <ShoppingCart size={22} strokeWidth={cartActive ? 2.5 : 1.85} className={cartActive ? "fill-current/15" : ""} aria-hidden />
             {cartBadge > 0 ? (
-              <span className="absolute -right-3 -top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--aloha-terracotta)] px-1 text-[10px] font-black text-white ring-2 ring-white">
+              <span className="absolute -right-3 -top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--aloha-terracotta)] px-1 text-[10px] font-black text-white ring-2 ring-white animate-pulse">
                 {cartBadge > 99 ? "99+" : cartBadge}
               </span>
             ) : null}
@@ -122,7 +122,7 @@ export function ShopMobileTabBar() {
           className={`shop-mobile-tab ${accountActive ? "is-active" : ""}`}
           aria-current={accountActive ? "page" : undefined}
         >
-          <UserRound size={22} strokeWidth={accountActive ? 2.4 : 1.9} aria-hidden />
+          <UserRound size={22} strokeWidth={accountActive ? 2.5 : 1.85} className={accountActive ? "fill-current/15" : ""} aria-hidden />
           <span>Tài khoản</span>
         </Link>
       </div>

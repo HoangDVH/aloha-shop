@@ -56,7 +56,7 @@ function Section({
     <section className="bg-[var(--aloha-surface)] py-8 sm:py-10">
       <div className="mx-auto max-w-7xl px-4">
         {variant === "deal" ? (
-          <div className="mb-6 sm:mb-8">
+          <div className="mb-3.5 sm:mb-6">
             <HomeFlashSaleStage />
           </div>
         ) : (

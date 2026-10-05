@@ -129,3 +129,36 @@ export function discountTagText(listPrice: number, salePrice: number): string {
 export function voucherUseHref(voucherId: string): string {
   return `/tim?voucher=${encodeURIComponent(voucherId)}`;
 }
+
+/**
+ * Gom nhóm voucher theo loại ưu đãi chuẩn sàn TMĐT (Shopee/Lazada):
+ * 1. Nhóm Giảm giá đơn hàng / sản phẩm (goods) lên đầu.
+ * 2. Nhóm Hỗ trợ phí ship (shipping) nằm tiếp theo sát nhau.
+ * Trong từng nhóm:
+ * - Sắp xếp theo điều kiện đơn tối thiểu tăng dần (minOrderThreshold: không điều kiện -> 1tr -> 2tr...).
+ * - Nếu cùng điều kiện đơn: sắp xếp theo giá trị giảm tăng dần (5% -> 10%...).
+ */
+export function sortVouchersGrouped<
+  T extends {
+    benefitType?: "goods" | "shipping" | string;
+    minOrderThreshold?: number | null;
+    discountValue?: number;
+  }
+>(vouchers: T[]): T[] {
+  return [...vouchers].sort((a, b) => {
+    // 1. Phân nhóm: Goods (0) trước, Shipping (1) sau
+    const isShipA = a.benefitType === "shipping" ? 1 : 0;
+    const isShipB = b.benefitType === "shipping" ? 1 : 0;
+    if (isShipA !== isShipB) return isShipA - isShipB;
+
+    // 2. Trong cùng nhóm: Sắp xếp theo mức chi tiêu tối thiểu tăng dần
+    const minA = Number(a.minOrderThreshold) || 0;
+    const minB = Number(b.minOrderThreshold) || 0;
+    if (minA !== minB) return minA - minB;
+
+    // 3. Nếu cùng mốc chi tiêu: Sắp xếp theo giá trị giảm tăng dần
+    const valA = Number(a.discountValue) || 0;
+    const valB = Number(b.discountValue) || 0;
+    return valA - valB;
+  });
+}

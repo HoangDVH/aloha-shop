@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { X, Sparkles, ShoppingBag, Check, ArrowRight, Lightbulb } from "lucide-react";
+import { X, Sparkles, ShoppingBag, Check, ArrowRight } from "lucide-react";
 import type { CampaignVoucherUI } from "@/lib/campaign/campaignApi";
 import { voucherConditionText } from "@/lib/voucherFormat";
 import { voucherIconAndTone } from "./VoucherVault";
@@ -72,7 +72,16 @@ export function ClaimSuccessModal({
 
   const { icon, tone, stubTopLabel, stubValue } = voucherIconAndTone(voucher);
   const condition = voucherConditionText(voucher);
-  const headline = voucher.title || "Voucher ưu đãi";
+  let headline = voucher.title || "Voucher ưu đãi";
+  if (voucher.mystery?.drawnPercent) {
+    headline = headline
+      .replace(/Giảm\s*\d+[–-]\d+%\s*/gi, "")
+      .replace(/\d+[–-]\d+%/g, "")
+      .trim();
+    if (!headline || headline.toLowerCase() === "đặt trước 20/10") {
+      headline = "Ưu đãi đặt trước 20/10";
+    }
+  }
 
   const modal = (
     <div
@@ -83,7 +92,7 @@ export function ClaimSuccessModal({
       aria-labelledby="claim-success-title"
     >
       <div
-        className="aloha-modal-spring relative w-full max-w-[420px] rounded-3xl bg-white p-5 sm:p-6 shadow-2xl border border-black/5 text-center overflow-hidden"
+        className="aloha-modal-spring relative w-full max-w-[370px] sm:max-w-[390px] rounded-3xl bg-white p-4 sm:p-5 shadow-2xl border border-black/5 text-center overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Nút đóng tròn góc trên */}
@@ -105,25 +114,25 @@ export function ClaimSuccessModal({
             ) : (
               <>
                 {/* 1. Icon chúc mừng với hiệu ứng nảy & confetti burst */}
-                <div className="relative mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-[#165A36] text-white shadow-lg shadow-emerald-600/30 aloha-badge-glow aloha-confetti-burst">
+                <div className="relative mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-[#165A36] text-white shadow-lg shadow-emerald-600/30 aloha-badge-glow aloha-confetti-burst">
                   <Sparkles size={28} strokeWidth={2.2} />
                 </div>
 
                 {/* 2. Tiêu đề chúc mừng */}
-                <h3 id="claim-success-title" className="text-lg sm:text-xl font-black uppercase tracking-tight text-slate-900 leading-tight">
+                <h3 id="claim-success-title" className="text-lg font-black uppercase tracking-tight text-slate-900 leading-tight">
                   ĐÃ LƯU MÃ THÀNH CÔNG!
                 </h3>
-                <p className="mt-1 text-xs sm:text-[13px] text-slate-500 font-medium">
+                <p className="mt-0.5 text-xs text-slate-500 font-medium">
                   Mã ưu đãi đã được thêm vào ví voucher của bạn
                 </p>
               </>
             )}
 
-            {/* 3. Thẻ coupon vé thu nhỏ (Perforated ticket) */}
-            <div className="my-4 flex items-stretch rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden text-left relative">
+            {/* 3. Thẻ coupon vé thu nhỏ (Perforated ticket) với dải sáng quét qua */}
+            <div className="aloha-ticket-shimmer my-3 flex items-stretch rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden text-left relative">
               {/* Cuống vé màu đậm bên trái */}
               <div
-                className={`relative flex w-[96px] sm:w-[104px] shrink-0 flex-col items-center justify-center p-2.5 text-center select-none ${STUB_GRADIENT[tone]}`}
+                className={`relative flex w-[92px] sm:w-[98px] shrink-0 flex-col items-center justify-center p-2.5 text-center select-none ${STUB_GRADIENT[tone]}`}
               >
                 <div className="flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-white/95 leading-tight">
                   {icon}
@@ -167,33 +176,31 @@ export function ClaimSuccessModal({
               </div>
             </div>
 
-            {/* 4. Mẹo sàn TMĐT: Yên tâm tự động trừ tiền */}
-            <div className="mb-4.5 rounded-xl bg-emerald-50/80 border border-emerald-100/90 p-2.5 text-left text-xs text-emerald-950 flex items-start gap-2">
-              <Lightbulb size={16} className="shrink-0 text-emerald-600 mt-0.5" />
-              <p className="leading-relaxed">
-                Hệ thống sẽ <strong className="font-bold text-emerald-800">tự động kích hoạt mức giảm tối đa</strong> khi bạn thêm sản phẩm vào giỏ và tiến hành thanh toán!
-              </p>
+            {/* 4. Dòng ghi chú tự động áp dụng tinh gọn chuẩn Shopee */}
+            <div className="mb-3.5 flex items-center justify-center gap-1.5 text-[11.5px] text-emerald-800 font-semibold bg-emerald-50/70 border border-emerald-100/90 rounded-xl py-1.5 px-3">
+              <Check size={13} strokeWidth={3} className="text-emerald-600 shrink-0" />
+              <span>Tự động áp dụng cho đơn hàng</span>
             </div>
 
-            {/* 5. Nút Mua ngay (Dẫn đến trang ưu đãi) & Nút phụ */}
-            <div className="space-y-2">
+            {/* 5. Nút Mua ngay dứt khoát & Nút phụ */}
+            <div className="space-y-1.5">
               <Link
-                href={targetHref}
+                href={mystery?.drawnPercent ? `/tim?voucher=${encodeURIComponent(voucher.id)}` : targetHref}
                 onClick={() => {
                   onShopNow?.();
                   onClose();
                 }}
-                className="aloha-voucher-shine relative overflow-hidden group flex h-11 sm:h-12 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#165A36] to-[#0F3822] text-sm sm:text-[15px] font-black tracking-wide text-white shadow-md shadow-[#165A36]/25 hover:brightness-110 active:scale-[0.98] transition select-none cursor-pointer"
+                className="aloha-voucher-shine relative overflow-hidden group flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#165A36] to-[#0F3822] text-sm font-black tracking-wider text-white shadow-md shadow-[#165A36]/25 hover:brightness-110 active:scale-[0.98] transition select-none cursor-pointer"
               >
-                <ShoppingBag size={18} strokeWidth={2.4} />
-                <span>MUA SẮM NGAY</span>
-                <ArrowRight size={16} strokeWidth={2.6} className="group-hover:translate-x-1 transition-transform" />
+                <ShoppingBag size={17} strokeWidth={2.4} />
+                <span>DÙNG NGAY</span>
+                <ArrowRight size={16} strokeWidth={2.6} className="group-hover:translate-x-0.5 transition-transform" />
               </Link>
 
               <button
                 type="button"
                 onClick={onClose}
-                className="inline-flex min-h-[32px] items-center justify-center text-xs font-bold text-slate-500 hover:text-slate-800 transition py-1 cursor-pointer"
+                className="inline-flex min-h-[30px] items-center justify-center text-xs font-semibold text-slate-400 hover:text-slate-700 transition cursor-pointer"
               >
                 Lưu tiếp mã khác
               </button>

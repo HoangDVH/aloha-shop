@@ -9,6 +9,7 @@ import {
   nameMatchesAny,
   navBarIcon,
   navBarLabel,
+  orderL2Nodes,
   toTitleCaseVi,
 } from "@/components/CategoryNavMenu";
 
@@ -34,8 +35,6 @@ const MEGA_L1_ORDER = [
   "TÚI VÀ HỘP ĐỂ SẢN PHẨM",
 ] as const;
 
-/** Trong Phụ kiện: Tiểu cảnh lên đầu. */
-const PHU_KIEN_L2_FIRST = ["PHỤ KIỆN TIỂU CẢNH"] as const;
 
 function orderNodesByPreferredNames(
   nodes: ShopCategoryNavNode[],
@@ -207,11 +206,7 @@ export function CategoryMegaMenu({
 
   const l2 = useMemo(() => {
     if (!active) return [];
-    const kids = nodeSubs(active);
-    if (nameMatchesAny(active.name, ["PHỤ KIỆN TRANG TRÍ"])) {
-      return orderNodesByPreferredNames(kids, PHU_KIEN_L2_FIRST);
-    }
-    return kids;
+    return orderL2Nodes(active.name, nodeSubs(active));
   }, [active]);
 
   if (!roots.length) return null;
@@ -225,10 +220,10 @@ export function CategoryMegaMenu({
     >
       <button
         type="button"
-        className={`inline-flex items-center gap-1.5 whitespace-nowrap px-2 py-3 text-[15px] font-bold transition-colors xl:gap-2 xl:text-[16px] ${
+        className={`inline-flex min-h-[38px] items-center gap-1.5 whitespace-nowrap rounded-xl px-3 py-2 text-[15px] font-bold transition-all duration-150 select-none cursor-pointer active:scale-95 xl:gap-2 xl:text-[15.5px] ${
           open
-            ? "text-[var(--aloha-green)]"
-            : "text-[var(--aloha-green-dark)] hover:text-[var(--aloha-green)]"
+            ? "bg-emerald-50 text-[var(--aloha-green)] shadow-xs"
+            : "text-[var(--aloha-green-dark)] hover:text-[var(--aloha-green)] hover:bg-emerald-50/70 active:bg-emerald-100"
         }`}
         aria-haspopup="true"
         aria-expanded={open}

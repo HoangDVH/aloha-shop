@@ -10,6 +10,11 @@ export const FLASH_STAGE_DEFAULT: FlashStageText = {
   subtitle: "Số lượng có hạn, làm mới mỗi khung giờ - Cam kết cây tươi nguyên bản",
 };
 
+/** Chữ dải Flash Sale dùng chung trang chủ, trang ưu đãi và xem trước admin: tiêu đề trống thì dùng mặc định, nhãn/mô tả trống thì ẩn. */
+export function flashStageText(stage?: FlashStageText): FlashStageText {
+  return stage ? { ...stage, title: stage.title.trim() || FLASH_STAGE_DEFAULT.title } : FLASH_STAGE_DEFAULT;
+}
+
 export type SlotTemplate = { id: string; label: string; hint: string; slots: CampaignSlotUI[] };
 
 const slot = (start: string, end: string, overnight?: boolean): CampaignSlotUI => ({

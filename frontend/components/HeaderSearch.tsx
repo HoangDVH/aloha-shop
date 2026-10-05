@@ -274,7 +274,7 @@ export function HeaderSearch({ onSubmitExtra }: { onSubmitExtra?: () => void }) 
   return (
     <div ref={wrapRef} className={`relative w-full min-w-0 ${showPanel ? "z-[100]" : ""}`}>
       <form onSubmit={onSubmit} className="flex w-full min-w-0 items-stretch" role="search">
-        <div className="relative flex w-full min-w-0 items-stretch overflow-hidden rounded-md border border-[var(--aloha-line)] bg-white shadow-sm focus-within:border-[var(--aloha-green)]">
+        <div className="relative flex w-full min-w-0 items-stretch overflow-hidden rounded-xl sm:rounded-2xl border border-[var(--aloha-line)] bg-white shadow-2xs focus-within:border-[var(--aloha-green)] focus-within:shadow-xs transition-all">
           <div className="relative min-w-0 flex-1">
             <Search
               size={18}
@@ -330,7 +330,7 @@ export function HeaderSearch({ onSubmitExtra }: { onSubmitExtra?: () => void }) 
               aria-autocomplete="list"
               aria-controls={listId}
               aria-expanded={showPanel}
-              className={`min-w-0 w-full border-0 bg-transparent py-2.5 pl-10 text-sm text-[var(--aloha-ink)] outline-none placeholder:text-slate-400 ${
+              className={`min-w-0 w-full border-0 bg-transparent py-2 sm:py-2.5 pl-10 text-sm text-[var(--aloha-ink)] outline-none placeholder:text-slate-400 ${
                 hasClear ? "pr-11" : "pr-2"
               }`}
             />
@@ -338,7 +338,7 @@ export function HeaderSearch({ onSubmitExtra }: { onSubmitExtra?: () => void }) 
               <button
                 type="button"
                 aria-label="Xóa"
-                className="absolute right-1 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 hover:bg-black/5 hover:text-slate-700"
+                className="absolute right-1 top-1/2 z-10 flex h-10 w-10 sm:h-11 sm:w-11 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 hover:bg-black/5 hover:text-slate-700"
                 onClick={() => {
                   if (inputRef.current) inputRef.current.value = "";
                   setQ("");
@@ -355,7 +355,7 @@ export function HeaderSearch({ onSubmitExtra }: { onSubmitExtra?: () => void }) 
           <button
             type="submit"
             aria-label="Tìm kiếm"
-            className="relative z-10 inline-flex min-h-11 w-11 shrink-0 items-center justify-center bg-[var(--aloha-green)] text-sm font-bold text-white hover:bg-[var(--aloha-green-hover)] sm:w-auto sm:min-w-[5.5rem] sm:px-4"
+            className="relative z-10 inline-flex min-h-10 sm:min-h-11 w-10 sm:w-11 shrink-0 items-center justify-center bg-[var(--aloha-green)] text-sm font-bold text-white hover:bg-[var(--aloha-green-hover)] sm:w-auto sm:min-w-[5.5rem] sm:px-4 transition-colors"
           >
             {loading ? (
               <Loader2 size={18} className="animate-spin" />

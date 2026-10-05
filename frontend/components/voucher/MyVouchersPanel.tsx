@@ -93,7 +93,18 @@ export function MyVouchersPanel() {
   const q = useWallet(true);
   const [tab, setTab] = useState<WalletTab>("active");
   const data = q.data;
-  const items = (data?.items || []).filter((i) => i.tab === tab && i.voucher);
+  const rawItems = (data?.items || []).filter((i) => i.tab === tab && i.voucher);
+  const items = [...rawItems].sort((a, b) => {
+    const isShipA = a.voucher?.benefitType === "shipping" ? 1 : 0;
+    const isShipB = b.voucher?.benefitType === "shipping" ? 1 : 0;
+    if (isShipA !== isShipB) return isShipA - isShipB;
+    const minA = Number(a.voucher?.minOrderThreshold) || 0;
+    const minB = Number(b.voucher?.minOrderThreshold) || 0;
+    if (minA !== minB) return minA - minB;
+    const valA = Number(a.voucher?.discountValue) || 0;
+    const valB = Number(b.voucher?.discountValue) || 0;
+    return valA - valB;
+  });
 
   return (
     <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-[var(--aloha-line)] sm:p-5">

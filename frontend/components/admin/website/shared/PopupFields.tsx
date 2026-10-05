@@ -73,6 +73,62 @@ export function PopupFields({ popup, onChange, hideCampaignId }: Props) {
           placeholder="/uu-dai"
         />
       </WbField>
+      {/* Cấu hình Banner thứ 2 cho Carousel Popup Shopee */}
+      <div className="rounded-xl border border-rose-200/80 bg-rose-50/50 p-3 space-y-2.5">
+        <div className="flex items-center justify-between">
+          <span className="text-[12px] font-bold text-rose-900">
+            Banner thứ 2 (Slider Carousel xoay vòng Shopee)
+          </span>
+          <span className="text-[11px] text-rose-600 font-medium">Tự động xoay sau 3.5s</span>
+        </div>
+        <WbField
+          label="Ảnh banner 2 (VD: Banner Siêu Sale 10/10)"
+          hint="PNG/WebP, tỷ lệ vuông 1:1. Web đã chuẩn bị sẵn banner Siêu Sale 10/10."
+        >
+          <ImageUploadField
+            kind="banner"
+            value={popup.items?.[1]?.imageUrl ?? "/banners/popup-1010.webp"}
+            onChange={(url) => {
+              const baseItem0 = popup.items?.[0] || {
+                imageUrl: popup.imageUrl,
+                ctaHref: popup.ctaHref,
+                title: popup.title,
+                ctaLabel: popup.ctaLabel,
+              };
+              const item1 = {
+                imageUrl: url,
+                ctaHref: popup.items?.[1]?.ctaHref || "/uu-dai?src=popup&campaign=1010",
+                title: popup.items?.[1]?.title || "Siêu Sale 10.10",
+                ctaLabel: popup.items?.[1]?.ctaLabel || "Săn sale ngay",
+              };
+              onChange({ items: [baseItem0, item1] });
+            }}
+            previewClassName="overflow-hidden rounded-lg border border-gray-200"
+          />
+        </WbField>
+        <WbField label="Link khi bấm banner 2" hint="VD: /uu-dai?src=popup&campaign=1010">
+          <input
+            className={wbInput}
+            value={popup.items?.[1]?.ctaHref ?? "/uu-dai?src=popup&campaign=1010"}
+            onChange={(e) => {
+              const baseItem0 = popup.items?.[0] || {
+                imageUrl: popup.imageUrl,
+                ctaHref: popup.ctaHref,
+                title: popup.title,
+                ctaLabel: popup.ctaLabel,
+              };
+              const item1 = {
+                imageUrl: popup.items?.[1]?.imageUrl || "/banners/popup-1010.webp",
+                ctaHref: e.target.value,
+                title: popup.items?.[1]?.title || "Siêu Sale 10.10",
+                ctaLabel: popup.items?.[1]?.ctaLabel || "Săn sale ngay",
+              };
+              onChange({ items: [baseItem0, item1] });
+            }}
+            placeholder="/uu-dai?src=popup&campaign=1010"
+          />
+        </WbField>
+      </div>
       {hideCampaignId ? null : (
         <WbField label="Mã chiến dịch" hint="Đổi mã khi muốn mọi khách thấy popup lại (chữ, số, - _ .).">
           <input

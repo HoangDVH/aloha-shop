@@ -34,6 +34,14 @@ export type AppearanceSeo = {
   googleSiteVerification?: string;
 };
 
+export type PopupBannerItem = {
+  id?: string;
+  title?: string;
+  imageUrl: string;
+  ctaHref?: string;
+  ctaLabel?: string;
+};
+
 export type AppearancePopup = {
   enabled: boolean;
   campaignId: string;
@@ -51,6 +59,9 @@ export type AppearancePopup = {
   pages?: PopupPages;
   audience?: PopupAudience;
   reopenBadge?: boolean;
+  /** Danh sách banner cho slider/carousel xoay vòng Shopee */
+  items?: PopupBannerItem[];
+  autoplaySeconds?: number;
 };
 
 export type PopupPages = "home" | "home_deals" | "all";

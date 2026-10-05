@@ -51,6 +51,20 @@ export function normalizePopup(raw: Partial<AppearancePopup> | null | undefined)
       ? (p.audience as PopupAudience)
       : base.audience,
     reopenBadge: p.reopenBadge !== false,
+    items: Array.isArray(p.items)
+      ? p.items
+          .filter((it): it is any => Boolean(it && typeof it === "object" && (it as any).imageUrl))
+          .map((it) => ({
+            id: it.id ? String(it.id) : undefined,
+            imageUrl: String(it.imageUrl || "").trim(),
+            ctaHref: String(it.ctaHref || "").trim(),
+            ctaLabel: String(it.ctaLabel || "").trim(),
+            title: String(it.title || "").trim(),
+          }))
+      : undefined,
+    autoplaySeconds: Number.isFinite(Number(p.autoplaySeconds))
+      ? Math.max(2, Math.min(10, Math.round(Number(p.autoplaySeconds))))
+      : 3.5,
   };
 }
 

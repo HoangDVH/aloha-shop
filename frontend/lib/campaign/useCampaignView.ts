@@ -1,13 +1,16 @@
 "use client";
 
+import { useMemo } from "react";
 import { useCurrentCampaign } from "./campaignQueries";
 import { isRunningPhase, isSellingPhase } from "./campaignApi";
+import { sortVouchersGrouped } from "@/lib/voucherFormat";
 
 /** Dữ liệu chiến dịch dạng tiện dùng cho các khối giao diện. */
 export function useCampaignView() {
   const q = useCurrentCampaign();
   const data = q.data;
   const campaign = data?.campaign && isRunningPhase(data.campaign.phase) ? data.campaign : null;
+  const vouchers = useMemo(() => sortVouchersGrouped(data?.vouchers || []), [data?.vouchers]);
   return {
     loading: q.isLoading,
     data,
@@ -17,7 +20,7 @@ export function useCampaignView() {
     lastHours: campaign?.phase === "lastHours",
     offsetMs: data?.offsetMs || 0,
     viewer: data?.viewer || null,
-    vouchers: data?.vouchers || [],
+    vouchers,
     upcoming: data?.upcoming || null,
   };
 }

@@ -30,7 +30,7 @@
   justify-content: center;
   gap: 0.15rem;
   min-width: 0;
-  padding: 0.35rem 0.25rem;
+  padding: 0.35rem 0.25rem 0.45rem;
   color: #6b7280;
   font-size: 0.75rem;
   font-weight: 500;
@@ -40,11 +40,61 @@
   border: 0;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  position: relative;
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.15s ease;
+  user-select: none;
+}
+
+/* Phản hồi chạm xúc giác: nhún nhẹ khi ngón tay nhấn xuống */
+.shop-mobile-tab:active {
+  transform: scale(0.88);
 }
 
 .shop-mobile-tab.is-active {
   color: var(--aloha-green, #2e7d32);
   font-weight: 700;
+}
+
+/* Hiệu ứng Spring Pop nảy lò xo trên icon khi tab active (chuẩn Shopee / TikTok Shop) */
+.shop-mobile-tab.is-active svg {
+  animation: tab-spring-bounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Chấm chỉ báo nhỏ tinh tế dưới tên tab đang chọn */
+.shop-mobile-tab.is-active::after {
+  content: "";
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background-color: currentColor;
+  animation: tab-dot-in 0.25s ease-out forwards;
+}
+
+@keyframes tab-spring-bounce {
+  0% {
+    transform: scale(0.85);
+  }
+  50% {
+    transform: scale(1.22);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes tab-dot-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
 }
 
 @media (min-width: 1024px) {

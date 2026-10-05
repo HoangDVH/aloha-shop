@@ -7,9 +7,7 @@ import type { CampaignUI, CampaignVoucherUI, CampaignViewerUI } from "@/lib/camp
 import { DealsBanner } from "./DealsBanner";
 import { DealsTrust } from "./DealsStrips";
 import { DealsVoucherStrip } from "./DealsVoucherStrip";
-import { DealsFlash } from "./DealsFlash";
 import { DealsBestSellers } from "./DealsBestSellers";
-import { DealsVideoStrip } from "./DealsVideoStrip";
 import { DealsProductTabs } from "./DealsProductTabs";
 import { DealsRules } from "./DealsRules";
 import { DealsMoreFeed } from "./DealsMoreFeed";
@@ -99,19 +97,9 @@ export function DealsOverview({
 
       <DealsVoucherStrip vouchers={vouchers} viewer={viewer} offsetMs={offsetMs} focusIds={focusIds} />
 
-      <LazyMount minHeight={320}>
-        <section id="flash-sale" className="scroll-mt-24">
-          <DealsFlash campaign={campaign} offsetMs={offsetMs} initialSlot={searchParams.get("slot")} />
-        </section>
-      </LazyMount>
-
       <DealsBestSellers campaign={campaign} />
 
-      <LazyMount minHeight={200}>
-        <DealsVideoStrip campaign={campaign} />
-      </LazyMount>
-
-      <DealsProductTabs campaign={campaign} />
+      <DealsProductTabs campaign={campaign} offsetMs={offsetMs} initialSlot={searchParams.get("slot")} />
 
       <LazyMount minHeight={260}>
         <section id="the-le" className="scroll-mt-24 space-y-3">

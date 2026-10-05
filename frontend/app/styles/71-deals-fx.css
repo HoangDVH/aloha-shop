@@ -242,9 +242,76 @@
   animation: aloha-reveal-pop 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+@keyframes aloha-sunburst-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.aloha-sunburst-rays {
+  position: absolute;
+  inset: -70px;
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(251, 191, 36, 0.28) 0deg 12deg,
+    transparent 12deg 24deg
+  );
+  border-radius: 9999px;
+  pointer-events: none;
+  animation: aloha-sunburst-spin 12s linear infinite;
+  mask-image: radial-gradient(circle, rgba(0, 0, 0, 1) 30%, rgba(0, 0, 0, 0) 70%);
+  -webkit-mask-image: radial-gradient(circle, rgba(0, 0, 0, 1) 30%, rgba(0, 0, 0, 0) 70%);
+}
+
+@keyframes aloha-bag-shake-intense {
+  0%, 100% { transform: scale3d(1, 1, 1) rotate(0deg); }
+  15% { transform: scale3d(1.06, 1.06, 1) rotate(-14deg); }
+  30% { transform: scale3d(1.10, 1.10, 1) rotate(14deg); }
+  45% { transform: scale3d(1.12, 1.12, 1) rotate(-10deg); }
+  60% { transform: scale3d(1.15, 1.15, 1) rotate(10deg); }
+  75% { transform: scale3d(1.16, 1.16, 1) rotate(-5deg); }
+  90% { transform: scale3d(1.18, 1.18, 1) rotate(5deg); }
+}
+.aloha-bag-shake-intense {
+  will-change: transform;
+  animation: aloha-bag-shake-intense 0.42s ease-in-out infinite;
+}
+
+@keyframes aloha-jackpot-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.6)) drop-shadow(0 0 16px rgba(225, 29, 72, 0.3));
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 16px rgba(251, 191, 36, 0.9)) drop-shadow(0 0 28px rgba(225, 29, 72, 0.5));
+    transform: scale(1.03);
+  }
+}
+.aloha-jackpot-glow {
+  animation: aloha-jackpot-glow 1.8s ease-in-out infinite;
+}
+
+@keyframes aloha-ticket-shimmer {
+  0% { transform: translateX(-150%) skewX(-20deg); }
+  100% { transform: translateX(250%) skewX(-20deg); }
+}
+.aloha-ticket-shimmer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  animation: aloha-ticket-shimmer 2.5s infinite;
+  pointer-events: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .aloha-mystery-wiggle,
   .aloha-bag-shake,
+  .aloha-bag-shake-intense,
+  .aloha-sunburst-rays,
+  .aloha-jackpot-glow,
+  .aloha-ticket-shimmer::after,
   .aloha-reveal-pop,
   .aloha-cart-bump,
   .aloha-flip,

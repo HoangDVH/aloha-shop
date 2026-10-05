@@ -90,3 +90,31 @@ export async function getAvailablePromotions(): Promise<AvailablePromotionUI[]> 
   }
 }
 
+export const DEFAULT_SHIP_TIERS: AvailablePromotionUI[] = [
+  {
+    id: "ship_tier_30k",
+    title: "Hỗ trợ phí ship 30k",
+    type: "auto",
+    benefitType: "shipping",
+    discountType: "fixed",
+    discountValue: 30_000,
+    minOrderThreshold: 1_000_000,
+    thresholdOperator: ">=",
+    targetCustomer: "all",
+    description: "Tự động áp dụng cho đơn hàng từ 1.000.000đ",
+  },
+  {
+    id: "ship_tier_50k",
+    title: "Hỗ trợ phí ship 50k",
+    type: "auto",
+    benefitType: "shipping",
+    discountType: "fixed",
+    discountValue: 50_000,
+    minOrderThreshold: 2_000_000,
+    thresholdOperator: ">=",
+    targetCustomer: "all",
+    description: "Tự động áp dụng cho đơn hàng từ 2.000.000đ",
+  },
+];
+
+

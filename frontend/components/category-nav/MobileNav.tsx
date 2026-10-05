@@ -10,6 +10,7 @@ import {
   navBarIcon,
   navBarLabel,
   nodeSubs,
+  orderL2Nodes,
 } from "./navLabels";
 import { orderMobileRoots } from "./navSlots";
 
@@ -95,7 +96,7 @@ export function CategoryMobileNav({
   const active = roots.find((r) => r.id === activeId) || roots[0] || null;
   if (!roots.length || !active) return null;
 
-  const l2 = nodeSubs(active);
+  const l2 = orderL2Nodes(active.name, nodeSubs(active));
   const leafOnly = l2
     .filter((n) => !nodeSubs(n).length)
     .filter(mobileTileHasImage)

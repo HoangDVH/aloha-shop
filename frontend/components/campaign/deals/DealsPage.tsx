@@ -8,13 +8,11 @@ import { useCampaignView } from "@/lib/campaign/useCampaignView";
 import { toDealsTab, type DealsTabId } from "@/lib/campaign/dealsTabs";
 import { VoucherVault } from "@/components/voucher/VoucherVault";
 import { QuickTiles } from "@/components/campaign/QuickTiles";
-import { DealsFlash } from "./DealsFlash";
 import { DealsProducts } from "./DealsProducts";
 import { DealsRules } from "./DealsRules";
 import { DealsEmpty } from "./DealsEmpty";
 import { DealsOverview, LazyMount } from "./DealsOverview";
 import { DealsBanner } from "./DealsBanner";
-import { DealsVideoStrip } from "./DealsVideoStrip";
 import { DealsProductTabs } from "./DealsProductTabs";
 import { DealsMoreFeed } from "./DealsMoreFeed";
 import { DealsSectionHead } from "./DealsSectionHead";
@@ -105,7 +103,7 @@ export function DealsPage() {
     switch (activeTab) {
       case "voucher":
         return (
-          <section id="kho-voucher" className="space-y-4">
+          <section id="kho-voucher" className="space-y-3 sm:space-y-4">
             <DealsSectionHead
               icon={voucherKind === "ship" ? Truck : TicketPercent}
               title={voucherKind === "ship" ? "Voucher hỗ trợ phí vận chuyển" : "Kho voucher ưu đãi"}
@@ -115,7 +113,6 @@ export function DealsPage() {
                   : "Lưu mã ngay để áp dụng tối đa 3 tầng giảm giá khi thanh toán"
               }
             />
-            <VoucherKindFilter vouchers={vouchers} active={voucherKind} hrefFor={kindHref} />
             <VoucherVault
               vouchers={shownVouchers}
               viewer={viewer}
@@ -123,15 +120,20 @@ export function DealsPage() {
               variant="full"
               lastHours={lastHours}
               notchBg={cream || "#FFF0F5"}
+              filterNode={
+                <VoucherKindFilter vouchers={vouchers} active={voucherKind} hrefFor={kindHref} />
+              }
             />
           </section>
         );
 
       case "flash-sale":
         return (
-          <section id="flash-sale">
-            <DealsFlash campaign={campaign} offsetMs={offsetMs} initialSlot={searchParams.get("slot")} />
-          </section>
+          <DealsProductTabs
+            campaign={campaign}
+            offsetMs={offsetMs}
+            initialSlot={searchParams.get("slot")}
+          />
         );
 
       case "qua-tang":
@@ -172,9 +174,11 @@ export function DealsPage() {
 
   return (
     <div style={themeStyle}>
-      <div className="mx-auto max-w-7xl space-y-6 px-3 py-3 sm:space-y-8 sm:px-4 sm:py-5">
+      <div className="mx-auto max-w-7xl space-y-4 px-3 py-3 sm:space-y-6 sm:px-4 sm:py-5">
         <DealsBanner campaign={campaign} offsetMs={offsetMs} />
         <QuickTiles
+          variant="tabs"
+          className="hidden sm:block"
           campaign={campaign}
           vouchers={vouchers}
           offsetMs={offsetMs}
@@ -186,12 +190,15 @@ export function DealsPage() {
           {renderActiveContent()}
         </div>
 
-        {activeTab === "flash-sale" || activeTab === "deal-hot" ? (
+        {activeTab === "deal-hot" ? (
           <div className="space-y-8 sm:space-y-12">
-            <LazyMount minHeight={200}>
-              <DealsVideoStrip campaign={campaign} />
+            <DealsProductTabs campaign={campaign} offsetMs={offsetMs} />
+            <LazyMount minHeight={400}>
+              <DealsMoreFeed campaign={campaign} />
             </LazyMount>
-            <DealsProductTabs campaign={campaign} />
+          </div>
+        ) : activeTab === "flash-sale" ? (
+          <div className="space-y-8 sm:space-y-12">
             <LazyMount minHeight={400}>
               <DealsMoreFeed campaign={campaign} />
             </LazyMount>

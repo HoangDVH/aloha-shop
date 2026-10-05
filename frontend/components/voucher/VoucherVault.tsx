@@ -9,6 +9,7 @@ import {
   formatVoucherBadge,
   isUnopenedMystery,
   pctText,
+  sortVouchersGrouped,
   voucherConditionText,
   withDrawn,
 } from "@/lib/voucherFormat";
@@ -81,7 +82,7 @@ function VoucherStatusLine({
 
 /** Giờ chót: vé còn ít lượt lên đầu; khách mới: vé khách mới lên đầu; vé được nhắc tới (popup) luôn đứng đầu. */
 function orderVouchers(list: CampaignVoucherUI[], variant: VaultVariant, lastHours: boolean, focus: string[]) {
-  const out = [...list];
+  const out = sortVouchersGrouped(list);
   if (variant === "newUser") {
     out.sort((a, b) => Number(b.targetCustomer === "new_web") - Number(a.targetCustomer === "new_web"));
   } else if (lastHours) {
@@ -175,6 +176,7 @@ export function VoucherVault({
   notchBg,
   focusIds = [],
   focusLabel = "",
+  filterNode,
 }: {
   vouchers: CampaignVoucherUI[];
   viewer: CampaignViewerUI | null;
@@ -186,6 +188,8 @@ export function VoucherVault({
   focusIds?: string[];
   /** Nhãn nhỏ cạnh tiêu đề vé được nhắc tới, vd. "Từ popup". */
   focusLabel?: string;
+  /** Khối lọc loại voucher đi kèm (hiển thị cùng hàng với nút Lưu tất cả). */
+  filterNode?: React.ReactNode;
 }) {
   const claims = useVoucherClaims();
   const vouchers = rawVouchers.map((v) => withDrawn(v, claims.drawn));
@@ -200,26 +204,27 @@ export function VoucherVault({
 
   return (
     <div>
-      {variant === "full" && canCollect ? (
-        <div className="mb-3 flex justify-end">
-          <button
-            type="button"
-            onClick={claims.collectAll}
-            disabled={claims.collecting}
-            className="group inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[var(--campaign-primary,#C8102E)] via-[#E11D48] to-[#C8102E] bg-[length:200%_auto] px-5 text-sm font-bold text-white shadow-md shadow-rose-950/15 transition-all duration-300 hover:bg-right hover:shadow-lg hover:shadow-rose-950/25 active:scale-95 disabled:opacity-60 select-none cursor-pointer"
-          >
-            <Sparkles size={14} className="text-amber-300 shrink-0 transition-transform duration-300 group-hover:scale-110" />
-            <span>{claims.collecting ? "Đang lưu…" : "Thu thập tất cả"}</span>
-          </button>
+      {variant === "full" && (filterNode || canCollect) ? (
+        <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2 border-b border-rose-100/50 pb-2 sm:pb-3">
+          {filterNode ? <div className="min-w-0 flex-1">{filterNode}</div> : <div />}
+          {canCollect ? (
+            <button
+              type="button"
+              onClick={claims.collectAll}
+              disabled={claims.collecting}
+              className="group inline-flex min-h-[32px] sm:min-h-[38px] shrink-0 items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[var(--campaign-primary,#C8102E)] via-[#E11D48] to-[#C8102E] bg-[length:200%_auto] px-3.5 sm:px-5 text-xs sm:text-sm font-bold text-white shadow-sm shadow-rose-950/15 transition-all duration-300 hover:bg-right hover:shadow-md active:scale-95 disabled:opacity-60 select-none cursor-pointer"
+            >
+              <Sparkles size={13} className="text-amber-300 shrink-0 sm:w-3.5 sm:h-3.5 transition-transform group-hover:scale-110" />
+              <span>{claims.collecting ? "Đang lưu…" : "Lưu tất cả"}</span>
+            </button>
+          ) : null}
         </div>
       ) : null}
       <ul
         className={`${
           variant === "newUser"
-            ? // Popup nhỏ (max-w-lg) → 1 cột full-width, không scroll ngang
-              "flex flex-col gap-3"
-            : // Trang đầy đủ → scroll ngang trên mobile, grid trên sm+
-              "-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x"
+            ? "flex flex-col gap-2.5 sm:gap-3"
+            : "flex flex-col gap-2 sm:gap-2.5 sm:grid sm:grid-cols-2 lg:grid-cols-3"
         } ${focusIds.length && focusLabel ? "pt-2.5" : ""}`}
       >
         {list.map((v) => {
@@ -234,7 +239,7 @@ export function VoucherVault({
             <li
               key={v.id}
               className={`relative flex flex-col h-full ${
-                variant === "newUser" ? "w-full" : "w-[86vw] max-w-[360px] shrink-0 snap-start sm:w-auto sm:max-w-none"
+                variant === "newUser" ? "w-full" : "w-full sm:w-auto"
               }`}
             >
               {focused && focusLabel ? (
@@ -264,12 +269,12 @@ export function VoucherVault({
                   />
                 }
               >
-                <p className="truncate text-xs font-medium text-slate-600">{voucherConditionText(v)}</p>
+                <p className="truncate text-[11px] sm:text-xs font-medium text-slate-600">{voucherConditionText(v)}</p>
                 {v.mystery ? <MysteryOdds mystery={v.mystery} /> : null}
                 {claimedPct != null && left != null ? (
-                  <div className="flex items-center gap-2" title={`Đã lưu ${claimedPct}% số lượt`}>
+                  <div className="flex items-center gap-1.5 sm:gap-2" title={`Đã lưu ${claimedPct}% số lượt`}>
                     <div
-                      className="h-1.5 min-w-8 max-w-24 flex-1 overflow-hidden rounded-full bg-slate-100"
+                      className="h-1.5 min-w-8 max-w-20 sm:max-w-24 flex-1 overflow-hidden rounded-full bg-slate-100"
                       role="progressbar"
                       aria-valuenow={claimedPct}
                       aria-valuemin={0}
@@ -279,15 +284,15 @@ export function VoucherVault({
                       <div className="h-full rounded-full bg-gradient-to-r from-amber-400 to-red-500" style={{ width: `${claimedPct}%` }} />
                     </div>
                     <span
-                      className={`shrink-0 whitespace-nowrap text-[10.5px] font-semibold ${claimedPct >= 80 ? "text-red-600" : "text-slate-500"}`}
+                      className={`shrink-0 whitespace-nowrap text-[10px] sm:text-[10.5px] font-semibold ${claimedPct >= 80 ? "text-red-600" : "text-slate-500"}`}
                     >
                       {left > 0 ? `Còn ${left} lượt` : "Hết lượt"}
                     </span>
                   </div>
                 ) : v.claimRequired && v.claimedCount >= 50 ? (
-                  <p className="text-[10.5px] font-semibold text-slate-500">{v.claimedCount.toLocaleString("vi-VN")} người đã lưu</p>
+                  <p className="text-[10px] sm:text-[10.5px] font-semibold text-slate-500">{v.claimedCount.toLocaleString("vi-VN")} người đã lưu</p>
                 ) : null}
-                <div className="space-y-0.5 text-[11px] font-medium text-slate-500">
+                <div className="flex items-center gap-2 text-[10.5px] sm:text-[11px] font-medium text-slate-500">
                   {v.endDate ? <p>HSD: {vnDate(v.endDate)}</p> : null}
                   <p className="empty:hidden">
                     <VoucherStatusLine v={v} state={state} nowMs={nowMs} offsetMs={offsetMs} />

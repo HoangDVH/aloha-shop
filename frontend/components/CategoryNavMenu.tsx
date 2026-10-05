@@ -11,6 +11,8 @@ export {
   navBarIcon,
   nameMatchesAny,
   toTitleCaseVi,
+  orderL2Nodes,
+  L2_PREFERRED_BY_L1,
 } from "./category-nav/navLabels";
 
 export { CategoryNavBar } from "./category-nav/DesktopNav";

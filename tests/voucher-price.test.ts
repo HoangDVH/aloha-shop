@@ -71,7 +71,7 @@ test("dealsFilters: lọc theo mức giá, URL lạ về 'all'", () => {
     { ma: "B", dealHot: false, hasGift: true, price: 300_000 },
     { ma: "C", dealHot: false, hasGift: true, price: 500_001 },
   ]);
-  assert.deepEqual(c, { all: 3, "deal-hot": 1, "qua-tang": 2, "duoi-300k": 1, "300-500k": 1, "tren-500k": 1 });
+  assert.deepEqual(c, { all: 3, flash: 1, "deal-hot": 1, "qua-tang": 2, "duoi-300k": 1, "300-500k": 1, "tren-500k": 1 });
   assert.equal(toDealsFilter("xyz"), "all");
   assert.equal(toDealsFilter("TREN-500K"), "tren-500k");
 });
