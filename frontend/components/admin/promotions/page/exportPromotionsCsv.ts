@@ -1,5 +1,5 @@
 import dayjs from "dayjs";
-import type { PromotionItem } from "../form/promotionFormModel";
+import { mysteryValueText, type PromotionItem } from "../form/promotionFormModel";
 
 /** Xuất danh sách đợt phát hành ra CSV (kiểu KiotViet). Trả false nếu không có dữ liệu. */
 export function exportPromotionsToCsv(promotions: PromotionItem[]): boolean {
@@ -19,7 +19,7 @@ export function exportPromotionsToCsv(promotions: PromotionItem[]): boolean {
     p.startDate ? dayjs(p.startDate).format("DD/MM/YYYY") : "—",
     p.endDate ? dayjs(p.endDate).format("DD/MM/YYYY") : "Vô thời hạn",
     p.usageLimitTotal != null ? p.usageLimitTotal : "∞",
-    p.discountType === "percentage" ? `${p.discountValue}%` : p.discountValue,
+    mysteryValueText(p) || (p.discountType === "percentage" ? `${p.discountValue}%` : p.discountValue),
     p.status === "active" ? "Đang kích hoạt" : p.status === "paused" ? "Tạm dừng" : "Bản nháp",
   ]);
   const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\r\n");

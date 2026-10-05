@@ -1,5 +1,5 @@
 import type { EvaluatedCandidateUI, PromotionQuoteUI } from "@/components/checkout/PromotionModal";
-import { formatCompactVnd } from "@/lib/voucherFormat";
+import { formatCompactVnd, pctText } from "@/lib/voucherFormat";
 
 export type CartGoal =
   | { kind: "reached"; label: string }
@@ -7,7 +7,7 @@ export type CartGoal =
   | { kind: "claim"; promotionId: string; label: string };
 
 function valueLabel(c: EvaluatedCandidateUI): string {
-  return c.discountType === "percentage" ? `${c.discountValue}%` : formatCompactVnd(c.discountValue).toUpperCase();
+  return c.discountType === "percentage" ? pctText(c) : formatCompactVnd(c.discountValue).toUpperCase();
 }
 
 const isGoods = (c: EvaluatedCandidateUI) => c.benefitType !== "shipping";

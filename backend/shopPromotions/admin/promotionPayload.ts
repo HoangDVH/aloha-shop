@@ -1,4 +1,5 @@
 import type { PromotionDoc } from "../types.js";
+import { parseMysteryConfig, type MysteryConfig } from "../mystery.js";
 
 export function newId(prefix = "pro"): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -61,6 +62,37 @@ function claimFieldsError(doc: Partial<PromotionDoc>): string | null {
   return null;
 }
 
+/** Túi mù: chỉ voucher giảm hàng theo %, bắt buộc trần VND và bấm lưu; mệnh giá gốc = mức thấp nhất. */
+function mysteryRulesError(doc: Partial<PromotionDoc>): string | null {
+  if (!doc.mystery) return null;
+  if (doc.benefitType === "shipping") return "Túi mù chỉ dùng cho voucher giảm giá hàng";
+  if (!(Number(doc.maxDiscountVnd) > 0)) return "Voucher túi mù cần nhập mức giảm tối đa (VND)";
+  return null;
+}
+
+function mysteryForcedFields(m: MysteryConfig): Partial<PromotionDoc> {
+  return { discountType: "percentage", discountValue: m.tiers[0].percent, claimRequired: true };
+}
+
+const mysterySignature = (m: MysteryConfig | null | undefined): string =>
+  m?.tiers?.length ? JSON.stringify(m.tiers.map((t) => [t.percent, t.weight, t.limit ?? null])) : "";
+
+/**
+ * Đọc `b.mystery` cho PATCH. Bảng mức không đổi thì giữ nguyên bản ghi cũ (không reset suất đã bốc);
+ * `null` = tắt túi mù.
+ */
+function mysteryUpdateOf(b: Body, existing: PromotionDoc): { error: string } | { set: Partial<PromotionDoc> } {
+  const parsed = parseMysteryConfig(b.mystery);
+  if (parsed.error) return { error: parsed.error };
+  const next = parsed.value;
+  if (next === undefined) return { set: existing.mystery ? mysteryForcedFields(existing.mystery) : {} };
+  if (next === null) return { set: existing.mystery ? { mystery: null } : {} };
+  if (mysterySignature(next) === mysterySignature(existing.mystery)) {
+    return { set: mysteryForcedFields(existing.mystery) };
+  }
+  return { set: { mystery: next, ...mysteryForcedFields(next) } };
+}
+
 /** Trường quyết định giá trị voucher — khoá khi đã có khách lưu để khách không bị đổi điều kiện. */
 const LOCKED_WHEN_CLAIMED = [
   "discountType",
@@ -87,7 +119,8 @@ export function claimedEditError(existing: PromotionDoc, set: Partial<PromotionD
   const changed = LOCKED_WHEN_CLAIMED.filter(
     (k) => k in set && !sameValue(set[k], existing[k])
   );
-  if (!changed.length) return null;
+  const mysteryChanged = "mystery" in set && mysterySignature(set.mystery) !== mysterySignature(existing.mystery);
+  if (!changed.length && !mysteryChanged) return null;
   return `Đã có ${claimed} khách lưu voucher này nên không sửa được giá trị và điều kiện. Hãy nhân bản thành voucher mới.`;
 }
 
@@ -100,6 +133,9 @@ export function buildNewPromotion(
   const name = String(b.name || "").trim();
   const title = String(b.title || name).trim();
   if (!name) return { ok: false, status: 400, error: "Vui lòng nhập tên chương trình" };
+  const mystery = parseMysteryConfig(b.mystery);
+  if ("error" in mystery) return { ok: false, status: 400, error: mystery.error };
+  if (mystery.value) b = { ...b, ...mysteryForcedFields(mystery.value) };
 
   const discountValue = Number(b.discountValue);
   if (!Number.isFinite(discountValue) || discountValue <= 0) {
@@ -143,6 +179,7 @@ export function buildNewPromotion(
     combineWithShip: b.combineWithShip !== false,
     excludeFlash: b.excludeFlash === true,
     ...claimFieldsOf(b),
+    ...(mystery.value ? { mystery: mystery.value } : {}),
     claimedCount: 0,
     priority: Number(b.priority) || 0,
     revision: 1,
@@ -151,7 +188,7 @@ export function buildNewPromotion(
     updatedBy: actor,
   };
 
-  const shipErr = shippingPromotionError(doc) || claimFieldsError(doc);
+  const shipErr = shippingPromotionError(doc) || claimFieldsError(doc) || mysteryRulesError(doc);
   if (shipErr) return { ok: false, status: 400, error: shipErr };
   Object.assign(doc, applyShippingPromotionDefaults(doc));
   return { ok: true, value: doc };
@@ -244,9 +281,16 @@ export function buildPromotionUpdate(
   }
   applyLimitFields(b, set);
   Object.assign(set, claimFieldsOf(b));
+  const mystery = mysteryUpdateOf(b, existing);
+  if ("error" in mystery) return { ok: false, status: 400, error: mystery.error };
+  Object.assign(set, mystery.set);
 
   const merged = { ...existing, ...set } as PromotionDoc;
-  const shipErr = shippingPromotionError(merged) || claimFieldsError(merged) || claimedEditError(existing, set);
+  const shipErr =
+    shippingPromotionError(merged) ||
+    claimFieldsError(merged) ||
+    mysteryRulesError(merged) ||
+    claimedEditError(existing, set);
   if (shipErr) return { ok: false, status: 400, error: shipErr };
   Object.assign(set, applyShippingPromotionDefaults(merged));
   return { ok: true, value: set };

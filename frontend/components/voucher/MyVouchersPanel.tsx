@@ -8,6 +8,7 @@ import type { WalletItemState, WalletItemUI } from "@/lib/campaign/walletApi";
 import { formatVoucherBadge, voucherConditionText, voucherHeadline, voucherUseHref } from "@/lib/voucherFormat";
 import { TicketLine, VoucherTicket, type TicketTone } from "./VoucherTicket";
 import { ReturnedBadge } from "./ReturnedBadge";
+import { MysteryOdds } from "./MysteryOdds";
 
 type WalletTab = WalletItemUI["tab"];
 
@@ -68,6 +69,7 @@ function WalletRow({ item }: { item: WalletItemUI }) {
       }
     >
       <p className="text-[11px] text-slate-500">{voucherConditionText(v)}</p>
+      {v.mystery ? <MysteryOdds mystery={v.mystery} /> : null}
       {item.state === "upcoming" && v.startDate ? (
         <TicketLine icon={<CalendarClock size={12} aria-hidden />}>Dùng từ {vnDate(v.startDate)}</TicketLine>
       ) : v.endDate && item.tab === "active" ? (

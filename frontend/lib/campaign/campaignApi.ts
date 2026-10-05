@@ -1,4 +1,5 @@
 import { exitPreview, previewNow, readPreview } from "./previewMode";
+import type { MysteryInfo } from "../voucherFormat";
 
 export type CampaignPhase = "upcoming" | "teaser" | "live" | "lastHours" | "ended";
 
@@ -67,6 +68,7 @@ export type CampaignVoucherUI = {
   claimLimitTotal: number | null;
   claimedCount: number;
   claimStartDate: string | null;
+  mystery?: MysteryInfo;
 };
 
 export type CampaignViewerUI = {

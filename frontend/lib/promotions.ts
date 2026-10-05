@@ -1,4 +1,5 @@
 import type { PromotionQuoteUI } from "@/components/checkout/PromotionModal";
+import type { MysteryInfo } from "@/lib/voucherFormat";
 
 export type PromotionQuoteRequest = {
   items: Array<{
@@ -72,6 +73,7 @@ export interface AvailablePromotionUI {
   productMas?: string[];
   startDate?: string;
   endDate?: string;
+  mystery?: MysteryInfo;
 }
 
 export async function getAvailablePromotions(): Promise<AvailablePromotionUI[]> {

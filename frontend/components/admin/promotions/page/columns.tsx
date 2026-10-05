@@ -4,7 +4,7 @@ import { Button, Tag, Tooltip } from "antd";
 import { Check, ChevronDown, ChevronUp, Copy } from "lucide-react";
 import dayjs from "dayjs";
 import { formatVnd } from "@/lib/api";
-import type { PromotionItem } from "../form/promotionFormModel";
+import { mysteryValueText, type PromotionItem } from "../form/promotionFormModel";
 import { DotPill, PromotionStatusText } from "./statusTags";
 import type { AllCodeItem } from "./types";
 
@@ -60,9 +60,10 @@ export function promotionColumns(expandedRowKeys: string[]) {
       align: "right" as const,
       render: (_: any, r: PromotionItem) => (
         <span className="text-xs font-semibold text-slate-800">
-          {r.discountType === "percentage"
-            ? `${r.discountValue}%`
-            : (r.discountValue || 0).toLocaleString("vi-VN")}
+          {mysteryValueText(r) ||
+            (r.discountType === "percentage"
+              ? `${r.discountValue}%`
+              : (r.discountValue || 0).toLocaleString("vi-VN"))}
         </span>
       ),
     },

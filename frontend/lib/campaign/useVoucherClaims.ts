@@ -29,6 +29,7 @@ export function useVoucherClaims(opts: { onClaimed?: () => void } = {}) {
   const claimAll = useClaimAll();
   const [loginOpen, setLoginOpen] = useState(false);
   const [claimedVoucherId, setClaimedVoucherId] = useState<string | null>(null);
+  const [justDrawn, setJustDrawn] = useState<Record<string, number>>({});
   const batchKey = useRef(newKey());
   const pendingId = claimOne.isPending ? claimOne.variables : null;
 
@@ -41,8 +42,12 @@ export function useVoucherClaims(opts: { onClaimed?: () => void } = {}) {
       const r = await claimOne.mutateAsync(promotionId).catch(() => null);
       if (!r) return toast.push("Mất kết nối, vui lòng thử lại.");
       if (!r.ok) return toast.push(r.error);
+      if (r.drawnPercent) setJustDrawn((m) => ({ ...m, [promotionId]: r.drawnPercent! }));
       if (r.already) {
-        toast.push(r.message || "Bạn đã lưu voucher này vào ví rồi", { href: "/tai-khoan?tab=voucher", hrefLabel: "Xem ví" });
+        const msg = r.drawnPercent
+          ? `Bạn đã bóc túi này rồi: giảm ${r.drawnPercent}%`
+          : r.message || "Bạn đã lưu voucher này vào ví rồi";
+        toast.push(msg, { href: "/tai-khoan?tab=voucher", hrefLabel: "Xem ví" });
       } else {
         setClaimedVoucherId(promotionId);
       }
@@ -96,6 +101,8 @@ export function useVoucherClaims(opts: { onClaimed?: () => void } = {}) {
 
   return {
     claimedIds: new Set(wallet.data?.claimedIds || []),
+    /** Voucher túi mù đã bóc: promotionId → % trúng. */
+    drawn: { ...wallet.data?.drawn, ...justDrawn },
     claim,
     collectAll,
     pendingId,

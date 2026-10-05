@@ -1,3 +1,5 @@
+import type { MysteryConfig, PublicMystery } from "./mystery.js";
+
 export const PROMOTIONS_COL = "aloha_shop_promotions";
 export const PROMOTION_CODES_COL = "aloha_shop_promotion_codes";
 export const PROMOTION_REDEMPTIONS_COL = "aloha_shop_promotion_redemptions";
@@ -47,6 +49,10 @@ export interface PromotionDoc {
   claimLimitTotal?: number | null; // Tổng lượt lưu tối đa; thiếu / 0 = không giới hạn
   claimedCount?: number; // Số lượt đã lưu
   claimStartDate?: string | null; // Mở lưu từ (ISO UTC), có thể sớm hơn startDate
+  /** Túi mù: % bốc ngẫu nhiên theo tỉ lệ khi lưu ví (bắt buộc claimRequired, discountValue = mức thấp nhất). */
+  mystery?: MysteryConfig | null;
+  /** Chỉ có trên bản sao theo khách (không lưu DB): mức túi mù khách đã bốc. */
+  drawnPercent?: number;
   priority: number; // Độ ưu tiên khi chọn ưu đãi tự động tốt nhất (số càng cao ưu tiên càng lớn)
   revision: number; // Phiên bản sửa đổi để chống ghi đè đồng thời
   createdAt: string;
@@ -137,6 +143,7 @@ export interface EvaluatedCandidate {
   /** Voucher phải lưu mà khách chưa lưu — giao diện hiện nút "Lưu" ngay trong modal. */
   needsClaim?: boolean;
   benefitType?: PromotionBenefitType;
+  mystery?: PublicMystery;
   /** Tiền hàng còn thiếu để đủ "Đơn từ X" (chỉ có khi đó là lý do duy nhất). */
   shortfall?: number;
 }

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { ReturnedBadge, type VoucherReturnInfo } from "@/components/voucher/ReturnedBadge";
 import { formatVnd } from "@/lib/api";
+import { pctText, type MysteryInfo } from "@/lib/voucherFormat";
 import dayjs from "dayjs";
 
 export interface EvaluatedCandidateUI {
@@ -43,6 +44,7 @@ export interface EvaluatedCandidateUI {
   shortfall?: number;
   /** Voucher được hoàn về vì đơn dùng nó trước đó đã huỷ / hết hạn thanh toán. */
   returnedFrom?: VoucherReturnInfo;
+  mystery?: MysteryInfo;
 }
 
 export interface PromotionQuoteUI {
@@ -159,7 +161,7 @@ export function PromotionModal({
 
   const getStubValue = (c: EvaluatedCandidateUI) => {
     if (c.discountType === "percentage") {
-      return `${c.discountValue}%`;
+      return pctText(c);
     }
     const val = Number(c.discountValue) || 0;
     if (val >= 1000) {
@@ -535,10 +537,19 @@ export function PromotionModal({
                   <span className="text-slate-400">Mức giảm:</span>
                   <span className="font-bold text-red-600">
                     {viewDetailCand.discountType === "percentage"
-                      ? `${viewDetailCand.discountValue}% ${viewDetailCand.maxDiscountVnd ? `(tối đa ${formatVnd(viewDetailCand.maxDiscountVnd)})` : ""}`
+                      ? `${pctText(viewDetailCand)} ${viewDetailCand.maxDiscountVnd ? `(tối đa ${formatVnd(viewDetailCand.maxDiscountVnd)})` : ""}`
                       : formatVnd(viewDetailCand.discountValue)}
                   </span>
                 </div>
+
+                {viewDetailCand.mystery && !viewDetailCand.mystery.drawnPercent ? (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-slate-400 shrink-0">Tỉ lệ túi mù:</span>
+                    <span className="text-right font-medium text-slate-700">
+                      {viewDetailCand.mystery.tiers.map((t) => `${t.percent}%: ${t.chance}%`).join(" · ")}
+                    </span>
+                  </div>
+                ) : null}
 
                 <div className="flex justify-between">
                   <span className="text-slate-400">Đơn tối thiểu:</span>

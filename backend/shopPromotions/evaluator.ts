@@ -9,6 +9,7 @@ import type {
   ShippingPromotionResult,
 } from "./types.js";
 import type { RegionMatch } from "../shopShipping/shippingRegions.js";
+import { publicMystery } from "./mystery.js";
 
 function formatVnd(amount: number): string {
   return `${amount.toLocaleString("vi-VN")}đ`;
@@ -358,6 +359,7 @@ export function evaluatePromotions(args: {
       endDate: promo.endDate,
       description: promo.description,
       ...(shortfall > 0 ? { shortfall } : {}),
+      ...(promo.mystery ? { mystery: publicMystery(promo) } : {}),
     });
   }
 

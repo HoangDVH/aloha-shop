@@ -210,7 +210,42 @@
   animation: aloha-confetti-burst 0.7s cubic-bezier(0.1, 0.8, 0.2, 1) both;
 }
 
+/* Túi mù: nút "Bóc ngay" lắc nhẹ, túi rung khi đang bóc, mức trúng nảy lên khi mở */
+@keyframes aloha-mystery-wiggle {
+  0%, 84%, 100% { transform: rotate(0); }
+  88% { transform: rotate(-6deg); }
+  92% { transform: rotate(6deg); }
+  96% { transform: rotate(-3deg); }
+}
+.aloha-mystery-wiggle {
+  animation: aloha-mystery-wiggle 2.6s ease-in-out infinite;
+}
+@keyframes aloha-bag-shake {
+  0%, 100% { transform: rotate(0) scale3d(1, 1, 1); }
+  15% { transform: rotate(-12deg) scale3d(1.04, 1.04, 1); }
+  30% { transform: rotate(10deg) scale3d(1.06, 1.06, 1); }
+  45% { transform: rotate(-8deg) scale3d(1.08, 1.08, 1); }
+  60% { transform: rotate(6deg) scale3d(1.1, 1.1, 1); }
+  75% { transform: rotate(-4deg) scale3d(1.12, 1.12, 1); }
+}
+.aloha-bag-shake {
+  will-change: transform;
+  animation: aloha-bag-shake 0.55s ease-in-out infinite;
+}
+@keyframes aloha-reveal-pop {
+  0% { opacity: 0; transform: scale3d(0.2, 0.2, 1); }
+  60% { opacity: 1; transform: scale3d(1.18, 1.18, 1); }
+  100% { opacity: 1; transform: scale3d(1, 1, 1); }
+}
+.aloha-reveal-pop {
+  will-change: transform, opacity;
+  animation: aloha-reveal-pop 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .aloha-mystery-wiggle,
+  .aloha-bag-shake,
+  .aloha-reveal-pop,
   .aloha-cart-bump,
   .aloha-flip,
   .aloha-saved-pop,

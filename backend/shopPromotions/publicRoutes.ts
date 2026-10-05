@@ -10,6 +10,7 @@ import {
   type CartItemToEvaluate,
 } from "./types.js";
 import { isShippingPromotion } from "./evaluator.js";
+import { publicMystery } from "./mystery.js";
 import { checkIsNewWebBuyer } from "./customerEligibility.js";
 import { customerKeyFor, evaluateGoodsPromotions, shipVoucherEnabled } from "./checkoutPromotions.js";
 import { shopRateLimitOrReject } from "../shopRateLimit.js";
@@ -108,6 +109,7 @@ export function registerShopPromotionsPublicRoutes(
           productMas: p.productMas,
           startDate: p.startDate,
           endDate: p.endDate,
+          ...(p.mystery ? { mystery: publicMystery(p) } : {}),
         })),
       });
     } catch (e: any) {

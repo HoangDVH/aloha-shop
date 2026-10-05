@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import type { Db } from "mongodb";
 import { applyShopCors } from "../../shopCors.js";
 import { PROMOTIONS_COL, type PromotionDoc } from "../../shopPromotions/types.js";
+import { publicMystery } from "../../shopPromotions/mystery.js";
 import { campaignEnabled } from "../flags.js";
 import { getCurrentCampaign, type ActiveCampaign } from "../currentCampaign.js";
 import { getPhase, phaseEndsAt } from "../campaignPhase.js";
@@ -44,6 +45,7 @@ async function publicVouchers(db: Db, ids: string[], nowIso: string) {
       claimLimitTotal: (p as any).claimLimitTotal ?? null,
       claimedCount: (p as any).claimedCount ?? 0,
       claimStartDate: (p as any).claimStartDate ?? null,
+      ...(p.mystery ? { mystery: publicMystery(p) } : {}),
     }));
 }
 

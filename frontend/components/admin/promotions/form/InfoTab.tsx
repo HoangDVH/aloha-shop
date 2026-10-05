@@ -14,6 +14,7 @@ import {
 import { Info } from "lucide-react";
 import { CollapsibleCard } from "./CollapsibleCard";
 import { ClaimSection } from "./ClaimSection";
+import { MysterySection } from "./MysterySection";
 import { AlohaDateRangePicker } from "../AlohaDateRangePicker";
 import {
   SHIPPING_REGION_OPTIONS,
@@ -80,7 +81,7 @@ function BenefitTypeRow({ editingItem, isShipping, onBenefitTypeChange }: Props)
   );
 }
 
-function NameCodeValueRow({ isShipping }: Props) {
+function NameCodeValueRow({ isShipping, mysteryOn }: Props & { mysteryOn: boolean }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 items-start">
       <div className="md:col-span-5">
@@ -122,7 +123,9 @@ function NameCodeValueRow({ isShipping }: Props) {
                 title={
                   isShipping
                     ? "Số tiền phí ship tối đa được hỗ trợ mỗi đơn (VNĐ)"
-                    : "Giá trị chiết khấu khi áp dụng voucher (theo VNĐ hoặc %)"
+                    : mysteryOn
+                      ? "Voucher túi mù: mệnh giá do khách bốc trúng theo bảng mức bên dưới"
+                      : "Giá trị chiết khấu khi áp dụng voucher (theo VNĐ hoặc %)"
                 }
               />
             </span>
@@ -139,6 +142,7 @@ function NameCodeValueRow({ isShipping }: Props) {
               <InputNumber
                 className="flex-1 !h-9 !rounded-md border-slate-300 font-semibold text-slate-900"
                 min={1}
+                disabled={mysteryOn}
                 formatter={formatThousands}
                 parser={parseThousands}
               />
@@ -146,7 +150,7 @@ function NameCodeValueRow({ isShipping }: Props) {
             <Form.Item name="discountType" noStyle>
               <Select
                 className="!w-20 !h-9"
-                disabled={isShipping}
+                disabled={isShipping || mysteryOn}
                 options={[
                   { label: "%", value: "percentage" },
                   { label: "VND", value: "fixed" },
@@ -321,12 +325,21 @@ function NotesAndOptions({ isShipping }: Props) {
 
 /** Tab "Thông tin" của form voucher. */
 export function InfoTab(props: Props) {
+  const mysteryOn = Form.useWatch("mysteryOn", { form: props.form, preserve: true }) === true && !props.isShipping;
   return (
     <div className="space-y-4">
       <BenefitTypeRow {...props} />
-      <NameCodeValueRow {...props} />
+      <NameCodeValueRow {...props} mysteryOn={mysteryOn} />
       <ValiditySection {...props} />
       <ConditionSection {...props} />
+      {!props.isShipping ? (
+        <MysterySection
+          form={props.form}
+          editingItem={props.editingItem}
+          collapsed={!!props.collapsed.tuiMu}
+          onToggle={() => props.toggle("tuiMu")}
+        />
+      ) : null}
       <ClaimSection
         form={props.form}
         editingItem={props.editingItem}

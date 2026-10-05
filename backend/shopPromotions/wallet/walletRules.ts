@@ -19,8 +19,9 @@ import {
   type PromotionCodeDoc,
   type PromotionDoc,
 } from "../types.js";
+import { applyDrawnPercents, publicMystery } from "../mystery.js";
 import { claimByCode } from "./walletClaim.js";
-import { WALLET_MESSAGES, isClaimFail, savedPromotionIds } from "./walletService.js";
+import { WALLET_MESSAGES, drawnPercentsFor, isClaimFail, savedPromotionIds } from "./walletService.js";
 
 export type BuyerPromotionInput = {
   now: Date;
@@ -65,6 +66,7 @@ export function noticeFor(p: PromotionDoc, reason: string, extra: Partial<Evalua
     targetCustomer: p.targetCustomer,
     endDate: p.endDate,
     description: p.description,
+    ...(p.mystery ? { mystery: publicMystery(p) } : {}),
     ...extra,
   };
 }
@@ -162,8 +164,9 @@ export async function loadBuyerPromotions(db: Db, input: BuyerPromotionInput): P
   }
   const ruled = applyBuyerRules(all, { status, campaignVoucherIds, saved, walletOn });
   const seen = new Set(ruled.notices.map((n) => n.promotionId));
+  const drawn = walletOn ? await drawnPercentsFor(db, input.accountId) : new Map<string, number>();
   return {
-    promotions: ruled.promotions,
+    promotions: applyDrawnPercents(ruled.promotions, drawn),
     notices: [...ruled.notices, ...extra.filter((n) => !seen.has(n.promotionId))],
     status,
     codePromotionId: codeDoc?.promotionId,

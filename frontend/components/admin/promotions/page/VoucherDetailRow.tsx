@@ -5,7 +5,7 @@ import { Button, Table, App } from "antd";
 import { Check, ChevronDown, ChevronUp, Copy, Edit, Plus } from "lucide-react";
 import dayjs from "dayjs";
 import { formatVnd } from "@/lib/api";
-import { shippingRegionLabel, type PromotionItem } from "../form/promotionFormModel";
+import { mysteryValueText, shippingRegionLabel, type PromotionItem } from "../form/promotionFormModel";
 import { PromotionStatusText } from "./statusTags";
 import type { RedemptionLog } from "./types";
 
@@ -54,6 +54,8 @@ function targetCustomerLabel(t: PromotionItem["targetCustomer"]): string {
 }
 
 function discountLabel(r: PromotionItem): string {
+  const mystery = mysteryValueText(r);
+  if (mystery) return mystery;
   return r.discountType === "percentage"
     ? `${r.discountValue}%`
     : (r.discountValue || 0).toLocaleString("vi-VN");

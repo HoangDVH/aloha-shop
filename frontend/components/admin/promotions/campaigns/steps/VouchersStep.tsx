@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Checkbox, Input, Spin, Switch, App } from "antd";
 import { Search, Ticket, CheckCircle2 } from "lucide-react";
 import type { CampaignContentAdmin, FieldError } from "@/lib/campaign/campaignAdminApi";
-import type { PromotionItem } from "@/components/admin/promotions/form/promotionFormModel";
+import { mysteryValueText, type PromotionItem } from "@/components/admin/promotions/form/promotionFormModel";
 import { VoucherTicket } from "@/components/voucher/VoucherTicket";
 import { voucherConditionText, voucherHeadline } from "@/lib/voucherFormat";
 import { fieldErrorsFor } from "../wizardModel";
@@ -59,9 +59,11 @@ function VoucherCard({
   const ship = v.benefitType === "shipping";
   const title = v.name || v.title;
   const customerTitle = v.title && v.title !== title ? v.title : "";
+  const plain = { ...v, mystery: undefined };
+  const mystery = mysteryValueText(v);
   return (
     <VoucherTicket
-      stubValue={voucherHeadline(v)}
+      stubValue={mystery ? mystery.replace(" túi mù", "") : voucherHeadline(plain)}
       tone={ship ? "cream" : "green"}
       title={title}
       selected={checked}
@@ -85,7 +87,10 @@ function VoucherCard({
           Khách thấy: {customerTitle}
         </div>
       ) : null}
-      <div className="text-[11px] text-slate-500">{voucherConditionText(v)}</div>
+      <div className="text-[11px] text-slate-500">
+        {mystery ? "Túi mù · " : ""}
+        {voucherConditionText(plain)}
+      </div>
       {blocked ? (
         <div className={`text-[11px] font-medium ${checked ? "text-rose-600" : "text-amber-700"}`}>
           {checked

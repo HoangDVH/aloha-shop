@@ -1,5 +1,13 @@
 /** Định dạng chữ trên vé / nhãn voucher, dùng chung cho PDP, kho voucher và checkout. */
 
+/** Voucher túi mù: khoảng %, tỉ lệ trúng từng mức và mức khách đã bóc (nếu có). */
+export type MysteryInfo = {
+  min: number;
+  max: number;
+  tiers: { percent: number; chance: number }[];
+  drawnPercent?: number;
+};
+
 export type VoucherLike = {
   benefitType?: "goods" | "shipping";
   discountType: "percentage" | "fixed";
@@ -7,7 +15,26 @@ export type VoucherLike = {
   maxDiscountVnd?: number;
   minOrderThreshold?: number;
   targetCustomer?: string;
+  mystery?: MysteryInfo;
 };
+
+/** Túi mù chưa bóc. */
+export function isUnopenedMystery(p: Pick<VoucherLike, "mystery">): boolean {
+  return Boolean(p.mystery && !p.mystery.drawnPercent);
+}
+
+/** "12%" — túi mù chưa bóc ghi khoảng "10–15%", đã bóc ghi mức trúng. */
+export function pctText(p: Pick<VoucherLike, "discountValue" | "mystery">): string {
+  if (p.mystery?.drawnPercent) return `${p.mystery.drawnPercent}%`;
+  if (p.mystery) return `${p.mystery.min}–${p.mystery.max}%`;
+  return `${p.discountValue}%`;
+}
+
+/** Gắn mức khách đã bóc (từ ví) vào voucher túi mù để mọi nhãn hiện đúng % của khách. */
+export function withDrawn<T extends VoucherLike & { id: string }>(v: T, drawn?: Record<string, number>): T {
+  const pct = v.mystery ? drawn?.[v.id] : undefined;
+  return pct ? { ...v, discountValue: pct, mystery: { ...v.mystery!, drawnPercent: pct } } : v;
+}
 
 /** Rút gọn số tiền: 20000 -> 20k, 300000 -> 300k, 1000000 -> 1tr */
 export function formatCompactVnd(val: number): string {
@@ -43,7 +70,7 @@ export function formatVoucherBadge(p: VoucherLike): { label: string; type: "good
   }
   if (p.targetCustomer === "new_web") {
     if (p.discountType === "percentage") {
-      return { label: `Khách mới giảm ${p.discountValue}%`, type: "goods" };
+      return { label: `Khách mới giảm ${pctText(p)}`, type: "goods" };
     }
     return { label: `Khách mới giảm ${formatCompactVnd(p.discountValue)}`, type: "goods" };
   }
@@ -54,7 +81,7 @@ export function formatVoucherBadge(p: VoucherLike): { label: string; type: "good
     }
     return { label: text, type: "goods" };
   }
-  let text = `Giảm ${p.discountValue}%`;
+  let text = `Giảm ${pctText(p)}`;
   if (p.maxDiscountVnd && p.maxDiscountVnd > 0) {
     text += ` tối đa ${formatCompactVnd(p.maxDiscountVnd)}`;
   } else if (p.minOrderThreshold && p.minOrderThreshold > 0) {
@@ -69,7 +96,7 @@ export function voucherHeadline(p: VoucherLike): string {
     if (p.discountType === "fixed" && p.discountValue > 0) return `SHIP ${formatCompactVnd(p.discountValue).toUpperCase()}`;
     return p.discountType === "percentage" && p.discountValue > 0 ? `SHIP ${p.discountValue}%` : "HỖ TRỢ SHIP";
   }
-  if (p.discountType === "percentage") return `${p.discountValue}%`;
+  if (p.discountType === "percentage") return pctText(p);
   return formatCompactVnd(p.discountValue).toUpperCase();
 }
 

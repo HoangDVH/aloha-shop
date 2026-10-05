@@ -5,7 +5,7 @@ import { Ticket, Truck, Info, X, Check, Calendar, ArrowRight } from "lucide-reac
 import { getAvailablePromotions, type AvailablePromotionUI } from "@/lib/promotions";
 import type { ShopProduct } from "@/lib/api";
 import { formatVnd } from "@/lib/api";
-import { formatVoucherBadge } from "@/lib/voucherFormat";
+import { formatVoucherBadge, pctText } from "@/lib/voucherFormat";
 
 interface ProductPromotionBadgesProps {
   product: ShopProduct;
@@ -204,7 +204,7 @@ export function ProductPromotionBadges({
                   <span className="text-slate-500">Mức giảm:</span>
                   <span className="font-semibold text-rose-600">
                     {selectedPromo.discountType === "percentage"
-                      ? `Giảm ${selectedPromo.discountValue}%${
+                      ? `Giảm ${pctText(selectedPromo)}${
                           selectedPromo.maxDiscountVnd
                             ? ` (Tối đa ${formatVnd(selectedPromo.maxDiscountVnd)})`
                             : ""

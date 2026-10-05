@@ -7,6 +7,7 @@ import { VOUCHER_WALLET_COL } from "../../shopCampaigns/types.js";
 import { CAMPAIGN_ERROR_MESSAGES } from "../../shopCampaigns/messages.js";
 import { voucherWalletEnabled } from "../../shopCampaigns/flags.js";
 import { PROMOTIONS_COL, type PromotionDoc } from "../types.js";
+import { drawMysteryPercent, isMystery, returnMysteryDraw } from "../mystery.js";
 
 export type WalletStatus = "saved" | "held" | "used" | "expired";
 export type WalletSource = "vault" | "batch" | "code";
@@ -21,6 +22,8 @@ export type WalletDoc = {
   savedAt: string;
   updatedAt: string;
   usedAt?: string | null;
+  /** Voucher túi mù: mức % đã bốc lúc lưu, cố định cho tài khoản này. */
+  drawnPercent?: number;
 };
 
 export type ClaimFailCode =
@@ -35,7 +38,7 @@ export type ClaimFailCode =
   | "wallet_disabled";
 
 export type ClaimResult =
-  | { ok: true; already: boolean; promotionId: string; message: string }
+  | { ok: true; already: boolean; promotionId: string; message: string; drawnPercent?: number }
   | { ok: false; status: number; code: ClaimFailCode; error: string; promotionId: string };
 
 export function isClaimFail(r: ClaimResult): r is Extract<ClaimResult, { ok: false }> {
@@ -119,11 +122,27 @@ export async function insertWalletEntry(
 ): Promise<ClaimResult> {
   const col = db.collection<WalletDoc>(VOUCHER_WALLET_COL);
   const _id = walletId(promo.id, accountId);
-  if (await col.findOne({ _id }, { projection: { _id: 1 } })) {
-    return { ok: true, already: true, promotionId: promo.id, message: WALLET_MESSAGES.already };
-  }
+  const alreadyResult = async (): Promise<ClaimResult> => {
+    const row = await col.findOne({ _id }, { projection: { drawnPercent: 1 } });
+    return {
+      ok: true,
+      already: true,
+      promotionId: promo.id,
+      message: WALLET_MESSAGES.already,
+      ...(row?.drawnPercent ? { drawnPercent: row.drawnPercent } : {}),
+    };
+  };
+  if (await col.findOne({ _id }, { projection: { _id: 1 } })) return alreadyResult();
   if (!(await reserveClaimSlot(db, promo.id))) {
     return fail("claim_limit", 409, CAMPAIGN_ERROR_MESSAGES.claim_limit, promo.id);
+  }
+  let drawnPercent: number | null = null;
+  if (isMystery(promo)) {
+    drawnPercent = await drawMysteryPercent(db, promo);
+    if (drawnPercent == null) {
+      await returnClaimSlot(db, promo.id);
+      return fail("claim_limit", 409, CAMPAIGN_ERROR_MESSAGES.claim_limit, promo.id);
+    }
   }
   try {
     await col.insertOne({
@@ -135,15 +154,31 @@ export async function insertWalletEntry(
       orderCode: null,
       savedAt: nowIso,
       updatedAt: nowIso,
+      ...(drawnPercent != null ? { drawnPercent } : {}),
     });
   } catch (e) {
     await returnClaimSlot(db, promo.id);
-    if (isDuplicateKey(e)) {
-      return { ok: true, already: true, promotionId: promo.id, message: WALLET_MESSAGES.already };
-    }
+    if (drawnPercent != null) await returnMysteryDraw(db, promo.id, drawnPercent);
+    if (isDuplicateKey(e)) return alreadyResult();
     throw e;
   }
-  return { ok: true, already: false, promotionId: promo.id, message: WALLET_MESSAGES.saved };
+  return {
+    ok: true,
+    already: false,
+    promotionId: promo.id,
+    message: WALLET_MESSAGES.saved,
+    ...(drawnPercent != null ? { drawnPercent } : {}),
+  };
+}
+
+/** Mức túi mù đã bốc của tài khoản: promotionId → %, chỉ các voucher đang `saved`. */
+export async function drawnPercentsFor(db: Db, accountId: string | undefined): Promise<Map<string, number>> {
+  if (!accountId) return new Map();
+  const rows = await db
+    .collection<WalletDoc>(VOUCHER_WALLET_COL)
+    .find({ accountId, status: "saved", drawnPercent: { $gt: 0 } }, { projection: { promotionId: 1, drawnPercent: 1 } })
+    .toArray();
+  return new Map(rows.map((r) => [r.promotionId, r.drawnPercent as number]));
 }
 
 /** Các voucher trong ví đang dùng được (status saved) của một tài khoản. */

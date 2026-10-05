@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Lock } from "lucide-react";
+import { Gift, Lock } from "lucide-react";
 import type { CampaignVoucherUI, CampaignViewerUI } from "@/lib/campaign/campaignApi";
 import { voucherUseHref } from "@/lib/voucherFormat";
 import { CountdownText } from "@/components/campaign/CountdownText";
@@ -85,6 +85,20 @@ export function ClaimButton({
 
   if (state === "soldOut") {
     return <span className={`${BTN} bg-slate-100 text-slate-400 font-medium`}>Hết lượt</span>;
+  }
+
+  if (voucher.mystery) {
+    return (
+      <button
+        type="button"
+        onClick={onClaim}
+        disabled={busy}
+        className={`${BTN} gap-1 bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 text-white shadow-sm shadow-orange-900/20 hover:brightness-110 active:scale-95 disabled:opacity-60 cursor-pointer aloha-mystery-wiggle`}
+      >
+        <Gift size={13} strokeWidth={2.6} aria-hidden />
+        {busy ? "Đang bóc…" : "Bóc ngay"}
+      </button>
+    );
   }
 
   // Chưa lưu: Nút "Lưu mã" rõ ràng

@@ -1,3 +1,5 @@
+import type { MysteryInfo } from "../voucherFormat";
+
 export type WalletItemState = "usable" | "held" | "upcoming" | "paused" | "locked" | "used" | "expired";
 
 export type WalletVoucherUI = {
@@ -12,6 +14,7 @@ export type WalletVoucherUI = {
   targetCustomer?: string;
   startDate?: string;
   endDate?: string;
+  mystery?: MysteryInfo;
 };
 
 export type WalletItemUI = {
@@ -32,6 +35,8 @@ export type WalletResponse = {
   items: WalletItemUI[];
   counts?: { active: number; used: number; expired: number };
   claimedIds: string[];
+  /** Voucher túi mù khách đã bóc: promotionId → % trúng. */
+  drawn?: Record<string, number>;
 };
 
 export type ClaimFailCode =
@@ -47,7 +52,7 @@ export type ClaimFailCode =
   | "network";
 
 export type ClaimResponse =
-  | { ok: true; already: boolean; promotionId: string; message: string }
+  | { ok: true; already: boolean; promotionId: string; message: string; drawnPercent?: number }
   | { ok: false; code: ClaimFailCode; error: string; promotionId: string };
 
 export type ClaimBatchResponse =

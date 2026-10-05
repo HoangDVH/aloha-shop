@@ -50,6 +50,42 @@ export interface PromotionItem {
   claimLimitTotal?: number | null;
   claimedCount?: number;
   claimStartDate?: string | null;
+  mystery?: {
+    tiers: { percent: number; weight: number; limit: number | null; remaining: number; drawn: number }[];
+  } | null;
+}
+
+export type MysteryFormTier = { percent?: number; weight?: number; limit?: number | null };
+
+export const MYSTERY_DEFAULT_TIERS: MysteryFormTier[] = [
+  { percent: 10, weight: 50 },
+  { percent: 11, weight: 20 },
+  { percent: 12, weight: 15 },
+  { percent: 13, weight: 8 },
+  { percent: 14, weight: 5 },
+  { percent: 15, weight: 2 },
+];
+
+const validTiers = (tiers: MysteryFormTier[] | undefined) =>
+  (tiers || [])
+    .filter((t) => Number(t?.percent) > 0 && Number(t?.weight) > 0)
+    .map((t) => ({ percent: Number(t.percent), weight: Number(t.weight), limit: Number(t.limit) > 0 ? Number(t.limit) : null }))
+    .sort((a, b) => a.percent - b.percent);
+
+/** Tỉ lệ trúng từng mức (làm tròn 0.1) và mức giảm trung bình dự kiến. */
+export function mysteryOdds(tiers: MysteryFormTier[] | undefined) {
+  const list = validTiers(tiers);
+  const total = list.reduce((s, t) => s + t.weight, 0) || 1;
+  const rows = list.map((t) => ({ percent: t.percent, chance: Math.round((t.weight / total) * 1000) / 10 }));
+  const average = Math.round((list.reduce((s, t) => s + t.percent * t.weight, 0) / total) * 10) / 10;
+  return { rows, average };
+}
+
+/** "10–15% túi mù" cho voucher túi mù; còn lại null để nơi gọi tự định dạng. */
+export function mysteryValueText(p: Pick<PromotionItem, "mystery">): string | null {
+  const tiers = p.mystery?.tiers || [];
+  if (!tiers.length) return null;
+  return `${tiers[0].percent}–${tiers[tiers.length - 1].percent}% túi mù`;
 }
 
 export type TimeMode = "range" | "unlimited";
@@ -89,6 +125,8 @@ export function initialFormValues(editingItem?: PromotionItem | null) {
       claimRequired: false,
       claimLimitTotal: undefined,
       claimStartDate: undefined,
+      mysteryOn: false,
+      mysteryTiers: MYSTERY_DEFAULT_TIERS,
     };
   }
   const hasDates = !!(editingItem.startDate && editingItem.endDate);
@@ -125,6 +163,10 @@ export function initialFormValues(editingItem?: PromotionItem | null) {
     claimRequired: editingItem.claimRequired === true,
     claimLimitTotal: editingItem.claimLimitTotal || undefined,
     claimStartDate: editingItem.claimStartDate ? dayjs(editingItem.claimStartDate) : undefined,
+    mysteryOn: !!editingItem.mystery?.tiers?.length,
+    mysteryTiers: editingItem.mystery?.tiers?.length
+      ? editingItem.mystery.tiers.map((t) => ({ percent: t.percent, weight: t.weight, limit: t.limit }))
+      : MYSTERY_DEFAULT_TIERS,
   };
 }
 
@@ -225,8 +267,12 @@ export function buildPromotionPayload(
   const specificTarget =
     values.targetCustomer && values.targetCustomer !== "all" ? values.targetCustomer : "retail";
   const targetCustomer = customerMode === "all" ? "all" : specificTarget;
-  const discountType = isShipping ? "fixed" : values.discountType || "percentage";
+  const mysteryOn = !isShipping && values.mysteryOn === true;
+  const mysteryTiers = mysteryOn ? validTiers(values.mysteryTiers) : [];
+  const mystery = mysteryOn ? { tiers: mysteryTiers } : editingItem?.mystery ? null : undefined;
+  const discountType = isShipping ? "fixed" : mystery ? "percentage" : values.discountType || "percentage";
   const optionalNumber = (v: unknown) => (v ? Number(v) : null);
+  const claimRequired = values.claimRequired === true || !!mystery;
   return {
     name: values.name,
     title: values.name,
@@ -235,7 +281,7 @@ export function buildPromotionPayload(
     regionId: isShipping ? values.regionId : undefined,
     type: isShipping || values.isAutoApply ? "auto" : "code",
     discountType,
-    discountValue: Number(values.discountValue) || 0,
+    discountValue: mysteryTiers[0]?.percent ?? (Number(values.discountValue) || 0),
     maxDiscountVnd:
       discountType === "percentage" && values.maxDiscountVnd
         ? Number(values.maxDiscountVnd)
@@ -255,9 +301,10 @@ export function buildPromotionPayload(
     priority: Number(values.priority) || 0,
     combineWithShip: isShipping ? undefined : values.combineWithShip !== false,
     excludeFlash: isShipping ? undefined : values.excludeFlash === true,
-    claimRequired: values.claimRequired === true,
-    claimLimitTotal: values.claimRequired ? Number(values.claimLimitTotal) || 0 : 0,
-    claimStartDate: values.claimRequired && values.claimStartDate ? values.claimStartDate.toISOString() : null,
+    claimRequired,
+    claimLimitTotal: claimRequired ? Number(values.claimLimitTotal) || 0 : 0,
+    claimStartDate: claimRequired && values.claimStartDate ? values.claimStartDate.toISOString() : null,
+    mystery,
     revision: editingItem?.revision,
   };
 }

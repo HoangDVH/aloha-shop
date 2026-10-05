@@ -6,6 +6,7 @@ import { VOUCHER_WALLET_COL } from "../../shopCampaigns/types.js";
 import { voucherWalletEnabled } from "../../shopCampaigns/flags.js";
 import { readCampaignViewer } from "../../shopCampaigns/viewer.js";
 import { PROMOTIONS_COL, type PromotionDoc } from "../types.js";
+import { isMystery, publicMystery } from "../mystery.js";
 import { claimAllVouchers, claimVoucher } from "./walletClaim.js";
 import { isClaimFail, type WalletDoc } from "./walletService.js";
 import { customerKeyFor } from "../checkoutPromotions.js";
@@ -104,12 +105,13 @@ async function walletHandler(getDb: GetDb, req: Request, res: Response) {
             description: p.description || "",
             benefitType: p.benefitType || "goods",
             discountType: p.discountType,
-            discountValue: p.discountValue,
+            discountValue: (isMystery(p) && r.drawnPercent) || p.discountValue,
             maxDiscountVnd: p.maxDiscountVnd,
             minOrderThreshold: p.minOrderThreshold,
             targetCustomer: p.targetCustomer,
             startDate: p.startDate,
             endDate: p.endDate,
+            ...(isMystery(p) ? { mystery: publicMystery({ ...p, drawnPercent: r.drawnPercent }) } : {}),
           }
         : null,
     };
@@ -123,6 +125,7 @@ async function walletHandler(getDb: GetDb, req: Request, res: Response) {
     items,
     counts,
     claimedIds: saved.map((r) => r.promotionId),
+    drawn: Object.fromEntries(saved.filter((r) => r.drawnPercent).map((r) => [r.promotionId, r.drawnPercent])),
   });
 }
 

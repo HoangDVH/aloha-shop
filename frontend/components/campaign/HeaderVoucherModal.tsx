@@ -10,6 +10,7 @@ import {
   ShoppingBag,
   Check,
   ChevronRight,
+  Gift,
   Ticket,
 } from "lucide-react";
 import type {
@@ -18,9 +19,10 @@ import type {
   CampaignUI,
 } from "@/lib/campaign/campaignApi";
 import { useVoucherClaims } from "@/lib/campaign/useVoucherClaims";
-import { formatCompactVnd, shipSupportText, voucherUseHref } from "@/lib/voucherFormat";
+import { formatCompactVnd, pctText, shipSupportText, voucherUseHref, withDrawn } from "@/lib/voucherFormat";
 import { LoginSheet } from "@/components/campaign/LoginSheet";
 import { claimStateOf } from "@/components/voucher/ClaimButton";
+import { ClaimSuccessModal } from "@/components/voucher/ClaimSuccessModal";
 
 function vnDate(iso?: string) {
   if (!iso) return "";
@@ -35,7 +37,7 @@ function getVoucherDisplay(v: CampaignVoucherUI) {
   } else if (v.discountType === "fixed") {
     primary = `Giảm ${formatCompactVnd(v.discountValue).toUpperCase()} đ`;
   } else if (v.discountType === "percentage") {
-    primary = `Giảm ${v.discountValue}%`;
+    primary = `Giảm ${pctText(v)}`;
     if (v.maxDiscountVnd && v.maxDiscountVnd > 0) {
       primary += ` (Tối đa ${formatCompactVnd(v.maxDiscountVnd).toUpperCase()})`;
     }
@@ -51,7 +53,7 @@ function getVoucherDisplay(v: CampaignVoucherUI) {
   }
 
   const title = v.title?.trim();
-  if (title) {
+  if (title && !v.mystery?.drawnPercent) {
     const cap =
       v.benefitType !== "shipping" && v.discountType === "percentage" && v.maxDiscountVnd && v.maxDiscountVnd > 0
         ? `Tối đa ${formatCompactVnd(v.maxDiscountVnd).toUpperCase()} · `
@@ -103,11 +105,16 @@ export function HeaderVoucherModal({
     };
   }, [open, onClose]);
 
+  const drawnKey = JSON.stringify(claims.drawn);
   const visibleVouchers = useMemo(() => {
-    return vouchers.filter(
-      (v) => viewer?.newBuyer !== false || v.targetCustomer !== "new_web"
-    );
-  }, [vouchers, viewer]);
+    const drawn = JSON.parse(drawnKey) as Record<string, number>;
+    return vouchers
+      .filter((v) => viewer?.newBuyer !== false || v.targetCustomer !== "new_web")
+      .map((v) => withDrawn(v, drawn));
+  }, [vouchers, viewer, drawnKey]);
+  const justClaimed = claims.claimedVoucherId
+    ? visibleVouchers.find((v) => v.id === claims.claimedVoucherId) ?? null
+    : null;
 
   const nowMs = Date.now() + offsetMs;
 
@@ -293,6 +300,11 @@ export function HeaderVoucherModal({
                         <Sparkles size={11} />
                         <span>Tự động áp dụng</span>
                       </span>
+                    ) : v.mystery && isClaimable ? (
+                      <span className="inline-flex items-center gap-1 font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+                        <Gift size={11} />
+                        <span>Bấm để bóc túi mù · tới {v.mystery.max}%</span>
+                      </span>
                     ) : (
                       <span>
                         Có áp dụng điều khoản
@@ -349,6 +361,14 @@ export function HeaderVoucherModal({
         onClose={claims.cancelLogin}
         onDone={claims.loginDone}
       />
+      {justClaimed?.mystery ? (
+        <ClaimSuccessModal
+          voucher={justClaimed}
+          open
+          onClose={claims.clearClaimedVoucherId}
+          onShopNow={onClose}
+        />
+      ) : null}
     </div>
   );
 

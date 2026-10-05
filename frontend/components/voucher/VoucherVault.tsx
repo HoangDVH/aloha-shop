@@ -4,7 +4,15 @@ import { Check, Gift, Sparkles, TicketPercent, Tag, Truck } from "lucide-react";
 import type { CampaignVoucherUI, CampaignViewerUI } from "@/lib/campaign/campaignApi";
 import { useVoucherClaims } from "@/lib/campaign/useVoucherClaims";
 import { splitCountdown, useCountdown } from "@/lib/hooks/useCountdown";
-import { formatCompactVnd, formatVoucherBadge, voucherConditionText } from "@/lib/voucherFormat";
+import {
+  formatCompactVnd,
+  formatVoucherBadge,
+  isUnopenedMystery,
+  pctText,
+  voucherConditionText,
+  withDrawn,
+} from "@/lib/voucherFormat";
+import { MysteryOdds } from "./MysteryOdds";
 import { LoginSheet } from "@/components/campaign/LoginSheet";
 import { VoucherTicket, type TicketTone } from "./VoucherTicket";
 import { ClaimButton, claimStateOf, type ClaimState } from "./ClaimButton";
@@ -126,7 +134,7 @@ export function voucherIconAndTone(v: CampaignVoucherUI): {
       stubTopLabel: "GIẢM",
       stubValue:
         v.discountType === "percentage"
-          ? `${v.discountValue}%`
+          ? pctText(v)
           : formatCompactVnd(v.discountValue).toUpperCase(),
       isShip: false,
       isNewWeb: true,
@@ -135,10 +143,14 @@ export function voucherIconAndTone(v: CampaignVoucherUI): {
 
   if (v.discountType === "percentage") {
     return {
-      icon: <TicketPercent size={16} strokeWidth={2.4} className="shrink-0" />,
+      icon: isUnopenedMystery(v) ? (
+        <Gift size={16} strokeWidth={2.4} className="shrink-0" />
+      ) : (
+        <TicketPercent size={16} strokeWidth={2.4} className="shrink-0" />
+      ),
       tone: "red",
-      stubTopLabel: "GIẢM",
-      stubValue: `${v.discountValue}%`,
+      stubTopLabel: isUnopenedMystery(v) ? "TÚI MÙ" : "GIẢM",
+      stubValue: pctText(v),
       isShip: false,
       isNewWeb: false,
     };
@@ -155,7 +167,7 @@ export function voucherIconAndTone(v: CampaignVoucherUI): {
 }
 
 export function VoucherVault({
-  vouchers,
+  vouchers: rawVouchers,
   viewer,
   offsetMs,
   variant = "full",
@@ -176,6 +188,7 @@ export function VoucherVault({
   focusLabel?: string;
 }) {
   const claims = useVoucherClaims();
+  const vouchers = rawVouchers.map((v) => withDrawn(v, claims.drawn));
   const justClaimed = claims.claimedVoucherId
     ? vouchers.find((v) => v.id === claims.claimedVoucherId) ?? null
     : null;
@@ -252,6 +265,7 @@ export function VoucherVault({
                 }
               >
                 <p className="truncate text-xs font-medium text-slate-600">{voucherConditionText(v)}</p>
+                {v.mystery ? <MysteryOdds mystery={v.mystery} /> : null}
                 {claimedPct != null && left != null ? (
                   <div className="flex items-center gap-2" title={`Đã lưu ${claimedPct}% số lượt`}>
                     <div

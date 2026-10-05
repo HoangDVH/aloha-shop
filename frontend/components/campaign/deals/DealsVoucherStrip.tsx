@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronRight, Flame, Lock, Sparkles, TicketPercent, Truck, Zap } from "lucide-react";
+import { Check, ChevronRight, Flame, Gift, Lock, Sparkles, TicketPercent, Truck, Zap } from "lucide-react";
 import type { CampaignVoucherUI, CampaignViewerUI } from "@/lib/campaign/campaignApi";
 import { useVoucherClaims } from "@/lib/campaign/useVoucherClaims";
-import { formatCompactVnd } from "@/lib/voucherFormat";
+import { formatCompactVnd, isUnopenedMystery, pctText, withDrawn } from "@/lib/voucherFormat";
 import { LoginSheet } from "@/components/campaign/LoginSheet";
 import { claimStateOf, type ClaimState } from "@/components/voucher/ClaimButton";
 import { ClaimSuccessModal } from "@/components/voucher/ClaimSuccessModal";
@@ -18,11 +18,11 @@ const SAVED_FX_MS = 1400;
 
 function valueOf(v: CampaignVoucherUI): { top: string; value: string; isShip: boolean } {
   const amount =
-    v.discountType === "percentage" ? `${v.discountValue}%` : formatCompactVnd(v.discountValue).toUpperCase();
+    v.discountType === "percentage" ? pctText(v) : formatCompactVnd(v.discountValue).toUpperCase();
   if (v.benefitType === "shipping") {
     return { top: "FREESHIP", value: v.discountValue > 0 ? amount : "FREE", isShip: true };
   }
-  return { top: "GIẢM", value: amount, isShip: false };
+  return { top: isUnopenedMystery(v) ? "TÚI MÙ" : "GIẢM", value: amount, isShip: false };
 }
 
 function voucherDetails(v: CampaignVoucherUI): { minSpend: string; cap: string } {
@@ -53,6 +53,8 @@ function hintOf(v: CampaignVoucherUI, nowMs: number): string {
     const left = Math.max(0, v.claimLimitTotal - v.claimedCount);
     if (left > 0 && left / v.claimLimitTotal <= 0.2) return `Chỉ còn ${left} lượt`;
   }
+  if (v.mystery?.drawnPercent) return `Bạn đã bóc được ${v.mystery.drawnPercent}%`;
+  if (v.mystery) return `Bóc ngẫu nhiên · may mắn tới ${v.mystery.max}%`;
   if (v.claimRequired && v.claimedCount >= SOCIAL_PROOF_MIN) {
     return `${v.claimedCount.toLocaleString("vi-VN")} người đã lưu`;
   }
@@ -81,16 +83,31 @@ function useJustSaved(claimedIds: Set<string>): Set<string> {
 function Action({
   state,
   isShip,
+  mystery,
   busy,
   saved,
   onClaim,
 }: {
   state: ClaimState;
   isShip: boolean;
+  mystery: boolean;
   busy: boolean;
   saved: boolean;
   onClaim: () => void;
 }) {
+  if (state === "claimable" && mystery) {
+    return (
+      <button
+        type="button"
+        onClick={onClaim}
+        disabled={busy}
+        className="aloha-mystery-wiggle inline-flex h-7.5 shrink-0 items-center justify-center gap-1 rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 px-3 text-xs font-black text-white shadow-xs shadow-orange-900/20 transition hover:brightness-110 active:scale-95 disabled:opacity-60 cursor-pointer"
+      >
+        <Gift size={12} strokeWidth={2.6} aria-hidden />
+        {busy ? "Bóc…" : "Bóc"}
+      </button>
+    );
+  }
   if (state === "claimable") {
     return (
       <button
@@ -161,7 +178,7 @@ function Action({
  * khối giá trị nổi bật, điều kiện 2 dòng rõ ràng không bị đứt chữ, CTA pill button bắt mắt.
  */
 export function DealsVoucherStrip({
-  vouchers,
+  vouchers: rawVouchers,
   viewer,
   offsetMs,
   focusIds = [],
@@ -172,6 +189,7 @@ export function DealsVoucherStrip({
   focusIds?: string[];
 }) {
   const claims = useVoucherClaims();
+  const vouchers = rawVouchers.map((v) => withDrawn(v, claims.drawn));
   const justClaimed = claims.claimedVoucherId
     ? vouchers.find((v) => v.id === claims.claimedVoucherId) ?? null
     : null;
@@ -303,6 +321,7 @@ export function DealsVoucherStrip({
                 <Action
                   state={state}
                   isShip={isShip}
+                  mystery={Boolean(v.mystery)}
                   busy={claims.pendingId === v.id}
                   saved={justSaved.has(v.id)}
                   onClaim={() => claims.claim(v.id)}
