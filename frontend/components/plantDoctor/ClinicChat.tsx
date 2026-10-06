@@ -1,11 +1,22 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { Camera, ImagePlus, Loader2, Send, Sparkles, Square, Stethoscope, Volume2, X } from "lucide-react";
-import type { DoctorImage, DoctorMessage } from "@/lib/plantDoctor/api";
+import { useEffect, useRef, useState } from "react";
+import {
+  ArrowUp,
+  Camera,
+  ImagePlus,
+  Loader2,
+  Sparkles,
+  Square,
+  Stethoscope,
+  Volume2,
+  X,
+} from "lucide-react";
+import type { DoctorImage, DoctorMessage, PlantCandidate } from "@/lib/plantDoctor/api";
 import { SYMPTOM_PRESETS } from "@/lib/plantDoctor/presets";
 import { AiText } from "./AiText";
-import { SuggestedProducts } from "./SuggestedProducts";
+import { CareKit } from "./CareKit";
+import { DiagnosisCard } from "./DiagnosisCard";
 
 export const MAX_IMAGES = 4;
 
@@ -16,25 +27,27 @@ const SYMPTOM_ICONS: Record<string, string> = {
   shock: "☀️",
 };
 
-const SEVERITY_STYLES = {
-  high: "bg-rose-50 text-rose-700 border-rose-200/60",
-  warning: "bg-amber-50 text-amber-800 border-amber-200/60",
-  info: "bg-sky-50 text-sky-700 border-sky-200/60",
-};
-
 function MessageBubble({
   m,
   speaking,
   onSpeak,
+  latest,
+  sending,
+  onAnswer,
+  onPickPlant,
 }: {
   m: DoctorMessage;
   speaking: boolean;
   onSpeak: (m: DoctorMessage) => void;
+  latest: boolean;
+  sending: boolean;
+  onAnswer: (text: string) => void;
+  onPickPlant: (c: PlantCandidate) => void;
 }) {
   if (m.role === "user") {
     return (
       <div className="flex justify-end animate-in fade-in slide-in-from-bottom-2 duration-200">
-        <div className="max-w-[85%] sm:max-w-[80%] rounded-2xl rounded-br-xs bg-[#1C4C40] px-4 py-3 text-sm text-white shadow-sm space-y-2">
+        <div className="max-w-[88%] sm:max-w-[80%] rounded-2xl sm:rounded-3xl rounded-br-xs sm:rounded-br-xs bg-[#1C4C40] px-4 py-3 sm:px-5 sm:py-3.5 text-white shadow-sm space-y-2.5">
           {m.images?.length ? (
             <div className="flex flex-wrap gap-2">
               {m.images.map((src, i) => (
@@ -43,32 +56,33 @@ function MessageBubble({
                   key={i}
                   src={src}
                   alt="Ảnh cây đã gửi"
-                  className="h-20 w-20 sm:h-24 sm:w-24 rounded-xl object-cover ring-1 ring-white/20 shadow-xs"
+                  className="h-24 w-24 sm:h-32 sm:w-32 rounded-xl sm:rounded-2xl object-cover ring-1 ring-white/20 shadow-xs"
                 />
               ))}
             </div>
           ) : null}
-          <div className="whitespace-pre-line leading-relaxed font-medium">
+          <div className="whitespace-pre-line leading-relaxed text-[14.5px] sm:text-[15.5px] font-medium">
             <AiText text={m.content} />
           </div>
-          <p className="text-right text-[10px] text-white/60">{m.time}</p>
+          <p className="text-right text-[10px] text-white/70">{m.time}</p>
         </div>
       </div>
     );
   }
+
   return (
-    <div className="flex gap-2.5 sm:gap-3 items-start animate-in fade-in slide-in-from-bottom-2 duration-200">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-[#1C4C40] text-white shadow-2xs mt-0.5">
-        <Stethoscope size={18} strokeWidth={2.2} aria-hidden />
+    <div className="flex gap-2.5 sm:gap-3.5 items-start animate-in fade-in slide-in-from-bottom-2 duration-200">
+      <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-[#1C4C40] text-white shadow-2xs mt-0.5 ring-2 ring-emerald-50">
+        <Stethoscope size={17} strokeWidth={2.2} aria-hidden />
       </div>
-      <div className="min-w-0 max-w-[94%] flex-1 space-y-2">
-        <div className="rounded-2xl rounded-tl-xs border border-stone-200/90 bg-white p-4 sm:p-5 text-sm leading-relaxed text-stone-800 shadow-sm space-y-2.5">
+      <div className="min-w-0 max-w-[94%] flex-1 space-y-2.5">
+        <div className="rounded-2xl sm:rounded-3xl bg-white p-4 sm:p-5 text-[14.5px] sm:text-[15.5px] leading-relaxed text-stone-800 shadow-2xs border border-stone-200/60 space-y-3">
           {/* Header Bác Sĩ */}
           <div className="flex items-center justify-between border-b border-stone-100 pb-2.5">
             <div className="flex items-center gap-1.5">
               <span className="font-bold text-[#1C4C40] text-xs sm:text-sm">Bác sĩ cây cảnh Aloha</span>
               <span className="rounded-full bg-emerald-100 text-emerald-800 px-2 py-0.2 text-[9.5px] font-bold">
-                AI Chuyên Gia
+                Trợ lý AI
               </span>
             </div>
             {m.id !== "welcome" ? (
@@ -78,7 +92,7 @@ function MessageBubble({
                 className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold transition cursor-pointer ${
                   speaking
                     ? "bg-rose-100 text-rose-700 ring-1 ring-rose-200 animate-pulse"
-                    : "bg-emerald-50 text-[#1C4C40] hover:bg-emerald-100 ring-1 ring-emerald-200/60"
+                    : "bg-stone-100 text-stone-600 hover:bg-emerald-50 hover:text-[#1C4C40] ring-1 ring-stone-200/60"
                 }`}
               >
                 {speaking ? <Square size={11} aria-hidden /> : <Volume2 size={12} aria-hidden />}
@@ -88,14 +102,20 @@ function MessageBubble({
           </div>
 
           <div className="text-stone-700 leading-relaxed">
-            <AiText text={m.content} />
+            {m.card ? (
+              <DiagnosisCard card={m.card} interactive={latest} sending={sending} onAnswer={onAnswer} onPickPlant={onPickPlant} />
+            ) : (
+              <AiText text={m.content} />
+            )}
           </div>
 
           <div className="flex items-center justify-end text-[10px] text-stone-400 pt-1">
             <span>{m.time}</span>
           </div>
         </div>
-        {m.suggest?.length ? <SuggestedProducts keywords={m.suggest} /> : null}
+        {m.card && (m.card.kind === "diagnosis" || m.card.kind === "healthy") ? (
+          <CareKit condition={m.card.condition} plantGroup={m.card.plantGroup} />
+        ) : null}
       </div>
     </div>
   );
@@ -111,6 +131,7 @@ export function ClinicChat({
   onRemoveImage,
   onSend,
   onQuickSymptom,
+  onPickPlant,
   speakingId,
   onSpeak,
 }: {
@@ -123,100 +144,212 @@ export function ClinicChat({
   onRemoveImage: (id: string) => void;
   onSend: () => void;
   onQuickSymptom: (prompt: string) => void;
+  onPickPlant: (c: PlantCandidate) => void;
   speakingId: string | null;
   onSpeak: (m: DoctorMessage) => void;
 }) {
   const listRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Lọc bỏ tin nhắn welcome kỹ thuật để giao diện khởi đầu tinh gọn tuyệt đối như Google Gemini
+  const chatMessages = messages.filter((m) => m.id !== "welcome");
+  const isInitial = chatMessages.length === 0;
+
+  // Ref chống kích hoạt trùng lặp sự kiện dán ảnh
+  const lastPasteTimeRef = useRef<number>(0);
+
+  // Lắng nghe phím tắt Ctrl + V dán ảnh DUY NHẤT 1 LẦN (triệt tiêu tình trạng nhân 3 do event bubbling)
+  useEffect(() => {
+    const handleGlobalPaste = (e: ClipboardEvent) => {
+      const clipboardData = e.clipboardData;
+      if (!clipboardData) return;
+
+      const rawFiles: File[] = [];
+
+      // 1. Quét clipboardData.items (chụp màn hình Win+Shift+S, copy ảnh từ trình duyệt)
+      if (clipboardData.items) {
+        for (let i = 0; i < clipboardData.items.length; i++) {
+          const item = clipboardData.items[i];
+          if (item.type.startsWith("image/")) {
+            const file = item.getAsFile();
+            if (file) rawFiles.push(file);
+          }
+        }
+      }
+
+      // 2. Quét clipboardData.files (copy file ảnh từ File Explorer)
+      if (rawFiles.length === 0 && clipboardData.files?.length) {
+        for (let i = 0; i < clipboardData.files.length; i++) {
+          const f = clipboardData.files[i];
+          if (f.type.startsWith("image/")) rawFiles.push(f);
+        }
+      }
+
+      if (rawFiles.length === 0) return;
+
+      // Chặn tình trạng trình duyệt kích hoạt paste nhiều lần trong khoảng < 500ms
+      const now = Date.now();
+      if (now - lastPasteTimeRef.current < 500) {
+        e.preventDefault();
+        return;
+      }
+      lastPasteTimeRef.current = now;
+
+      // Lọc trùng lặp file ảnh trong cùng một lần dán
+      const uniqueFiles: File[] = [];
+      const seen = new Set<string>();
+      for (const f of rawFiles) {
+        const key = `${f.name}_${f.size}_${f.type}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniqueFiles.push(f);
+        }
+      }
+
+      if (uniqueFiles.length > 0) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        onPickFiles(uniqueFiles);
+        textareaRef.current?.focus();
+      }
+    };
+
+    window.addEventListener("paste", handleGlobalPaste, true);
+    return () => {
+      window.removeEventListener("paste", handleGlobalPaste, true);
+    };
+  }, [onPickFiles]);
+
+  // Cuộn tự động khi có tin nhắn mới trong chế độ chat
+  useEffect(() => {
+    if (!isInitial) {
+      const el = listRef.current;
+      if (el) {
+        el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+      }
+    }
+  }, [chatMessages.length, sending, isInitial]);
+
+  // Tự động co giãn textarea theo nội dung gõ
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+    }
+  };
 
   useEffect(() => {
-    const el = listRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [messages.length, sending]);
+    if (!input && textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
+  }, [input]);
 
   const canSend = !sending && (input.trim().length > 0 || images.length > 0);
   const full = images.length >= MAX_IMAGES;
 
   return (
-    <div className="flex min-h-[560px] flex-col overflow-hidden rounded-3xl border border-stone-200/90 bg-[#FAF9F6] shadow-sm">
-      <div ref={listRef} className="flex-1 space-y-4 overflow-y-auto p-3.5 sm:p-5" style={{ maxHeight: "64vh" }}>
-        {/* Vùng chẩn đoán trọng tâm (Action-First Hero) khi mới mở trang */}
-        {messages.length <= 1 && (
-          <div className="rounded-2xl border-2 border-dashed border-[#1C4C40]/25 bg-gradient-to-b from-emerald-50/70 via-white to-white p-4 sm:p-6 text-center transition hover:border-[#1C4C40]/50 shadow-2xs">
-            <div className="mx-auto flex h-13 w-13 items-center justify-center rounded-2xl bg-[#1C4C40] text-white shadow-md">
-              <Camera size={24} strokeWidth={2.2} />
-            </div>
-            <h3 className="mt-3 text-base sm:text-lg font-bold text-[#1C4C40]">
-              Chụp hoặc Tải lên ảnh cây đang bệnh
-            </h3>
-            <p className="mx-auto mt-1 max-w-lg text-xs sm:text-sm text-stone-600 leading-relaxed">
-              Chụp cận cảnh vết lá úng, đốm trắng, rệp hoặc toàn thân chậu cây để Bác sĩ AI chẩn đoán chính xác trong 3 giây.
-            </p>
+    <div
+      tabIndex={0}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setIsDragging(true);
+      }}
+      onDragLeave={(e) => {
+        e.preventDefault();
+        setIsDragging(false);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        if (e.dataTransfer.files?.length) {
+          onPickFiles(e.dataTransfer.files);
+        }
+      }}
+      className="flex flex-1 flex-col min-h-0 relative w-full h-full bg-[#FAF9F6] overflow-hidden outline-none"
+    >
+      {/* File input ẩn cho camera và thư viện ảnh */}
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        hidden
+        onChange={(e) => {
+          if (e.target.files) onPickFiles(e.target.files);
+          e.target.value = "";
+        }}
+      />
+      <input
+        ref={galleryRef}
+        type="file"
+        accept="image/*"
+        multiple
+        hidden
+        onChange={(e) => {
+          if (e.target.files) onPickFiles(e.target.files);
+          e.target.value = "";
+        }}
+      />
 
-            <div className="mt-4 flex flex-wrap justify-center gap-2.5">
-              <button
-                type="button"
-                onClick={() => cameraRef.current?.click()}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#1C4C40] hover:bg-[#163c32] active:scale-95 px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-xs transition cursor-pointer"
-              >
-                <Camera size={16} />
-                Chụp ảnh cây ngay
-              </button>
-              <button
-                type="button"
-                onClick={() => galleryRef.current?.click()}
-                className="inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-white hover:bg-stone-50 active:scale-95 px-5 py-2.5 text-xs sm:text-sm font-bold text-stone-700 shadow-2xs transition cursor-pointer"
-              >
-                <ImagePlus size={16} className="text-[#1C4C40]" />
-                Chọn ảnh từ máy
-              </button>
-            </div>
+      {/* Overlay kéo thả ảnh chuẩn desktop AI app */}
+      {isDragging ? (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/85 backdrop-blur-md border-2 border-dashed border-[#1C4C40] p-6 text-center animate-in fade-in duration-150">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#1C4C40] text-white shadow-lg mb-3">
+            <Camera size={28} />
+          </div>
+          <h4 className="text-lg font-bold text-[#1C4C40]">Thả ảnh vào đây</h4>
+          <p className="text-sm text-stone-600 mt-1">Bác sĩ AI sẽ tiếp nhận ảnh và tiến hành chẩn đoán</p>
+        </div>
+      ) : null}
 
-            <p className="mt-2.5 text-[11px] text-stone-400">
-              💡 Hỗ trợ tối đa 4 ảnh JPG, PNG · Hệ thống tự động tối ưu hóa dung lượng
-            </p>
-
-            {/* Triệu chứng thường gặp được nhúng TRỰC TIẾP vào Hero - KHÔNG tách rời thành cột khác */}
-            <div className="mt-5 border-t border-emerald-100/90 pt-4 text-left">
-              <div className="mb-2.5 flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-xs font-bold text-stone-700">
-                  <Sparkles size={13} className="text-emerald-700" />
-                  <span>Hoặc bấm khám nhanh theo triệu chứng phổ biến:</span>
-                </span>
-                <span className="rounded-full bg-emerald-100/80 px-2 py-0.5 text-[10px] font-bold text-[#1C4C40]">
-                  1-Chạm khám ngay
-                </span>
+      {/* VÙNG CUỘN NỘI DUNG (SCROLLABLE CONTENT AREA): CHỨA LỜI CHÀO / TIN NHẮN, CUỘN ĐỘC LẬP */}
+      <div
+        ref={listRef}
+        className="flex-1 overflow-y-auto px-3.5 sm:px-6 min-h-0 relative w-full scroll-smooth"
+      >
+        {isInitial ? (
+          /* TRANG CHÀO ĐẦU GEMINI: Nằm cân đối trong vùng cuộn phía trên ô chat */
+          <div className="flex flex-col items-center justify-center min-h-full py-6 sm:py-10 max-w-2xl mx-auto w-full animate-in fade-in duration-200">
+            {/* Lời chào & Logo trung tâm */}
+            <div className="text-center mb-5 sm:mb-7">
+              <div className="mx-auto flex h-13 w-13 sm:h-15 sm:w-15 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1C4C40] to-[#286b5b] text-white shadow-md ring-4 ring-emerald-50 mb-3">
+                <Stethoscope size={26} strokeWidth={2.2} />
               </div>
+              <h2 className="text-xl sm:text-2xl font-bold text-stone-900 tracking-tight">
+                Bác sĩ cây cảnh Aloha
+              </h2>
+              <p className="mt-1.5 text-xs sm:text-sm text-stone-500 max-w-md mx-auto leading-relaxed px-2">
+                Chụp ảnh cây hoặc chọn triệu chứng thường gặp để Bác sĩ AI chẩn đoán và hướng dẫn điều trị trong 3 giây.
+              </p>
+            </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+            {/* Gợi ý khám nhanh 1 chạm (Tối giản chuẩn Google Gemini) */}
+            <div className="w-full">
+              <p className="text-[11px] font-bold text-stone-400 mb-2.5 px-1 flex items-center justify-center gap-1">
+                <Sparkles size={11} className="text-emerald-700" />
+                <span>Gợi ý khám nhanh triệu chứng phổ biến:</span>
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {SYMPTOM_PRESETS.map((p) => {
                   const icon = SYMPTOM_ICONS[p.id] || "🌱";
-                  const badgeTone = SEVERITY_STYLES[p.severity] || "bg-stone-50 text-stone-700";
                   return (
                     <button
                       key={p.id}
                       type="button"
                       disabled={sending}
                       onClick={() => onQuickSymptom(p.prompt)}
-                      className="group flex flex-col justify-between rounded-xl border border-stone-200/90 bg-white p-3 text-left transition hover:border-[#1C4C40] hover:bg-emerald-50/40 hover:shadow-2xs active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+                      className="group flex flex-col sm:flex-row items-start sm:items-center gap-1.5 sm:gap-2 rounded-xl border border-stone-200/90 bg-white p-2.5 text-left shadow-2xs hover:border-[#1C4C40] hover:bg-emerald-50/60 transition cursor-pointer disabled:opacity-50 min-w-0"
                     >
-                      <div>
-                        <div className="flex items-center justify-between gap-1 mb-1">
-                          <span className="text-base select-none" aria-hidden>{icon}</span>
-                          <span className={`rounded px-1.5 py-0.2 text-[9.5px] font-bold border ${badgeTone}`}>
-                            {p.label}
-                          </span>
-                        </div>
-                        <p className="text-xs font-bold text-stone-800 group-hover:text-[#1C4C40] transition">
+                      <span className="text-lg shrink-0 select-none">{icon}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-stone-800 group-hover:text-[#1C4C40] truncate">
                           {p.name}
                         </p>
-                        <p className="mt-1 line-clamp-2 text-[11px] text-stone-500 leading-tight">
-                          {p.description}
-                        </p>
-                      </div>
-                      <div className="mt-2.5 flex items-center justify-end text-[10.5px] font-bold text-[#1C4C40] group-hover:underline">
-                        <span>Khám ngay ⚡</span>
+                        <p className="text-[10px] text-stone-400 truncate">{p.label}</p>
                       </div>
                     </button>
                   );
@@ -224,133 +357,151 @@ export function ClinicChat({
               </div>
             </div>
           </div>
-        )}
+        ) : (
+          /* DANH SÁCH TIN NHẮN KHI ĐÃ CÓ HỘI THOẠI */
+          <div className="mx-auto max-w-3xl space-y-5 pt-4 pb-4">
+            {chatMessages.map((m, i) => (
+              <MessageBubble
+                key={m.id}
+                m={m}
+                speaking={speakingId === m.id}
+                onSpeak={onSpeak}
+                latest={i === chatMessages.length - 1}
+                sending={sending}
+                onAnswer={onQuickSymptom}
+                onPickPlant={onPickPlant}
+              />
+            ))}
 
-        {messages.map((m) => (
-          <MessageBubble key={m.id} m={m} speaking={speakingId === m.id} onSpeak={onSpeak} />
-        ))}
-
-        {sending ? (
-          <div className="flex items-center gap-2.5 pl-11 text-xs text-stone-500 animate-pulse">
-            <Loader2 size={15} className="animate-spin text-[#1C4C40]" aria-hidden />
-            <span>Bác sĩ đang quan sát triệu chứng và kê đơn thuốc cho cây của bạn…</span>
+            {sending ? (
+              <div className="flex items-center gap-2.5 pl-11 text-xs text-stone-500 animate-pulse">
+                <Loader2 size={16} className="animate-spin text-[#1C4C40]" />
+                <span>Bác sĩ đang nhận diện cây và xem triệu chứng…</span>
+              </div>
+            ) : null}
           </div>
-        ) : null}
+        )}
       </div>
 
-      <form
-        className="border-t border-stone-200/90 bg-white p-3 sm:p-3.5"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (canSend) onSend();
-        }}
-      >
-        {/* Khi đã chat, hiển thị hàng chip cuộn ngang nhỏ gọn để hỏi thêm nhanh */}
-        {messages.length > 1 && (
-          <div className="mb-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 px-0.5">
-            <span className="shrink-0 text-[11px] font-bold text-stone-400">Khám nhanh:</span>
-            {SYMPTOM_PRESETS.map((p) => {
-              const icon = SYMPTOM_ICONS[p.id] || "🌱";
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  disabled={sending}
-                  onClick={() => onQuickSymptom(p.prompt)}
-                  className="shrink-0 inline-flex items-center gap-1 rounded-full border border-stone-200/90 bg-[#FAF9F6] px-2.5 py-1 text-[11px] font-medium text-stone-600 hover:border-[#1C4C40] hover:bg-emerald-50 hover:text-[#1C4C40] transition cursor-pointer disabled:opacity-50"
-                >
-                  <span>{icon}</span>
-                  <span>{p.name}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-        {images.length ? (
-          <div className="mb-2.5 flex flex-wrap items-center gap-2 rounded-xl bg-stone-50 p-2 border border-stone-200/60">
-            {images.map((img) => (
-              <div key={img.id} className="relative group">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={img.previewUrl} alt="Ảnh sẽ gửi" className="h-16 w-16 rounded-xl object-cover ring-1 ring-stone-200 shadow-2xs" />
-                <button
-                  type="button"
-                  onClick={() => onRemoveImage(img.id)}
-                  className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-rose-600 text-white shadow-xs hover:bg-rose-700 transition cursor-pointer"
-                  aria-label="Bỏ ảnh"
-                >
-                  <X size={12} aria-hidden />
-                </button>
-              </div>
-            ))}
-            <span className="text-xs text-stone-500 font-medium ml-1">
-              {images.length}/{MAX_IMAGES} ảnh đã đính kèm
-            </span>
-          </div>
-        ) : null}
+      {/* THANH NHẬP LIỆU CỐ ĐỊNH Ở ĐÁY (FIXED DOCKED BOTTOM CAPSULE CHUẨN GOOGLE GEMINI) */}
+      {/* Nằm mặc định một chỗ duy nhất, không bao giờ bị cuộn trôi khi kéo lên kéo xuống */}
+      <div className="shrink-0 z-20 pb-3 pt-2 bg-gradient-to-t from-[#FAF9F6] via-[#FAF9F6]/95 to-transparent px-3.5 sm:px-6 w-full">
+        <div className="mx-auto max-w-3xl w-full space-y-2">
+          {/* Ảnh đính kèm chờ gửi (nếu có) */}
+          {images.length ? (
+            <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-white p-2 border border-stone-200/80 shadow-xs">
+              {images.map((img) => (
+                <div key={img.id} className="relative group">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={img.previewUrl}
+                    alt="Ảnh sẽ gửi"
+                    className="h-14 w-14 rounded-xl object-cover ring-1 ring-stone-200 shadow-2xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => onRemoveImage(img.id)}
+                    className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-rose-600 text-white shadow-xs hover:bg-rose-700 transition cursor-pointer"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+              <span className="text-xs text-stone-500 font-medium ml-1">
+                {images.length}/{MAX_IMAGES} ảnh đã đính kèm
+              </span>
+            </div>
+          ) : null}
 
-        <div className="flex items-end gap-2">
-          <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => {
-            if (e.target.files) onPickFiles(e.target.files);
-            e.target.value = "";
-          }} />
-          <input ref={galleryRef} type="file" accept="image/*" multiple hidden onChange={(e) => {
-            if (e.target.files) onPickFiles(e.target.files);
-            e.target.value = "";
-          }} />
-          <button
-            type="button"
-            disabled={full}
-            onClick={() => cameraRef.current?.click()}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-[#1C4C40] hover:bg-emerald-100 disabled:opacity-40 shadow-2xs transition cursor-pointer"
-            aria-label="Chụp ảnh cây"
-            title="Chụp ảnh"
-          >
-            <Camera size={20} aria-hidden />
-          </button>
-          <button
-            type="button"
-            disabled={full}
-            onClick={() => galleryRef.current?.click()}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-[#1C4C40] hover:bg-emerald-100 disabled:opacity-40 shadow-2xs transition cursor-pointer"
-            aria-label="Chọn ảnh từ máy"
-            title={`Chọn ảnh (tối đa ${MAX_IMAGES})`}
-          >
-            <ImagePlus size={20} aria-hidden />
-          </button>
+          {/* Hàng chip cuộn ngang hỏi tiếp trong chế độ hội thoại */}
+          {!isInitial ? (
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 px-0.5">
+              <span className="shrink-0 text-[11px] font-bold text-stone-400">Hỏi tiếp:</span>
+              {SYMPTOM_PRESETS.map((p) => {
+                const icon = SYMPTOM_ICONS[p.id] || "🌱";
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    disabled={sending}
+                    onClick={() => onQuickSymptom(p.prompt)}
+                    className="shrink-0 inline-flex items-center gap-1 rounded-full border border-stone-200/90 bg-white/90 px-3 py-1 text-[11.5px] font-medium text-stone-700 shadow-2xs hover:border-[#1C4C40] hover:bg-emerald-50 hover:text-[#1C4C40] transition cursor-pointer disabled:opacity-50"
+                  >
+                    <span>{icon}</span>
+                    <span>{p.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
 
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onPaste={(e) => {
-              const files = [...(e.clipboardData?.files || [])].filter((f) => f.type.startsWith("image/"));
-              if (files.length) {
-                e.preventDefault();
-                onPickFiles(files);
-              }
+          {/* The Gemini Capsule Bar - Ô chat nằm mặc định 1 chỗ ở đáy */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (canSend) onSend();
             }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                if (canSend) onSend();
-              }
-            }}
-            rows={1}
-            maxLength={2000}
-            placeholder="Mô tả thêm tình trạng (lá úng, rệp trắng, rụng lá...)"
-            className="max-h-32 min-h-11 flex-1 resize-none rounded-2xl border border-stone-200/90 bg-[#FAF9F6] px-4 py-2.5 text-sm outline-none focus:border-[#1C4C40] focus:ring-2 focus:ring-[#1C4C40]/15 transition"
-          />
-
-          <button
-            type="submit"
-            disabled={!canSend}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#1C4C40] text-white shadow-sm hover:bg-[#163c32] active:scale-95 disabled:opacity-40 transition cursor-pointer"
-            aria-label="Gửi cho bác sĩ"
-            title="Gửi câu hỏi"
+            className="relative flex items-center gap-1.5 sm:gap-2 rounded-2xl sm:rounded-3xl border border-stone-300 bg-white p-1.5 sm:p-2 shadow-md transition focus-within:border-[#1C4C40] focus-within:ring-2 focus-within:ring-[#1C4C40]/15"
           >
-            {sending ? <Loader2 size={18} className="animate-spin" aria-hidden /> : <Send size={18} aria-hidden />}
-          </button>
+            {/* Nút chụp ảnh / chọn ảnh */}
+            <div className="flex items-center gap-0.5 shrink-0 pl-1">
+              <button
+                type="button"
+                onClick={() => cameraRef.current?.click()}
+                disabled={full}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-stone-500 hover:text-[#1C4C40] hover:bg-emerald-50 transition cursor-pointer disabled:opacity-40"
+                title="Chụp ảnh cây ngay"
+              >
+                <Camera size={19} />
+              </button>
+              <button
+                type="button"
+                onClick={() => galleryRef.current?.click()}
+                disabled={full}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-stone-500 hover:text-[#1C4C40] hover:bg-emerald-50 transition cursor-pointer disabled:opacity-40"
+                title="Chọn ảnh từ máy"
+              >
+                <ImagePlus size={19} />
+              </button>
+            </div>
+
+            {/* Ô gõ câu hỏi & nhận dán ảnh trực tiếp Ctrl+V */}
+            <textarea
+              ref={textareaRef}
+              value={input}
+              rows={1}
+              onChange={handleTextChange}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  if (canSend) onSend();
+                }
+              }}
+              placeholder="Hỏi Bác sĩ cây cảnh hoặc dán ảnh cây (Ctrl + V)..."
+              className="w-full flex-1 border-0 bg-transparent py-1.5 px-2 text-[14.5px] sm:text-[15px] text-stone-800 placeholder-stone-400 outline-none focus:outline-none resize-none max-h-32 leading-relaxed"
+            />
+
+            {/* Nút gửi */}
+            <button
+              type="submit"
+              disabled={!canSend}
+              className={`flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full transition ${
+                canSend
+                  ? "bg-[#1C4C40] text-white shadow-sm hover:bg-[#163c32] active:scale-95 cursor-pointer"
+                  : "bg-stone-100 text-stone-300 cursor-not-allowed"
+              }`}
+              title="Gửi câu hỏi"
+            >
+              <ArrowUp size={18} strokeWidth={2.5} />
+            </button>
+          </form>
+
+          <p className="text-center text-[10.5px] sm:text-[11px] text-stone-400 select-none leading-relaxed">
+            <span>Dán ảnh (Ctrl + V) · Kéo thả · Chụp ảnh trực tiếp</span>
+            <span className="hidden sm:inline"> · Aloha AI có thể mắc lỗi. Với ca nguy kịch, liên hệ Hotline Zalo nhà vườn.</span>
+          </p>
         </div>
-      </form>
+      </div>
     </div>
   );
 }

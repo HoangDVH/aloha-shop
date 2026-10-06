@@ -1,8 +1,14 @@
 import type { Express, Request, Response } from "express";
+import type { GetDb } from "../auth/middleware.js";
 import { shopRateLimitOrReject } from "../shopRateLimit.js";
-import { DEMO_IDENTIFY, demoReply } from "./demoReplies.js";
-import { generateText, geminiKey, type GeminiContent } from "./gemini.js";
-import { PLANT_DOCTOR_SYSTEM, PLANT_IDENTIFY_PROMPT, PLANT_IDENTIFY_SYSTEM, splitSuggestions } from "./prompt.js";
+import { FEATURE_DISABLED_MESSAGE, readPlantDoctorAccess, registerPlantDoctorAccessRoutes } from "./access.js";
+import { cardToText, type DoctorCard } from "./card.js";
+import { diagnose } from "./diagnose.js";
+import type { GeminiContent } from "./gemini.js";
+import { parsePlantRef, rankCandidates, type PlantRef } from "./identify.js";
+import { identifyPlant, plantNetKey } from "./plantnet.js";
+import { getProfile } from "./profiles/index.js";
+import { isProfileReviewed, loadProfileReviews } from "./reviews.js";
 
 const MAX_MESSAGES = 16;
 const MAX_TEXT = 4000;
@@ -18,11 +24,11 @@ type ImageIn = { mimeType: string; data: string };
 
 export type PlantDoctorInput =
   | { error: string }
-  | { mode: "diagnose" | "identify"; messages: ChatMessage[]; images: ImageIn[] };
+  | { mode: "diagnose" | "identify"; messages: ChatMessage[]; images: ImageIn[]; plant: PlantRef | null };
 
 /** Kiểm tra body từ trình duyệt: số tin, độ dài, số ảnh, định dạng và dung lượng ảnh. */
 export function parsePlantDoctorBody(body: unknown): PlantDoctorInput {
-  const b = (body || {}) as { mode?: unknown; messages?: unknown; images?: unknown };
+  const b = (body || {}) as { mode?: unknown; messages?: unknown; images?: unknown; plant?: unknown };
   const mode = b.mode === "identify" ? "identify" : "diagnose";
   const rawMessages = Array.isArray(b.messages) ? b.messages : [];
   const messages: ChatMessage[] = rawMessages
@@ -48,12 +54,12 @@ export function parsePlantDoctorBody(body: unknown): PlantDoctorInput {
 
   if (mode === "identify") {
     if (!images.length) return { error: "Cần ít nhất 1 ảnh để nhận diện cây." };
-    return { mode, messages: [{ role: "user", content: PLANT_IDENTIFY_PROMPT }], images };
+    return { mode, messages: [], images, plant: null };
   }
   if (!messages.length || messages[messages.length - 1].role !== "user") {
     return { error: "Vui lòng mô tả triệu chứng hoặc gửi ảnh cây." };
   }
-  return { mode, messages, images };
+  return { mode, messages, images, plant: parsePlantRef(b.plant) };
 }
 
 /** Lịch sử chat → định dạng Gemini; ảnh gắn vào tin nhắn mới nhất của khách. */
@@ -69,7 +75,18 @@ export function toGeminiContents(messages: ChatMessage[], images: ImageIn[]): Ge
   return contents;
 }
 
-async function handle(req: Request, res: Response) {
+/** Lỗi đọc DB thì giữ trạng thái chờ duyệt, không chặn khách nhận phiếu. */
+async function markReviewed(getDb: GetDb, card: DoctorCard): Promise<DoctorCard> {
+  const profile = card.basics ? getProfile(card.plant?.profileId) : null;
+  if (!profile || card.reviewed) return card;
+  try {
+    return { ...card, reviewed: isProfileReviewed(profile, await loadProfileReviews(await getDb())) };
+  } catch {
+    return card;
+  }
+}
+
+async function handle(getDb: GetDb, req: Request, res: Response) {
   res.setHeader("Cache-Control", "no-store");
   const input = parsePlantDoctorBody(req.body);
   if ("error" in input) return res.status(400).json({ ok: false, error: input.error });
@@ -79,30 +96,39 @@ async function handle(req: Request, res: Response) {
   if (!(await shopRateLimitOrReject(req as any, res as any, scope, identify ? 20 : 12, 10 * 60_000))) return;
   if (!(await shopRateLimitOrReject(req as any, res as any, "plant_doctor_day", 80, 24 * 3600_000))) return;
 
-  const key = geminiKey();
-  if (!key) {
-    const lastText = input.messages[input.messages.length - 1]?.content || "";
-    if (identify) return res.json({ ok: true, reply: DEMO_IDENTIFY, suggest: [], demo: true });
-    const { reply, suggest } = splitSuggestions(demoReply(lastText, input.images.length > 0));
-    return res.json({ ok: true, reply, suggest, demo: true });
+  if (identify) {
+    const key = plantNetKey();
+    if (!key) return res.json({ ok: true, reply: "", candidates: [] });
+    const r = await identifyPlant(key, input.images);
+    if (r.status === "unavailable") return res.status(503).json({ ok: false, error: BUSY });
+    const candidates = r.status === "ok" ? rankCandidates(r.candidates) : [];
+    return res.json({ ok: true, reply: candidates.map((c) => c.name).join("\n"), candidates });
   }
 
-  try {
-    const contents = toGeminiContents(input.messages, input.images);
-    const system = identify ? PLANT_IDENTIFY_SYSTEM : PLANT_DOCTOR_SYSTEM;
-    const text = await generateText(key, system, contents, identify ? 1024 : 4096);
-    if (identify) return res.json({ ok: true, reply: text, suggest: [] });
-    const { reply, suggest } = splitSuggestions(text);
-    return res.json({ ok: true, reply, suggest });
-  } catch (e) {
-    console.warn("[plant-doctor] gemini lỗi:", (e as Error)?.message);
-    return res.status(503).json({ ok: false, error: BUSY });
-  }
+  const card = await markReviewed(
+    getDb,
+    await diagnose({
+      messages: input.messages,
+      images: input.images,
+      plant: input.plant,
+      contents: toGeminiContents(input.messages, input.images),
+    })
+  );
+  return res.json({ ok: true, reply: cardToText(card), card });
 }
 
-export function registerPlantDoctorRoutes(app: Express) {
+export function registerPlantDoctorRoutes(app: Express, getOpsDb: GetDb, getDb: GetDb) {
+  registerPlantDoctorAccessRoutes(app, getOpsDb, getDb);
   app.post("/api/shop/plant-doctor", (req, res) => {
-    handle(req, res).catch((e) => {
+    readPlantDoctorAccess(getDb, req)
+      .then((access) => {
+        if (!access.allowed) {
+          res.setHeader("Cache-Control", "no-store");
+          return void res.status(403).json({ ok: false, code: "feature_disabled", error: FEATURE_DISABLED_MESSAGE });
+        }
+        return handle(getDb, req, res);
+      })
+      .catch((e) => {
       console.warn("[plant-doctor] lỗi:", (e as Error)?.message);
       if (!res.headersSent) res.status(500).json({ ok: false, error: BUSY });
     });

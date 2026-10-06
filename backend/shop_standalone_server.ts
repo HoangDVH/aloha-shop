@@ -237,7 +237,7 @@ registerShopCtvMeRoutes(app, getDb, getOpsDb);
 registerShopAppearanceRoutes(app, getOpsDb, getDb);
 registerShopArticlesRoutes(app, getOpsDb, getDb);
 registerShopRecruitmentRoutes(app, getOpsDb, getDb);
-registerPlantDoctorRoutes(app);
+registerPlantDoctorRoutes(app, getOpsDb, getDb);
 registerShopProductsAdminRoutes(app, getOpsDb, getDb, getCatalogSourceDb);
 registerShopCatalogSyncFromOpsRoutes(app, getOpsDb, getDb, getCatalogSourceDb);
 registerShopSeoRedirectRoutes(app, getOpsDb, getDb);

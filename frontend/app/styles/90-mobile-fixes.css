@@ -12,3 +12,12 @@
     font-size: 16px !important;
   }
 }
+
+/* Ẩn thanh cuộn nhưng vẫn vuốt/cuộn mượt */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

@@ -1,9 +1,11 @@
 /** Nội dung mẫu của Phòng khám (chép từ ALOHA-GARDEN-2, chỉnh lời cho khách mua lẻ). */
+export const ALOHA_ZALO = { href: "https://zalo.me/0794901233", label: "079 490 1233" };
+
 export const WELCOME_TEXT = `Chào bạn! Mình là Bác sĩ cây cảnh của Aloha.
 
 Hãy gửi ảnh thực tế của cây (chụp toàn cây, cận lá và gốc nếu được), hoặc mô tả triệu chứng: lá nhũn trong suốt, mốc trắng ở nách lá, rễ khô teo, rụng lá hàng loạt…
 
-Mình sẽ chỉ ra nguyên nhân, cách chữa từng bước và cách trồng để cây khoẻ lại.`;
+Mình nhận diện loài cây trước, rồi hướng dẫn cách chữa và cách chăm đúng cho loài đó.`;
 
 export type SymptomPreset = {
   id: string;
@@ -21,7 +23,7 @@ export const SYMPTOM_PRESETS: SymptomPreset[] = [
     label: "Bám kín nách lá",
     description: "Vệt trắng như bông bám ở nách lá, lá dưới teo sạm dần.",
     prompt:
-      "Sen đá ngọc của tôi có nhiều mảng bông mốc trắng li ti ở kẽ lá sâu bên trong. Đầu ngọn chớm héo và lá bầm lại. Tôi nên xử lý thế nào?",
+      "Cây của tôi có nhiều mảng bông trắng li ti ở kẽ lá và mặt dưới lá. Đầu ngọn chớm héo. Tôi nên xử lý thế nào?",
     severity: "warning",
   },
   {
@@ -30,7 +32,7 @@ export const SYMPTOM_PRESETS: SymptomPreset[] = [
     label: "Lá sũng nước",
     description: "Lá căng mọng, úng vàng trong suốt và rụng khi chạm nhẹ.",
     prompt:
-      "Sen đá sỏi hồng bị thối gốc đen, lá dưới sũng nước chuyển màu trong suốt rồi rụng hàng loạt từ dưới lên. Có cứu kịp không?",
+      "Cây của tôi bị thâm gốc, lá dưới vàng úng, mềm nhũn rồi rụng dần từ dưới lên, đất lâu khô. Có cứu kịp không?",
     severity: "high",
   },
   {
@@ -39,7 +41,7 @@ export const SYMPTOM_PRESETS: SymptomPreset[] = [
     label: "Thiếu sáng",
     description: "Thân vươn dài lêu nghêu, lá thưa, bẹt ra và nhạt màu.",
     prompt:
-      "Sen đá để trên bàn làm việc phòng máy lạnh bị vươn cao, lá duỗi thẳng không còn ôm tròn nữa. Xin tư vấn cách chỉnh dáng.",
+      "Cây để trên bàn làm việc phòng máy lạnh bị vươn dài, lá thưa và nhạt màu dần. Tôi nên làm gì?",
     severity: "info",
   },
   {

@@ -10,14 +10,15 @@ import { useDealsNavAccent } from "@/lib/campaign/navAccent";
 const OPEN_CATS = "aloha:open-mobile-cats";
 
 function shouldHideTabBar(pathname: string) {
-  // Chuẩn TMĐT lớn (Shopee/Tiki/Lazada): ẩn tab bar điều hướng chung khi xem PDP, Giỏ hàng, Checkout và Đơn hàng
-  // vì các trang này đã có thanh hành động Sticky riêng bám sát đáy màn hình.
+  // Chuẩn TMĐT lớn (Shopee/Tiki/Lazada & AI chat Gemini): ẩn tab bar điều hướng chung khi xem PDP, Giỏ hàng, Checkout, Đơn hàng
+  // và Bác sĩ cây cảnh (vì giao diện AI chat có thanh nhập liệu Sticky/Docked riêng bám sát đáy màn hình).
   return (
     pathname.startsWith("/sp") ||
     (pathname.startsWith("/c/") && pathname.includes("/p/")) ||
     pathname.startsWith("/gio-hang") ||
     pathname.startsWith("/xac-nhan-don-hang") ||
-    pathname.startsWith("/don-hang")
+    pathname.startsWith("/don-hang") ||
+    pathname.startsWith("/bac-si-cay")
   );
 }
 

@@ -25,6 +25,8 @@ const nextConfig: NextConfig = {
       dynamic: 30,
       static: 180,
     },
+    /** Rewrite /api/shop → backend mặc định cắt sau 30s; Bác sĩ cây có thể chạy tới ~55s khi đổi model dự phòng. */
+    proxyTimeout: 70_000,
   },
   /**
    * URL cũ KiotViet → trang shop mới (301).

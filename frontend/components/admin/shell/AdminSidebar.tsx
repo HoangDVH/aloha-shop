@@ -20,6 +20,7 @@ import {
   Shield,
   ShoppingBag,
   Sparkles,
+  Sprout,
   Store,
   Ticket,
   UserRound,
@@ -308,6 +309,15 @@ export function AdminSidebar() {
         >
           <Search className="h-4 w-4 shrink-0" />
           Tối ưu SEO
+        </Link>
+
+        <Link
+          href="/admin/bac-si-cay"
+          className={linkClass(pathname.startsWith("/admin/bac-si-cay"))}
+          style={pathname.startsWith("/admin/bac-si-cay") ? activeNavStyle : undefined}
+        >
+          <Sprout className="h-4 w-4 shrink-0" />
+          Bác sĩ cây cảnh
         </Link>
 
         <a

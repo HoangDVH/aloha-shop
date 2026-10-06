@@ -657,10 +657,12 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
 }
 
 export function SiteFooter() {
+  const pathname = usePathname() || "";
   const [theme, setTheme] = useState<AppearanceTheme | null>(null);
   const dealsNavHref = useDealsNavHref();
 
   useEffect(() => {
+    if (pathname.startsWith("/bac-si-cay")) return;
     let cancelled = false;
     const load = () => {
       void fetch(`${shopApiBase()}/api/shop/appearance`, { cache: "no-store" })
@@ -690,6 +692,10 @@ export function SiteFooter() {
     email: theme?.footer?.email?.trim() || DEFAULT_FOOTER.email,
     zalo: theme?.footer?.zalo?.trim() || DEFAULT_FOOTER.zalo,
   };
+
+  if (pathname.startsWith("/bac-si-cay")) {
+    return null;
+  }
 
   return (
     <>

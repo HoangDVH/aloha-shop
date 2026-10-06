@@ -1,13 +1,15 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { ArrowLeft, ArrowRight, CheckCircle2, ImagePlus, Loader2, Sparkles } from "lucide-react";
-import type { DoctorImage } from "@/lib/plantDoctor/api";
+import type { DoctorImage, PlantCandidate } from "@/lib/plantDoctor/api";
 import { GUIDED_QUESTIONS, type GUIDED_DEFAULTS } from "@/lib/plantDoctor/presets";
 
 export type GuidedState = {
   step: 0 | 1 | 2;
-  plants: string[];
+  plants: PlantCandidate[];
+  identified: boolean;
+  /** Chỉ số trong `plants`, hoặc "unknown" / "custom". */
   choice: string;
   custom: string;
   answers: typeof GUIDED_DEFAULTS;
@@ -39,10 +41,64 @@ export function GuidedWizard({
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const go = (step: GuidedState["step"]) => setState({ ...state, step });
+
+  const lastPasteTimeRef = useRef<number>(0);
+
+  // Hỗ trợ dán ảnh qua phím tắt Ctrl + V ở bước tải ảnh
+  useEffect(() => {
+    if (state.step !== 0) return;
+    const handlePaste = (e: ClipboardEvent) => {
+      const clipboardData = e.clipboardData;
+      if (!clipboardData) return;
+      const rawFiles: File[] = [];
+      if (clipboardData.items) {
+        for (let i = 0; i < clipboardData.items.length; i++) {
+          const item = clipboardData.items[i];
+          if (item.type.startsWith("image/")) {
+            const file = item.getAsFile();
+            if (file) rawFiles.push(file);
+          }
+        }
+      }
+      if (rawFiles.length === 0 && clipboardData.files?.length) {
+        for (let i = 0; i < clipboardData.files.length; i++) {
+          const f = clipboardData.files[i];
+          if (f.type.startsWith("image/")) rawFiles.push(f);
+        }
+      }
+      if (rawFiles.length === 0) return;
+
+      const now = Date.now();
+      if (now - lastPasteTimeRef.current < 500) {
+        e.preventDefault();
+        return;
+      }
+      lastPasteTimeRef.current = now;
+
+      const uniqueFiles: File[] = [];
+      const seen = new Set<string>();
+      for (const f of rawFiles) {
+        const key = `${f.name}_${f.size}_${f.type}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniqueFiles.push(f);
+        }
+      }
+
+      if (uniqueFiles.length > 0) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        onPickFiles(uniqueFiles);
+      }
+    };
+
+    window.addEventListener("paste", handlePaste, true);
+    return () => window.removeEventListener("paste", handlePaste, true);
+  }, [state.step, onPickFiles]);
   const plantOptions = [
-    ...state.plants.map((p) => ({ id: p, label: p, isAi: true })),
-    { id: "unknown", label: "Tôi không rõ là cây gì", isAi: false },
-    { id: "custom", label: "Cây khác (tự nhập tên)", isAi: false },
+    ...state.plants.map((p, i) => ({ id: String(i), label: p.name, hint: p.scientificName, score: p.score as number | null })),
+    { id: "unknown", label: "Tôi không rõ là cây gì", hint: "", score: null },
+    { id: "custom", label: "Cây khác (tự nhập tên)", hint: "", score: null },
   ];
 
   return (
@@ -94,7 +150,7 @@ export function GuidedWizard({
           <div>
             <h3 className="text-base font-bold text-stone-800">Chụp hoặc tải ảnh cây cần khám</h3>
             <p className="mt-1 text-xs text-stone-500">
-              Chụp rõ vết bệnh, kẽ lá hoặc toàn thân chậu cây. Bác sĩ AI sẽ tự động phân tích và nhận diện cây.
+              Chụp toàn thân cây và thêm một ảnh cận chỗ bị bệnh. Pl@ntNet sẽ nhận diện loài cây.
             </p>
           </div>
 
@@ -127,7 +183,7 @@ export function GuidedWizard({
                   <ImagePlus size={24} aria-hidden />
                 </div>
                 <div className="text-center">
-                  <span className="block text-sm font-bold">Bấm để chọn hoặc chụp ảnh</span>
+                  <span className="block text-sm font-bold">Bấm để chọn, chụp hoặc dán ảnh (Ctrl + V)</span>
                   <span className="block text-[11px] text-stone-500 mt-0.5">Hỗ trợ tối đa 4 ảnh JPG, PNG</span>
                 </div>
               </>
@@ -173,8 +229,13 @@ export function GuidedWizard({
           <div>
             <h3 className="text-base font-bold text-stone-800">Cây của bạn thuộc loại nào?</h3>
             <p className="mt-1 text-xs text-stone-500">
-              Chọn tên loài cây để phác đồ điều trị và phân bón đề xuất được chính xác nhất.
+              Chọn đúng loài để hướng dẫn chữa và chăm sóc dành riêng cho cây đó.
             </p>
+            {state.identified && !state.plants.length ? (
+              <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-100">
+                Chưa nhận ra cây trong ảnh. Bạn chọn &quot;Cây khác&quot; và nhập tên, hoặc quay lại chụp rõ cả cây.
+              </p>
+            ) : null}
           </div>
 
           <div className="space-y-2">
@@ -198,10 +259,11 @@ export function GuidedWizard({
                       className="accent-[#1C4C40]"
                     />
                     <span className="font-semibold">{o.label}</span>
+                    {o.hint ? <em className="text-[11px] text-stone-400">{o.hint}</em> : null}
                   </div>
-                  {o.isAi ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-[#1C4C40]">
-                      <Sparkles size={11} aria-hidden /> AI gợi ý
+                  {o.score != null ? (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-[#1C4C40]">
+                      <Sparkles size={11} aria-hidden /> Pl@ntNet {Math.round(o.score * 100)}%
                     </span>
                   ) : null}
                 </label>
