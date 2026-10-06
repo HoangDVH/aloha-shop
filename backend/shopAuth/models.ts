@@ -198,6 +198,7 @@ export async function ensureShopAuthIndexes(db: Db) {
       db.collection(SHOP_ACCOUNTS).createIndex({ ctvStatus: 1 }, { background: true }),
       db.collection(SHOP_REFRESH).createIndex({ jti: 1 }, { unique: true, background: true }),
       db.collection(SHOP_REFRESH).createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0, background: true }),
+      db.collection(SHOP_REFRESH).createIndex({ familyId: 1 }, { sparse: true, background: true }),
     ]);
   } catch (e) {
     console.warn("[shopAuth] ensureShopAuthIndexes:", e);

@@ -23,7 +23,8 @@ export type Confidence = (typeof CONFIDENCES)[number];
 
 export type FollowUp = { question: string; options: string[] };
 
-export type PlantCandidate = { profileId: string | null; name: string; scientificName: string; score: number };
+/** `byAi`: trợ lý AI đoán từ ảnh khi Pl@ntNet không chắc; chỉ là gợi ý, khách phải bấm xác nhận. */
+export type PlantCandidate = { profileId: string | null; name: string; scientificName: string; score: number; byAi?: boolean };
 
 /** Cây đã xác định: nguồn nhận diện, điểm Pl@ntNet và các khả năng khác để khách chọn lại. */
 export type PlantIdentity = {

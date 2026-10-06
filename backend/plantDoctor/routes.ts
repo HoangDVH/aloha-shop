@@ -3,9 +3,9 @@ import type { GetDb } from "../auth/middleware.js";
 import { shopRateLimitOrReject } from "../shopRateLimit.js";
 import { FEATURE_DISABLED_MESSAGE, readPlantDoctorAccess, registerPlantDoctorAccessRoutes } from "./access.js";
 import { cardToText, type DoctorCard } from "./card.js";
-import { diagnose } from "./diagnose.js";
+import { diagnose, guessPlantWithAi, withAiGuess } from "./diagnose.js";
 import type { GeminiContent } from "./gemini.js";
-import { parsePlantRef, rankCandidates, type PlantRef } from "./identify.js";
+import { POSSIBLE, parsePlantRef, rankCandidates, type PlantRef } from "./identify.js";
 import { identifyPlant, plantNetKey } from "./plantnet.js";
 import { getProfile } from "./profiles/index.js";
 import { isProfileReviewed, loadProfileReviews } from "./reviews.js";
@@ -24,11 +24,14 @@ type ImageIn = { mimeType: string; data: string };
 
 export type PlantDoctorInput =
   | { error: string }
-  | { mode: "diagnose" | "identify"; messages: ChatMessage[]; images: ImageIn[]; plant: PlantRef | null };
+  | { mode: "diagnose" | "identify"; messages: ChatMessage[]; images: ImageIn[]; plant: PlantRef | null; newPhotos: boolean };
 
-/** Kiểm tra body từ trình duyệt: số tin, độ dài, số ảnh, định dạng và dung lượng ảnh. */
+/**
+ * Kiểm tra body từ trình duyệt: số tin, độ dài, số ảnh, định dạng và dung lượng ảnh.
+ * Ảnh mới (`newPhotos`) có thể là cây khác nên chỉ giữ tin nhắn hiện tại, bỏ hội thoại về cây trước.
+ */
 export function parsePlantDoctorBody(body: unknown): PlantDoctorInput {
-  const b = (body || {}) as { mode?: unknown; messages?: unknown; images?: unknown; plant?: unknown };
+  const b = (body || {}) as { mode?: unknown; messages?: unknown; images?: unknown; plant?: unknown; newPhotos?: unknown };
   const mode = b.mode === "identify" ? "identify" : "diagnose";
   const rawMessages = Array.isArray(b.messages) ? b.messages : [];
   const messages: ChatMessage[] = rawMessages
@@ -54,12 +57,14 @@ export function parsePlantDoctorBody(body: unknown): PlantDoctorInput {
 
   if (mode === "identify") {
     if (!images.length) return { error: "Cần ít nhất 1 ảnh để nhận diện cây." };
-    return { mode, messages: [], images, plant: null };
+    return { mode, messages: [], images, plant: null, newPhotos: true };
   }
   if (!messages.length || messages[messages.length - 1].role !== "user") {
     return { error: "Vui lòng mô tả triệu chứng hoặc gửi ảnh cây." };
   }
-  return { mode, messages, images, plant: parsePlantRef(b.plant) };
+  const plant = parsePlantRef(b.plant);
+  const newPhotos = images.length > 0 && (typeof b.newPhotos === "boolean" ? b.newPhotos : !plant?.confirmed);
+  return { mode, messages: newPhotos ? messages.slice(-1) : messages, images, plant, newPhotos };
 }
 
 /** Lịch sử chat → định dạng Gemini; ảnh gắn vào tin nhắn mới nhất của khách. */
@@ -98,10 +103,13 @@ async function handle(getDb: GetDb, req: Request, res: Response) {
 
   if (identify) {
     const key = plantNetKey();
-    if (!key) return res.json({ ok: true, reply: "", candidates: [] });
-    const r = await identifyPlant(key, input.images);
-    if (r.status === "unavailable") return res.status(503).json({ ok: false, error: BUSY });
-    const candidates = r.status === "ok" ? rankCandidates(r.candidates) : [];
+    const r = key ? await identifyPlant(key, input.images) : null;
+    let candidates = r?.status === "ok" ? rankCandidates(r.candidates) : [];
+    if (!candidates.some((c) => c.profileId && c.score >= POSSIBLE)) {
+      const guess = await guessPlantWithAi(toGeminiContents([{ role: "user", content: "Cây trong ảnh là cây gì?" }], input.images));
+      if (guess.kind === "plant") candidates = withAiGuess(candidates, guess.candidate);
+    }
+    if (!candidates.length && r?.status === "unavailable") return res.status(503).json({ ok: false, error: BUSY });
     return res.json({ ok: true, reply: candidates.map((c) => c.name).join("\n"), candidates });
   }
 
@@ -111,6 +119,7 @@ async function handle(getDb: GetDb, req: Request, res: Response) {
       messages: input.messages,
       images: input.images,
       plant: input.plant,
+      newPhotos: input.newPhotos,
       contents: toGeminiContents(input.messages, input.images),
     })
   );

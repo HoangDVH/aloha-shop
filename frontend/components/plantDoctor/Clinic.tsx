@@ -70,7 +70,7 @@ export function Clinic() {
     });
     setIdentifying(false);
     const plants = r.ok ? (r.candidates ?? []).filter((c) => c.profileId).slice(0, 3) : [];
-    setGuided((g) => ({ ...g, step: 1, plants, identified: true, choice: plants.length ? "0" : "unknown" }));
+    setGuided((g) => ({ ...g, step: 1, plants, identified: true, choice: plants.length && !plants[0].byAi ? "0" : "unknown" }));
   };
 
   const pickFiles = async (files: FileList | File[]) => {
@@ -86,11 +86,15 @@ export function Clinic() {
     if (mode === "guided" && guided.step === 0) void identify(prepared);
   };
 
-  /** `opts.images`: gửi lại ảnh lượt trước khi khách chọn lại cây, để AI vẫn xem được ảnh. */
+  /**
+   * `opts.images`: gửi lại ảnh lượt trước khi khách chọn lại cây, để AI vẫn xem được ảnh.
+   * Khách tự gửi ảnh mới (không kèm cây vừa chọn) có thể là cây khác: server nhận diện lại, không dùng cây cũ.
+   */
   const send = async (text: string, opts: { plant?: PlantRef | null; images?: DoctorImage[] } = {}) => {
     const content = text.trim() || "Nhờ bác sĩ xem giúp tình trạng cây trong ảnh.";
     const attached = opts.images ?? images;
     const ref = opts.plant !== undefined ? opts.plant : plant;
+    const newPhotos = !opts.images && opts.plant === undefined && attached.length > 0;
     const userMsg: DoctorMessage = {
       id: newId("u"),
       role: "user",
@@ -109,11 +113,12 @@ export function Clinic() {
       messages: history.map((m) => ({ role: m.role, content: m.content })),
       images: attached.map((i) => ({ mimeType: i.mimeType, data: i.base64 })),
       plant: ref,
+      newPhotos,
     });
     setSending(false);
     if (!r.ok) return setError(r.error);
     const next = refFromCard(r.card);
-    if (next) setPlant(next);
+    if (next || newPhotos) setPlant(next);
     setMessages((prev) => [...prev, { id: newId("a"), role: "assistant", content: r.reply, time: nowTime(), card: r.card }]);
   };
 
@@ -128,7 +133,7 @@ export function Clinic() {
     const label = ref?.name ?? "Tôi không rõ là cây gì";
     setMode("chat");
     setGuided(freshGuided());
-    void send(guidedPrompt(label, guided.answers), { plant: ref ?? plant });
+    void send(guidedPrompt(label, guided.answers), ref ? { plant: ref } : {});
   };
 
   const restart = () => {

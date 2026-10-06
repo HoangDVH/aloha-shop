@@ -96,9 +96,15 @@ export function GuidedWizard({
     return () => window.removeEventListener("paste", handlePaste, true);
   }, [state.step, onPickFiles]);
   const plantOptions = [
-    ...state.plants.map((p, i) => ({ id: String(i), label: p.name, hint: p.scientificName, score: p.score as number | null })),
-    { id: "unknown", label: "Tôi không rõ là cây gì", hint: "", score: null },
-    { id: "custom", label: "Cây khác (tự nhập tên)", hint: "", score: null },
+    ...state.plants.map((p, i) => ({
+      id: String(i),
+      label: p.name,
+      hint: p.scientificName,
+      score: p.score > 0 ? p.score : null,
+      byAi: Boolean(p.byAi),
+    })),
+    { id: "unknown", label: "Tôi không rõ là cây gì", hint: "", score: null, byAi: false },
+    { id: "custom", label: "Cây khác (tự nhập tên)", hint: "", score: null, byAi: false },
   ];
 
   return (
@@ -261,7 +267,11 @@ export function GuidedWizard({
                     <span className="font-semibold">{o.label}</span>
                     {o.hint ? <em className="text-[11px] text-stone-400">{o.hint}</em> : null}
                   </div>
-                  {o.score != null ? (
+                  {o.byAi ? (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-bold text-violet-700">
+                      <Sparkles size={11} aria-hidden /> AI đoán
+                    </span>
+                  ) : o.score != null ? (
                     <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-[#1C4C40]">
                       <Sparkles size={11} aria-hidden /> Pl@ntNet {Math.round(o.score * 100)}%
                     </span>

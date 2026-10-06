@@ -1,6 +1,7 @@
 "use client";
 
 import type { CartLine } from "./cart";
+import { refreshShopSession } from "./auth";
 
 export type ServerCartResponse = {
   ok: boolean;
@@ -14,20 +15,23 @@ export type ServerCartResponse = {
 async function cartFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15_000);
+  const send = () =>
+    fetch(`/api/shop/cart${path}`, {
+      ...init,
+      signal: controller.signal,
+      cache: "no-store",
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+        ...(init?.body ? { "Content-Type": "application/json" } : {}),
+        ...(init?.headers || {}),
+      },
+    });
   try {
     let res: Response;
     try {
-      res = await fetch(`/api/shop/cart${path}`, {
-        ...init,
-        signal: controller.signal,
-        cache: "no-store",
-        credentials: "include",
-        headers: {
-          Accept: "application/json",
-          ...(init?.body ? { "Content-Type": "application/json" } : {}),
-          ...(init?.headers || {}),
-        },
-      });
+      res = await send();
+      if (res.status === 401 && (await refreshShopSession())) res = await send();
     } catch {
       const timedOut = controller.signal.aborted;
       throw Object.assign(

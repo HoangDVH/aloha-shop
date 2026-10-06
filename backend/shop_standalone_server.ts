@@ -17,7 +17,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { registerShopApi } from './shopCatalog/register.js';
-import { registerShopAuthRoutes } from './shopAuth/routes.js';
+import { registerShopAuthRoutes, shopSessionRenewal } from './shopAuth/routes.js';
 import { registerWholesaleRoutes } from './shopWholesale/routes.js';
 import { startWholesaleProvisionWorker } from './shopWholesale/provision.js';
 import { startProductVideoReconcileWorker } from './shopCatalog/videoReconcile.js';
@@ -184,6 +184,7 @@ app.use((req, res, next) => {
   }
   next();
 });
+app.use(shopSessionRenewal(getDb));
 
 const uploadsDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });

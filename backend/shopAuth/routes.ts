@@ -20,6 +20,7 @@ import {
   clearShopAuthCookies,
   hashShopToken,
   newShopRefreshJti,
+  setShopAccessCookie,
   setShopAuthCookies,
   signShopAccessToken,
   signShopRefreshToken,
@@ -31,6 +32,7 @@ import { applyShopCors, isAllowedShopOrigin } from "../shopCors.js";
 import { syncBus } from "../syncBus.js";
 import { rateLimitAllow, shopRateLimitOrReject } from "../shopRateLimit.js";
 import { putGoogleOauthState, takeGoogleOauthState } from "./authEphemeral.js";
+import { checkRefreshToken, markRefreshRotated, refreshFamilyOf } from "./refreshTokens.js";
 import {
   allocateCtvCode,
   ctvApplicationToDoc,
@@ -77,18 +79,19 @@ function parseRoles(raw: unknown): ShopRole[] {
   return [...new Set(roles)];
 }
 
-export async function issueShopSession(res: Response, db: Db, user: Record<string, unknown>) {
-  const roles = parseRoles(user.roles);
-  const payload: ShopAccessPayload = {
-    sub: String(user._id),
-    email: String(user.email || ""),
-    roles,
-  };
+function accessPayloadOf(user: Record<string, unknown>): ShopAccessPayload {
+  return { sub: String(user._id), email: String(user.email || ""), roles: parseRoles(user.roles) };
+}
+
+/** Đăng nhập mới mở chuỗi phiên mới; /refresh truyền familyId của token cũ để giữ chuỗi. */
+export async function issueShopSession(res: Response, db: Db, user: Record<string, unknown>, familyId?: string) {
+  const payload = accessPayloadOf(user);
   const jti = newShopRefreshJti();
   const accessToken = signShopAccessToken(payload);
   const refreshToken = signShopRefreshToken({ ...payload, jti });
   await db.collection(SHOP_REFRESH).insertOne({
     jti,
+    familyId: familyId || jti,
     userId: String(user._id),
     tokenHash: hashShopToken(refreshToken),
     expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
@@ -100,6 +103,60 @@ export async function issueShopSession(res: Response, db: Db, user: Record<strin
     ok: true,
     user: toPublicShopAccount(user),
     expires_in: ACCESS_TTL_SEC,
+  };
+}
+
+const RENEWAL_SKIP = new Set([
+  "/api/shop/auth/login",
+  "/api/shop/auth/register",
+  "/api/shop/auth/refresh",
+  "/api/shop/auth/logout",
+]);
+
+function accessTokenValid(token: unknown): boolean {
+  if (typeof token !== "string" || !token) return false;
+  try {
+    verifyShopAccessToken(token);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Cookie access sống 1 giờ, refresh 14 ngày. Access hết hạn mà refresh còn hiệu lực thì cấp lại access
+ * ngay trong request (không xoay refresh, nên request song song không làm mất phiên), để mọi chỗ đọc
+ * cookie access — bắt buộc hay tuỳ chọn (giá sỉ/CTV, voucher, chiến dịch…) — đều thấy phiên còn sống.
+ */
+export function shopSessionRenewal(getShopDb: GetShopDb) {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const refresh = req.cookies?.[REFRESH_COOKIE] as string | undefined;
+    if (
+      !refresh ||
+      !req.path.startsWith("/api/shop/") ||
+      RENEWAL_SKIP.has(req.path) ||
+      req.headers.authorization?.startsWith("Bearer ") ||
+      accessTokenValid(req.cookies?.[ACCESS_COOKIE])
+    ) {
+      return next();
+    }
+    try {
+      const payload = verifyShopRefreshToken(refresh);
+      const db = await getShopDb();
+      const check = await checkRefreshToken(db, refresh, payload.jti);
+      if (check.kind === "reuse") clearShopAuthCookies(res);
+      if (check.kind !== "ok" && check.kind !== "grace") return next();
+      const user = await db.collection(SHOP_ACCOUNTS).findOne(shopAccountIdQuery(payload.sub), {
+        projection: { email: 1, roles: 1, active: 1, authInvalidBefore: 1 },
+      });
+      if (!user || user.active === false || Number(payload.iat || 0) < Number(user.authInvalidBefore || 0)) return next();
+      const token = signShopAccessToken(accessPayloadOf(user));
+      setShopAccessCookie(res, token);
+      req.cookies[ACCESS_COOKIE] = token;
+    } catch {
+      /* refresh hỏng/hết hạn hoặc DB lỗi: route xử lý như chưa đăng nhập */
+    }
+    next();
   };
 }
 
@@ -347,8 +404,8 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
       if (!token) return res.status(401).json({ error: "Không có refresh token" });
       const payload = verifyShopRefreshToken(token);
       const db = await getShopDb();
-      const row = await db.collection(SHOP_REFRESH).findOne({ jti: payload.jti });
-      if (!row || row.revokedAt || row.tokenHash !== hashShopToken(token)) {
+      const check = await checkRefreshToken(db, token, payload.jti);
+      if (check.kind === "invalid" || check.kind === "reuse") {
         clearShopAuthCookies(res);
         return res.status(401).json({ error: "Refresh không hợp lệ" });
       }
@@ -357,8 +414,12 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
         clearShopAuthCookies(res);
         return res.status(401).json({ error: "Tài khoản không hợp lệ" });
       }
-      await db.collection(SHOP_REFRESH).updateOne({ jti: payload.jti }, { $set: { revokedAt: new Date() } });
-      return res.json(await issueShopSession(res, db, user));
+      // Tab/request khác vừa xoay token này: chỉ cấp access, refresh mới đã nằm trong cookie trình duyệt.
+      if (check.kind === "grace" || !(await markRefreshRotated(db, payload.jti))) {
+        setShopAccessCookie(res, signShopAccessToken(accessPayloadOf(user)));
+        return res.json({ ok: true, user: toPublicShopAccount(user), expires_in: ACCESS_TTL_SEC });
+      }
+      return res.json(await issueShopSession(res, db, user, refreshFamilyOf(check.row)));
     } catch {
       clearShopAuthCookies(res);
       return res.status(401).json({ error: "Refresh hết hạn" });
@@ -373,7 +434,9 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
         try {
           const payload = verifyShopRefreshToken(token);
           const db = await getShopDb();
-          await db.collection(SHOP_REFRESH).updateOne({ jti: payload.jti }, { $set: { revokedAt: new Date() } });
+          await db
+            .collection(SHOP_REFRESH)
+            .updateOne({ jti: payload.jti, revokedAt: null }, { $set: { revokedAt: new Date(), revokedReason: "logout" } });
         } catch {
           /* ignore */
         }

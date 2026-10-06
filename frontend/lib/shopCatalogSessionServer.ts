@@ -5,8 +5,12 @@ import { fetchProducts, shopApiBase, type ShopProduct } from "./api";
 /** Never forward browser cookies to an arbitrary URL; only the configured shop backend. */
 export async function shopSessionHeaders(): Promise<Record<string, string>> {
   const jar = await cookies();
-  const token = jar.get("shop_access")?.value;
-  return token ? { Cookie: `shop_access=${encodeURIComponent(token)}` } : {};
+  // shop_refresh để backend cấp lại access khi access (1 giờ) đã hết hạn — không thì trang SSR hiện giá khách lẻ.
+  const parts = ["shop_access", "shop_refresh"].flatMap((name) => {
+    const value = jar.get(name)?.value;
+    return value ? [`${name}=${encodeURIComponent(value)}`] : [];
+  });
+  return parts.length ? { Cookie: parts.join("; ") } : {};
 }
 export async function fetchSessionProducts(opts: Parameters<typeof fetchProducts>[0], _cache?: unknown) {
   return fetchProducts(opts, { cache: "no-store", headers: await shopSessionHeaders() });

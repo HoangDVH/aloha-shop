@@ -1,8 +1,39 @@
 import { CONFIDENCES } from "./card.js";
-import type { PlantProfile } from "./profiles/index.js";
+import { PROFILES, type PlantProfile } from "./profiles/index.js";
 
 export const HEALTHY_ID = "khoe_manh";
 export const UNSURE_ID = "khong_ro";
+export const OTHER_PLANT_ID = "khac";
+
+/** Khi Pl@ntNet không chắc: AI chỉ chọn trong các loài Aloha có hồ sơ, không đặt tên cây ngoài danh sách. */
+export function buildPlantGuessSystem(): string {
+  const list = PROFILES.map((p) => `- ${p.id}: ${p.nameVi} (${p.scientific}); tên khác: ${p.aliases.slice(0, 4).join(", ")}`).join("\n");
+  return `Bạn là trợ lý nhận diện cây cảnh của Aloha – Thế Giới Chậu Cây.
+Nhìn ảnh khách gửi và cho biết cây CHÍNH trong ảnh (cây khách đang hỏi, thường ở giữa ảnh) có phải một trong các loài dưới đây không.
+
+DANH SÁCH LOÀI:
+${list}
+- ${OTHER_PLANT_ID}: không phải loài nào ở trên, hoặc ảnh không đủ rõ để chắc.
+
+QUY TẮC:
+- plantInImage = false khi ảnh không có cây.
+- profileId chỉ được là một mã trong danh sách. Không chắc thì chọn "${OTHER_PLANT_ID}", không đoán bừa.
+- Cây héo, khô lá hay uốn bonsai vẫn nhận theo thân, dáng, lá còn lại và chậu; bỏ qua cây và hoa ở nền phía sau.
+- confidence: "cao" khi đặc điểm loài thấy rõ; "vua" khi khá giống nhưng còn thiếu chi tiết; "thap" khi chỉ đoán.`;
+}
+
+export function plantGuessSchema() {
+  return {
+    type: "OBJECT",
+    properties: {
+      plantInImage: { type: "BOOLEAN" },
+      profileId: { type: "STRING", enum: [...PROFILES.map((p) => p.id), OTHER_PLANT_ID] },
+      confidence: { type: "STRING", enum: [...CONFIDENCES] },
+    },
+    required: ["plantInImage", "profileId", "confidence"],
+    propertyOrdering: ["plantInImage", "profileId", "confidence"],
+  };
+}
 
 /** AI chỉ đối chiếu triệu chứng với danh sách vấn đề đã biết của loài; cách chữa do server lấy từ hồ sơ. */
 export function buildPickSystem(p: PlantProfile): string {

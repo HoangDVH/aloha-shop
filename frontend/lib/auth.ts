@@ -58,13 +58,47 @@ async function shopAuthFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return data as T;
 }
 
+let refreshInFlight: Promise<boolean> | null = null;
+
+async function refreshOnce(): Promise<boolean> {
+  // Tab khác (hoặc backend tự gia hạn) có thể vừa xong: hỏi /me trước khi xoay refresh token.
+  try {
+    await shopAuthFetch("/me");
+    return true;
+  } catch {
+    /* access hết hạn thật */
+  }
+  try {
+    await shopAuthFetch("/refresh", { method: "POST" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Cookie access hết hạn sau 1 giờ, refresh token xoay vòng (dùng lại bị coi là bị lộ):
+ * mọi nơi gặp 401 phải đi qua đây — một lần mỗi tab, và khoá chung giữa các tab.
+ */
+export function refreshShopSession(): Promise<boolean> {
+  if (!refreshInFlight) {
+    const run: Promise<boolean> = typeof navigator !== "undefined" && navigator.locks
+      ? navigator.locks.request("aloha-shop-auth-refresh", () => refreshOnce()).then((ok) => ok)
+      : refreshOnce();
+    refreshInFlight = run.finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
+}
+
 export async function fetchShopMe(): Promise<ShopUser | null> {
   try {
     const data = await shopAuthFetch<{ user: ShopUser }>("/me");
     return data.user;
   } catch {
+    if (!(await refreshShopSession())) return null;
     try {
-      await shopAuthFetch("/refresh", { method: "POST" });
       const data = await shopAuthFetch<{ user: ShopUser }>("/me");
       return data.user;
     } catch {

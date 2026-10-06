@@ -1,6 +1,6 @@
 import type { PlantCandidate, PlantIdentity } from "./card.js";
 import { identifyPlant, plantNetKey, type PlantNetCandidate } from "./plantnet.js";
-import { getProfile, matchScientific, matchText, type PlantProfile } from "./profiles/index.js";
+import { BONSAI_PROFILES, getProfile, matchScientific, matchText, mentionsBonsai, type PlantProfile } from "./profiles/index.js";
 
 /** Điểm Pl@ntNet (đã cộng theo hồ sơ): từ CONFIDENT trở lên tin hẳn; dưới POSSIBLE thì hỏi khách. */
 export const CONFIDENT = 0.5;
@@ -70,33 +70,54 @@ function fromText(userTexts: string[]): PlantIdentity | null {
 export type Resolution =
   | { kind: "known"; identity: PlantIdentity }
   | { kind: "unknown"; identity: PlantIdentity }
-  | { kind: "uncertain"; candidates: PlantCandidate[] }
+  | { kind: "uncertain"; candidates: PlantCandidate[]; bonsai?: boolean }
   | { kind: "not_plant" }
   | { kind: "none" };
 
+/** Ảnh mới có thể là cây khác: cây lượt trước chỉ được đưa ra cho khách chọn lại, không tự dùng. */
+function withPrevious(ranked: PlantCandidate[], previous: PlantIdentity | null): PlantCandidate[] {
+  if (!previous?.profileId || ranked.some((c) => c.profileId === previous.profileId)) return ranked;
+  return [...ranked, { profileId: previous.profileId, name: previous.name, scientificName: previous.scientificName, score: 0 }];
+}
+
+function withBonsai(ranked: PlantCandidate[]): PlantCandidate[] {
+  const extra = BONSAI_PROFILES.filter((p) => !ranked.some((c) => c.profileId === p.id));
+  return [...ranked, ...extra.map((p) => ({ profileId: p.id, name: p.nameVi, scientificName: p.scientific, score: 0 }))];
+}
+
 /**
  * Thứ tự tin cậy: khách đã chọn (trừ khi vừa gõ tên cây khác) > Pl@ntNet chắc chắn > tên khách gõ > cây của lượt trước > Pl@ntNet điểm vừa.
- * Pl@ntNet chỉ chạy khi có ảnh mới.
+ * Pl@ntNet chỉ chạy khi có ảnh mới. `newPhotos`: khách vừa gửi ảnh mới (không phải ảnh cũ gửi lại khi chọn cây),
+ * nên bỏ qua cây của lượt trước và tên cây trong các tin cũ.
  */
 export async function resolvePlant(opts: {
   ref: PlantRef | null;
   images: { mimeType: string; data: string }[];
   userTexts: string[];
+  newPhotos?: boolean;
 }): Promise<Resolution> {
-  const carried = fromRef(opts.ref);
+  const previous = fromRef(opts.ref);
+  const carried = opts.newPhotos ? null : previous;
   const lastText = opts.userTexts[opts.userTexts.length - 1] ?? "";
   const latest = lastText.includes("→") ? null : fromText([lastText]);
   if (carried && opts.ref?.confirmed) {
     if (latest && latest.profileId !== carried.profileId) return { kind: "known", identity: latest };
     return { kind: carried.profileId ? "known" : "unknown", identity: carried };
   }
-  const typedOrCarried = () => latest ?? carried ?? fromText(opts.userTexts);
+  const typedOrCarried = () => (opts.newPhotos ? latest : (latest ?? carried ?? fromText(opts.userTexts)));
+  const askBonsai = !latest && mentionsBonsai(lastText);
+  const unsure = (list: PlantCandidate[]): Resolution => ({
+    kind: "uncertain",
+    candidates: withPrevious(askBonsai ? withBonsai(list) : list, opts.newPhotos ? previous : null),
+    ...(askBonsai ? { bonsai: true } : {}),
+  });
 
   const key = plantNetKey();
   if (opts.images.length && key) {
     const r = await identifyPlant(key, opts.images);
     if (r.status === "ok") {
       const ranked = rankCandidates(r.candidates);
+      console.info("[plant-doctor] Pl@ntNet:", ranked.map((c) => `${c.profileId ?? c.scientificName} ${c.score}`).join(", "));
       const top = ranked[0];
       if (top.score >= CONFIDENT) {
         const p = getProfile(top.profileId);
@@ -107,15 +128,17 @@ export async function resolvePlant(opts: {
       if (typed?.profileId) return { kind: "known", identity: { ...typed, candidates: ranked } };
       const p = getProfile(top.profileId);
       if (p && top.score >= POSSIBLE) return { kind: "known", identity: identityFromProfile(p, "plantnet", top.score, ranked) };
-      return { kind: "uncertain", candidates: ranked };
+      return unsure(ranked);
     }
     if (r.status === "not_plant") {
       const fallback = typedOrCarried();
-      return fallback?.profileId ? { kind: "known", identity: fallback } : { kind: "not_plant" };
+      if (fallback?.profileId) return { kind: "known", identity: fallback };
+      return askBonsai ? unsure([]) : { kind: "not_plant" };
     }
   }
 
   const fallback = typedOrCarried();
   if (fallback?.profileId) return { kind: "known", identity: fallback };
+  if (askBonsai || (opts.newPhotos && previous?.profileId)) return unsure([]);
   return { kind: "none" };
 }

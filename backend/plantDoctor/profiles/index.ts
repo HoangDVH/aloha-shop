@@ -71,6 +71,14 @@ const ALIAS_RULES: AliasRule[] = [
   return rules;
 });
 
+/** "Bonsai" là kiểu tạo dáng, không phải loài: hỏi lại loài, gợi ý các hồ sơ nhóm cây gỗ thường làm bonsai. */
+export const BONSAI_PROFILES = PROFILES.filter((p) => p.group === "bonsai_cay_go");
+const BONSAI_RE = /(?<![\p{L}\p{N}])bon ?sa[iy](?![\p{L}\p{N}])/u;
+
+export function mentionsBonsai(text: string): boolean {
+  return BONSAI_RE.test(stripVi(text));
+}
+
 /** Tìm tên cây khách gõ trong câu; tên dài nhất thắng. Tên thuộc NOT_IN_KB trả null. */
 export function matchText(text: string): PlantProfile | null {
   const accented = lower(text);

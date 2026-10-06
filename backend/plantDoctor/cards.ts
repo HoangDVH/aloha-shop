@@ -9,7 +9,8 @@ export const SAFE_BASICS = [
 ];
 
 export const PHOTO_TIPS = [
-  "Chụp toàn bộ cây trong một ảnh, thêm một ảnh cận lá hoặc chỗ bị bệnh.",
+  "Gửi 2–3 ảnh của cùng một cây trong một lần: một ảnh cả cây, một ảnh cận lá còn xanh, một ảnh thân hoặc gốc.",
+  "Chụp riêng cây cần khám, tránh để cây hay chùm hoa khác ở nền phía sau.",
   "Chụp ở chỗ có ánh sáng tự nhiên, không dùng đèn flash, ảnh không bị mờ.",
 ];
 
@@ -133,17 +134,22 @@ export function unknownPlantCard(plant: PlantIdentity): DoctorCard {
   });
 }
 
-export function pickPlantCard(candidates: PlantCandidate[], hasImages: boolean): DoctorCard {
+export function pickPlantCard(candidates: PlantCandidate[], hasImages: boolean, bonsai = false): DoctorCard {
   const known = candidates.filter((c) => c.profileId);
+  const aiGuess = known[0]?.byAi ? known[0] : null;
   return base({
     kind: "pick_plant",
-    title: hasImages ? "Mình chưa nhận ra chắc chắn đây là cây gì" : "Bạn cho mình biết đây là cây gì nhé",
+    title: bonsai ? "Bonsai của bạn là cây gì?" : hasImages ? "Mình chưa nhận ra chắc chắn đây là cây gì" : "Bạn cho mình biết đây là cây gì nhé",
     confidence: "thap",
-    summary: known.length
-      ? "Bạn chọn đúng tên cây bên dưới, hoặc gõ tên cây, hoặc gửi thêm ảnh rõ hơn để mình hướng dẫn đúng cho loài đó."
-      : hasImages
-        ? "Bạn gõ tên cây hoặc gửi thêm ảnh rõ hơn để mình nhận diện lại nhé."
-        : "Bạn gửi ảnh cây (chụp cả cây và chỗ bị bệnh) hoặc gõ tên cây để mình hướng dẫn đúng cho loài đó.",
+    summary: aiGuess
+      ? `Trợ lý AI đoán đây có thể là cây ${aiGuess.name}. Đúng thì bạn bấm vào tên cây bên dưới để mình hướng dẫn cách chữa; chưa đúng thì chọn hoặc gõ tên cây khác.`
+      : bonsai
+        ? "Bonsai là kiểu tạo dáng, mỗi loài cây lại chăm và chữa bệnh khác nhau. Bạn chọn loài cây bên dưới, hoặc gõ tên loài (ví dụ: mai chiếu thủy, linh sam) để mình hướng dẫn đúng."
+        : known.length
+        ? "Bạn chọn đúng tên cây bên dưới, hoặc gõ tên cây, hoặc gửi thêm ảnh rõ hơn để mình hướng dẫn đúng cho loài đó."
+        : hasImages
+          ? "Bạn gõ tên cây, hoặc gửi thêm 2–3 ảnh rõ của cùng cây theo mẹo bên dưới để mình nhận diện lại nhé."
+          : "Bạn gửi ảnh cây (chụp cả cây và chỗ bị bệnh) hoặc gõ tên cây để mình hướng dẫn đúng cho loài đó.",
     care: PHOTO_TIPS,
     plant: { profileId: null, name: "", scientificName: "", source: "plantnet", score: null, candidates: known },
   });

@@ -1,9 +1,9 @@
-import { CONFIDENCES, parseCardJson, type Confidence, type DoctorCard, type PlantIdentity } from "./card.js";
+import { CONFIDENCES, parseCardJson, type Confidence, type DoctorCard, type PlantCandidate, type PlantIdentity } from "./card.js";
 import { diagnosisCard, healthyCard, offTopicCard, pickPlantCard, pickProblemCard, unknownPlantCard } from "./cards.js";
 import { generateText, geminiKey, type GeminiContent } from "./gemini.js";
 import { resolvePlant, type PlantRef } from "./identify.js";
 import { getProblem, getProfile, type PlantProfile, type Problem } from "./profiles/index.js";
-import { HEALTHY_ID, buildPickSystem, pickSchema } from "./prompt.js";
+import { HEALTHY_ID, buildPickSystem, buildPlantGuessSystem, pickSchema, plantGuessSchema } from "./prompt.js";
 
 export type Pick = { offTopic: boolean; problemId: string; confidence: Confidence; alternatives: string[]; observed: string };
 
@@ -31,6 +31,39 @@ export function answeredProblem(profile: PlantProfile, lastUserText: string): Pr
 }
 
 const AI_BUSY_NOTE = "Trợ lý AI đang bận nên chưa xem kỹ ảnh được.";
+
+export type PlantGuess = { kind: "plant"; candidate: PlantCandidate } | { kind: "no_plant" } | { kind: "none" };
+
+/** Làm sạch câu trả lời AI đoán cây: mã lạ hoặc độ chắc "thap" thì bỏ, không đưa cho khách. */
+export function parsePlantGuess(raw: unknown): PlantGuess {
+  if (!raw || typeof raw !== "object") return { kind: "none" };
+  const r = raw as Record<string, unknown>;
+  if (r.plantInImage === false) return { kind: "no_plant" };
+  const p = getProfile(r.profileId);
+  if (!p || !(r.confidence === "cao" || r.confidence === "vua")) return { kind: "none" };
+  return { kind: "plant", candidate: { profileId: p.id, name: p.nameVi, scientificName: p.scientific, score: 0, byAi: true } };
+}
+
+/** Chỉ gọi khi có ảnh và Pl@ntNet không chắc; lỗi hay hết lượt AI thì coi như không đoán được. */
+export async function guessPlantWithAi(contents: GeminiContent[]): Promise<PlantGuess> {
+  const key = geminiKey();
+  if (!key || !contents.length) return { kind: "none" };
+  try {
+    const text = await generateText(key, buildPlantGuessSystem(), contents, 1024, plantGuessSchema());
+    const guess = parsePlantGuess(parseCardJson(text));
+    console.info("[plant-doctor] AI đoán cây:", guess.kind === "plant" ? guess.candidate.profileId : guess.kind);
+    return guess;
+  } catch (e) {
+    console.warn("[plant-doctor] AI đoán cây lỗi:", (e as Error)?.message);
+    return { kind: "none" };
+  }
+}
+
+/** Gợi ý của AI đứng đầu danh sách (nếu Pl@ntNet cũng có loài đó thì gắn nhãn AI vào mục sẵn có). */
+export function withAiGuess(candidates: PlantCandidate[], guess: PlantCandidate): PlantCandidate[] {
+  const same = candidates.find((c) => c.profileId === guess.profileId);
+  return [same ? { ...same, byAi: true } : guess, ...candidates.filter((c) => c !== same)];
+}
 
 async function pickWithAi(
   profile: PlantProfile,
@@ -61,12 +94,22 @@ export async function diagnose(input: {
   images: { mimeType: string; data: string }[];
   plant: PlantRef | null;
   contents: GeminiContent[];
+  newPhotos?: boolean;
 }): Promise<DoctorCard> {
   const userTexts = input.messages.filter((m) => m.role === "user").map((m) => m.content);
-  const res = await resolvePlant({ ref: input.plant, images: input.images, userTexts });
+  const res = await resolvePlant({ ref: input.plant, images: input.images, userTexts, newPhotos: input.newPhotos });
+  const hasImages = input.images.length > 0;
+  if (hasImages && (res.kind === "not_plant" || res.kind === "none" || res.kind === "uncertain")) {
+    const guess = await guessPlantWithAi(input.contents);
+    const listed = res.kind === "uncertain" ? res.candidates : [];
+    const bonsai = res.kind === "uncertain" && !!res.bonsai;
+    if (guess.kind === "plant") return pickPlantCard(withAiGuess(listed, guess.candidate), true, bonsai);
+    if (res.kind === "not_plant") return guess.kind === "no_plant" || !geminiKey() ? offTopicCard("not_plant") : pickPlantCard([], true);
+    return pickPlantCard(listed, true, bonsai);
+  }
   if (res.kind === "not_plant") return offTopicCard("not_plant");
-  if (res.kind === "none") return pickPlantCard([], input.images.length > 0);
-  if (res.kind === "uncertain") return pickPlantCard(res.candidates, true);
+  if (res.kind === "none") return pickPlantCard([], hasImages);
+  if (res.kind === "uncertain") return pickPlantCard(res.candidates, hasImages, !!res.bonsai);
   if (res.kind === "unknown") return unknownPlantCard(res.identity);
 
   const profile = getProfile(res.identity.profileId);

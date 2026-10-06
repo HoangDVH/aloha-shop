@@ -13,7 +13,7 @@ export type DoctorCondition =
   | "khac";
 export type DoctorPlantGroup = "sen_da_xuong_rong" | "kieng_la" | "bonsai_cay_go" | "khac";
 
-export type PlantCandidate = { profileId: string | null; name: string; scientificName: string; score: number };
+export type PlantCandidate = { profileId: string | null; name: string; scientificName: string; score: number; byAi?: boolean };
 
 export type PlantSource = "plantnet" | "customer" | "text";
 
@@ -92,6 +92,7 @@ export async function askPlantDoctor(body: {
   messages: { role: "user" | "assistant"; content: string }[];
   images: { mimeType: string; data: string }[];
   plant?: PlantRef | null;
+  newPhotos?: boolean;
 }): Promise<DoctorResponse> {
   try {
     const res = await fetch("/api/shop/plant-doctor", {

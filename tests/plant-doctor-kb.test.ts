@@ -2,12 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { CONDITIONS } from "../backend/plantDoctor/card.js";
 import { diagnosisCard, pickPlantCard, unknownPlantCard } from "../backend/plantDoctor/cards.js";
-import { answeredProblem, diagnose, parsePick } from "../backend/plantDoctor/diagnose.js";
+import { answeredProblem, diagnose, parsePick, parsePlantGuess, withAiGuess } from "../backend/plantDoctor/diagnose.js";
+import { resetGeminiCooldowns } from "../backend/plantDoctor/gemini.js";
 import { identityFromProfile, rankCandidates, resolvePlant } from "../backend/plantDoctor/identify.js";
 import { parsePlantNetResults } from "../backend/plantDoctor/plantnet.js";
-import { PROFILES, getProfile, matchScientific, matchText } from "../backend/plantDoctor/profiles/index.js";
+import { BONSAI_PROFILES, PROFILES, getProfile, matchScientific, matchText, mentionsBonsai } from "../backend/plantDoctor/profiles/index.js";
 import { LIGHT_LEVELS } from "../backend/plantDoctor/profiles/types.js";
 import { HEALTHY_ID, UNSURE_ID } from "../backend/plantDoctor/prompt.js";
+import { parsePlantDoctorBody } from "../backend/plantDoctor/routes.js";
 import { isProfileReviewed, loadProfileReviews, profileHash, resetProfileReviewsCache } from "../backend/plantDoctor/reviews.js";
 import type { Db } from "mongodb";
 
@@ -210,6 +212,131 @@ test("KB8: câu trả lời AI chỉ giữ mã có trong hồ sơ; độ chắc 
   assert.ok(unknown.steps.length && unknown.needHelp && !unknown.basics && !unknown.source);
   assert.deepEqual([card.source, card.careByAloha], [kimTien.source, true]);
   assert.deepEqual(pickPlantCard([{ profileId: null, name: "X", scientificName: "X y", score: 0.5 }], true).plant?.candidates, []);
+});
+
+test("KB10: gửi ảnh cây khác sau khi đã có cây thì nhận diện lại, không dùng cây cũ", async () => {
+  const xuongRong = { profileId: "xuong_rong", name: "Xương rồng", confirmed: true, source: "customer" as const, score: null };
+  let s = stubPlantNet([{ species: "Zamioculcas zamiifolia", score: 0.82 }]);
+  try {
+    const r = await resolvePlant({ ref: xuongRong, images: [IMG], userTexts: ["cây này bị gì"], newPhotos: true });
+    assert.ok(r.kind === "known" && r.identity.profileId === "kim_tien", "ảnh mới thắng cây khách chọn ở lượt trước");
+    assert.equal(s.calls.n, 1);
+    const resent = await resolvePlant({ ref: xuongRong, images: [IMG], userTexts: ["Cây của tôi là Xương rồng."] });
+    assert.ok(resent.kind === "known" && resent.identity.profileId === "xuong_rong", "gửi lại ảnh cũ kèm cây vừa chọn thì giữ");
+  } finally {
+    s.restore();
+  }
+
+  s = stubPlantNet([{ species: "Epipremnum aureum", score: 0.1 }]);
+  try {
+    const old = { ...xuongRong, confirmed: false, source: "plantnet" as const, score: 0.35 };
+    const r = await resolvePlant({ ref: old, images: [IMG], userTexts: ["cây kim tiền nhà tôi", "xem giúp cây này"], newPhotos: true });
+    assert.equal(r.kind, "uncertain", "không lấy cây lượt trước hay tên cây trong tin cũ");
+    if (r.kind === "uncertain") assert.deepEqual(r.candidates.map((c) => [c.profileId, c.score]), [["trau_ba", 0.1], ["xuong_rong", 0]]);
+  } finally {
+    s.restore();
+  }
+
+  s = stubPlantNet(404);
+  try {
+    const r = await resolvePlant({ ref: xuongRong, images: [IMG], userTexts: ["xem giúp"], newPhotos: true });
+    assert.equal(r.kind, "not_plant");
+  } finally {
+    s.restore();
+  }
+
+  const body = (extra: object) => ({
+    messages: [
+      { role: "user", content: "cây xương rồng bị rệp" },
+      { role: "assistant", content: "Cây: Xương rồng" },
+      { role: "user", content: "còn cây này" },
+    ],
+    images: [IMG],
+    ...extra,
+  });
+  const fresh = parsePlantDoctorBody(body({ plant: xuongRong, newPhotos: true }));
+  assert.ok(!("error" in fresh) && fresh.newPhotos && fresh.messages.length === 1, "ảnh mới: bỏ hội thoại về cây trước");
+  const picked = parsePlantDoctorBody(body({ plant: xuongRong, newPhotos: false }));
+  assert.ok(!("error" in picked) && !picked.newPhotos && picked.messages.length === 3);
+  const oldClient = parsePlantDoctorBody(body({ plant: { ...xuongRong, confirmed: false, source: "plantnet" } }));
+  assert.ok(!("error" in oldClient) && oldClient.newPhotos, "trình duyệt cũ không gửi cờ: ảnh + cây chưa xác nhận = ảnh mới");
+});
+
+test("KB11: Pl@ntNet không chắc thì AI đoán trong 32 hồ sơ, khách phải bấm xác nhận", async () => {
+  assert.equal(parsePlantGuess({ plantInImage: true, profileId: "kim_tien", confidence: "thap" }).kind, "none", "độ chắc thấp thì không gợi ý");
+  assert.equal(parsePlantGuess({ plantInImage: true, profileId: "hoa_hong", confidence: "cao" }).kind, "none", "mã ngoài hồ sơ bị loại");
+  assert.equal(parsePlantGuess({ plantInImage: false, profileId: "khac", confidence: "cao" }).kind, "no_plant");
+  const g = parsePlantGuess({ plantInImage: true, profileId: "kim_tien", confidence: "vua" });
+  assert.ok(g.kind === "plant" && g.candidate.byAi && g.candidate.score === 0);
+
+  const listed = [
+    { profileId: "trau_ba", name: "Trầu bà", scientificName: "Epipremnum aureum", score: 0.12 },
+    { profileId: "kim_tien", name: "Kim tiền", scientificName: "Zamioculcas zamiifolia", score: 0.05 },
+  ];
+  if (g.kind === "plant") {
+    const merged = withAiGuess(listed, g.candidate);
+    assert.deepEqual(merged.map((c) => [c.profileId, c.score, Boolean(c.byAi)]), [["kim_tien", 0.05, true], ["trau_ba", 0.12, false]]);
+    const card = pickPlantCard(merged, true);
+    assert.equal(card.kind, "pick_plant", "AI đoán không tự chẩn đoán");
+    assert.match(card.summary, /Trợ lý AI đoán đây có thể là cây Kim tiền/);
+  }
+
+  const saved = { fetch: globalThis.fetch, pn: process.env.PLANTNET_API_KEY, gem: process.env.GEMINI_API_KEY };
+  process.env.PLANTNET_API_KEY = "test-key";
+  process.env.GEMINI_API_KEY = "test-gemini-key-0123456789";
+  resetGeminiCooldowns();
+  let geminiReply = { plantInImage: true, profileId: "kim_tien", confidence: "cao" };
+  globalThis.fetch = (async (url: string | URL) => {
+    if (String(url).includes("plantnet")) return new Response("{}", { status: 404 });
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(geminiReply) }] } }] }), { status: 200 });
+  }) as typeof fetch;
+  try {
+    const card = await diagnose({ messages: [{ role: "user", content: "cây bị gì" }], images: [IMG], plant: null, contents: [{ role: "user", parts: [{ text: "x" }] }] });
+    assert.equal(card.kind, "pick_plant", "Pl@ntNet không ra kết quả nhưng AI thấy kim tiền: hỏi khách xác nhận");
+    assert.deepEqual(card.plant?.candidates.map((c) => [c.profileId, Boolean(c.byAi)]), [["kim_tien", true]]);
+    geminiReply = { plantInImage: false, profileId: "khac", confidence: "cao" };
+    const off = await diagnose({ messages: [{ role: "user", content: "cây bị gì" }], images: [IMG], plant: null, contents: [{ role: "user", parts: [{ text: "x" }] }] });
+    assert.equal(off.kind, "off_topic", "cả Pl@ntNet và AI đều không thấy cây");
+  } finally {
+    globalThis.fetch = saved.fetch;
+    if (saved.pn === undefined) delete process.env.PLANTNET_API_KEY;
+    else process.env.PLANTNET_API_KEY = saved.pn;
+    if (saved.gem === undefined) delete process.env.GEMINI_API_KEY;
+    else process.env.GEMINI_API_KEY = saved.gem;
+  }
+});
+
+test("KB12: khách chỉ nói \"bonsai\" thì hỏi lại loài, gợi ý các hồ sơ cây gỗ làm bonsai", async () => {
+  const bonsaiIds = ["ficus", "tung", "bach_tuyet_mai", "tac_chanh"];
+  assert.deepEqual(BONSAI_PROFILES.map((p) => p.id).sort(), [...bonsaiIds].sort());
+  assert.ok(mentionsBonsai("Cây Bonsai nhà tôi bị vàng lá") && mentionsBonsai("cay bon sai bi rung la"));
+  assert.ok(!mentionsBonsai("cây thế này bị sao") && !mentionsBonsai("bonsaii"));
+
+  const s = stubPlantNet([]);
+  delete process.env.PLANTNET_API_KEY;
+  try {
+    const card = await diagnose({ messages: [{ role: "user", content: "cây bonsai bị vàng lá" }], images: [], plant: null, contents: [] });
+    assert.equal(card.kind, "pick_plant");
+    assert.equal(card.title, "Bonsai của bạn là cây gì?");
+    assert.deepEqual(card.plant?.candidates.map((c) => c.profileId).sort(), [...bonsaiIds].sort());
+
+    const named = await resolvePlant({ ref: null, images: [], userTexts: ["bonsai tùng la hán bị vàng lá"] });
+    assert.ok(named.kind === "known" && named.identity.profileId === "tung", "gõ kèm tên loài thì dùng luôn");
+    const ref = { profileId: "ficus", name: "Ficus", confirmed: true, source: "customer" as const, score: null };
+    const kept = await resolvePlant({ ref, images: [], userTexts: ["bonsai của tôi rụng lá"] });
+    assert.ok(kept.kind === "known" && kept.identity.profileId === "ficus", "đã chọn loài thì không hỏi lại");
+  } finally {
+    s.restore();
+  }
+
+  const p = stubPlantNet([{ species: "Epipremnum aureum", score: 0.1 }]);
+  try {
+    const r = await resolvePlant({ ref: null, images: [IMG], userTexts: ["bonsai này bị gì"] });
+    assert.ok(r.kind === "uncertain" && r.bonsai);
+    if (r.kind === "uncertain") assert.deepEqual(r.candidates.map((c) => c.profileId), ["trau_ba", "ficus", "tung", "bach_tuyet_mai", "tac_chanh"]);
+  } finally {
+    p.restore();
+  }
 });
 
 test("KB9: duyệt hồ sơ trong admin; sửa nội dung hồ sơ thì lượt duyệt cũ hết hiệu lực", async () => {

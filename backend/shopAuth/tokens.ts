@@ -121,6 +121,13 @@ export function setShopAuthCookies(res: Response, accessToken: string, refreshTo
   });
 }
 
+export function setShopAccessCookie(res: Response, accessToken: string) {
+  res.cookie(ACCESS_COOKIE, accessToken, {
+    ...baseCookieOpts(),
+    maxAge: ACCESS_TTL_SEC * 1000,
+  });
+}
+
 export function clearShopAuthCookies(res: Response) {
   const opts = baseCookieOpts();
   res.clearCookie(ACCESS_COOKIE, opts);

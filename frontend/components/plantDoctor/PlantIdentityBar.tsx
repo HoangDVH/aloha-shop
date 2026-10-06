@@ -54,6 +54,9 @@ export function CandidatePicker({
             className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-semibold text-[#1C4C40] transition hover:border-[#1C4C40] hover:bg-emerald-50 disabled:opacity-50 cursor-pointer"
           >
             <span>{c.name}</span>
+            {c.byAi ? (
+              <span className="rounded-full bg-violet-50 px-1.5 py-px text-[10px] font-semibold text-violet-700 ring-1 ring-violet-100">AI đoán</span>
+            ) : null}
             {c.score > 0 ? <span className="text-[10.5px] font-medium text-stone-400">{pct(c.score)}</span> : null}
           </button>
         ))}
