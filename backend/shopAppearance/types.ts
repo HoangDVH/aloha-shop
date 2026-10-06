@@ -6,6 +6,7 @@ export type AppearanceBlockType =
   | "feature_strip"
   | "product_section"
   | "article_section"
+  | "trust_section"
   | "rich_text"
   | "spacer"
   | "category_highlight";

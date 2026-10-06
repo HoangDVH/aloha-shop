@@ -18,7 +18,7 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, FileText, Image as ImageIcon, Layers, Palette, Sparkles } from "lucide-react";
+import { GripVertical, FileText, Image as ImageIcon, Layers, Palette, ShieldCheck, Sparkles } from "lucide-react";
 import type { AppearanceBlock } from "../api";
 import { WB, WbToggle } from "../ui";
 
@@ -31,6 +31,7 @@ const BLOCK_LABEL: Record<string, string> = {
   rich_text: "Thông báo",
   spacer: "Khoảng trống",
   category_highlight: "Sản phẩm nổi bật",
+  trust_section: "Độ tin cậy / Khách hàng",
 };
 
 function blockIcon(type: string) {
@@ -38,6 +39,7 @@ function blockIcon(type: string) {
   if (type === "feature_strip") return Sparkles;
   if (type === "product_section") return Layers;
   if (type === "article_section") return FileText;
+  if (type === "trust_section") return ShieldCheck;
   return Palette;
 }
 
@@ -65,7 +67,9 @@ function SortableRow({
       ? String(block.props.title || "Nhóm hàng hóa")
       : block.type === "article_section"
         ? String(block.props.title || "Bài viết mới")
-        : BLOCK_LABEL[block.type] || block.type;
+        : block.type === "trust_section"
+          ? String(block.props.title || "Độ tin cậy / Khách hàng")
+          : BLOCK_LABEL[block.type] || block.type;
 
   return (
     <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }}>

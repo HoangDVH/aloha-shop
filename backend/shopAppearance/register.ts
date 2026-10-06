@@ -26,6 +26,7 @@ import {
   type NavConfig,
 } from "./types.js";
 import { normalizePopup, registerPopupStatsRoutes } from "./popup.js";
+import { normalizeTrustProps, DEFAULT_TRUST_PROPS } from "./trust.js";
 import type { GetShopDb } from "../shopOrders/routes.js";
 
 const FONT_IDS = new Set<AppearanceFontFamily>([
@@ -112,7 +113,15 @@ function normalizeLayout(raw: Partial<AppearanceLayout> | null | undefined): App
         : [],
       customItems: Array.isArray(raw.nav?.customItems) ? (raw.nav!.customItems as any) : [],
     },
-    blocks: Array.isArray(raw.blocks) && raw.blocks.length ? (raw.blocks as any) : base.blocks,
+    blocks: (Array.isArray(raw.blocks) && raw.blocks.length ? raw.blocks : base.blocks).map((b: any) => {
+      if (b && b.type === "trust_section") {
+        return {
+          ...b,
+          props: normalizeTrustProps(b.props),
+        };
+      }
+      return b;
+    }),
   };
 }
 
@@ -142,12 +151,22 @@ async function ensureDoc(shopDb: Db): Promise<AppearanceDoc> {
     return doc;
   }
 
-  // Migrate: thêm khối Bài viết mới nếu layout cũ chưa có (để shop hiện bài CMS).
+  // Migrate: thêm khối Độ tin cậy và Bài viết mới nếu layout cũ chưa có.
   const doc = existing as unknown as AppearanceDoc;
   const hasArticle = (blocks: unknown) =>
     Array.isArray(blocks) &&
     blocks.some((b: any) => b && b.type === "article_section");
-  if (hasArticle(doc.published?.blocks) && hasArticle(doc.draft?.blocks)) {
+  const hasTrust = (blocks: unknown) =>
+    Array.isArray(blocks) &&
+    blocks.some((b: any) => b && b.type === "trust_section");
+
+  const needMigrate =
+    !hasArticle(doc.published?.blocks) ||
+    !hasArticle(doc.draft?.blocks) ||
+    !hasTrust(doc.published?.blocks) ||
+    !hasTrust(doc.draft?.blocks);
+
+  if (!needMigrate) {
     return doc;
   }
 
@@ -157,15 +176,41 @@ async function ensureDoc(shopDb: Db): Promise<AppearanceDoc> {
     enabled: true,
     props: { title: "Bài viết mới", limit: 3 },
   };
+
+  const trustBlock = {
+    id: `trust_${Date.now().toString(36)}`,
+    type: "trust_section" as const,
+    enabled: true,
+    props: { ...DEFAULT_TRUST_PROPS },
+  };
+
+  const insertBlocks = (blocks: any[], isDraft = false) => {
+    const res = [...blocks];
+    if (!hasTrust(res)) {
+      const tb = isDraft
+        ? { ...trustBlock, id: `trust_draft_${Date.now().toString(36)}` }
+        : trustBlock;
+      const idx = res.findIndex((b) => b && b.type === "article_section");
+      if (idx >= 0) {
+        res.splice(idx, 0, tb);
+      } else {
+        res.push(tb);
+      }
+    }
+    if (!hasArticle(res)) {
+      const ab = isDraft
+        ? { ...articleBlock, id: `articles_draft_${Date.now().toString(36)}` }
+        : articleBlock;
+      res.push(ab);
+    }
+    return res;
+  };
+
   const published = normalizeLayout(doc.published);
   const draft = normalizeLayout(doc.draft);
-  if (!hasArticle(published.blocks)) published.blocks = [...published.blocks, articleBlock];
-  if (!hasArticle(draft.blocks)) {
-    draft.blocks = [
-      ...draft.blocks,
-      { ...articleBlock, id: `articles_draft_${Date.now().toString(36)}` },
-    ];
-  }
+  published.blocks = insertBlocks(published.blocks, false);
+  draft.blocks = insertBlocks(draft.blocks, true);
+
   published.updatedAt = new Date().toISOString();
   draft.updatedAt = published.updatedAt;
   draft.version = Math.max(draft.version, published.version) + 1;
@@ -175,7 +220,7 @@ async function ensureDoc(shopDb: Db): Promise<AppearanceDoc> {
     { _id: APPEARANCE_ID as any },
     { $set: { published, draft } }
   );
-  await bumpShopAppearance("migrate-article-section");
+  await bumpShopAppearance("migrate-trust-and-article-section");
   return { ...doc, published, draft };
 }
 

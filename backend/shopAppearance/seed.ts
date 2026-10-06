@@ -1,5 +1,6 @@
 import type { AppearanceLayout } from "./types.js";
 import { defaultPopup, defaultSeo } from "./types.js";
+import { DEFAULT_TRUST_PROPS } from "./trust.js";
 
 function id(prefix: string) {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
@@ -97,6 +98,12 @@ export function buildDefaultAppearanceLayout(): AppearanceLayout {
           limit: 15,
           sort: "ban_chay",
         },
+      },
+      {
+        id: id("trust"),
+        type: "trust_section",
+        enabled: true,
+        props: { ...DEFAULT_TRUST_PROPS },
       },
       {
         id: id("articles"),

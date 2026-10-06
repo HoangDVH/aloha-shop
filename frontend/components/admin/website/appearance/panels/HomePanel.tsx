@@ -14,6 +14,7 @@ import type { CatNode } from "../../nav/ShopWebNavEditor";
 import { ShopCategoryPicker } from "../ShopCategoryPicker";
 import { BlockList, BLOCK_LABEL } from "../BlockList";
 import { HeroSlidesForm, type HeroSlideDraft } from "../HeroSlidesForm";
+import { TrustSectionForm } from "../TrustSectionForm";
 import {
   WbBadge,
   WbBtn,
@@ -338,6 +339,14 @@ export function HomePanel({
                   Khối dịch vụ / Why Aloha — bật/tắt bằng công tắc trên danh sách.
                 </p>
               </div>
+            );
+          }
+          if (b.type === "trust_section") {
+            return (
+              <TrustSectionForm
+                block={b}
+                updateProps={(patch) => updateProps(b.id, patch)}
+              />
             );
           }
           return null;

@@ -1,6 +1,7 @@
 import { shopApiBase } from "./api";
 import type { AppearanceBlock, NavConfig, AppearanceTheme } from "./appearanceTypes";
 import { SHOP_BRAND } from "./brand";
+import { DEFAULT_TRUST_PROPS } from "./trustShowcase";
 
 export type PublicAppearance = {
   theme: AppearanceTheme;
@@ -84,6 +85,12 @@ const FALLBACK_BLOCKS: AppearanceBlock[] = [
           sort: "ban_chay",
         },
       },
+  {
+    id: "seed_trust",
+    type: "trust_section",
+    enabled: true,
+    props: { ...DEFAULT_TRUST_PROPS },
+  },
   {
     id: "seed_articles",
     type: "article_section",

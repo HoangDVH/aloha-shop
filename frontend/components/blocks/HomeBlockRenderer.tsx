@@ -8,6 +8,7 @@ import { HomeFeaturedProducts } from "@/components/HomeFeaturedProducts";
 import { HomeLowStockSale } from "@/components/HomeLowStockSale";
 import { HomeArticleSection } from "@/components/HomeArticleSection";
 import { HomeProductSection } from "@/components/HomeProductSection";
+import { HomeTrustShowcase } from "@/components/HomeTrustShowcase";
 import { categoryHref, fetchArticles, fetchProducts } from "@/lib/api";
 import type { AppearanceBlock } from "@/lib/appearanceTypes";
 
@@ -410,24 +411,64 @@ async function HomeArticlesBlock({ props }: { props: BlockProps }) {
 /** Trang chủ: các khối dưới banner theo đúng thứ tự + bật/tắt trong admin «Giao diện → Trang chủ». */
 export async function renderHomeMainSections(blocks: AppearanceBlock[] = []) {
   const all = (blocks || []).filter(Boolean);
-  const main = all.filter((b) => b.type === "product_section" || b.type === "article_section");
+  const main = all.filter(
+    (b) =>
+      b.type === "product_section" ||
+      b.type === "article_section" ||
+      b.type === "trust_section"
+  );
 
   // Appearance cũ thiếu khối mặc định → vẫn hiện (cuối danh sách); khối có mà đang tắt → ẩn
   const ordered = [...main];
-  const present = new Set(main.filter((b) => b.type === "product_section").map((b) => CORE_SOURCES[sourceOf(b)]));
+  const present = new Set(
+    main
+      .filter((b) => b.type === "product_section")
+      .map((b) => CORE_SOURCES[sourceOf(b)])
+  );
   for (const core of ["noi_bat", "uu_dai", "ban_chay", "moi"] as const) {
     if (!present.has(core)) {
-      ordered.push({ id: `fallback_${core}`, type: "product_section", enabled: true, props: { source: core } });
+      ordered.push({
+        id: `fallback_${core}`,
+        type: "product_section",
+        enabled: true,
+        props: { source: core },
+      });
     }
   }
+
+  // Tự động bổ sung khối trust_section trước article_section nếu cấu hình cũ chưa có
+  if (!main.some((b) => b.type === "trust_section")) {
+    const artIdx = ordered.findIndex((b) => b.type === "article_section");
+    const fallbackTrust = {
+      id: "fallback_trust",
+      type: "trust_section" as const,
+      enabled: true,
+      props: {},
+    };
+    if (artIdx >= 0) {
+      ordered.splice(artIdx, 0, fallbackTrust);
+    } else {
+      ordered.push(fallbackTrust);
+    }
+  }
+
   if (!main.some((b) => b.type === "article_section")) {
-    ordered.push({ id: "fallback_articles", type: "article_section", enabled: true, props: {} });
+    ordered.push({
+      id: "fallback_articles",
+      type: "article_section",
+      enabled: true,
+      props: {},
+    });
   }
 
   const nodes: ReactNode[] = [];
   const rendered = new Set<string>();
   for (const b of ordered) {
     if (b.enabled === false) continue;
+    if (b.type === "trust_section") {
+      nodes.push(<HomeTrustShowcase key={b.id} props={b.props} />);
+      continue;
+    }
     if (b.type === "article_section") {
       nodes.push(<HomeArticlesBlock key={b.id} props={b.props} />);
       continue;
