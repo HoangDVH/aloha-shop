@@ -49,7 +49,7 @@ export default async function TuyenDungDetailPage({ params }: Props) {
 
   return (
     <div className="bg-[#F7F7F4] py-8">
-      <div className="mx-auto max-w-4xl px-4">
+      <div className="mx-auto max-w-7xl px-4">
         <nav className="mb-5 flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap text-sm text-slate-500" aria-label="Đường dẫn">
           <Link href="/" className="shrink-0 hover:text-[var(--aloha-green)]">
             Trang chủ

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ArrowLeft, Eye, Lock, Plus, Trash2 } from "lucide-react";
 import { WbBtn, WbField, wbInput, wbSelect } from "@/components/admin/website/ui";
 import { JobDetailView } from "@/components/recruitment/JobDetailView";
+import { JobRichEditor } from "./JobRichEditor";
 import {
   EDUCATION_LABELS,
   EMPLOYMENT_TYPE_LABELS,
@@ -213,18 +214,36 @@ export function JobEditor({
 
           <Group title="3. Nội dung">
             <div className="md:col-span-2">
-              <WbField label="Mô tả công việc *" hint="Mỗi ý một dòng; hiển thị đúng xuống dòng trên web">
-                <textarea className={area} maxLength={8000} value={form.description} onChange={(e) => set("description", e.target.value)} />
+              <WbField label="Mô tả công việc *" hint="Sử dụng thanh công cụ để in đậm, gạch đầu dòng danh sách hoặc tiêu đề phụ">
+                <JobRichEditor
+                  value={form.description}
+                  onChange={(v) => set("description", v)}
+                  placeholder="Mô tả chi tiết các nhiệm vụ, đầu việc chính của vị trí..."
+                  minHeight="150px"
+                  disabled={saving}
+                />
               </WbField>
             </div>
             <div className="md:col-span-2">
-              <WbField label="Yêu cầu công việc *">
-                <textarea className={area} maxLength={8000} value={form.requirements} onChange={(e) => set("requirements", e.target.value)} />
+              <WbField label="Yêu cầu công việc *" hint="Liệt kê kỹ năng, kinh nghiệm và thái độ làm việc cần thiết">
+                <JobRichEditor
+                  value={form.requirements}
+                  onChange={(v) => set("requirements", v)}
+                  placeholder="Yêu cầu kinh nghiệm, kỹ năng, tinh thần trách nhiệm..."
+                  minHeight="130px"
+                  disabled={saving}
+                />
               </WbField>
             </div>
             <div className="md:col-span-2">
               <WbField label="Quyền lợi *" hint="Chỉ ghi quyền lợi có thật; hoa hồng/phụ cấp ghi rõ, không gộp vào lương cứng">
-                <textarea className={area} maxLength={8000} value={form.benefits} onChange={(e) => set("benefits", e.target.value)} />
+                <JobRichEditor
+                  value={form.benefits}
+                  onChange={(v) => set("benefits", v)}
+                  placeholder="Lương thưởng, chế độ BHXH, phụ cấp ăn trưa, cơ hội thăng tiến..."
+                  minHeight="130px"
+                  disabled={saving}
+                />
               </WbField>
             </div>
           </Group>
