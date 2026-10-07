@@ -40,7 +40,7 @@ import { SHOP_OPEN_MOBILE_CATS } from "@/components/ShopMobileTabBar";
 import { SHOP_BRAND, shopBrand } from "@/lib/brand";
 import { AnnouncementBar } from "@/components/campaign/AnnouncementBar";
 import { PreviewBar } from "@/components/campaign/PreviewBar";
-import { HeaderVoucherPill } from "@/components/campaign/HeaderVoucherPill";
+import { HeaderVoucherPill, HeaderVoucherGlobalModal } from "@/components/campaign/HeaderVoucherPill";
 import { ZaloFloatButton } from "@/components/ZaloFloatButton";
 import { useCampaignView } from "@/lib/campaign/useCampaignView";
 import { useDealsNavAccent } from "@/lib/campaign/navAccent";
@@ -696,6 +696,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
           </div>
         </div>
       ) : null}
+      <HeaderVoucherGlobalModal />
     </header>
   );
 }

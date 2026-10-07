@@ -12,6 +12,8 @@ export type HeroSlide = {
   mobileSrc?: string;
   alt: string;
   href?: string;
+  target?: string;
+  rel?: string;
   label?: string;
   /** Dòng script xanh (tuỳ chọn) */
   eyebrow?: string;
@@ -21,6 +23,7 @@ export type HeroSlide = {
   desc?: string;
   /** Nhãn nút CTA */
   cta?: string;
+  onClick?: (e: React.MouseEvent) => void;
 };
 
 /** 4 banner hero — chữ + CTA đã nằm trong ảnh. */
@@ -186,7 +189,10 @@ export function HeroBanner({
             <Link
               href={singleSlide.href || "/tim"}
               {...linkTarget(singleSlide.href || "")}
-              className="hero-banner__frame block h-full w-full"
+              target={singleSlide.target || linkTarget(singleSlide.href || "").target}
+              rel={singleSlide.rel || linkTarget(singleSlide.href || "").rel}
+              onClick={singleSlide.onClick}
+              className="hero-banner__frame block h-full w-full cursor-pointer"
               aria-label={singleSlide.cta || "Mua ngay"}
             >
               <picture className="block h-full w-full">
@@ -234,7 +240,10 @@ export function HeroBanner({
                   <Link
                     href={slide.href || "/tim"}
                     {...linkTarget(slide.href || "")}
-                    className="hero-banner__frame block h-full w-full"
+                    target={slide.target || linkTarget(slide.href || "").target}
+                    rel={slide.rel || linkTarget(slide.href || "").rel}
+                    onClick={slide.onClick}
+                    className="hero-banner__frame block h-full w-full cursor-pointer"
                     aria-label={slide.cta || "Mua ngay"}
                   >
                     <picture className="block h-full w-full">

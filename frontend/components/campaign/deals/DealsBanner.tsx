@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties, ReactNode } from "react";
-import type { CampaignUI } from "@/lib/campaign/campaignApi";
+import type { CampaignBannerUI, CampaignUI } from "@/lib/campaign/campaignApi";
 import { DealsBannerGrid } from "./DealsBannerGrid";
 
 /** Vị trí / nhịp rơi cố định (không random) để server và client render giống nhau. */
@@ -14,6 +14,25 @@ const PETALS: { left: number; delay: number; dur: number; size: number }[] = [
   { left: 74, delay: 6.4, dur: 11.5, size: 10 },
   { left: 86, delay: 0.8, dur: 10.5, size: 9 },
   { left: 94, delay: 4.2, dur: 12.5, size: 11 },
+];
+
+/** Banner mặc định của chiến dịch nếu backend chưa cấu hình ảnh main */
+const DEFAULT_DEALS_BANNERS: CampaignBannerUI[] = [
+  {
+    id: "banner_2010_default",
+    kind: "main",
+    imageUrl: "/banners/banner-2010-desktop.webp",
+    mobileImageUrl: "/banners/banner-2010-mobile.webp",
+    alt: "Mừng ngày Phụ nữ Việt Nam 20/10 — Nhắn ALOHA đặt quà",
+    href: "https://zalo.me/0794901233",
+  },
+  {
+    id: "banner_1010_default",
+    kind: "main",
+    imageUrl: "/banners/banner-1010-desktop.webp",
+    alt: "Chào mừng 10/10 — Kho Voucher ưu đãi",
+    href: "/uu-dai?tab=voucher",
+  },
 ];
 
 function Petals() {
@@ -32,28 +51,16 @@ function Petals() {
 
 /** Banner chiến dịch đầu trang ưu đãi (banner chính tự trượt + banner phụ) + `below` (ô lối tắt). */
 export function DealsBanner({ campaign, below }: { campaign: CampaignUI; below?: ReactNode }) {
-  const { banners, hero, colors } = campaign.display;
+  const { banners, hero } = campaign.display;
   const hasMain = banners.some((b) => b.kind === "main" && b.imageUrl);
+  const effectiveBanners = hasMain ? banners : DEFAULT_DEALS_BANNERS;
 
   return (
     <section aria-label="Banner chương trình" className="-mx-3 sm:mx-0">
-      {hasMain ? (
-        <div className="relative">
-          <DealsBannerGrid banners={banners} />
-          <Petals />
-        </div>
-      ) : (
-        <div className="relative aspect-[8/3] overflow-hidden bg-[#F8DCE6] sm:rounded-3xl">
-          <div
-            className="flex h-full flex-col items-center justify-center px-4 text-center"
-            style={{ background: `linear-gradient(135deg, ${colors.primary}, ${colors.accent})` }}
-          >
-            <p className="text-xl font-black uppercase tracking-tight text-white drop-shadow sm:text-4xl">{hero.title || campaign.name}</p>
-            {hero.subtitle ? <p className="mt-2 text-sm font-medium text-white/90 sm:text-base">{hero.subtitle}</p> : null}
-          </div>
-          <Petals />
-        </div>
-      )}
+      <div className="relative">
+        <DealsBannerGrid banners={effectiveBanners} />
+        <Petals />
+      </div>
       {below}
       <h1 className="sr-only">{hero.title || campaign.name}</h1>
     </section>
