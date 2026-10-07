@@ -59,7 +59,7 @@ export function shipSupportText(p: Pick<VoucherLike, "discountType" | "discountV
   return "Hỗ trợ phí ship";
 }
 
-/** Nhãn ngắn của voucher (PDP: "Giảm 30k đơn 350k", "Hỗ trợ phí ship 30K đơn 1tr"...). */
+/** Nhãn ngắn của voucher (PDP: "Giảm 30k đơn 350k", "Giảm 5% cho khách mới", "Hỗ trợ phí ship 30K đơn 1tr"...). */
 export function formatVoucherBadge(p: VoucherLike): { label: string; type: "goods" | "shipping" } {
   if (p.benefitType === "shipping") {
     let text = shipSupportText(p);
@@ -70,9 +70,9 @@ export function formatVoucherBadge(p: VoucherLike): { label: string; type: "good
   }
   if (p.targetCustomer === "new_web") {
     if (p.discountType === "percentage") {
-      return { label: `Khách mới giảm ${pctText(p)}`, type: "goods" };
+      return { label: `Giảm ${pctText(p)} cho khách mới`, type: "goods" };
     }
-    return { label: `Khách mới giảm ${formatCompactVnd(p.discountValue)}`, type: "goods" };
+    return { label: `Giảm ${formatCompactVnd(p.discountValue)} cho khách mới`, type: "goods" };
   }
   if (p.discountType === "fixed") {
     let text = `Giảm ${formatCompactVnd(p.discountValue)}`;

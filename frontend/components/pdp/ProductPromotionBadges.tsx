@@ -21,6 +21,14 @@ interface FormattedBadge {
 
 const formatBadgeText = (p: AvailablePromotionUI) => formatVoucherBadge(p);
 
+/** "Hỗ trợ phí ship 30.000đ đơn từ 1.000.000đ" */
+function shipBadgeLabel(p: AvailablePromotionUI): string {
+  if (p.discountType !== "fixed" || !(p.discountValue > 0)) return formatVoucherBadge(p).label;
+  let text = `Hỗ trợ phí ship ${formatVnd(p.discountValue)}`;
+  if (p.minOrderThreshold && p.minOrderThreshold > 0) text += ` đơn từ ${formatVnd(p.minOrderThreshold)}`;
+  return text;
+}
+
 export function ProductPromotionBadges({
   product,
   livePrice,
@@ -83,8 +91,11 @@ export function ProductPromotionBadges({
 
     // Chọn tối đa 1-2 voucher giảm tiền hàng tốt nhất
     if (goodsPromos.length > 0) {
-      // Ưu tiên voucher có mức giảm cao nhất
+      // Voucher khách mới luôn đứng đầu, sau đó ưu tiên mức giảm cao nhất
       const sortedGoods = [...goodsPromos].sort((a, b) => {
+        const newA = a.targetCustomer === "new_web" ? 1 : 0;
+        const newB = b.targetCustomer === "new_web" ? 1 : 0;
+        if (newA !== newB) return newB - newA;
         const valA = a.discountType === "fixed" ? a.discountValue : (a.maxDiscountVnd || a.discountValue * 1000);
         const valB = b.discountType === "fixed" ? b.discountValue : (b.maxDiscountVnd || b.discountValue * 1000);
         return valB - valA;
@@ -101,12 +112,12 @@ export function ProductPromotionBadges({
       }
     }
 
-    // Chọn voucher hỗ trợ ship tốt nhất
+    // Voucher hỗ trợ ship dễ đạt nhất (đơn tối thiểu thấp nhất), ghi đủ số tiền
     if (shipPromos.length > 0) {
-      badges.push({
-        promotion: shipPromos[0],
-        ...formatBadgeText(shipPromos[0]),
-      });
+      const ship = [...shipPromos].sort(
+        (a, b) => (a.minOrderThreshold || 0) - (b.minOrderThreshold || 0)
+      )[0];
+      badges.push({ promotion: ship, label: shipBadgeLabel(ship), type: "shipping" });
     }
 
     return badges;
