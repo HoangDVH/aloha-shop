@@ -14,6 +14,7 @@ import { registerProductDetailRoutes } from "./routes/productDetail.routes.js";
 import { registerCtvClickRoutes } from "./routes/ctvClick.routes.js";
 import { registerCatalogStreamRoutes } from "./routes/stream.routes.js";
 import { registerCacheAdminRoutes } from "./routes/cacheAdmin.routes.js";
+import { registerShareMediaRoutes } from "./routes/shareMedia.routes.js";
 
 export { loadRevenueRankMap } from "./catalog/bestsellers.js";
 
@@ -42,4 +43,5 @@ export function registerShopApi(
   registerCtvClickRoutes(app, ctx);
   registerCatalogStreamRoutes(app, ctx);
   registerCacheAdminRoutes(app, ctx);
+  registerShareMediaRoutes(app);
 }

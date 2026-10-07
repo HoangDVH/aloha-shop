@@ -20,6 +20,7 @@ import { ProductCampaignBox } from "@/components/pdp/ProductCampaignBox";
 import { useCampaignRequoteKey } from "@/lib/campaign/campaignQuote";
 import { useCampaignView } from "@/lib/campaign/useCampaignView";
 import { ProductPurchaseSheet } from "@/components/pdp/ProductPurchaseSheet";
+import { ProductShareButton } from "@/components/pdp/ProductShareSheet";
 import { ProductAttachedItems, selectBuyNowLines } from "@/components/pdp/ProductAttachedItems";
 import { isPromoSelling, promoAnchorPrice } from "@/components/campaign/CardPromo";
 import {
@@ -491,9 +492,20 @@ export function ProductDetailView({
             {/* Cột thông tin — thông tin hiển thị tự nhiên, không bị cuộn */}
             <div className="flex min-w-0 flex-col border-t border-[#eee] p-3 sm:p-4 lg:border-l lg:border-t-0 lg:p-6">
               <div className="space-y-3.5">
-                <h1 className="text-xl font-extrabold leading-tight tracking-tight text-[var(--aloha-ink)] sm:text-2xl sm:uppercase">
-                  {activeProduct.ten}
-                </h1>
+                <div className="flex items-start gap-2">
+                  <h1 className="min-w-0 flex-1 text-xl font-extrabold leading-tight tracking-tight text-[var(--aloha-ink)] sm:text-2xl sm:uppercase">
+                    {activeProduct.ten}
+                  </h1>
+                  <ProductShareButton
+                    ma={activeProduct.ma}
+                    name={activeProduct.ten}
+                    path={activeProduct.path}
+                    price={pricePending ? 0 : liveGia}
+                    images={gallery}
+                    videos={galleryVideos}
+                    ctvCode={loggedInCtvCode}
+                  />
+                </div>
 
                 {/* NẾU CÓ ƯU ĐÃI THÌ GIÁ ĐƯỢC GỘP THẲNG VÀO PRODUCTCAMPAIGNBOX PHÍA DƯỚI */}
                 {!hasPromo ? (

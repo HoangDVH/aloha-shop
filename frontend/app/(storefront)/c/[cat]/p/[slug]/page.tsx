@@ -11,7 +11,7 @@ import {
   RelatedProductsSkeleton,
 } from "@/components/RelatedProductsSection";
 import { fetchAppearance, fallbackAppearance } from "@/lib/appearance";
-import { NOINDEX_FOLLOW, SHOP_ORIGIN, absUrl, plainText } from "@/lib/seo";
+import { NOINDEX_FOLLOW, SHOP_ORIGIN, plainText, productOgImage } from "@/lib/seo";
 import { resolveProductSeo } from "@/lib/seoTemplates";
 import { buildBreadcrumbJsonLd } from "@/lib/seoSchema";
 
@@ -78,9 +78,8 @@ export async function generateMetadata({
       fallbackDescription,
     });
 
-    const image =
-      absUrl(item.anh || item.images?.[0] || "") ||
-      absUrl("/brand/logo-aloha.png");
+    const og = productOgImage(item);
+    const image = og.url;
 
     return {
       title: resolved.title,
@@ -93,7 +92,7 @@ export async function generateMetadata({
         url: pageUrl.split("?")[0],
         title: resolved.title,
         description: resolved.description,
-        images: [{ url: image, width: 800, height: 800, alt: item.ten }],
+        images: [{ url: image, width: og.width, height: og.height, alt: item.ten }],
       },
       twitter: {
         card: "summary_large_image",

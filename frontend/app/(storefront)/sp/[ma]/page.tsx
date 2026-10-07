@@ -4,7 +4,7 @@ import { formatVnd } from "@/lib/api";
 import { getProductByMa } from "@/lib/shopProductServer";
 import { ShareRedirect } from "@/components/ShareRedirect";
 import { ProductJsonLd } from "@/components/ProductJsonLd";
-import { SHOP_ORIGIN, absUrl, plainText } from "@/lib/seo";
+import { SHOP_ORIGIN, plainText, productOgImage } from "@/lib/seo";
 
 export const revalidate = 30;
 
@@ -42,9 +42,8 @@ export async function generateMetadata({
     const description =
       descPlain.slice(0, 140) ||
       `${item.ten} — Giá ${price}. ${stock}. Mua tại ALOHA THẾ GIỚI CHẬU CÂY.`;
-    const image =
-      absUrl(item.anh || item.images?.[0] || "") ||
-      absUrl("/brand/logo-aloha.png");
+    const og = productOgImage(item);
+    const image = og.url;
     const title = `${item.ten} | ${price}`;
 
     return {
@@ -64,8 +63,8 @@ export async function generateMetadata({
             url: image,
             secureUrl: image,
             type: "image/jpeg",
-            width: 1200,
-            height: 630,
+            width: og.width,
+            height: og.height,
             alt: item.ten,
           },
         ],
