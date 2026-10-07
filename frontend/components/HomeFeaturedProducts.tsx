@@ -11,18 +11,18 @@ type Props = {
   title: string;
   products: ShopProduct[];
   href: string;
-  /** Số SP tối đa hiện trên lưới (mặc định 10 = 2 hàng × 5 cột) */
+  /** Số SP tối đa hiện trên lưới (mặc định 12 = 2 hàng × 6 cột) */
   limit?: number;
   ctaLabel?: string;
   variant?: "default" | "deal";
 };
 
-/** Mục SP trang chủ — tiêu đề giữa + lá + lưới 5 cột desktop. */
+/** Mục SP trang chủ — tiêu đề giữa + lá + lưới 6 cột desktop. */
 export function HomeFeaturedProducts({
   title,
   products,
   href,
-  limit = 10,
+  limit = 12,
   ctaLabel = "Xem thêm sản phẩm →",
   variant = "default",
 }: Props) {
@@ -56,7 +56,7 @@ function Section({
     <section className="bg-[var(--aloha-surface)] py-8 sm:py-10">
       <div className="mx-auto max-w-7xl px-4">
         {variant === "deal" ? (
-          <div className="mb-3.5 sm:mb-6">
+          <div className="mb-3 sm:mb-4">
             <HomeFlashSaleStage />
           </div>
         ) : (
@@ -66,6 +66,7 @@ function Section({
           products={products}
           shopee
           homeRow6
+          columns={6}
           variant={variant}
         />
         <div className="mt-6 flex justify-center">

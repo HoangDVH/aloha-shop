@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Flame, Zap } from "lucide-react";
+import { ChevronRight, Zap } from "lucide-react";
 import { useCampaignView } from "@/lib/campaign/useCampaignView";
-import { FLASH_STAGE_BG, flashStageText, stageChips } from "@/lib/campaign/flashSlots";
+import { stageChips } from "@/lib/campaign/flashSlots";
 import { useCountdown } from "@/lib/hooks/useCountdown";
 
 function getSlotEndTargetMs(slot: { start: string; end: string } | undefined, nowMs: number): number | null {
@@ -50,11 +50,21 @@ function useNow(offsetMs: number): number | null {
   return now;
 }
 
-/** Dải "Sân khấu Flash Sale": Tối ưu chuẩn Shopee Minimal Header trên cả Mobile & Desktop. */
+function CountdownBox({ children }: { children: string }) {
+  return (
+    <span className="min-w-[1.4rem] rounded-[4px] bg-slate-900 px-1 py-[3px] text-center leading-none text-white">
+      {children}
+    </span>
+  );
+}
+
+/**
+ * Tiêu đề Flash Sale trang chủ kiểu Shopee: một dòng nền trắng, chữ đỏ, đồng hồ ô đen.
+ * Tên đợt sale nằm ở banner chính và trang Ưu đãi, ở đây luôn là "Flash Sale".
+ */
 export function HomeFlashSaleStage({ className = "" }: { className?: string }) {
   const { campaign, offsetMs } = useCampaignView();
   const now = useNow(offsetMs);
-  const text = flashStageText(campaign?.display.flashStage);
   const chips =
     campaign && now != null ? stageChips(campaign.slots, campaign.phase, now, Date.parse(campaign.endAt)) : [];
 
@@ -66,62 +76,37 @@ export function HomeFlashSaleStage({ className = "" }: { className?: string }) {
 
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl sm:rounded-3xl px-3 py-2.5 sm:px-5 sm:py-3 shadow-sm text-white flex items-center justify-between gap-3 sm:gap-5 ${className}`}
-      style={{ background: FLASH_STAGE_BG }}
+      className={`flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 shadow-2xs ring-1 ring-black/5 sm:px-4 sm:py-2.5 ${className}`}
     >
-      {/* BÊN TRÁI: ICON + TIÊU ĐỀ + BADGE + ĐỒNG HỒ ĐẾM NGƯỢC (CHUẨN SHOPEE) */}
-      <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
-        <Link
-          href="/uu-dai?tab=flash-sale"
-          className="flex h-7.5 w-7.5 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg sm:rounded-xl bg-white shadow-xs transition-transform hover:scale-105"
-          title="Xem tất cả Flash Sale"
-        >
-          <Zap className="h-4 w-4 sm:h-5 sm:w-5 fill-[#CE2D37] text-[#CE2D37]" />
-        </Link>
-
-        <Link
-          href="/uu-dai?tab=flash-sale"
-          className="flex flex-wrap items-center gap-1.5 sm:gap-2.5 min-w-0 group"
-          title="Xem tất cả Flash Sale"
-        >
-          <h2 className="text-[13.5px] sm:text-base lg:text-lg font-black uppercase tracking-wide text-white leading-tight whitespace-nowrap group-hover:underline">
-            <span className="sm:hidden">Flash Sale</span>
-            <span className="hidden sm:inline">{text.title}</span>
-          </h2>
-
-          {text.badge ? (
-            <span className="hidden sm:inline-flex shrink-0 items-center rounded-md bg-[#FEF3C7] px-1.5 py-0.5 text-[9.5px] sm:text-xs font-black uppercase text-[#92400E] shadow-xs">
-              {text.badge}
-            </span>
-          ) : null}
-        </Link>
-
-        {/* ĐỒNG HỒ ĐẾM NGƯỢC CHUẨN SHOPEE */}
-        {openSlot && endTarget && !cd.done ? (
-          <Link
-            href="/uu-dai?tab=flash-sale"
-            className="flex items-center gap-1 sm:gap-1.5 rounded-lg sm:rounded-xl bg-black/25 backdrop-blur-xs border border-white/15 px-2 py-1 text-white hover:bg-black/35 transition-colors shrink-0"
-            title="Đang diễn ra flash sale"
-          >
-            <Flame size={13} className="fill-[#FFD54F] text-[#FFD54F] shrink-0 animate-pulse" />
-            <div className="flex items-center gap-0.5 text-[11px] sm:text-xs font-black tabular-nums">
-              <span className="rounded bg-black/40 px-1 py-0.5 leading-none">{cd.h}</span>
-              <span className="text-white/80">:</span>
-              <span className="rounded bg-black/40 px-1 py-0.5 leading-none">{cd.m}</span>
-              <span className="text-white/80">:</span>
-              <span className="rounded bg-black/40 px-1 py-0.5 leading-none">{cd.s}</span>
-            </div>
-          </Link>
-        ) : null}
-      </div>
-
-      {/* BÊN PHẢI: NÚT XEM TẤT CẢ */}
       <Link
         href="/uu-dai?tab=flash-sale"
-        className="inline-flex items-center gap-0.5 sm:gap-1 text-xs sm:text-sm font-bold text-white/95 hover:text-white hover:underline whitespace-nowrap shrink-0 pl-1"
+        className="flex min-w-0 items-center gap-2.5 sm:gap-3"
+        title="Xem tất cả Flash Sale"
+      >
+        <h2 className="flex items-center gap-1 whitespace-nowrap text-[17px] font-black uppercase italic leading-none tracking-tight text-[#CE2D37] sm:text-xl">
+          <Zap className="h-4 w-4 fill-current sm:h-5 sm:w-5" aria-hidden />
+          Flash Sale
+        </h2>
+        {openSlot && endTarget && !cd.done ? (
+          <span
+            className="flex items-center gap-0.5 text-[11px] font-bold tabular-nums text-slate-900 sm:text-xs"
+            aria-label={`Kết thúc sau ${cd.h} giờ ${cd.m} phút ${cd.s} giây`}
+          >
+            <CountdownBox>{cd.h}</CountdownBox>
+            <span aria-hidden>:</span>
+            <CountdownBox>{cd.m}</CountdownBox>
+            <span aria-hidden>:</span>
+            <CountdownBox>{cd.s}</CountdownBox>
+          </span>
+        ) : null}
+      </Link>
+
+      <Link
+        href="/uu-dai?tab=flash-sale"
+        className="inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap text-xs font-semibold text-[#CE2D37] hover:underline sm:text-sm"
         title="Xem tất cả khung giờ flash sale"
       >
-        <span>Xem tất cả</span>
+        Xem tất cả
         <ChevronRight size={15} aria-hidden />
       </Link>
     </div>

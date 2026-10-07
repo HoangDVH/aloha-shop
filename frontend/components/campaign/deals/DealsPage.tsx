@@ -13,6 +13,7 @@ import { DealsRules } from "./DealsRules";
 import { DealsEmpty } from "./DealsEmpty";
 import { DealsOverview, LazyMount } from "./DealsOverview";
 import { DealsBanner } from "./DealsBanner";
+import { DealsBestSellers } from "./DealsBestSellers";
 import { DealsProductTabs } from "./DealsProductTabs";
 import { DealsMoreFeed } from "./DealsMoreFeed";
 import { DealsSectionHead } from "./DealsSectionHead";
@@ -140,7 +141,7 @@ export function DealsPage() {
         return (
           <section id="qua-tang" className="space-y-4">
             <DealsSectionHead icon={Gift} title="Mua kèm quà tặng 0Đ" subtitle="Mỗi đơn hàng được tặng kèm phụ kiện decor, sỏi hoặc dinh dưỡng miễn phí" />
-            <DealsProducts mas={groups.gift} variant="deal" homeRow6 />
+            <DealsProducts mas={groups.gift} variant="deal" columns={4} />
           </section>
         );
 
@@ -148,7 +149,7 @@ export function DealsPage() {
         return (
           <section id="deal-hot" className="space-y-4">
             <DealsSectionHead icon={Flame} title="Deal hot giá sốc" subtitle="Các sản phẩm bán chạy giảm sâu nhất trong chiến dịch" />
-            <DealsProducts mas={groups.hot} variant="deal" homeRow6 />
+            <DealsProducts mas={groups.hot} variant="deal" columns={4} />
           </section>
         );
 
@@ -156,7 +157,22 @@ export function DealsPage() {
         return (
           <section id="san-pham" className="space-y-4">
             <DealsSectionHead icon={Sparkles} title="Sản phẩm trong chương trình" subtitle="Toàn bộ cây cảnh và chậu cây áp dụng mức giá ưu đãi đặc biệt" />
-            <DealsProducts mas={groups.all} variant="deal" homeRow6 />
+            <DealsProducts mas={groups.all} variant="deal" columns={4} />
+          </section>
+        );
+
+      case "ban-chay":
+        return (
+          <section id="ban-chay" className="space-y-6">
+            <DealsBestSellers campaign={campaign} />
+            <div className="space-y-3 pt-2">
+              <DealsSectionHead
+                icon={Flame}
+                title="Sản phẩm ưu đãi nhiều người mua"
+                subtitle="Danh sách các sản phẩm đang được khách hàng quan tâm và chọn mua nhiều nhất"
+              />
+              <DealsProducts mas={groups.hot.length ? groups.hot : groups.all} variant="deal" columns={4} />
+            </div>
           </section>
         );
 
@@ -175,10 +191,10 @@ export function DealsPage() {
   return (
     <div style={themeStyle}>
       <div className="mx-auto max-w-7xl space-y-4 px-3 py-3 sm:space-y-6 sm:px-4 sm:py-5">
-        <DealsBanner campaign={campaign} offsetMs={offsetMs} />
+        <DealsBanner campaign={campaign} />
         <QuickTiles
           variant="tabs"
-          className="hidden sm:block"
+          className="block"
           campaign={campaign}
           vouchers={vouchers}
           offsetMs={offsetMs}

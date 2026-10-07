@@ -64,7 +64,7 @@ function defaultDisplay(p: PresetDef): CampaignDisplay {
   return {
     colors: { ...p.colors },
     announcement: { text: `${p.name}: giảm đến 50% – số lượng có hạn`, href: "/uu-dai" },
-    headerPill: { text: "Voucher 50K đơn đầu", href: "/uu-dai?tab=voucher" },
+    headerPill: { text: "Voucher", href: "/uu-dai?tab=voucher" },
     banners: [],
     hero: {
       title: p.title,
@@ -79,7 +79,7 @@ function defaultDisplay(p: PresetDef): CampaignDisplay {
       { icon: "zap", label: "Flash Sale", href: "/uu-dai?tab=flash-sale" },
       { icon: "flame", label: "Deal hot", href: "/uu-dai?tab=deal-hot" },
       { icon: "gift", label: "Quà tặng", href: "/uu-dai?tab=qua-tang" },
-      { icon: "truck", label: "Hỗ trợ ship", href: "/uu-dai?tab=voucher" },
+      { icon: "trophy", label: "Top Bán Chạy", href: "/uu-dai?tab=ban-chay" },
     ],
     welcome: { enabled: true, title: "Quà cho bạn mới", body: "Lưu voucher để dùng khi đặt hàng trong dịp lễ." },
     flashStage: {

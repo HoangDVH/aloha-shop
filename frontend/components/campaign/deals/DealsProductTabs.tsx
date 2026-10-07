@@ -386,14 +386,14 @@ export function DealsProductTabs({
       )}
 
       {!rows ? (
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5" aria-busy="true">
-          {Array.from({ length: 10 }, (_, i) => (
-            <div key={i} className="aspect-[3/5] animate-pulse rounded-2xl bg-white/80" />
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-2.5 md:grid-cols-3 md:gap-3 lg:grid-cols-4 lg:gap-3.5" aria-busy="true">
+          {Array.from({ length: 8 }, (_, i) => (
+            <div key={i} className="aspect-[3/4] animate-pulse rounded-xl bg-white/80" />
           ))}
         </div>
       ) : (
         <>
-          <ProductGrid products={products} shopee homeRow6 variant="deal" />
+          <ProductGrid products={products} shopee columns={4} variant="deal" />
           {shown < matched.length ? (
             <div className="flex justify-center pt-2">
               <button

@@ -87,22 +87,22 @@ export function RecruitmentNavDropdown({ active, onNavigate }: RecruitmentNavDro
         }}
         aria-haspopup="true"
         aria-expanded={open}
-        className={`group relative inline-flex min-h-[38px] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap px-3 py-2 text-[15px] xl:px-3.5 xl:text-[15.5px] rounded-xl transition-all duration-150 select-none cursor-pointer active:scale-95 ${
-          active
-            ? "font-bold text-[var(--aloha-green)] bg-emerald-50/80 hover:bg-emerald-100/70 active:bg-emerald-100"
-            : "font-semibold text-[var(--aloha-ink)] hover:text-[var(--aloha-green)] hover:bg-slate-100/70 active:bg-slate-200/70"
+        className={`group relative inline-flex min-h-[38px] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap px-3 py-2 text-[15px] xl:px-3.5 xl:text-[15.5px] rounded-xl border transition-all duration-150 select-none cursor-pointer active:scale-95 ${
+          active || open
+            ? "font-bold text-[var(--aloha-green)] bg-emerald-50 border-emerald-200/90 shadow-2xs"
+            : "font-semibold text-neutral-800 hover:text-[var(--aloha-green)] hover:bg-neutral-100/70 border-transparent"
         }`}
       >
         <span>Tuyển dụng</span>
         <ChevronDown
           size={14}
           strokeWidth={2.2}
-          className={`opacity-70 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          className={`opacity-70 transition-transform duration-200 ${open ? "rotate-180 text-[var(--aloha-green)]" : ""}`}
           aria-hidden
         />
         <span
           className={`pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 h-[3px] rounded-full transition-all duration-300 ease-out bg-[var(--aloha-green)] ${
-            active
+            active || open
               ? "w-4/5 opacity-100 shadow-xs"
               : "w-0 opacity-0 group-hover:w-3/5 group-hover:opacity-80"
           }`}

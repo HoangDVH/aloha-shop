@@ -54,6 +54,8 @@ export type AppearancePopup = {
   delaySeconds: number;
   frequencyDays: number;
   showOncePerCampaign: boolean;
+  /** Mỗi lần khách mở web (phiên mới) đều tự bật lại, bỏ qua frequencyDays/showOncePerCampaign. */
+  everyVisit?: boolean;
   startAt?: string;
   endAt?: string;
   pages?: PopupPages;

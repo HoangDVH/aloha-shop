@@ -306,3 +306,106 @@
 @media (prefers-reduced-motion: reduce) {
   .aloha-shimmer { animation: none; opacity: 0; }
 }
+
+/* =========================================================================
+   HIỆU ỨNG CUỘN (SCROLL REVEAL) & CARD SHEEN CHUẨN SẮC XANH GARDEN
+   ========================================================================= */
+.reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity 0.75s var(--ease-out-soft, cubic-bezier(0.22, 1, 0.36, 1)),
+              transform 0.75s var(--ease-out-soft, cubic-bezier(0.22, 1, 0.36, 1));
+  will-change: opacity, transform;
+}
+
+.reveal[data-show="true"],
+[data-show="true"].reveal,
+[data-show="true"] .reveal {
+  opacity: 1;
+  transform: none;
+  will-change: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* Ánh sáng quét qua thẻ (Card sheen shimmer) */
+.card-sheen {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-sheen::after {
+  content: "";
+  z-index: 2;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.22) 50%, transparent 60%) 175% 0 / 220% 100%;
+  position: absolute;
+  inset: 0;
+}
+
+@media (pointer: fine) {
+  .card-sheen::after {
+    transition: background-position 0.9s var(--ease-out-soft, cubic-bezier(0.22, 1, 0.36, 1));
+  }
+  .card-sheen:hover::after {
+    background-position: -75% 0;
+  }
+}
+
+/* Nét gạch chân sketch uốn lượn nghệ thuật chuẩn Sắc Xanh Garden */
+.underline-sketch {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 12' preserveAspectRatio='none'%3E%3Cpath d='M2 8 C 30 3, 70 11, 118 5' stroke='%23caa54a' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  background-size: 100% 0.5em;
+}
+
+/* Hiệu ứng trôi nhẹ tự nhiên cho các nhánh lá nền */
+@keyframes aloha-drift {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-14px) rotate(1.8deg);
+  }
+}
+
+@keyframes aloha-drift-rev {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(14px) rotate(-1.8deg);
+  }
+}
+
+.animate-aloha-drift {
+  animation: aloha-drift 16s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+.animate-aloha-drift-rev {
+  animation: aloha-drift-rev 19s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+/* Typography chuẩn Sắc Xanh Garden: Serif Playfair Display + Times New Roman
+   Loại bỏ hoàn toàn lỗi tách dấu tiếng Việt của font Georgia trên Windows */
+.font-display-serif,
+.font-serif,
+[class*="font-serif"] {
+  font-family: 'Playfair Display', "Times New Roman", Times, serif !important;
+  font-feature-settings: "liga" 1, "calt" 1;
+}
+
+.font-sans-vietnam {
+  font-family: 'Be Vietnam Pro', var(--aloha-font, "Segoe UI", ui-sans-serif, system-ui, sans-serif) !important;
+}
+
+
+

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { ArrowUp } from "lucide-react";
 import type { CampaignUI, CampaignVoucherUI, CampaignViewerUI } from "@/lib/campaign/campaignApi";
+import { QuickTiles } from "@/components/campaign/QuickTiles";
 import { DealsBanner } from "./DealsBanner";
 import { DealsTrust } from "./DealsStrips";
 import { DealsVoucherStrip } from "./DealsVoucherStrip";
@@ -93,7 +94,10 @@ export function DealsOverview({
 
   return (
     <div className="space-y-8 pb-20 sm:space-y-12 lg:pb-0">
-      <DealsBanner campaign={campaign} offsetMs={offsetMs} />
+      <DealsBanner
+        campaign={campaign}
+        below={<QuickTiles campaign={campaign} vouchers={vouchers} offsetMs={offsetMs} className="sm:px-0" />}
+      />
 
       <DealsVoucherStrip vouchers={vouchers} viewer={viewer} offsetMs={offsetMs} focusIds={focusIds} />
 

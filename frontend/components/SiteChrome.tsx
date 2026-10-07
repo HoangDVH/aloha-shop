@@ -369,35 +369,80 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                 );
               }
               const active = item.key === navActiveKey;
-              const accent = item.key === "noi-bat-uu-dai" && dealsAccent.on ? dealsAccent.color : null;
-              const cls = `group relative inline-flex min-h-[38px] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap px-3 py-2 text-[15px] xl:px-3.5 xl:text-[15.5px] rounded-xl transition-all duration-150 select-none cursor-pointer active:scale-95 ${
-                accent
-                  ? "font-bold hover:bg-rose-50/80 active:bg-rose-100"
-                  : active
-                    ? "font-bold text-[var(--aloha-green)] bg-emerald-50/80 hover:bg-emerald-100/70 active:bg-emerald-100"
-                    : "font-semibold text-[var(--aloha-ink)] hover:text-[var(--aloha-green)] hover:bg-slate-100/70 active:bg-slate-200/70"
+              const isDeals = item.key === "noi-bat-uu-dai";
+              const dealsColor = dealsAccent.color || "#C8102E";
+
+              if (isDeals) {
+                const dealsCls = `group relative inline-flex min-h-[38px] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-[15px] xl:px-3.5 xl:text-[15.5px] rounded-xl border transition-all duration-150 select-none cursor-pointer active:scale-95 ${
+                  active
+                    ? "font-bold text-[#C8102E] bg-rose-50 border-rose-300 shadow-2xs ring-1 ring-rose-200"
+                    : "font-semibold text-neutral-800 hover:text-[var(--aloha-green)] hover:bg-neutral-100/70 border-transparent"
+                }`;
+                const dealsUnderline = (
+                  <span
+                    className={`pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 h-[3px] rounded-full transition-all duration-300 ease-out ${
+                      active
+                        ? "w-4/5 opacity-100 shadow-xs bg-[#C8102E]"
+                        : "w-0 opacity-0 group-hover:w-3/5 group-hover:opacity-80 bg-[var(--aloha-green)]"
+                    }`}
+                    aria-hidden
+                  />
+                );
+                return (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    onClick={closeMenus}
+                    className={dealsCls}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    <span className="relative inline-flex items-center justify-center shrink-0">
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        aria-hidden="true"
+                        className="shrink-0 transition-transform duration-200 group-hover:scale-115 group-hover:-rotate-6 drop-shadow-[0_1px_2px_rgba(234,29,44,0.35)]"
+                      >
+                        <defs>
+                          <linearGradient id="deal-flame-grad" x1="0" y1="1" x2="0.2" y2="0">
+                            <stop offset="0%" stopColor="#D32F2F" />
+                            <stop offset="45%" stopColor="#FF5722" />
+                            <stop offset="85%" stopColor="#FF9800" />
+                            <stop offset="100%" stopColor="#FFD54F" />
+                          </linearGradient>
+                        </defs>
+                        <path
+                          d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"
+                          fill="url(#deal-flame-grad)"
+                        />
+                      </svg>
+                    </span>
+                    <span>{item.label}</span>
+                    <span className="inline-flex items-center rounded-full bg-gradient-to-r from-[#FF3B30] to-[#E53935] px-1.5 py-0.5 text-[9px] font-black uppercase text-white shadow-2xs leading-none tracking-wider transition-transform duration-200 group-hover:scale-105">
+                      HOT
+                    </span>
+                    <span className="sr-only">, đang có chương trình</span>
+                    {dealsUnderline}
+                  </Link>
+                );
+              }
+
+              const cls = `group relative inline-flex min-h-[38px] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap px-3 py-2 text-[15px] xl:px-3.5 xl:text-[15.5px] rounded-xl border transition-all duration-150 select-none cursor-pointer active:scale-95 ${
+                active
+                  ? "font-bold text-[var(--aloha-green)] bg-emerald-50 border-emerald-200/90 shadow-2xs"
+                  : "font-semibold text-neutral-800 hover:text-[var(--aloha-green)] hover:bg-neutral-100/70 border-transparent"
               }`;
               const underline = (
                 <span
-                  className={`pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 h-[3px] rounded-full transition-all duration-300 ease-out ${
-                    accent ? "" : "bg-[var(--aloha-green)]"
-                  } ${
+                  className={`pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 h-[3px] rounded-full transition-all duration-300 ease-out bg-[var(--aloha-green)] ${
                     active
                       ? "w-4/5 opacity-100 shadow-xs"
                       : "w-0 opacity-0 group-hover:w-3/5 group-hover:opacity-80"
                   }`}
-                  style={accent ? { backgroundColor: accent } : undefined}
                   aria-hidden
                 />
-              );
-              const label = accent ? (
-                <>
-                  <Zap size={16} strokeWidth={2.2} fill="currentColor" className="shrink-0" aria-hidden />
-                  {item.label}
-                  <span className="sr-only">, đang có chương trình</span>
-                </>
-              ) : (
-                item.label
               );
               if ("external" in item && item.external) {
                 return (
@@ -420,10 +465,9 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                   href={item.href}
                   onClick={closeMenus}
                   className={cls}
-                  style={accent ? { color: accent } : undefined}
                   aria-current={active ? "page" : undefined}
                 >
-                  {label}
+                  {item.label}
                   {underline}
                 </Link>
               );

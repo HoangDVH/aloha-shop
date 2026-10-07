@@ -16,7 +16,7 @@ export function HomeProductSection({ title, href, products, variant = "default" 
   return (
     <section className="pb-2 sm:pb-4">
       <SectionTitle className="mb-5 sm:mb-7">{title}</SectionTitle>
-      <ProductGrid products={products} shopee homeRow6 variant={variant} />
+      <ProductGrid products={products} shopee homeRow6 columns={6} variant={variant} />
       <div className="mt-4 flex justify-center pt-2 sm:mt-5 sm:pt-3">
         <Link
           href={href}

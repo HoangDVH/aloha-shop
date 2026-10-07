@@ -64,17 +64,17 @@ export const DEFAULT_TRUST_PROPS: TrustSectionProps = {
     },
     {
       id: "tay-ninh",
-      enabled: false,
+      enabled: true,
       imageUrl: "/banners/trust/don-tay-ninh.webp",
       title: "Tỉnh Đoàn Tây Ninh",
-      caption: "Chậu vuông kỷ niệm Hội LHTN Việt Nam (Chờ xác nhận)",
+      caption: "Chậu vuông in biểu trưng kỷ niệm phong trào thanh niên",
     },
     {
       id: "hoang-gia",
-      enabled: false,
+      enabled: true,
       imageUrl: "/banners/trust/don-hoang-gia.webp",
-      title: "Hoàng Gia",
-      caption: "Chậu sen đá quà tặng in thương hiệu (Chờ xác nhận)",
+      title: "Gốm Sứ & Sen Đá Hoàng Gia",
+      caption: "Chậu sen đá quà tặng in thương hiệu cao cấp",
     },
   ],
   services: [

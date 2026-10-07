@@ -43,6 +43,7 @@ function fromLocalInput(v: string): string {
 export function PopupFields({ popup, onChange, hideCampaignId }: Props) {
   const endBeforeStart =
     !!popup.startAt && !!popup.endAt && Date.parse(popup.endAt) <= Date.parse(popup.startAt);
+  const everyVisit = popup.everyVisit === true;
 
   return (
     <div className="space-y-3">
@@ -203,6 +204,7 @@ export function PopupFields({ popup, onChange, hideCampaignId }: Props) {
             min={1}
             max={90}
             className={wbInput}
+            disabled={everyVisit}
             value={Number(popup.frequencyDays) || 7}
             onChange={(e) =>
               onChange({ frequencyDays: clamp(Number(e.target.value) || 7, 1, 90) })
@@ -213,6 +215,17 @@ export function PopupFields({ popup, onChange, hideCampaignId }: Props) {
       <label className="flex items-center gap-2 text-[12px] text-gray-700">
         <input
           type="checkbox"
+          checked={everyVisit}
+          onChange={(e) => onChange({ everyVisit: e.target.checked })}
+        />
+        Mỗi lần khách mở web đều hiện lại (kể cả đã đóng ở lần vào trước)
+      </label>
+      <label
+        className={`flex items-center gap-2 text-[12px] text-gray-700 ${everyVisit ? "opacity-50" : ""}`}
+      >
+        <input
+          type="checkbox"
+          disabled={everyVisit}
           checked={popup.showOncePerCampaign !== false}
           onChange={(e) => onChange({ showOncePerCampaign: e.target.checked })}
         />
@@ -228,7 +241,10 @@ export function PopupFields({ popup, onChange, hideCampaignId }: Props) {
       </label>
       <p className="text-[11px] text-gray-500">
         Mỗi lần vào web khách chỉ thấy popup tự bật 1 lần; đã đóng thì quay về trang chủ hay sang trang khác
-        cũng không hiện lại.
+        cũng không hiện lại.{" "}
+        {everyVisit
+          ? "Tắt tab rồi mở web lại sẽ hiện lần nữa."
+          : "Tắt tab rồi mở lại vẫn không hiện cho tới khi hết số ngày ở trên."}
       </p>
       {popup.campaignId?.trim() ? <PopupStats campaignId={popup.campaignId} /> : null}
     </div>

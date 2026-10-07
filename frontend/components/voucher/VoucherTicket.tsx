@@ -154,7 +154,7 @@ export function VoucherTicket({
         <div className={`flex-1 min-w-0 flex flex-col justify-center ${lg ? "space-y-0.5 sm:space-y-1" : "space-y-0.5"}`}>
           <div className="flex items-start gap-1.5 min-w-0">
             <h4
-              className={`font-bold leading-snug line-clamp-1 sm:line-clamp-2 break-words ${lg ? "text-[12.5px] sm:text-[14.5px]" : "text-xs sm:text-[13px]"} ${
+              className={`font-bold leading-snug line-clamp-2 break-words ${lg ? "text-[12.5px] sm:text-[14.5px]" : "text-xs sm:text-[13px]"} ${
                 disabled ? "text-slate-500" : "text-slate-900"
               }`}
               title={title}

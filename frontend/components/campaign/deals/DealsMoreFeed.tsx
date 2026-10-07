@@ -81,11 +81,11 @@ export function DealsMoreFeed({ campaign }: { campaign: CampaignUI }) {
         <p className="mt-1 text-xs text-slate-500 font-medium">Thêm lựa chọn cây xinh đang sẵn hàng tại Aloha</p>
       </div>
 
-      {items.length ? <ProductGrid products={items} shopee homeRow6 /> : null}
+      {items.length ? <ProductGrid products={items} shopee columns={4} /> : null}
       {loading ? (
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5" aria-busy="true">
-          {Array.from({ length: 5 }, (_, i) => (
-            <div key={i} className="aspect-[3/5] animate-pulse rounded-2xl bg-white/80" />
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-2.5 md:grid-cols-3 md:gap-3 lg:grid-cols-4 lg:gap-3.5" aria-busy="true">
+          {Array.from({ length: 4 }, (_, i) => (
+            <div key={i} className="aspect-[3/4] animate-pulse rounded-xl bg-white/80" />
           ))}
         </div>
       ) : null}

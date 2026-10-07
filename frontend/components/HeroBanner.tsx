@@ -26,7 +26,7 @@ export type HeroSlide = {
 /** 4 banner hero — chữ + CTA đã nằm trong ảnh. */
 export const BRAND_BANNERS: HeroSlide[] = [
   {
-    src: "/banners/banner-hero-01.png?v=23",
+    src: "/banners/banner-hero-01-2048.webp",
     alt: "ALOHA — Đa dạng mẫu mã, phối theo yêu cầu",
     href: "/tim",
     label: "Tất cả sản phẩm",
@@ -36,7 +36,7 @@ export const BRAND_BANNERS: HeroSlide[] = [
     cta: "Mua ngay",
   },
   {
-    src: "/banners/banner-hero-03.png?v=22",
+    src: "/banners/banner-hero-03-2048.webp",
     alt: "ALOHA — Sản phẩm chất lượng, tuyển chọn kỹ",
     href: "/danh-muc/cay-canh-du-loai",
     label: "Cây cảnh",
@@ -46,7 +46,7 @@ export const BRAND_BANNERS: HeroSlide[] = [
     cta: "Mua ngay",
   },
   {
-    src: "/banners/banner-hero-02.png?v=22",
+    src: "/banners/banner-hero-02-2048.webp",
     alt: "ALOHA — Ưu đãi và dịch vụ dành cho khách sỉ",
     href: "/dang-ky-si",
     label: "Khách sỉ",
@@ -56,7 +56,7 @@ export const BRAND_BANNERS: HeroSlide[] = [
     cta: "Đăng ký sỉ",
   },
   {
-    src: "/banners/bannerctv.png?v=7",
+    src: "/banners/banner-ctv-2048.webp",
     alt: "Cộng tác viên Aloha — Trở thành CTV Aloha, kiếm thêm thu nhập cùng Aloha",
     href: "/tuyen-ctv",
     label: "CTV Aloha",
@@ -69,12 +69,6 @@ export const BRAND_BANNERS: HeroSlide[] = [
 
 const AUTOPLAY_MS = 5600;
 
-function isLegacyBannerSrc(src: string) {
-  return /banner-cay-canh|banner-dat-phan|banner-hat-giong|bannerctv|banner-hero-aloha|banner-01-|banner-02-|banner-03-|banner-04-/i.test(
-    src,
-  );
-}
-
 function pickText(override: string | undefined, fallback: string) {
   const t = String(override || "").trim();
   return t || fallback;
@@ -82,37 +76,57 @@ function pickText(override: string | undefined, fallback: string) {
 
 const srcKey = (src: string) => String(src || "").split("?")[0];
 
-/**
- * Giữ thứ tự và đích đến của bộ banner; cấu hình cũ không ghi đè liên kết.
- * Ghép nội dung theo ảnh, không theo vị trí cũ sau khi đổi thứ tự.
- */
-function baseSlides(slides?: HeroSlide[]): HeroSlide[] {
-  return BRAND_BANNERS.map((brand) => {
-    const s = slides?.find((slide) => srcKey(slide.src) === srcKey(brand.src));
-    if (!s || isLegacyBannerSrc(String(s.src || ""))) return brand;
-    return { ...brand, label: pickText(s.label, brand.label || ""), alt: pickText(s.alt, brand.alt) };
+/** Slide do admin nhập: chỉ nhận đường dẫn nội bộ hoặc https. */
+/** Link ra ngoài (Zalo, Facebook…) mở tab mới như nút Zalo nổi. */
+const linkTarget = (href: string) =>
+  /^https:\/\//i.test(href) ? { target: "_blank", rel: "noopener noreferrer" } : {};
+
+const safeUrl = (u: unknown) => {
+  const s = String(u || "").trim();
+  return /^(\/(?!\/)|https:\/\/)/.test(s) ? s : "";
+};
+
+/** Slide admin đặt, giữ đúng thứ tự; ảnh trùng banner thương hiệu thì mượn chữ/link còn thiếu. */
+function adminSlides(slides?: HeroSlide[]): HeroSlide[] {
+  return (slides || []).flatMap((s) => {
+    const src = safeUrl(s?.src);
+    if (!src) return [];
+    const brand = BRAND_BANNERS.find((b) => srcKey(b.src) === srcKey(src));
+    return [
+      {
+        ...brand,
+        src,
+        alt: pickText(s.alt, brand?.alt || "ALOHA THẾ GIỚI CHẬU CÂY"),
+        href: safeUrl(s.href) || brand?.href || "/tim",
+        label: pickText(s.label, brand?.label || ""),
+      },
+    ];
   });
 }
 
 /**
- * Banner chính trang chủ:
- * - Khi CÓ chiến dịch: Chỉ hiển thị 1 tấm banner chính duy nhất (tĩnh, không slider qua lại, không nút điều hướng).
- * - Khi KHÔNG CÓ chiến dịch: Sử dụng slider qua lại với các banner thương hiệu như bình thường.
+ * Banner chính:
+ * - Trang chủ (`slides`): slide admin đặt ở Giao diện → Banner; trống thì dùng 4 banner thương hiệu.
+ * - Trang Ưu đãi (`leading`): banner chính của chiến dịch; 1 ảnh thì đứng yên, từ 2 ảnh thì tự trượt.
  */
 export function HeroBanner({
   slides,
   leading,
   single,
+  heading = true,
 }: {
   slides?: HeroSlide[];
   leading?: HeroSlide[];
   single?: boolean;
+  /** Tắt h1 ẩn khi trang đã có h1 riêng. */
+  heading?: boolean;
 }) {
-  const isSingle = single ?? Boolean(leading && leading.length > 0);
-  const singleSlide = leading?.[0] || (slides?.length ? baseSlides(slides)[0] : BRAND_BANNERS[0]);
-
-  const items = baseSlides(slides);
+  const custom = leading?.length ? [] : adminSlides(slides);
+  const items = leading?.length ? leading : custom.length ? custom : BRAND_BANNERS;
+  const isSingle = single ?? items.length < 2;
+  const singleSlide = items[0];
   const itemsKey = items.map((s) => s.src).join("|");
+  const sectionClass = `hero-banner hero-banner--full${leading?.length ? "" : " hero-banner--home"}`;
 
   const [emblaRef, emblaApi] = useEmblaCarousel(
     {
@@ -161,17 +175,17 @@ export function HeroBanner({
     emblaApi.scrollTo(0, true);
   }, [isSingle, emblaApi, itemsKey]);
 
-  // 1. Khi có chiến dịch: Chỉ hiển thị duy nhất 1 tấm banner chính tĩnh
   if (isSingle) {
     return (
       <section
-        className="hero-banner hero-banner--full"
+        className={sectionClass}
         aria-label="Banner cửa hàng"
       >
         <div className="hero-banner__full-inner">
           <div className="hero-banner__stage">
             <Link
               href={singleSlide.href || "/tim"}
+              {...linkTarget(singleSlide.href || "")}
               className="hero-banner__frame block h-full w-full"
               aria-label={singleSlide.cta || "Mua ngay"}
             >
@@ -189,22 +203,23 @@ export function HeroBanner({
             </Link>
 
             {/* Ảnh đã có chữ + CTA — chỉ giữ h1 ẩn cho SEO/a11y */}
-            <h1 className="absolute h-px w-px overflow-hidden whitespace-nowrap border-0 p-0 [clip:rect(0,0,0,0)]">
-              {singleSlide?.eyebrow ? `${singleSlide.eyebrow}. ` : ""}
-              {singleSlide?.title || "ALOHA THẾ GIỚI CHẬU CÂY"}
-            </h1>
+            {heading ? (
+              <h1 className="absolute h-px w-px overflow-hidden whitespace-nowrap border-0 p-0 [clip:rect(0,0,0,0)]">
+                {singleSlide?.eyebrow ? `${singleSlide.eyebrow}. ` : ""}
+                {singleSlide?.title || "ALOHA THẾ GIỚI CHẬU CÂY"}
+              </h1>
+            ) : null}
           </div>
         </div>
       </section>
     );
   }
 
-  // 2. Khi không có chiến dịch: Dùng slider qua lại như bình thường
   const active = items[selected] || items[0];
 
   return (
     <section
-      className="hero-banner hero-banner--full"
+      className={sectionClass}
       aria-label="Banner cửa hàng"
     >
       <div className="hero-banner__full-inner">
@@ -218,6 +233,7 @@ export function HeroBanner({
                 >
                   <Link
                     href={slide.href || "/tim"}
+                    {...linkTarget(slide.href || "")}
                     className="hero-banner__frame block h-full w-full"
                     aria-label={slide.cta || "Mua ngay"}
                   >
@@ -238,57 +254,59 @@ export function HeroBanner({
             </div>
           </div>
 
-          {/* Ảnh đã có chữ + CTA — chỉ giữ h1 ẩn cho SEO/a11y */}
-          <h1 className="absolute h-px w-px overflow-hidden whitespace-nowrap border-0 p-0 [clip:rect(0,0,0,0)]">
-            {active?.eyebrow ? `${active.eyebrow}. ` : ""}
-            {active?.title || "ALOHA THẾ GIỚI CHẬU CÂY"}
-          </h1>
-        </div>
-
-        <div className="hero-banner__controls">
           <button
             type="button"
             aria-label="Slide trước"
-            className="hero-banner__nav"
+            className="hero-banner__nav hero-banner__nav--prev"
             onClick={() => emblaApi?.scrollPrev()}
           >
-            <ChevronLeft size={18} />
+            <ChevronLeft size={20} />
           </button>
-
-          <div
-            className="hero-banner__dots"
-            role="tablist"
-            aria-label="Chọn banner"
-          >
-            {items.map((_, i) => (
-              <button
-                key={i}
-                type="button"
-                role="tab"
-                aria-selected={i === selected}
-                aria-label={`Banner ${i + 1}`}
-                className={`hero-banner__dot ${i === selected ? "is-active" : ""}`}
-                onClick={() => emblaApi?.scrollTo(i)}
-              >
-                {i === selected ? (
-                  <span
-                    key={progressKey}
-                    className="hero-banner__dot-progress"
-                    style={{ animationDuration: `${AUTOPLAY_MS}ms` }}
-                  />
-                ) : null}
-              </button>
-            ))}
-          </div>
-
           <button
             type="button"
             aria-label="Slide sau"
-            className="hero-banner__nav"
+            className="hero-banner__nav hero-banner__nav--next"
             onClick={() => emblaApi?.scrollNext()}
           >
-            <ChevronRight size={18} />
+            <ChevronRight size={20} />
           </button>
+
+          {/* Ảnh đã có chữ + CTA — chỉ giữ h1 ẩn cho SEO/a11y */}
+          {heading ? (
+            <h1 className="absolute h-px w-px overflow-hidden whitespace-nowrap border-0 p-0 [clip:rect(0,0,0,0)]">
+              {active?.eyebrow ? `${active.eyebrow}. ` : ""}
+              {active?.title || "ALOHA THẾ GIỚI CHẬU CÂY"}
+            </h1>
+          ) : null}
+
+          {/* Dấu chấm slider nổi trực tiếp ở mép dưới ảnh banner chuẩn Shopee/Apple */}
+          <div className={`hero-banner__controls${items.length > 5 ? " hero-banner__controls--many" : ""}`}>
+            <div
+              className="hero-banner__dots"
+              role="tablist"
+              aria-label="Chọn banner"
+            >
+              {items.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  role="tab"
+                  aria-selected={i === selected}
+                  aria-label={`Banner ${i + 1}`}
+                  className={`hero-banner__dot ${i === selected ? "is-active" : ""}`}
+                  onClick={() => emblaApi?.scrollTo(i)}
+                >
+                  {i === selected ? (
+                    <span
+                      key={progressKey}
+                      className="hero-banner__dot-progress"
+                      style={{ animationDuration: `${AUTOPLAY_MS}ms` }}
+                    />
+                  ) : null}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </section>

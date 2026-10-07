@@ -100,6 +100,69 @@ export function voucherHeadline(p: VoucherLike): string {
   return formatCompactVnd(p.discountValue).toUpperCase();
 }
 
+/**
+ * Làm sạch tiêu đề voucher để loại bỏ sự trùng lặp với cuống vé bên trái (chuẩn Shopee / Lazada).
+ * Ví dụ:
+ * - "Ưu đãi khách mới 5%" -> "Ưu đãi khách mới"
+ * - "Giảm 10–15% đặt trước 20/10" -> "Ưu đãi đặt trước 20/10"
+ * - "Giảm 10% Siêu Sale 10/10" -> "Siêu Sale 10/10"
+ * - "Hỗ trợ phí ship 30k" -> "Hỗ trợ phí vận chuyển"
+ */
+export function cleanVoucherTitle(v: {
+  title?: string;
+  benefitType?: "goods" | "shipping";
+  targetCustomer?: string;
+  mystery?: MysteryInfo;
+}): string {
+  const raw = (v.title || "").trim();
+
+  // 1. Voucher vận chuyển
+  if (v.benefitType === "shipping") {
+    if (!raw) return "Hỗ trợ phí vận chuyển";
+    const cleaned = raw
+      .replace(/\s*\d+[\w%]*$/i, "")
+      .replace(/^(hỗ trợ phí ship|phí ship|freeship|miễn phí ship)\s*(\d+[\w%]*)?/i, "")
+      .trim();
+    if (cleaned && cleaned.length >= 3) {
+      return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+    }
+    return "Hỗ trợ phí vận chuyển";
+  }
+
+  // 2. Khách mới
+  const isNew = v.targetCustomer === "new_web" || /khách mới|bạn mới/i.test(raw);
+
+  if (!raw) {
+    if (isNew) return "Dành cho khách hàng mới";
+    if (v.mystery) return "Voucher túi mù may mắn";
+    return "Ưu đãi toàn sàn";
+  }
+
+  // 3. Làm sạch số % và số tiền giảm giá lặp lại
+  let cleaned = raw
+    .replace(/^(giảm|ưu đãi)\s+\d+([\s–-]+\d+)?%?\s*k?\s*[-–:]*\s*/i, "")
+    .replace(/\s*[-–:]*\s*\d+([\s–-]+\d+)?%$/i, "")
+    .replace(/\s*[-–:]*\s*\d+k$/i, "")
+    .trim();
+
+  if (cleaned.length > 0) {
+    cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  }
+
+  // Làm mượt ngữ nghĩa
+  if (/^đặt trước/i.test(cleaned)) {
+    cleaned = "Ưu đãi " + cleaned.toLowerCase();
+  }
+
+  if (!cleaned || cleaned.length < 3) {
+    if (isNew) return "Dành cho khách hàng mới";
+    if (v.mystery) return "Voucher túi mù may mắn";
+    return "Ưu đãi toàn sàn";
+  }
+
+  return cleaned;
+}
+
 /** Dòng điều kiện dưới giá trị vé: "Đơn từ 350K · Tối đa 100K". */
 export function voucherConditionText(p: VoucherLike): string {
   const parts: string[] = [];

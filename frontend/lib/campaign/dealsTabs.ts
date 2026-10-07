@@ -1,5 +1,5 @@
 /** Các tab của trang /uu-dai — URL chuẩn `/uu-dai?tab=<id>`. */
-export const DEALS_TAB_IDS = ["voucher", "flash-sale", "deal-hot", "qua-tang", "san-pham", "the-le"] as const;
+export const DEALS_TAB_IDS = ["voucher", "flash-sale", "deal-hot", "qua-tang", "san-pham", "the-le", "ban-chay"] as const;
 export type DealsTabId = (typeof DEALS_TAB_IDS)[number];
 
 const ALIASES: Record<string, DealsTabId> = {
@@ -10,6 +10,10 @@ const ALIASES: Record<string, DealsTabId> = {
   deal: "deal-hot",
   "san-pham-chuong-trinh": "san-pham",
   rules: "the-le",
+  "top-ban-chay": "ban-chay",
+  "bestseller": "ban-chay",
+  "bestsellers": "ban-chay",
+  "top": "ban-chay",
 };
 
 export function toDealsTab(raw: string | null | undefined): DealsTabId | null {

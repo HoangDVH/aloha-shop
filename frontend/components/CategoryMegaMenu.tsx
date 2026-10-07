@@ -220,21 +220,29 @@ export function CategoryMegaMenu({
     >
       <button
         type="button"
-        className={`inline-flex min-h-[38px] items-center gap-1.5 whitespace-nowrap rounded-xl px-3 py-2 text-[15px] font-bold transition-all duration-150 select-none cursor-pointer active:scale-95 xl:gap-2 xl:text-[15.5px] ${
+        className={`group relative inline-flex min-h-[38px] items-center gap-1.5 whitespace-nowrap rounded-xl px-3 py-2 text-[15px] xl:px-3.5 xl:text-[15.5px] font-semibold transition-all duration-150 select-none cursor-pointer active:scale-95 border ${
           open
-            ? "bg-emerald-50 text-[var(--aloha-green)] shadow-xs"
-            : "text-[var(--aloha-green-dark)] hover:text-[var(--aloha-green)] hover:bg-emerald-50/70 active:bg-emerald-100"
+            ? "font-bold text-[var(--aloha-green)] bg-emerald-50 border-emerald-200/90 shadow-2xs"
+            : "text-neutral-800 hover:text-[var(--aloha-green)] hover:bg-neutral-100/70 border-transparent"
         }`}
         aria-haspopup="true"
         aria-expanded={open}
         onClick={() => (open ? setOpen(false) : openMenu())}
       >
-        <Menu size={17} strokeWidth={2.25} aria-hidden />
-        Danh mục sản phẩm
+        <Menu size={17} strokeWidth={2.25} aria-hidden className="shrink-0 transition-colors" />
+        <span>Danh mục sản phẩm</span>
         <ChevronDown
-          size={15}
+          size={14}
           strokeWidth={2.25}
-          className={`opacity-70 transition-transform ${open ? "rotate-180" : ""}`}
+          className={`opacity-70 transition-transform duration-200 ${open ? "rotate-180 text-[var(--aloha-green)]" : ""}`}
+          aria-hidden
+        />
+        <span
+          className={`pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 h-[3px] rounded-full transition-all duration-300 ease-out bg-[var(--aloha-green)] ${
+            open
+              ? "w-4/5 opacity-100 shadow-xs"
+              : "w-0 opacity-0 group-hover:w-3/5 group-hover:opacity-80"
+          }`}
           aria-hidden
         />
       </button>

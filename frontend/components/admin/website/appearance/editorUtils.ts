@@ -44,6 +44,7 @@ export function emptyPopup(): NonNullable<AppearanceTheme["popup"]> {
     delaySeconds: 3,
     frequencyDays: 7,
     showOncePerCampaign: true,
+    everyVisit: false,
     startAt: "",
     endAt: "",
     pages: "home",

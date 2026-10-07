@@ -9,7 +9,6 @@ import { formatVnd, type ShopProduct } from "@/lib/api";
 import { useShopAuth } from "@/components/ShopAuthProvider";
 import { isPromoSelling, promoAnchorPrice } from "@/components/campaign/CardPromo";
 import { anchorDealProgress, flashDealProgress } from "@/lib/campaign/dealProgress";
-import { FlashSaleBar } from "@/components/campaign/FlashSaleBar";
 import { useCampaignView } from "@/lib/campaign/useCampaignView";
 import { shipSupportFor } from "@/lib/campaign/voucherPrice";
 import { formatCompactVnd } from "@/lib/voucherFormat";
@@ -103,23 +102,6 @@ export function ProductDealCard({
   const cartProduct: ShopProduct = { ...product, gia: displayGia, ton: displayTon, priceKind, allowBackorder };
   const videoSrc = firstFileVideo(product);
 
-  // SP flash sale dùng FlashSaleBar (số suất thật); SP thường chỉ hiện tình trạng tồn kho.
-  let soldText = "";
-  let remainingText = "";
-
-  if (displayTon <= 0 && allowBackorder !== false) {
-    soldText = "Nhận đặt trước";
-    remainingText = "Aloha xác nhận";
-  } else if (displayTon <= 3 && displayTon > 0) {
-    soldText = `Chỉ còn ${displayTon} cây cuối!`;
-    remainingText = "Sắp hết";
-  } else if (displayTon > 0) {
-    soldText = "Sẵn hàng";
-    remainingText = `Còn ${displayTon}`;
-  } else {
-    soldText = "Hết hàng";
-  }
-
   const clearNavTimer = () => {
     if (navTimerRef.current) {
       clearTimeout(navTimerRef.current);
@@ -153,12 +135,12 @@ export function ProductDealCard({
 
   return (
     <article
-      className="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-xs ring-1 ring-black/[0.06] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_10px_28px_rgba(194,24,91,0.14)] motion-reduce:hover:translate-y-0"
+      className="group relative flex flex-col overflow-hidden rounded-xl bg-white shadow-xs ring-1 ring-black/[0.06] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md motion-reduce:hover:translate-y-0"
       onPointerEnter={(e) => e.pointerType === "mouse" && setHovering(true)}
       onPointerLeave={() => setHovering(false)}
     >
       {/* 1. KHUNG ẢNH SẢN PHẨM */}
-      <div ref={imageRef} className="relative aspect-square w-full overflow-hidden bg-[#F7F9F6]">
+      <div ref={imageRef} className="relative aspect-square w-full overflow-hidden bg-neutral-50">
         <Link
           href={product.path}
           onClick={markPending}
@@ -169,7 +151,7 @@ export function ProductDealCard({
             <img
               src={product.anh}
               alt={product.ten}
-              className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+              className="h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-105"
               loading="lazy"
             />
           ) : (
@@ -183,7 +165,7 @@ export function ProductDealCard({
 
         {rank ? (
           <span
-            className={`pointer-events-none absolute left-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br text-sm font-black shadow-md ring-2 ring-white ${RANK_STYLE[rank - 1] || RANK_STYLE[2]}`}
+            className={`pointer-events-none absolute left-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br text-xs font-black shadow-md ring-2 ring-white ${RANK_STYLE[rank - 1] || RANK_STYLE[2]}`}
             aria-label={`Top ${rank} bán chạy`}
           >
             {rank}
@@ -191,7 +173,7 @@ export function ProductDealCard({
         ) : null}
 
         {discountPct > 0 ? (
-          <span className="pointer-events-none absolute right-0 top-2 z-10 rounded-l-full bg-[#E53935] py-0.5 pl-2 pr-1.5 text-[11px] font-black text-white shadow-sm sm:text-xs">
+          <span className="pointer-events-none absolute right-0 top-1.5 z-10 rounded-l-md bg-[#E53935] py-0.5 pl-2 pr-1.5 text-[10px] font-black text-white shadow-xs sm:text-[11px]">
             -{discountPct}%
           </span>
         ) : null}
@@ -211,54 +193,42 @@ export function ProductDealCard({
       </div>
 
       {/* 2. NỘI DUNG CARD */}
-      <div className="flex flex-1 flex-col p-2.5 sm:p-3">
-        {/* Tên sản phẩm */}
+      <div className="flex flex-1 flex-col p-2 sm:p-2.5">
+        {/* Tên sản phẩm: 2 dòng đều chuẩn Shopee */}
         <Link
           href={product.path}
           onClick={markPending}
-          className={`line-clamp-1 font-bold text-sm sm:text-[15px] leading-snug text-neutral-900 transition-colors group-hover:text-[var(--aloha-green,#2D5A27)] ${
+          className={`line-clamp-2 min-h-[2.1rem] sm:min-h-[2.35rem] font-medium text-xs sm:text-[13px] leading-snug text-neutral-900 transition-colors group-hover:text-[var(--aloha-green,#2D5A27)] ${
             navPending ? "cursor-wait" : ""
           }`}
         >
           {product.ten}
         </Link>
 
-        {/* Hàng 3: Giá ưu đãi, giá gốc gạch ngang, % giảm */}
-        <div className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 min-w-0">
-          <span className="text-base sm:text-lg font-black tracking-tight text-[#E53935]">
+        {/* Hàng giá: Giá ưu đãi, giá gốc gạch ngang */}
+        <div className="mt-1 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 min-w-0">
+          <span className="text-sm sm:text-base font-extrabold tracking-tight text-[#E53935]">
             {pricePending ? "Đang cập nhật…" : priceKind === "si_missing" ? "Liên hệ" : formatVnd(displayGia)}
           </span>
           {listPrice > displayGia && (
-            <span className="text-xs text-neutral-400 line-through">
+            <span className="text-[11px] sm:text-xs text-neutral-400 line-through">
               {formatVnd(listPrice)}
             </span>
           )}
         </div>
 
         {soldCount ? (
-          <div className="mt-0.5 text-[11px] font-bold text-[#C2410C]">🔥 Đã bán {soldCount} trong đợt này</div>
+          <div className="mt-0.5 text-[10.5px] sm:text-[11px] font-bold text-[#C2410C]">🔥 Đã bán {soldCount} đợt này</div>
         ) : null}
 
         {shipSupport > 0 ? (
           <div className="mt-1 flex flex-wrap gap-1">
-            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10.5px] font-semibold text-emerald-700 sm:text-[11px]">
-              <Truck size={12} className="shrink-0" aria-hidden />
+            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 sm:text-[10.5px]">
+              <Truck size={11} className="shrink-0" aria-hidden />
               Hỗ trợ ship {formatCompactVnd(shipSupport).toUpperCase()}
             </span>
           </div>
         ) : null}
-
-        {/* Hàng 4: Thanh tiến độ suất flash sale / tình trạng tồn kho */}
-        <div className="mt-2 text-[11px]">
-          {flash ? (
-            <FlashSaleBar p={flash} />
-          ) : (
-            <div className="flex items-center justify-between gap-1 font-semibold">
-              <span className={displayTon > 0 && displayTon <= 3 ? "text-[#E53935]" : "text-neutral-600"}>{soldText}</span>
-              <span className="text-neutral-500 font-medium">{remainingText}</span>
-            </div>
-          )}
-        </div>
 
         <DealGiftBox promo={promo} />
       </div>

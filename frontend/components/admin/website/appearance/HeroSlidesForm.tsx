@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { Plus, Trash2 } from "lucide-react";
-import { CampaignPinnedSlides } from "./CampaignPinnedSlides";
+import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { ImageUploadField } from "./ImageUploadField";
 import { WbBtn, WbField, wbInput } from "../ui";
 
@@ -16,25 +15,25 @@ export type HeroSlideDraft = {
 /** Khớp HeroBanner — sản phẩm, cây cảnh, khách sỉ, cộng tác viên. */
 export const DEFAULT_HERO_SLIDES: HeroSlideDraft[] = [
   {
-    src: "/banners/banner-hero-01.png?v=23",
+    src: "/banners/banner-hero-01-2048.webp",
     alt: "ALOHA — Đa dạng mẫu mã, phối theo yêu cầu",
     href: "/tim",
     label: "TẤT CẢ SẢN PHẨM",
   },
   {
-    src: "/banners/banner-hero-03.png?v=22",
+    src: "/banners/banner-hero-03-2048.webp",
     alt: "ALOHA — Sản phẩm chất lượng, tuyển chọn kỹ",
     href: "/danh-muc/cay-canh-du-loai",
     label: "CÂY CẢNH",
   },
   {
-    src: "/banners/banner-hero-02.png?v=22",
+    src: "/banners/banner-hero-02-2048.webp",
     alt: "ALOHA — Ưu đãi và dịch vụ dành cho khách sỉ",
     href: "/dang-ky-si",
     label: "KHÁCH SỈ",
   },
   {
-    src: "/banners/bannerctv.png?v=7",
+    src: "/banners/banner-ctv-2048.webp",
     alt: "Cộng tác viên Aloha — Trở thành CTV Aloha, kiếm thêm thu nhập cùng Aloha",
     href: "/tuyen-ctv",
     label: "CTV ALOHA",
@@ -97,13 +96,21 @@ export function HeroSlidesForm({
     commit([...list.map((s) => ({ ...s })), newSlide()]);
   };
 
+  const move = (idx: number, dir: -1 | 1) => {
+    const j = idx + dir;
+    if (j < 0 || j >= list.length) return;
+    const next = list.map((s) => ({ ...s }));
+    [next[idx], next[j]] = [next[j], next[idx]];
+    commit(next);
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex items-start justify-between gap-2">
         <p className="text-[12px] leading-relaxed text-gray-500">
           {onDefaults
             ? "Đang dùng 4 banner mặc định. Đổi ảnh / thêm slide sẽ giữ các banner còn lại."
-            : "Slide tùy chỉnh — Áp dụng để khách thấy. Ảnh giữ nguyên tỉ lệ (không cắt chữ)."}
+            : "Slide tùy chỉnh — bấm Áp dụng để khách thấy. Slide tự trượt theo đúng thứ tự bên dưới."}
         </p>
         {!onDefaults ? (
           <WbBtn
@@ -116,8 +123,6 @@ export function HeroSlidesForm({
         ) : null}
       </div>
 
-      <CampaignPinnedSlides />
-
       {list.map((slide, idx) => (
         <div
           key={`${slide.src || "empty"}-${idx}`}
@@ -127,22 +132,44 @@ export function HeroSlidesForm({
             <span className="text-[12px] font-semibold text-gray-800">
               Slide {idx + 1}
             </span>
-            <button
-              type="button"
-              className="inline-flex h-7 items-center gap-1 rounded-md border-0 bg-transparent px-1.5 text-[11px] font-medium text-red-600 hover:bg-red-50"
-              style={{ border: "none" }}
-              onClick={() => removeAt(idx)}
-              disabled={list.length <= 1}
-              title={list.length <= 1 ? "Giữ ít nhất 1 slide" : "Xóa slide"}
-            >
-              <Trash2 className="h-3 w-3" /> Xóa
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 disabled:opacity-40"
+                onClick={() => move(idx, -1)}
+                disabled={idx === 0}
+                aria-label="Chuyển slide lên trước"
+                title="Lên trước"
+              >
+                <ArrowUp className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 disabled:opacity-40"
+                onClick={() => move(idx, 1)}
+                disabled={idx === list.length - 1}
+                aria-label="Chuyển slide ra sau"
+                title="Ra sau"
+              >
+                <ArrowDown className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                className="inline-flex h-7 items-center gap-1 rounded-md border-0 bg-transparent px-1.5 text-[11px] font-medium text-red-600 hover:bg-red-50"
+                style={{ border: "none" }}
+                onClick={() => removeAt(idx)}
+                disabled={list.length <= 1}
+                title={list.length <= 1 ? "Giữ ít nhất 1 slide" : "Xóa slide"}
+              >
+                <Trash2 className="h-3 w-3" /> Xóa
+              </button>
+            </div>
           </div>
           <ImageUploadField
             kind="banner"
             value={slide.src}
             onChange={(url) => updateAt(idx, { src: url })}
-            hint="Giữ nguyên tỉ lệ · JPG/PNG/WebP · tối đa 4MB"
+            hint="Kích thước chuẩn 2048×768 px (8:3) · JPG/PNG/WebP · tối đa 4MB"
           />
           <WbField label="Nhãn trên ảnh">
             <input

@@ -2,10 +2,18 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronRight, Flame, Gift, Lock, Sparkles, TicketPercent, Truck, Zap } from "lucide-react";
+import { ChevronLeft, ChevronRight, Flame, Gift, Lock, Sparkles, TicketPercent, Truck, Zap } from "lucide-react";
 import type { CampaignVoucherUI, CampaignViewerUI } from "@/lib/campaign/campaignApi";
 import { useVoucherClaims } from "@/lib/campaign/useVoucherClaims";
-import { formatCompactVnd, isUnopenedMystery, pctText, sortVouchersGrouped, withDrawn } from "@/lib/voucherFormat";
+import {
+  cleanVoucherTitle,
+  formatCompactVnd,
+  isUnopenedMystery,
+  pctText,
+  sortVouchersGrouped,
+  voucherUseHref,
+  withDrawn,
+} from "@/lib/voucherFormat";
 import { LoginSheet } from "@/components/campaign/LoginSheet";
 import { claimStateOf, type ClaimState } from "@/components/voucher/ClaimButton";
 import { ClaimSuccessModal } from "@/components/voucher/ClaimSuccessModal";
@@ -53,8 +61,8 @@ function hintOf(v: CampaignVoucherUI, nowMs: number): string {
     const left = Math.max(0, v.claimLimitTotal - v.claimedCount);
     if (left > 0 && left / v.claimLimitTotal <= 0.2) return `Chỉ còn ${left} lượt`;
   }
-  if (v.mystery?.drawnPercent) return `Bạn đã bóc được ${v.mystery.drawnPercent}%`;
-  if (v.mystery) return `Bóc ngẫu nhiên · may mắn tới ${v.mystery.max}%`;
+  if (v.mystery?.drawnPercent) return `Đã bóc trúng ${v.mystery.drawnPercent}%`;
+  if (v.mystery) return `May mắn tới ${v.mystery.max}%`;
   if (v.claimRequired && v.claimedCount >= SOCIAL_PROOF_MIN) {
     return `${v.claimedCount.toLocaleString("vi-VN")} người đã lưu`;
   }
@@ -80,7 +88,11 @@ function useJustSaved(claimedIds: Set<string>): Set<string> {
   return fresh;
 }
 
+const PILL = "inline-flex h-7 shrink-0 items-center justify-center gap-1 rounded-md px-3 text-xs font-bold whitespace-nowrap";
+
+/** Nút kiểu Shopee: chưa lưu → "Lưu" (đặc); đã lưu / tự áp dụng → "Dùng ngay" (viền) tới SP áp dụng. */
 function Action({
+  voucherId,
   state,
   isShip,
   mystery,
@@ -88,6 +100,7 @@ function Action({
   saved,
   onClaim,
 }: {
+  voucherId: string;
   state: ClaimState;
   isShip: boolean;
   mystery: boolean;
@@ -95,87 +108,110 @@ function Action({
   saved: boolean;
   onClaim: () => void;
 }) {
-  if (state === "claimable" && mystery) {
-    return (
-      <button
-        type="button"
-        onClick={onClaim}
-        disabled={busy}
-        className="aloha-mystery-wiggle inline-flex h-7.5 shrink-0 items-center justify-center gap-1 rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 px-3 text-xs font-black text-white shadow-xs shadow-orange-900/20 transition hover:brightness-110 active:scale-95 disabled:opacity-60 cursor-pointer"
-      >
-        <Gift size={12} strokeWidth={2.6} aria-hidden />
-        {busy ? "Bóc…" : "Bóc"}
-      </button>
-    );
-  }
+  const solid = isShip ? "bg-[#0F766E] text-white" : "bg-[var(--campaign-primary,#C8102E)] text-white";
+  const outline = isShip
+    ? "border border-[#0F766E] text-[#0F766E] hover:bg-teal-50"
+    : "border border-[var(--campaign-primary,#C8102E)] text-[var(--campaign-primary,#C8102E)] hover:bg-rose-50";
+
   if (state === "claimable") {
     return (
       <button
         type="button"
         onClick={onClaim}
         disabled={busy}
-        className={`inline-flex h-7.5 shrink-0 items-center justify-center rounded-full px-3.5 text-xs font-black text-white shadow-xs transition hover:brightness-110 active:scale-95 disabled:opacity-60 cursor-pointer ${
-          isShip
-            ? "bg-gradient-to-r from-[#0D9488] to-[#0F766E] shadow-teal-900/15"
-            : "bg-gradient-to-r from-[var(--campaign-primary,#C8102E)] to-[#E11D48] shadow-rose-950/15"
+        className={`${PILL} transition hover:brightness-110 active:scale-95 disabled:opacity-60 cursor-pointer ${
+          mystery ? "aloha-mystery-wiggle bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 text-white" : solid
         }`}
       >
-        {busy ? "Lưu…" : "Lưu"}
+        {mystery ? <Gift size={12} strokeWidth={2.6} aria-hidden /> : null}
+        {mystery ? (busy ? "Bóc…" : "Bóc") : busy ? "Lưu…" : "Lưu"}
       </button>
     );
   }
-  if (state === "claimed") {
+  if (state === "claimed" || state === "auto") {
     return (
-      <span
-        className={`inline-flex h-7 shrink-0 items-center gap-1 rounded-full px-2.5 text-[11px] font-bold ${
-          isShip
-            ? "bg-teal-50 text-[#0F766E] ring-1 ring-teal-600/25"
-            : "bg-rose-50 text-[var(--campaign-primary,#C8102E)] ring-1 ring-rose-200/80"
-        } ${saved ? "aloha-saved-pop" : ""}`}
-      >
-        <Check size={12} strokeWidth={3} aria-hidden />
-        Đã lưu
-      </span>
-    );
-  }
-  if (state === "auto") {
-    return (
-      <span
-        className={`inline-flex h-7 shrink-0 items-center gap-1 rounded-full px-2.5 text-[11px] font-bold ${
-          isShip
-            ? "bg-teal-50 text-[#0F766E] ring-1 ring-teal-600/25"
-            : "bg-rose-50 text-[var(--campaign-primary,#C8102E)] ring-1 ring-rose-200/80"
-        }`}
-      >
-        <Check size={12} strokeWidth={3} aria-hidden />
-        Tự áp dụng
-      </span>
+      <Link href={voucherUseHref(voucherId)} className={`${PILL} bg-white transition ${outline} ${saved ? "aloha-saved-pop" : ""}`}>
+        Dùng ngay
+      </Link>
     );
   }
   if (state === "upcoming") {
-    return (
-      <span className="inline-flex h-7 shrink-0 items-center rounded-full bg-amber-50 px-2.5 text-[11px] font-bold text-amber-700 ring-1 ring-amber-200">
-        Sắp mở
-      </span>
-    );
+    return <span className={`${PILL} bg-amber-50 text-amber-700`}>Sắp mở</span>;
   }
   if (state === "soldOut") {
-    return (
-      <span className="inline-flex h-7 shrink-0 items-center rounded-full bg-slate-100 px-2.5 text-[11px] font-medium text-slate-400">
-        Hết lượt
-      </span>
-    );
+    return <span className={`${PILL} bg-slate-100 font-medium text-slate-400`}>Hết lượt</span>;
   }
   return (
-    <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+    <span className={`${PILL} w-7 bg-slate-100 px-0 text-slate-400`}>
       <Lock size={12} aria-hidden />
     </span>
   );
 }
 
+/** Dòng dưới của vé: thanh "Đã lưu x%" khi mã giới hạn lượt, không thì nhắc HSD / gợi ý. */
+function Footnote({ v, hint, nowMs, isShip }: { v: CampaignVoucherUI; hint: string; nowMs: number; isShip: boolean }) {
+  if (v.claimLimitTotal && v.claimLimitTotal > 0) {
+    const pct = Math.min(100, Math.round((v.claimedCount / v.claimLimitTotal) * 100));
+    return (
+      <div className="min-w-0 flex-1">
+        <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+          <div
+            className={`h-full rounded-full ${isShip ? "bg-[#0F766E]" : "bg-[var(--campaign-primary,#C8102E)]"}`}
+            style={{ width: `${Math.max(pct, 4)}%` }}
+          />
+        </div>
+        <p className="mt-0.5 truncate text-[10.5px] font-semibold text-slate-500">
+          {pct >= 80 ? <span className="text-[var(--campaign-primary,#C8102E)]">Sắp hết · </span> : null}
+          Đã lưu {pct}%
+        </p>
+      </div>
+    );
+  }
+  if (hint) {
+    return (
+      <p className="flex min-w-0 flex-1 items-center gap-1 text-[10.5px] font-bold text-amber-600">
+        <Flame size={11} className="shrink-0 fill-amber-500 text-amber-500" aria-hidden />
+        <span className="truncate">{hint}</span>
+      </p>
+    );
+  }
+  const endMs = v.endDate ? Date.parse(v.endDate) : NaN;
+  if (Number.isFinite(endMs) && endMs > nowMs) {
+    const d = new Date(endMs);
+    return (
+      <p className="min-w-0 flex-1 truncate text-[10.5px] font-medium text-slate-400">
+        HSD: {String(d.getDate()).padStart(2, "0")}/{String(d.getMonth() + 1).padStart(2, "0")}
+      </p>
+    );
+  }
+  return <span className="flex-1" />;
+}
+
+/** Mũi tên cuộn hàng vé (máy tính) — chỉ hiện khi còn vé bị khuất phía đó. */
+function useRowScroll(count: number) {
+  const ref = useRef<HTMLUListElement>(null);
+  const [edge, setEdge] = useState({ prev: false, next: false });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () =>
+      setEdge({ prev: el.scrollLeft > 4, next: el.scrollLeft + el.clientWidth < el.scrollWidth - 4 });
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
+  }, [count]);
+  const by = (dir: 1 | -1) => ref.current?.scrollBy({ left: dir * ref.current.clientWidth * 0.8, behavior: "smooth" });
+  return { ref, edge, by };
+}
+
 /**
- * Dải voucher phong cách TikTok Shop: vé đục lỗ bán nguyệt (perforated coupon ticket),
- * khối giá trị nổi bật, điều kiện 2 dòng rõ ràng không bị đứt chữ, CTA pill button bắt mắt.
+ * Dải voucher kiểu Shopee: một hàng vé ngang cùng cỡ (vuốt / mũi tên), cuống màu theo loại mã,
+ * điều kiện mỗi ý một dòng, thanh "Đã lưu %" + nút Lưu → Dùng ngay.
  */
 export function DealsVoucherStrip({
   vouchers: rawVouchers,
@@ -195,6 +231,7 @@ export function DealsVoucherStrip({
     : null;
   const justSaved = useJustSaved(claims.claimedIds);
   const visible = vouchers.filter((v) => viewer?.newBuyer !== false || v.targetCustomer !== "new_web");
+  const row = useRowScroll(visible.length);
   if (!visible.length) return null;
   const nowMs = Date.now() + offsetMs;
   const rank = (v: CampaignVoucherUI) => {
@@ -246,13 +283,37 @@ export function DealsVoucherStrip({
         </div>
       </div>
 
-      {/* Danh sách voucher kiểu TikTok Shop */}
-      <ul className="-mx-4 flex snap-x gap-2.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-4 [&::-webkit-scrollbar]:hidden">
+      {/* Một hàng vé ngang kiểu Shopee: điện thoại vuốt, máy tính có mũi tên */}
+      <div className="relative">
+        {row.edge.prev ? (
+          <button
+            type="button"
+            aria-label="Xem voucher trước"
+            onClick={() => row.by(-1)}
+            className="absolute -left-3 top-1/2 z-20 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white text-slate-700 shadow-md ring-1 ring-black/[0.08] transition hover:text-[var(--campaign-primary,#C8102E)] sm:flex"
+          >
+            <ChevronLeft size={18} aria-hidden />
+          </button>
+        ) : null}
+        {row.edge.next ? (
+          <button
+            type="button"
+            aria-label="Xem voucher tiếp"
+            onClick={() => row.by(1)}
+            className="absolute -right-3 top-1/2 z-20 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white text-slate-700 shadow-md ring-1 ring-black/[0.08] transition hover:text-[var(--campaign-primary,#C8102E)] sm:flex"
+          >
+            <ChevronRight size={18} aria-hidden />
+          </button>
+        ) : null}
+      <ul
+        ref={row.ref}
+        className="-mx-4 flex snap-x scroll-px-4 gap-2.5 overflow-x-auto px-4 py-1.5 [scrollbar-width:none] sm:mx-0 sm:scroll-px-0 sm:gap-3 sm:px-0 [&::-webkit-scrollbar]:hidden"
+      >
         {list.map((v) => {
           const state = states.get(v.id) as ClaimState;
           const { top, value, isShip } = valueOf(v);
           const { minSpend, cap } = voucherDetails(v);
-          const name = v.title?.trim();
+          const cleanedTitle = cleanVoucherTitle(v);
           const hint = hintOf(v, nowMs);
           const dim = state === "soldOut" || state === "locked";
           const focused = focusIds.includes(v.id);
@@ -260,29 +321,29 @@ export function DealsVoucherStrip({
           return (
             <li
               key={v.id}
-              className={`relative flex w-[78vw] max-w-[320px] shrink-0 snap-start items-stretch overflow-hidden rounded-2xl bg-white shadow-[0_4px_16px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.08] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] sm:w-auto sm:max-w-none ${
+              className={`relative flex w-[17.2rem] shrink-0 snap-start items-stretch overflow-hidden rounded-2xl bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.08] sm:w-[19.8rem] transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md ${
                 dim ? "opacity-60" : ""
               } ${focused ? "aloha-focus-pulse" : ""} ${justSaved.has(v.id) ? "aloha-voucher-shine" : ""}`}
             >
               {/* Vết khuyết bán nguyệt trên và dưới (Punch-hole coupon notches) */}
               <span
-                className="pointer-events-none absolute -top-1.5 left-[84px] z-10 h-3 w-3 -translate-x-1/2 rounded-full bg-white ring-1 ring-black/[0.08]"
+                className="pointer-events-none absolute -top-1.5 left-[76px] z-10 h-3 w-3 -translate-x-1/2 rounded-full bg-white ring-1 ring-black/[0.08]"
                 aria-hidden="true"
               />
               <span
-                className="pointer-events-none absolute -bottom-1.5 left-[84px] z-10 h-3 w-3 -translate-x-1/2 rounded-full bg-white ring-1 ring-black/[0.08]"
+                className="pointer-events-none absolute -bottom-1.5 left-[76px] z-10 h-3 w-3 -translate-x-1/2 rounded-full bg-white ring-1 ring-black/[0.08]"
                 aria-hidden="true"
               />
 
-              {/* Khối giá trị bên trái - Nổi bật đậm nét, tương phản hoàn toàn với nền trang ngoài */}
+              {/* Khối giá trị bên trái - Nổi bật đậm nét, cuống vé gọn gàng chuẩn TMĐT */}
               <div
-                className={`relative flex w-[84px] shrink-0 flex-col items-center justify-center border-r border-dashed border-white/40 px-1 py-2.5 text-white ${
+                className={`relative flex w-[76px] shrink-0 flex-col items-center justify-center border-r border-dashed border-white/40 px-1 py-2 text-white select-none ${
                   isShip
                     ? "bg-gradient-to-br from-[#0D9488] via-[#0F766E] to-[#115E59]"
                     : "bg-gradient-to-br from-[var(--campaign-primary,#C8102E)] via-[#E11D48] to-[#9F1239]"
                 }`}
               >
-                <span className="flex items-center gap-0.5 text-[9.5px] font-black uppercase tracking-wider text-white/90">
+                <span className="flex items-center gap-0.5 text-[9px] sm:text-[9.5px] font-black uppercase tracking-wider text-white/90">
                   {isShip ? (
                     <Truck size={10} strokeWidth={2.5} aria-hidden />
                   ) : (
@@ -290,49 +351,44 @@ export function DealsVoucherStrip({
                   )}
                   {top}
                 </span>
-                <span className="mt-1 text-xl font-black leading-none tabular-nums tracking-tight text-white drop-shadow-xs">
+                <span className="mt-1 text-lg sm:text-xl font-black leading-none tabular-nums tracking-tight text-white drop-shadow-xs">
                   {value}
                 </span>
               </div>
 
-              {/* Khối điều kiện & nút hành động bên phải */}
-              <div className="flex min-w-0 flex-1 items-center justify-between gap-2 py-2.5 pl-3 pr-2.5">
-                <div className="min-w-0 flex-1 leading-snug">
-                  {name ? (
-                    <>
-                      <p className="line-clamp-2 text-xs font-bold text-slate-900" title={name}>
-                        {name}
-                      </p>
-                      <p className="mt-0.5 truncate text-[11px] font-medium text-slate-500" title={`${minSpend} · ${cap}`}>
-                        {minSpend} · {cap}
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="truncate text-xs font-bold text-slate-900">{minSpend}</p>
-                      <p className="mt-0.5 truncate text-[11px] font-medium text-slate-500">{cap}</p>
-                    </>
-                  )}
-                  {hint ? (
-                    <p className="mt-1 flex items-center gap-1 truncate text-[10.5px] font-bold text-amber-600">
-                      <Flame size={11} className="shrink-0 fill-amber-500 text-amber-500" aria-hidden />
-                      <span className="truncate">{hint}</span>
-                    </p>
-                  ) : null}
+              {/* Thân vé: tiêu đề 2 dòng đầy đủ (không cắt chữ), điều kiện rõ ràng, footnote + nút */}
+              <div className="flex min-w-0 flex-1 flex-col justify-between gap-1.5 py-2.5 pl-3 pr-2.5">
+                <div className="min-w-0 space-y-0.5">
+                  <p
+                    className="line-clamp-2 min-h-[2.1rem] sm:min-h-[2.25rem] text-xs sm:text-[13px] font-bold text-slate-900 leading-snug"
+                    title={v.title || cleanedTitle}
+                  >
+                    {cleanedTitle}
+                  </p>
+                  <div className="flex flex-col text-[10.5px] sm:text-[11px] text-slate-500 leading-tight">
+                    <span className="truncate">{minSpend}</span>
+                    {cap ? <span className="truncate text-slate-400">{cap}</span> : null}
+                  </div>
                 </div>
-                <Action
-                  state={state}
-                  isShip={isShip}
-                  mystery={Boolean(v.mystery)}
-                  busy={claims.pendingId === v.id}
-                  saved={justSaved.has(v.id)}
-                  onClaim={() => claims.claim(v.id)}
-                />
+
+                <div className="flex items-end gap-1.5 pt-0.5">
+                  <Footnote v={v} hint={hint} nowMs={nowMs} isShip={isShip} />
+                  <Action
+                    voucherId={v.id}
+                    state={state}
+                    isShip={isShip}
+                    mystery={Boolean(v.mystery)}
+                    busy={claims.pendingId === v.id}
+                    saved={justSaved.has(v.id)}
+                    onClaim={() => claims.claim(v.id)}
+                  />
+                </div>
               </div>
             </li>
           );
         })}
       </ul>
+      </div>
       <LoginSheet open={claims.loginOpen} onClose={claims.cancelLogin} onDone={claims.loginDone} />
       <ClaimSuccessModal
         voucher={justClaimed}

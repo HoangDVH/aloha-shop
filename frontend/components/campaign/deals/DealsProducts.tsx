@@ -37,11 +37,13 @@ export function DealsProducts({
   mas,
   emptyText,
   variant = "deal",
-  homeRow6 = true,
+  columns = 4,
 }: {
   mas: string[];
   emptyText?: string;
   variant?: "default" | "deal";
+  columns?: 4 | 5 | 6;
+  /** @deprecated dùng columns */
   homeRow6?: boolean;
 }) {
   const [shown, setShown] = useState(PAGE);
@@ -87,11 +89,11 @@ export function DealsProducts({
     return emptyText ? <p className="py-6 text-center text-sm text-slate-500">{emptyText}</p> : null;
   }
   if (!products.length && loading) {
-    return <div className="h-40 animate-pulse rounded-2xl bg-white/70" aria-busy="true" />;
+    return <div className="h-40 animate-pulse rounded-xl bg-white/70" aria-busy="true" />;
   }
   return (
     <div>
-      <ProductGrid products={products} shopee homeRow6={homeRow6} variant={variant} />
+      <ProductGrid products={products} shopee columns={columns} variant={variant} />
       {shown < mas.length ? (
         <div className="mt-4 flex justify-center">
           <button

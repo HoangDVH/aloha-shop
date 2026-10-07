@@ -56,6 +56,7 @@ function readCap(campaignId: string): PopupCapRecord | null {
 }
 
 function isCapped(p: AppearancePopup): boolean {
+  if (p.everyVisit) return false;
   return popupCapped(
     readCap(p.campaignId),
     p.imageUrl.trim(),
@@ -147,11 +148,12 @@ export function ShopWelcomePopup() {
     };
     return [banner1010, banner2010];
   }, [popup]);
+  const activeSlide = slides[currentIndex] ?? slides[0];
 
-  // Autoplay xoay vòng sau 3.5s (tự tạm dừng khi rê chuột hoặc chạm tay)
+  // Autoplay xoay vòng sau 2.5s (tự tạm dừng khi rê chuột hoặc chạm tay)
   useEffect(() => {
     if (!open || slides.length <= 1 || isPaused) return;
-    const intervalMs = (popup?.autoplaySeconds || 3.5) * 1000;
+    const intervalMs = (popup?.autoplaySeconds || 2.5) * 1000;
     const timer = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % slides.length);
     }, intervalMs);
@@ -352,7 +354,7 @@ export function ShopWelcomePopup() {
                       <img
                         src={slide.imageUrl}
                         alt={slide.title || "Ưu đãi"}
-                        className="block h-auto max-h-[min(82vh,820px)] w-full select-none object-contain drop-shadow-md"
+                        className="block h-auto max-h-[min(72vh,760px)] w-full select-none object-contain drop-shadow-md"
                         draggable={false}
                       />
                       {entered ? (
@@ -420,6 +422,18 @@ export function ShopWelcomePopup() {
                 </>
               )}
             </div>
+
+            {/* Nút mua ngay dưới ảnh (kiểu Shopee/TikTok Shop): chữ + link theo slide đang hiện */}
+            {activeSlide ? (
+              <Link
+                href={activeSlide.ctaHref || "/uu-dai"}
+                onClick={() => dismiss("click")}
+                className="mt-3 flex h-12 w-full items-center justify-center gap-1 rounded-full bg-gradient-to-r from-[#E11D48] via-[#C8102E] to-[#E11D48] px-5 text-[15px] font-black uppercase tracking-wide text-white shadow-[0_10px_24px_rgba(200,16,46,0.45)] ring-2 ring-white/85 transition hover:brightness-110 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 sm:h-[52px] sm:text-base"
+              >
+                <span className="truncate">{activeSlide.ctaLabel?.trim() || "Mua ngay"}</span>
+                <ChevronRight className="h-5 w-5 shrink-0" strokeWidth={3} aria-hidden />
+              </Link>
+            ) : null}
           </div>
         </div>
       ) : null}

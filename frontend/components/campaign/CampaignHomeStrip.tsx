@@ -4,19 +4,6 @@ import Link from "next/link";
 import { Gift, Ticket } from "lucide-react";
 import { useCampaignView } from "@/lib/campaign/useCampaignView";
 import { VoucherVault } from "@/components/voucher/VoucherVault";
-import { QuickTiles } from "./QuickTiles";
-
-/** Dưới banner trang chủ: ô lối tắt ưu đãi. */
-export function CampaignHomeStrip() {
-  const { campaign, vouchers, offsetMs } = useCampaignView();
-  if (!campaign) return null;
-  const { colors } = campaign.display;
-  return (
-    <section className="py-4" style={{ background: colors.cream }} aria-label={campaign.name}>
-      <QuickTiles campaign={campaign} vouchers={vouchers} offsetMs={offsetMs} />
-    </section>
-  );
-}
 
 /** Khối kho voucher trang chủ: thiết kế tinh gọn chuẩn TMĐT (Shopee/TikTok). */
 export function CampaignHomeVouchers() {

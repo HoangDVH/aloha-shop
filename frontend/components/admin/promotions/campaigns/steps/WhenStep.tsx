@@ -57,7 +57,7 @@ export function WhenStep({ content, update, locked, errors }: Props) {
           </div>
           <div>
             <h3 className="text-sm sm:text-base font-bold text-slate-900">Thông tin chương trình</h3>
-            <p className="text-xs text-slate-500">Tên hiển thị trên banner trang chủ, thanh thông báo và đường dẫn web</p>
+            <p className="text-xs text-slate-500">Tên hiển thị trên trang Ưu đãi, thanh thông báo và đường dẫn web</p>
           </div>
         </div>
 

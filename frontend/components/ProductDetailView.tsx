@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, ShoppingCart, Zap } from "lucide-react";
 import { SiPriceBadge } from "@/components/si-pricing/SiPriceBadge";
 import { formatVnd, type ShopProduct } from "@/lib/api";
 import { formatTonDisplay, isPreOrderTon, stockMax, useCart } from "@/lib/cart";
@@ -741,26 +741,40 @@ export function ProductDetailView({
                 </div>
               </div>
 
-              {!campaignBuyInBox ? (
-                <div className="mt-3 hidden shrink-0 gap-3 border-t border-[var(--aloha-line)] pt-3 lg:mt-4 lg:flex lg:pt-4">
-                  <button
-                    type="button"
-                    disabled={purchaseDisabled}
-                    onClick={() => addCart(false)}
-                    className="flex min-h-12 flex-1 items-center justify-center rounded-xl bg-[var(--aloha-green-light)] px-4 py-3 text-sm font-bold text-[var(--aloha-green-mid)] hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {isPreOrder ? "Đặt trước" : "Thêm giỏ hàng"}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={purchaseDisabled}
-                    onClick={() => addCart(true)}
-                    className="flex min-h-12 flex-1 items-center justify-center rounded-xl bg-[var(--aloha-green)] px-4 py-3 text-sm font-bold text-white hover:bg-[var(--aloha-green-hover)] disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {isPreOrder ? "Đặt trước ngay" : "Mua ngay"}
-                  </button>
-                </div>
-              ) : null}
+              <div className="mt-3 hidden shrink-0 gap-3 border-t border-[var(--aloha-line)] pt-3 lg:mt-4 lg:flex lg:pt-4">
+                <button
+                  type="button"
+                  disabled={purchaseDisabled}
+                  onClick={() => addCart(false)}
+                  className={`flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-40 active:scale-98 ${
+                    campaignBuyInBox
+                      ? "border-2 border-[#C8102E] bg-rose-50 text-[#C8102E] hover:bg-rose-100"
+                      : "bg-[var(--aloha-green-light)] text-[var(--aloha-green-mid)] hover:brightness-95"
+                  }`}
+                >
+                  <ShoppingCart size={17} />
+                  <span>{isPreOrder ? "Đặt trước" : "Thêm giỏ hàng"}</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={purchaseDisabled}
+                  onClick={() => addCart(true)}
+                  className={`flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black text-white transition disabled:cursor-not-allowed disabled:opacity-40 active:scale-98 shadow-sm ${
+                    campaignBuyInBox
+                      ? "bg-gradient-to-r from-[#C8102E] to-[#E53935] hover:brightness-105 shadow-rose-500/25"
+                      : "bg-[var(--aloha-green)] hover:bg-[var(--aloha-green-hover)]"
+                  }`}
+                >
+                  {campaignBuyInBox ? (
+                    <>
+                      <Zap size={16} className="fill-white" />
+                      <span>{isCampaignSaleOpen ? "Mua Ngay Giờ Vàng" : isPreOrder ? "Đặt trước ngay" : "Mua ngay"}</span>
+                    </>
+                  ) : (
+                    <span>{isPreOrder ? "Đặt trước ngay" : "Mua ngay"}</span>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

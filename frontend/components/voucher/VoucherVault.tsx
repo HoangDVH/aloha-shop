@@ -5,6 +5,7 @@ import type { CampaignVoucherUI, CampaignViewerUI } from "@/lib/campaign/campaig
 import { useVoucherClaims } from "@/lib/campaign/useVoucherClaims";
 import { splitCountdown, useCountdown } from "@/lib/hooks/useCountdown";
 import {
+  cleanVoucherTitle,
   formatCompactVnd,
   formatVoucherBadge,
   isUnopenedMystery,
@@ -232,7 +233,7 @@ export function VoucherVault({
           const claimedPct = claimedPercentOf(v);
           const left = remainingOf(v);
           const { icon, tone, stubTopLabel, stubValue } = voucherIconAndTone(v);
-          const headline = v.title || formatVoucherBadge(v).label;
+          const headline = cleanVoucherTitle(v);
           const focused = focusIds.includes(v.id);
 
           return (

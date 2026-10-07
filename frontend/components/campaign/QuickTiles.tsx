@@ -9,6 +9,7 @@ import {
   Star,
   Tag,
   TicketPercent,
+  Trophy,
   Truck,
   Zap,
   type LucideIcon,
@@ -16,7 +17,7 @@ import {
 import type { CampaignUI, CampaignVoucherUI } from "@/lib/campaign/campaignApi";
 import { dealsHref, toDealsTab } from "@/lib/campaign/dealsTabs";
 
-type Kind = "voucher" | "flash" | "hot" | "gift" | "ship" | "other";
+type Kind = "voucher" | "flash" | "hot" | "gift" | "top" | "ship" | "other";
 
 const KIND_BY_ICON: Record<string, Kind> = {
   ticket: "voucher",
@@ -26,8 +27,11 @@ const KIND_BY_ICON: Record<string, Kind> = {
   flame: "hot",
   hot: "hot",
   gift: "gift",
-  truck: "ship",
-  ship: "ship",
+  trophy: "top",
+  bestseller: "top",
+  top: "top",
+  truck: "top",
+  ship: "top",
 };
 
 const KIND_BY_TAB: Record<string, Kind> = {
@@ -35,6 +39,7 @@ const KIND_BY_TAB: Record<string, Kind> = {
   "flash-sale": "flash",
   "deal-hot": "hot",
   "qua-tang": "gift",
+  "ban-chay": "top",
 };
 
 const ICONS: Record<string, LucideIcon> = {
@@ -45,20 +50,24 @@ const ICONS: Record<string, LucideIcon> = {
   gift: Gift,
   flame: Flame,
   hot: Flame,
-  truck: Truck,
-  ship: Truck,
+  trophy: Trophy,
+  top: Trophy,
+  bestseller: Trophy,
+  truck: Trophy,
+  ship: Trophy,
   percent: Percent,
   star: Star,
   tag: Tag,
 };
 
-/** Màu ô icon theo loại (nền nhạt + icon đậm; Hỗ trợ ship nền xanh đậm). */
+/** Màu ô icon theo loại (nền nhạt + icon đậm; Top Bán Chạy nền vàng cam danh giá). */
 const TONE: Record<Kind, { box: string; icon: string; sub: string }> = {
   voucher: { box: "bg-[#E7F4EA]", icon: "text-[#1F7A3D]", sub: "text-slate-500" },
   flash: { box: "bg-[#FFE1E1]", icon: "text-[#D61F2C]", sub: "font-semibold text-[#D61F2C]" },
   hot: { box: "bg-[#FFEAD9]", icon: "text-[#E2620E]", sub: "text-slate-500" },
   gift: { box: "bg-[#FFF3E0]", icon: "text-[#C77700]", sub: "text-slate-500" },
-  ship: { box: "bg-[#1F5132]", icon: "text-white", sub: "text-slate-500" },
+  top: { box: "bg-[#FFF8E1]", icon: "text-[#D97706]", sub: "text-slate-500" },
+  ship: { box: "bg-[#FFF8E1]", icon: "text-[#D97706]", sub: "text-slate-500" },
   other: { box: "bg-slate-100", icon: "text-slate-700", sub: "text-slate-500" },
 };
 
@@ -69,6 +78,9 @@ function tabOf(href: string) {
 
 function tileHref(href: string, kind: Kind): string {
   const to = dealsHref(href);
+  if (kind === "top" || href.includes("ban-chay")) {
+    return "/uu-dai?tab=ban-chay";
+  }
   if (kind !== "ship" || !to.startsWith("/uu-dai")) return to;
   const params = new URLSearchParams(to.split("?")[1] || "");
   if ((params.get("tab") || "voucher") !== "voucher") return to;
@@ -77,7 +89,7 @@ function tileHref(href: string, kind: Kind): string {
   return `/uu-dai?${params.toString()}`;
 }
 
-/** Ô lối tắt dưới banner trang chủ: thẻ trắng, icon màu theo loại. */
+/** Ô lối tắt ưu đãi (trang Ưu đãi): thẻ trắng, icon màu theo loại. */
 export function QuickTiles({
   campaign,
   vouchers,
@@ -95,15 +107,27 @@ export function QuickTiles({
   className?: string;
   variant?: "tiles" | "tabs";
 }) {
-  const hasHot = campaign.products.some((p) => p.dealHot);
-  // Ô "Deal hot" chỉ hiện khi chiến dịch có SP gắn deal hot (tránh dẫn tới trang trống).
-  const tiles = campaign.display.tiles
+  const hasHot = campaign.products?.some((p) => p.dealHot);
+  const rawTiles = campaign.display.tiles
     .filter((t) => {
       if (hasHot) return true;
       const tab = tabOf(dealsHref(t.href));
       return (KIND_BY_ICON[t.icon] || (tab ? KIND_BY_TAB[tab] : undefined)) !== "hot" && tab !== "deal-hot";
-    })
-    .slice(0, 8);
+    });
+
+  // Tự động thay thế ô "Hỗ trợ ship" thành "Top Bán Chạy" (chuẩn sàn TMĐT, tránh trùng lặp)
+  const tiles = rawTiles.map((t) => {
+    if (t.label === "Hỗ trợ ship" || t.icon === "truck" || t.icon === "ship") {
+      return {
+        ...t,
+        label: "Top Bán Chạy",
+        icon: "trophy",
+        href: "/uu-dai?tab=ban-chay",
+      };
+    }
+    return t;
+  }).slice(0, 8);
+
   if (!tiles.length) return null;
 
   // DẠNG THANH TAB MỎNG NGANG (CHUẨN SHOPEE/LAZADA PC)
@@ -114,10 +138,10 @@ export function QuickTiles({
         className={`w-full ${className || ""}`}
         style={{ "--campaign-primary": campaign.display.colors.primary } as React.CSSProperties}
       >
-        <div className="flex items-center justify-center">
+        <div className="flex items-center justify-start sm:justify-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-1">
           <ul
             role="tablist"
-            className="inline-flex max-w-full items-center gap-1.5 sm:gap-2 rounded-2xl bg-white/95 p-1.5 shadow-sm border border-rose-100/90 backdrop-blur-xs overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="inline-flex max-w-full items-center gap-1.5 sm:gap-2 rounded-2xl bg-white/95 p-1.5 shadow-sm border border-rose-100/90 backdrop-blur-xs whitespace-nowrap"
           >
             {tiles.map((t) => {
               const tab = tabOf(dealsHref(t.href));
@@ -125,15 +149,18 @@ export function QuickTiles({
               const tone = TONE[kind];
               const Icon = ICONS[t.icon] || Sparkles;
 
+              const isTop = kind === "top" || tab === "ban-chay";
               const isShip = kind === "ship";
               const isVoucherTab = tab === "voucher" || kind === "voucher";
               const isActive = Boolean(
                 activeTab &&
-                  (isShip
-                    ? activeTab === "voucher" && activeLoai === "ship"
-                    : isVoucherTab
-                      ? activeTab === "voucher" && (!activeLoai || activeLoai === "all")
-                      : tab === activeTab)
+                  (isTop
+                    ? activeTab === "ban-chay"
+                    : isShip
+                      ? activeTab === "voucher" && activeLoai === "ship"
+                      : isVoucherTab
+                        ? activeTab === "voucher" && (!activeLoai || activeLoai === "all")
+                        : tab === activeTab)
               );
 
               return (
@@ -170,7 +197,7 @@ export function QuickTiles({
     );
   }
 
-  // DẠNG Ô VUÔNG LỐI TẮT TRUYỀN THỐNG (TRANG CHỦ)
+  // DẠNG Ô VUÔNG LỐI TẮT (DƯỚI BANNER TRANG ƯU ĐÃI)
   return (
     <nav
       aria-label="Lối tắt ưu đãi"
@@ -187,15 +214,18 @@ export function QuickTiles({
           const tone = TONE[kind];
           const Icon = ICONS[t.icon] || Sparkles;
 
+          const isTop = kind === "top" || tab === "ban-chay";
           const isShip = kind === "ship";
           const isVoucherTab = tab === "voucher" || kind === "voucher";
           const isActive = Boolean(
             activeTab &&
-              (isShip
-                ? activeTab === "voucher" && activeLoai === "ship"
-                : isVoucherTab
-                  ? activeTab === "voucher" && (!activeLoai || activeLoai === "all")
-                  : tab === activeTab)
+              (isTop
+                ? activeTab === "ban-chay"
+                : isShip
+                  ? activeTab === "voucher" && activeLoai === "ship"
+                  : isVoucherTab
+                    ? activeTab === "voucher" && (!activeLoai || activeLoai === "all")
+                    : tab === activeTab)
           );
 
           return (

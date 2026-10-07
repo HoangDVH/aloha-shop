@@ -147,7 +147,7 @@ async function HomeCatalog({
       dvt: dvtList.length ? dvtList : undefined,
       loai: loai || undefined,
       page,
-      limit: 35,
+      limit: 36,
       minPrice: minPrice || undefined,
       maxPrice: maxPrice || undefined,
       inStock: inStock || undefined,
@@ -184,7 +184,7 @@ async function HomeCatalog({
             </p>
           ) : null}
           <div className="w-full">
-            <ProductGrid products={items} shopee homeRow6 />
+            <ProductGrid products={items} shopee homeRow6 columns={6} />
           </div>
         </CatalogLayout>
       </div>

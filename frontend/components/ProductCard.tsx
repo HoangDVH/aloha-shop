@@ -215,7 +215,7 @@ function ProductCardDefault({
 
   return (
     <article
-      className={`group relative flex flex-col overflow-hidden rounded-[var(--aloha-radius)] bg-[var(--aloha-card,#ffffff)] shadow-[var(--aloha-shadow)] ring-1 ring-[var(--aloha-line)] transition-all duration-300 ease-out md:hover:-translate-y-1 md:hover:shadow-[var(--aloha-shadow-lg)] md:hover:ring-[var(--aloha-green)]/20 animate-fade-up ${
+      className={`group relative flex flex-col overflow-hidden rounded-xl bg-white shadow-xs ring-1 ring-black/[0.06] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-md hover:ring-black/[0.1] animate-fade-up ${
         navPending ? "opacity-85" : ""
       }`}
     >
@@ -223,7 +223,7 @@ function ProductCardDefault({
         <Link
           href={product.path}
           onClick={markPending}
-          className={`relative block aspect-square overflow-hidden bg-[var(--aloha-cream)] ${
+          className={`relative block aspect-square w-full overflow-hidden bg-neutral-50 ${
             navPending ? "cursor-wait" : ""
           }`}
         >
@@ -232,7 +232,7 @@ function ProductCardDefault({
             <img
               src={product.anh}
               alt={product.ten}
-              className={`h-full w-full object-cover transition duration-500 ease-out md:group-hover:scale-[1.06]`}
+              className={`h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-105`}
               loading="lazy"
             />
           ) : (
@@ -275,8 +275,8 @@ function ProductCardDefault({
             .map((b) => (
               <span
                 key={b.label}
-                className={`product-card__badge inline-flex h-5 w-max max-w-none shrink-0 items-center justify-center rounded-full px-2.5 text-[10px] font-bold leading-none tracking-normal text-white shadow-sm whitespace-nowrap [word-break:keep-all] [overflow-wrap:normal] ${
-                  b.tone === "warn" ? "bg-[var(--aloha-warning,#f59e0b)]" : "bg-[var(--aloha-sale)]"
+                className={`product-card__badge inline-flex h-5 w-max max-w-none shrink-0 items-center justify-center rounded-full px-2 text-[10px] font-bold leading-none tracking-normal text-white shadow-sm whitespace-nowrap [word-break:keep-all] [overflow-wrap:normal] ${
+                  b.tone === "warn" ? "bg-[var(--aloha-warning,#f59e0b)]" : "bg-[var(--aloha-sale,#E53935)]"
                 }`}
               >
                 {b.label}
@@ -285,35 +285,35 @@ function ProductCardDefault({
         </div>
       </div>
 
-      <div className={`flex flex-1 flex-col ${shopee ? "gap-1.5 p-2.5 sm:p-3" : "gap-2 p-3 sm:p-3.5"}`}>
+      <div className={`flex flex-1 flex-col ${shopee ? "gap-1 p-2 sm:p-2.5" : "gap-1.5 p-2.5 sm:p-3"}`}>
         <Link
           href={product.path}
           onClick={markPending}
-          className={`line-clamp-2 font-semibold leading-snug text-[var(--aloha-ink)] transition-colors group-hover:text-[var(--aloha-green)] ${
+          className={`line-clamp-2 font-medium leading-snug text-neutral-800 transition-colors group-hover:text-[var(--aloha-green)] ${
             shopee
-              ? "min-h-[2.35rem] text-[12px] sm:text-[13px]"
-              : "min-h-[2.5rem] text-sm"
+              ? "min-h-[2.1rem] sm:min-h-[2.35rem] text-[12px] sm:text-[13px]"
+              : "min-h-[2.4rem] text-sm"
           } ${navPending ? "cursor-wait" : ""}`}
         >
           {product.ten}
         </Link>
 
-        <div className={`mt-auto flex min-h-[2.65rem] flex-nowrap justify-between gap-2 pt-0.5 ${wholesaleCard ? "items-center" : "items-end"}`}>
+        <div className={`mt-auto flex min-h-[2.4rem] flex-nowrap justify-between gap-1.5 pt-0.5 ${wholesaleCard ? "items-center" : "items-end"}`}>
           <div className="min-w-0 flex-1">
           {expectsSi && !pricePending && priceKind === "si" ? (
             <SiPriceBadge price={displayGia} webPrice={webPrice} unit={product.dvt} variant={wholesaleCard ? "wholesale-card" : "card"} />
           ) : (
-          <div className="flex min-h-[2.65rem] min-w-0 flex-col justify-end">
+          <div className="flex min-h-[2.4rem] min-w-0 flex-col justify-end">
             <div
-              className={`min-w-0 truncate font-extrabold tracking-tight ${promoDeal ? "text-[#C8102E]" : "text-[var(--aloha-price)]"} ${
-                shopee ? "text-[15px] sm:text-base" : "text-base sm:text-lg"
-              }`}
+              className={`min-w-0 truncate font-extrabold tracking-tight ${
+                promoDeal || shopee ? "text-[#EE4D2D]" : "text-[var(--aloha-price)]"
+              } ${shopee ? "text-sm sm:text-base" : "text-base sm:text-lg"}`}
             >
               {pricePending ? "Đang cập nhật…" : priceKind === "si_missing" ? "Liên hệ" : formatVnd(displayGia)}
               {promo ? <PromoListPrice promo={promo} price={displayGia} /> : null}
               {product.dvt && !promoDeal ? (
                 <span
-                  className={`ml-1 font-semibold text-[var(--aloha-muted)] ${
+                  className={`ml-1 font-normal text-neutral-400 ${
                     shopee ? "text-[10px] sm:text-[11px]" : "text-xs"
                   }`}
                 >
@@ -340,11 +340,13 @@ export function ProductGrid({
   /** Trang chủ: 6 SP / hàng (desktop), giữ card nhỏ gọn */
   homeRow6 = false,
   variant = "default",
+  columns,
 }: {
   products: ShopProduct[];
   shopee?: boolean;
   homeRow6?: boolean;
   variant?: "default" | "deal";
+  columns?: 4 | 5 | 6;
 }) {
   const liveMap = useLiveProductPrices(products);
 
@@ -356,12 +358,14 @@ export function ProductGrid({
     );
   }
 
+  const colMode = columns ?? (homeRow6 ? 6 : variant === "deal" ? 4 : 5);
+
   const gridClass =
-    homeRow6 || variant === "deal"
-      ? "grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5 lg:gap-3"
-      : shopee
-        ? "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5 lg:gap-3"
-        : "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5 lg:gap-3";
+    colMode === 6
+      ? "grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-2.5 md:grid-cols-4 md:gap-2.5 lg:grid-cols-6 lg:gap-2.5"
+      : colMode === 4
+        ? "grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-2.5 md:grid-cols-3 md:gap-3 lg:grid-cols-4 lg:gap-3.5"
+        : "grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-2.5 md:grid-cols-4 md:gap-3 lg:grid-cols-5 lg:gap-3";
 
   return (
     <div className={gridClass}>
@@ -370,7 +374,7 @@ export function ProductGrid({
           key={p.ma}
           product={p}
           variant={variant}
-          shopee={shopee || homeRow6 || variant === "deal"}
+          shopee={shopee || homeRow6 || colMode === 6 || variant === "deal"}
           {...livePropsForMa(liveMap, p.ma)}
         />
       ))}

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CalendarClock, Receipt, Ticket } from "lucide-react";
 import { useWallet } from "@/lib/campaign/walletQueries";
 import type { WalletItemState, WalletItemUI } from "@/lib/campaign/walletApi";
-import { formatVoucherBadge, voucherConditionText, voucherHeadline, voucherUseHref } from "@/lib/voucherFormat";
+import { cleanVoucherTitle, formatVoucherBadge, voucherConditionText, voucherHeadline, voucherUseHref } from "@/lib/voucherFormat";
 import { TicketLine, VoucherTicket, type TicketTone } from "./VoucherTicket";
 import { ReturnedBadge } from "./ReturnedBadge";
 import { MysteryOdds } from "./MysteryOdds";
@@ -55,7 +55,7 @@ function WalletRow({ item }: { item: WalletItemUI }) {
       stubValue={voucherHeadline(v)}
       stubTopLabel={v.targetCustomer === "new_web" ? "Khách mới" : undefined}
       tone={toneOf(item)}
-      title={v.title || formatVoucherBadge(v).label}
+      title={cleanVoucherTitle(v)}
       disabled={dim}
       notchBg="#ffffff"
       action={

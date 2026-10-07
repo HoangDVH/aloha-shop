@@ -44,6 +44,7 @@ export function normalizePopup(raw: Partial<AppearancePopup> | null | undefined)
       ? Math.max(1, Math.min(90, Math.round(freq)))
       : base.frequencyDays,
     showOncePerCampaign: p.showOncePerCampaign !== false,
+    everyVisit: p.everyVisit === true,
     startAt,
     endAt,
     pages: PAGES.has(p.pages as PopupPages) ? (p.pages as PopupPages) : base.pages,
@@ -63,8 +64,8 @@ export function normalizePopup(raw: Partial<AppearancePopup> | null | undefined)
           }))
       : undefined,
     autoplaySeconds: Number.isFinite(Number(p.autoplaySeconds))
-      ? Math.max(2, Math.min(10, Math.round(Number(p.autoplaySeconds))))
-      : 3.5,
+      ? Math.max(2, Math.min(10, Math.round(Number(p.autoplaySeconds) * 2) / 2))
+      : 2.5,
   };
 }
 

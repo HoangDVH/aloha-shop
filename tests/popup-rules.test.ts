@@ -17,6 +17,9 @@ test("normalizePopup: cấu hình cũ nhận mặc định chuẩn sàn", () => 
   assert.equal(p.reopenBadge, true);
   assert.equal(p.startAt, "");
   assert.equal(p.endAt, "");
+  assert.equal(p.everyVisit, false);
+  assert.equal(normalizePopup({ everyVisit: true }).everyVisit, true);
+  assert.equal(normalizePopup({ everyVisit: "yes" as never }).everyVisit, false);
 });
 
 test("normalizePopup: lọc giá trị lạ, bỏ giờ tắt trước giờ bật", () => {

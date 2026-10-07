@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
-import type { HeroSlide } from "@/components/HeroBanner";
-import { HomeBannerGrid } from "@/components/campaign/HomeBannerGrid";
-import { CampaignHomeStrip } from "@/components/campaign/CampaignHomeStrip";
+import { HeroBanner, type HeroSlide } from "@/components/HeroBanner";
 import { HomeTrustBar } from "@/components/HomeTrustBar";
 import { HomeFeaturedCategories } from "@/components/HomeFeaturedCategories";
 import { HomeFeaturedProducts } from "@/components/HomeFeaturedProducts";
@@ -9,6 +7,7 @@ import { HomeLowStockSale } from "@/components/HomeLowStockSale";
 import { HomeArticleSection } from "@/components/HomeArticleSection";
 import { HomeProductSection } from "@/components/HomeProductSection";
 import { HomeTrustShowcase } from "@/components/HomeTrustShowcase";
+import { HomeVisionMission } from "@/components/HomeVisionMission";
 import { categoryHref, fetchArticles, fetchProducts } from "@/lib/api";
 import type { AppearanceBlock } from "@/lib/appearanceTypes";
 
@@ -47,8 +46,8 @@ async function loadProductSection(props: Record<string, unknown>) {
   const title = String(props.title || "Sản phẩm");
   const source = String(props.source || "ban_chay");
   const limit = Math.max(
-    10,
-    Math.min(40, Math.round((Number(props.limit) || 15) / 5) * 5)
+    12,
+    Math.min(48, Math.round((Number(props.limit) || 12) / 6) * 6)
   );
   const sort = String(props.sort || "ban_chay");
   const categoryId = Number(props.categoryId) || 0;
@@ -172,10 +171,11 @@ async function ArticleSectionBlock({ props }: { props: Record<string, unknown> }
 }
 
 function HeroBlock({ props }: { props: Record<string, unknown> }) {
-  const slides = Array.isArray(props.slides)
-    ? (props.slides as HeroSlide[]).filter((s) => s?.src)
-    : undefined;
-  return <HomeBannerGrid slides={slides?.length ? slides : undefined} />;
+  const slides =
+    props.useDefaultBanners === false && Array.isArray(props.slides)
+      ? (props.slides as HeroSlide[]).filter((s) => s?.src)
+      : undefined;
+  return <HeroBanner slides={slides?.length ? slides : undefined} />;
 }
 
 /** Tách hero/feature vs product rows for page layout. */
@@ -210,16 +210,13 @@ export async function renderTopBlocks(blocks: AppearanceBlock[]) {
   const showLowStock = banChayBlock ? banChayBlock.enabled !== false : true;
   const nodes: ReactNode[] = [];
   let showedTrust = false;
-  let showedHero = false;
   for (const b of top) {
     if (b.type === "hero" || b.type === "banner_carousel") {
       nodes.push(
         <div key={b.id}>
           <HeroBlock props={b.props || {}} />
-          {showedHero ? null : <CampaignHomeStrip />}
         </div>
       );
-      showedHero = true;
     } else if (b.type === "feature_strip") {
       nodes.push(
         <div key={b.id}>
@@ -238,6 +235,13 @@ export async function renderTopBlocks(blocks: AppearanceBlock[]) {
     );
   }
 
+  // Khối TẦM NHÌN & SỨ MỆNH: Đặt ngay bên dưới banner & thanh cam kết ở đầu trang chủ cho cả desktop lẫn mobile
+  nodes.push(
+    <div key="home-vision-mission-top">
+      <HomeVisionMission />
+    </div>
+  );
+
   const lowStock = showLowStock ? await loadLowStockProducts() : [];
   if (lowStock.length) {
     nodes.push(
@@ -252,8 +256,8 @@ export async function renderTopBlocks(blocks: AppearanceBlock[]) {
 type HomeItems = Awaited<ReturnType<typeof fetchProducts>>["items"];
 type BlockProps = Record<string, unknown> | undefined;
 
-const step5Limit = (raw: unknown, fallback: number) =>
-  Math.max(10, Math.min(50, Math.round((Number(raw) || fallback) / 5) * 5));
+const step6Limit = (raw: unknown, fallback: number) =>
+  Math.max(12, Math.min(48, Math.round((Number(raw) || fallback) / 6) * 6));
 
 const sourceOf = (b: AppearanceBlock) => String(b.props?.source || "").trim();
 const CORE_SOURCES: Record<string, "noi_bat" | "uu_dai" | "ban_chay" | "moi"> = {
@@ -265,7 +269,7 @@ const CORE_SOURCES: Record<string, "noi_bat" | "uu_dai" | "ban_chay" | "moi"> = 
 };
 
 async function HomeNoiBatSection({ props }: { props: BlockProps }) {
-  const limit = Math.max(1, Math.min(15, Math.round(Number(props?.limit) || 6)));
+  const limit = Math.max(1, Math.min(18, Math.round(Number(props?.limit) || 6)));
   let items: HomeItems = [];
   try {
     items = (await fetchProducts({ page: 1, limit, badge: "noi_bat", sort: "ten" })).items || [];
@@ -284,7 +288,7 @@ async function HomeNoiBatSection({ props }: { props: BlockProps }) {
 }
 
 async function HomeUuDaiSection({ props }: { props: BlockProps }) {
-  const uuDaiLimit = step5Limit(props?.limit, 15);
+  const uuDaiLimit = step6Limit(props?.limit, 12);
   const uuDaiTitle = String(props?.title || "").trim() || "Sản phẩm ưu đãi";
   let uuDai: HomeItems = [];
   {
@@ -329,7 +333,7 @@ async function HomeUuDaiSection({ props }: { props: BlockProps }) {
 }
 
 async function HomeBanChaySection({ props }: { props: BlockProps }) {
-  const banChayLimit = step5Limit(props?.limit, 10);
+  const banChayLimit = step6Limit(props?.limit, 12);
   let banChay: HomeItems = [];
   {
     try {
@@ -359,7 +363,7 @@ async function HomeBanChaySection({ props }: { props: BlockProps }) {
 }
 
 async function HomeMoiSection({ props }: { props: BlockProps }) {
-  const moiLimit = step5Limit(props?.limit, 50);
+  const moiLimit = step6Limit(props?.limit, 48);
   let moi: HomeItems = [];
   {
     try {
