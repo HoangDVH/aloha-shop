@@ -34,32 +34,10 @@ export function absUrl(src: string): string {
   return `${SHOP_ORIGIN}${s.startsWith("/") ? "" : "/"}${s}`;
 }
 
-/** Ảnh SP theo thứ tự hiển thị (ảnh đại diện trước), bỏ trùng. */
-export function productShareImages(item: Pick<ShopProduct, "anh" | "images">): string[] {
-  return [...new Set([item.anh, ...(item.images || [])].map((x) => String(x || "").trim()).filter(Boolean))];
-}
-
-export function productHasShareVideo(item: Pick<ShopProduct, "videos" | "videoUrl">): boolean {
-  return Boolean(item.videos?.length || String(item.videoUrl || "").trim());
-}
-
-/**
- * og:image cho trang SP: ≥2 ảnh → ảnh ghép /og/sp/{mã} (Zalo/Facebook hiện nhiều ảnh trong thẻ link).
- * `v` đổi khi bộ ảnh đổi để Zalo/Facebook không giữ ảnh ghép cũ.
- */
-export function productOgImage(item: ShopProduct): { url: string; width: number; height: number } {
-  const imgs = productShareImages(item);
-  if (imgs.length < 2) {
-    return { url: absUrl(imgs[0] || "") || absUrl("/brand/logo-aloha.png"), width: 800, height: 800 };
-  }
-  const key = `${imgs.join("|")}#${productHasShareVideo(item) ? 1 : 0}`;
-  let h = 0x811c9dc5;
-  for (let i = 0; i < key.length; i++) h = Math.imul(h ^ key.charCodeAt(i), 0x01000193);
-  return {
-    url: `${SHOP_ORIGIN}/og/sp/${encodeURIComponent(item.ma)}?v=${(h >>> 0).toString(36)}`,
-    width: 1200,
-    height: 630,
-  };
+/** og:image trang SP: 1 ảnh đại diện (như Shopee) — thẻ link Zalo/Facebook chỉ hiển thị 1 ảnh. */
+export function productOgImage(item: Pick<ShopProduct, "anh" | "images">): { url: string; width: number; height: number } {
+  const src = String(item.anh || item.images?.[0] || "").trim();
+  return { url: absUrl(src) || absUrl("/brand/logo-aloha.png"), width: 800, height: 800 };
 }
 
 type CatalogSp = {
