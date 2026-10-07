@@ -64,7 +64,7 @@ export function normalizePopup(raw: Partial<AppearancePopup> | null | undefined)
           }))
       : undefined,
     autoplaySeconds: Number.isFinite(Number(p.autoplaySeconds))
-      ? Math.max(2, Math.min(10, Math.round(Number(p.autoplaySeconds) * 2) / 2))
+      ? Math.max(1, Math.min(10, Math.round(Number(p.autoplaySeconds) * 2) / 2))
       : 2.5,
   };
 }
