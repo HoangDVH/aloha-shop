@@ -11,7 +11,7 @@ import {
   type GetDb,
 } from "../../auth/middleware.js";
 import type { GetShopDb } from "../../shopOrders/routes.js";
-import { sanitizeArticleHtml, slugifyVi, normalizeArticleVideoUrl } from "../sanitize.js";
+import { sanitizeArticleHtml, slugifyVi, articleVideoUrlSchema } from "../sanitize.js";
 import {
   ARTICLES_COL,
   PREVIOUS_SLUGS_MAX,
@@ -279,6 +279,11 @@ export function registerArticlesAdminRoutes(
     ...gate,
     async (req: AuthRequest, res: Response) => {
       try {
+        const video = articleVideoUrlSchema.safeParse(req.body?.videoUrl ?? "");
+        if (!video.success) {
+          res.status(400).json({ error: "invalid_video_url", message: video.error.issues[0]?.message });
+          return;
+        }
         const shopDb = await getShopDb();
         await ensureReady(shopDb);
         const title = String(req.body?.title || "").trim();
@@ -302,7 +307,7 @@ export function registerArticlesAdminRoutes(
           previousSlugs: [],
           category: String(req.body?.category || "").trim(),
           coverUrl: String(req.body?.coverUrl || "").trim(),
-          videoUrl: normalizeArticleVideoUrl(String(req.body?.videoUrl || "")),
+          videoUrl: video.data,
           excerpt: String(req.body?.excerpt || "").trim().slice(0, 500),
           bodyHtml: sanitizeArticleHtml(String(req.body?.bodyHtml || "")),
           productMas: normalizeProductMas(req.body?.productMas),
@@ -369,7 +374,12 @@ export function registerArticlesAdminRoutes(
           set.coverUrl = String(req.body.coverUrl || "").trim();
         }
         if (req.body?.videoUrl !== undefined) {
-          set.videoUrl = normalizeArticleVideoUrl(String(req.body.videoUrl || ""));
+          const video = articleVideoUrlSchema.safeParse(req.body.videoUrl);
+          if (!video.success) {
+            res.status(400).json({ error: "invalid_video_url", message: video.error.issues[0]?.message });
+            return;
+          }
+          set.videoUrl = video.data;
         }
         if (req.body?.excerpt !== undefined) {
           set.excerpt = String(req.body.excerpt || "").trim().slice(0, 500);

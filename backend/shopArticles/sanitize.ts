@@ -1,4 +1,5 @@
 /** Sanitize HTML body bài viết — bỏ script / event handler / URL nguy hiểm. */
+import { z } from "zod";
 
 const BLOCKED_TAGS =
   /<\/?(?:script|object|embed|form|input|button|link|meta|base|svg|math)(?:\s[^>]*)?>/gi;
@@ -13,7 +14,7 @@ const SAFE_EMBED_SRC =
   /^(?:https?:)?\/\/(?:(?:www\.)?youtube\.com\/embed\/|(?:www\.)?youtube-nocookie\.com\/embed\/|player\.vimeo\.com\/video\/|drive\.google\.com\/file\/d\/[\w-]+\/preview)/i;
 
 const SAFE_VIDEO_FILE =
-  /^(?:\/uploads\/[\w./-]+\.(?:mp4|webm|ogg)|https?:\/\/[\w.-]+\/[\w./%-]+\.(?:mp4|webm|ogg))(?:\?[^"']*)?$/i;
+  /^(?:\/uploads\/[\w./()-]+\.(?:mp4|webm|ogg)|https?:\/\/[\w.-]+\/[\w./%()-]+\.(?:mp4|webm|ogg))(?:\?[^"']*)?$/i;
 
 /** Chỉ giữ iframe YouTube / Vimeo / Google Drive preview; iframe khác bỏ. */
 function sanitizeIframes(html: string): string {
@@ -161,3 +162,13 @@ export function normalizeArticleVideoUrl(raw: string): string {
   if (SAFE_EMBED_SRC.test(s)) return s;
   return "";
 }
+
+/** Never silently erase a submitted video when normalization rejects it. */
+export const articleVideoUrlSchema = z.string().trim().max(4096).transform((raw, ctx) => {
+  const normalized = normalizeArticleVideoUrl(raw);
+  if (raw && !normalized) {
+    ctx.addIssue({ code: "custom", message: "Link video không hợp lệ. Dùng YouTube, Google Drive hoặc link MP4/WebM/OGG." });
+    return z.NEVER;
+  }
+  return normalized;
+});
