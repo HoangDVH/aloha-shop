@@ -34,10 +34,32 @@ export function absUrl(src: string): string {
   return `${SHOP_ORIGIN}${s.startsWith("/") ? "" : "/"}${s}`;
 }
 
-/** og:image trang SP: 1 ảnh đại diện (như Shopee) — thẻ link Zalo/Facebook chỉ hiển thị 1 ảnh. */
-export function productOgImage(item: Pick<ShopProduct, "anh" | "images">): { url: string; width: number; height: number } {
-  const src = String(item.anh || item.images?.[0] || "").trim();
-  return { url: absUrl(src) || absUrl("/brand/logo-aloha.png"), width: 800, height: 800 };
+export const OG_W = 1200;
+export const OG_H = 630;
+
+/** Ảnh đại diện SP dùng cho thẻ link chia sẻ. */
+export function productOgSource(item: Pick<ShopProduct, "anh" | "images">): string {
+  return String(item.anh || item.images?.[0] || "").trim();
+}
+
+function shortHash(s: string): string {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
+/**
+ * og:image trang SP: 1 ảnh đại diện (như Shopee) — thẻ link Zalo/Facebook chỉ hiển thị 1 ảnh.
+ * Trỏ về /og/sp/[ma] (JPEG 1200×630 trên tên miền shop); `v` đổi khi ảnh SP đổi để Facebook/Zalo lấy ảnh mới.
+ */
+export function productOgImage(item: Pick<ShopProduct, "ma" | "anh" | "images">): { url: string; width: number; height: number } {
+  const src = productOgSource(item);
+  if (!src || !item.ma) return { url: absUrl("/brand/logo-aloha.png"), width: 800, height: 800 };
+  return {
+    url: `${SHOP_ORIGIN}/og/sp/${encodeURIComponent(item.ma)}?v=${shortHash(src)}`,
+    width: OG_W,
+    height: OG_H,
+  };
 }
 
 type CatalogSp = {
