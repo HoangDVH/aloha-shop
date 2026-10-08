@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ShopPageLoader } from "@/components/ShopPageLoader";
+import { afterNavigationClick } from "@/lib/afterNavigationClick";
 
 /** Giữ tối thiểu để tránh nhấp nháy (chuẩn web bán). */
 const MIN_VISIBLE_MS = 280;
@@ -141,7 +142,9 @@ export function ShopGlobalLoading() {
     };
 
     const onClick = (e: MouseEvent) => {
-      if (isInternalNavClick(e)) startNav();
+      afterNavigationClick(e, () => {
+        if (isInternalNavClick(e)) startNav();
+      });
     };
 
     const resetLoading = () => {

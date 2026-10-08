@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { afterNavigationClick } from "@/lib/afterNavigationClick";
 
 const SAFE_MS = 8_000;
 const HIDE_MS = 220;
@@ -74,7 +75,9 @@ export function NavigationProgress() {
     };
 
     const onClick = (e: MouseEvent) => {
-      if (isInternalNavClick(e)) start();
+      afterNavigationClick(e, () => {
+        if (isInternalNavClick(e)) start();
+      });
     };
 
     const onNavStart = () => start();
