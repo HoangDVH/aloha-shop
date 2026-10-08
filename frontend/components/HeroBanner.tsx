@@ -26,6 +26,56 @@ export type HeroSlide = {
   onClick?: (e: React.MouseEvent) => void;
 };
 
+/**
+ * Wrapper thông minh: dùng <a> thông thường khi slide có onClick handler riêng
+ * để tránh Next.js App Router khởi động route transition (startTransition) ngay cả
+ * khi e.preventDefault() được gọi — đây là nguyên nhân gây chậm ~3s khi mở popup.
+ * Với slide điều hướng bình thường vẫn dùng <Link> để hưởng prefetch.
+ */
+function BannerFrame({
+  slide,
+  className,
+  ariaLabel,
+  children,
+}: {
+  slide: HeroSlide;
+  className?: string;
+  ariaLabel?: string;
+  children: React.ReactNode;
+}) {
+  const cls = className ?? "hero-banner__frame block h-full w-full cursor-pointer";
+  const label = ariaLabel ?? slide.cta ?? "Mua ngay";
+
+  if (slide.onClick) {
+    // Dùng <a> thuần túy — e.preventDefault() chắc chắn hoạt động, không kích hoạt router
+    return (
+      <a
+        href={slide.href || "#"}
+        target={slide.target}
+        rel={slide.rel}
+        onClick={slide.onClick}
+        className={cls}
+        aria-label={label}
+      >
+        {children}
+      </a>
+    );
+  }
+
+  const lt = linkTarget(slide.href || "");
+  return (
+    <Link
+      href={slide.href || "/tim"}
+      target={slide.target || lt.target}
+      rel={slide.rel || lt.rel}
+      className={cls}
+      aria-label={label}
+    >
+      {children}
+    </Link>
+  );
+}
+
 /** 4 banner hero — chữ + CTA đã nằm trong ảnh. */
 export const BRAND_BANNERS: HeroSlide[] = [
   {
@@ -186,14 +236,9 @@ export function HeroBanner({
       >
         <div className="hero-banner__full-inner">
           <div className="hero-banner__stage">
-            <Link
-              href={singleSlide.href || "/tim"}
-              {...linkTarget(singleSlide.href || "")}
-              target={singleSlide.target || linkTarget(singleSlide.href || "").target}
-              rel={singleSlide.rel || linkTarget(singleSlide.href || "").rel}
-              onClick={singleSlide.onClick}
-              className="hero-banner__frame block h-full w-full cursor-pointer"
-              aria-label={singleSlide.cta || "Mua ngay"}
+            <BannerFrame
+              slide={singleSlide}
+              ariaLabel={singleSlide.cta || "Mua ngay"}
             >
               <picture className="block h-full w-full">
                 {singleSlide.mobileSrc ? <source media="(max-width: 767px)" srcSet={singleSlide.mobileSrc} /> : null}
@@ -206,7 +251,7 @@ export function HeroBanner({
                   fetchPriority="high"
                 />
               </picture>
-            </Link>
+            </BannerFrame>
 
             {/* Ảnh đã có chữ + CTA — chỉ giữ h1 ẩn cho SEO/a11y */}
             {heading ? (
@@ -237,14 +282,9 @@ export function HeroBanner({
                   className={`embla__slide ${i === selected ? "is-active" : ""}`}
                   key={`${slide.src}-${i}`}
                 >
-                  <Link
-                    href={slide.href || "/tim"}
-                    {...linkTarget(slide.href || "")}
-                    target={slide.target || linkTarget(slide.href || "").target}
-                    rel={slide.rel || linkTarget(slide.href || "").rel}
-                    onClick={slide.onClick}
-                    className="hero-banner__frame block h-full w-full cursor-pointer"
-                    aria-label={slide.cta || "Mua ngay"}
+                  <BannerFrame
+                    slide={slide}
+                    ariaLabel={slide.cta || "Mua ngay"}
                   >
                     <picture className="block h-full w-full">
                       {slide.mobileSrc ? <source media="(max-width: 767px)" srcSet={slide.mobileSrc} /> : null}
@@ -257,7 +297,7 @@ export function HeroBanner({
                         fetchPriority={i === 0 ? "high" : undefined}
                       />
                     </picture>
-                  </Link>
+                  </BannerFrame>
                 </div>
               ))}
             </div>
@@ -288,8 +328,18 @@ export function HeroBanner({
             </h1>
           ) : null}
 
-          {/* Dấu chấm slider nổi trực tiếp ở mép dưới ảnh banner chuẩn Shopee/Apple */}
-          <div className={`hero-banner__controls${items.length > 5 ? " hero-banner__controls--many" : ""}`}>
+          {/* Mobile Shopee / TikTok style fraction badge (e.g. 1/4) in bottom right corner */}
+          <div
+            className="md:hidden absolute right-3 bottom-2.5 z-10 flex items-center justify-center rounded-full bg-black/55 px-2.5 py-0.5 text-[11px] font-bold text-white shadow-xs backdrop-blur-sm pointer-events-none select-none tracking-wider tabular-nums border border-white/20"
+            aria-live="polite"
+          >
+            <span>{selected + 1}</span>
+            <span className="opacity-60 mx-0.5">/</span>
+            <span>{items.length}</span>
+          </div>
+
+          {/* Dấu chấm slider nổi trực tiếp ở mép dưới ảnh banner trên Desktop (ẩn trên Mobile) */}
+          <div className={`hidden md:flex hero-banner__controls${items.length > 5 ? " hero-banner__controls--many" : ""}`}>
             <div
               className="hero-banner__dots"
               role="tablist"

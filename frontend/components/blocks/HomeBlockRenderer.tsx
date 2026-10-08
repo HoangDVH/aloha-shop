@@ -7,7 +7,7 @@ import { HomeLowStockSale } from "@/components/HomeLowStockSale";
 import { HomeArticleSection } from "@/components/HomeArticleSection";
 import { HomeProductSection } from "@/components/HomeProductSection";
 import { HomeTrustShowcase } from "@/components/HomeTrustShowcase";
-import { HomeVisionMission } from "@/components/HomeVisionMission";
+import { HomeGiftSection } from "@/components/gift/HomeGiftSection";
 import { categoryHref, fetchArticles, fetchProducts } from "@/lib/api";
 import type { AppearanceBlock } from "@/lib/appearanceTypes";
 
@@ -235,13 +235,6 @@ export async function renderTopBlocks(blocks: AppearanceBlock[]) {
     );
   }
 
-  // Khối TẦM NHÌN & SỨ MỆNH: Đặt ngay bên dưới banner & thanh cam kết ở đầu trang chủ cho cả desktop lẫn mobile
-  nodes.push(
-    <div key="home-vision-mission-top">
-      <HomeVisionMission />
-    </div>
-  );
-
   const lowStock = showLowStock ? await loadLowStockProducts() : [];
   if (lowStock.length) {
     nodes.push(
@@ -467,9 +460,14 @@ export async function renderHomeMainSections(blocks: AppearanceBlock[] = []) {
 
   const nodes: ReactNode[] = [];
   const rendered = new Set<string>();
+  let renderedGiftSection = false;
   for (const b of ordered) {
     if (b.enabled === false) continue;
     if (b.type === "trust_section") {
+      if (!renderedGiftSection) {
+        nodes.push(<HomeGiftSection key="home-gift-section-above-trust" />);
+        renderedGiftSection = true;
+      }
       nodes.push(<HomeTrustShowcase key={b.id} props={b.props} />);
       continue;
     }
@@ -489,6 +487,9 @@ export async function renderHomeMainSections(blocks: AppearanceBlock[] = []) {
       continue;
     }
     nodes.push(<HomeCustomProductSection key={b.id} props={b.props || {}} />);
+  }
+  if (!renderedGiftSection) {
+    nodes.push(<HomeGiftSection key="home-gift-section-above-trust" />);
   }
   return <>{nodes}</>;
 }

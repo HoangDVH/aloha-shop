@@ -100,23 +100,16 @@ function StatCounter({
   );
 }
 
-/**
- * Khối Tầm Nhìn & Sứ Mệnh (Vision & Mission) phong cách Sắc Xanh Garden:
- * - Phần 1 (TẦM NHÌN): Thiết kế như Ảnh 1 - Serif typography sang trọng, icon lá đối xứng, gạch chân sketch nghệ thuật, họa tiết lá mờ 2 bên trôi nhẹ.
- * - Phần 2 (SỨ MỆNH): Thiết kế như Ảnh 2 - Collage 3 ảnh bo tròn nghệ thuật rounded-3xl + badge nổi "Xưởng sản xuất & Vườn ươm", 2 cam kết khách hàng & đối tác, 4 số liệu lớn, link "Câu chuyện của chúng tôi".
- * - Hiệu ứng cuộn: Scroll reveal mượt mà khi di chuyển lên/xuống (IntersectionObserver data-show="true"/"false").
- */
-export function HomeVisionMission() {
+/** Hook dùng chung để kích hoạt hiệu ứng scroll reveal cho các phần tử .reveal */
+function useScrollReveal() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
 
-    // Scroll reveal observer cho các phần tử có class .reveal
     const targets = el.querySelectorAll<HTMLElement>(".reveal");
 
-    // Khởi tạo trạng thái ban đầu
     targets.forEach((target) => {
       if (!target.hasAttribute("data-show")) {
         target.setAttribute("data-show", "false");
@@ -129,7 +122,6 @@ export function HomeVisionMission() {
           if (entry.isIntersecting) {
             entry.target.setAttribute("data-show", "true");
           } else {
-            // Khi cuộn ra xa khỏi khung nhìn, reset để hiệu ứng kích hoạt lại khi cuộn lên/xuống
             const rect = entry.boundingClientRect;
             if (rect.top > window.innerHeight || rect.bottom < 0) {
               entry.target.setAttribute("data-show", "false");
@@ -148,15 +140,23 @@ export function HomeVisionMission() {
     return () => observer.disconnect();
   }, []);
 
+  return containerRef;
+}
+
+/**
+ * =========================================================================
+ * PHẦN 1: TẦM NHÌN ALOHA (Dùng tại trang Về Aloha /ve-aloha)
+ * =========================================================================
+ */
+export function HomeVisionSection() {
+  const containerRef = useScrollReveal();
+
   return (
     <div ref={containerRef} className="relative w-full overflow-hidden bg-[#FCFAF6] text-slate-800">
-      {/* =========================================================================
-          PHẦN 1: TẦM NHÌN ALOHA (Giao diện giống y chang Ảnh 1 / Sắc Xanh Garden)
-          ========================================================================= */}
       <section
         id="tam-nhin-aloha"
         aria-label="Tầm nhìn Aloha Thế Giới Chậu Cây"
-        className="relative overflow-hidden border-b border-stone-200/60 py-20 sm:py-28 lg:py-32"
+        className="relative overflow-hidden py-16 sm:py-24 lg:py-28"
       >
         {/* Họa tiết nhánh lá vẽ tay mờ trôi nhẹ bên TRÁI */}
         <svg
@@ -279,23 +279,40 @@ export function HomeVisionMission() {
           </div>
         </div>
       </section>
+    </div>
+  );
+}
 
-      {/* =========================================================================
-          PHẦN 2: SỨ MỆNH ALOHA (Giao diện giống y chang Ảnh 2 / Sắc Xanh Garden)
-          ========================================================================= */}
+/**
+ * =========================================================================
+ * PHẦN 2: VỀ ALOHA THẾ GIỚI CHẬU CÂY (Dùng tại Trang Chủ nằm dưới Banner)
+ * =========================================================================
+ */
+export function HomeAboutMissionSection({
+  ctaHref = "/ve-aloha",
+  ctaLabel = "Câu chuyện của chúng tôi",
+}: {
+  ctaHref?: string;
+  ctaLabel?: string;
+} = {}) {
+  const containerRef = useScrollReveal();
+
+  return (
+    <div ref={containerRef} className="relative w-full overflow-hidden bg-[#FCFAF6] text-slate-800">
       <section
-        id="su-menh-aloha"
-        aria-label="Sứ mệnh Aloha Thế Giới Chậu Cây"
-        className="relative overflow-hidden py-20 sm:py-28 lg:py-32"
+        id="ve-aloha-the-gioi-chau-cay"
+        aria-label="Về Aloha Thế Giới Chậu Cây"
+        className="relative overflow-hidden py-14 sm:py-20 lg:py-24"
       >
-        <div className="mx-auto w-full max-w-7xl px-5 sm:px-8 lg:px-12">
-          <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
+        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-14">
             {/* CỘT 1 (Trái): Collage 3 ảnh bo góc rounded-3xl + Badge nổi Xưởng & Vườn */}
             <div className="reveal order-1 lg:order-none" style={{ transitionDelay: "100ms" }}>
               <div className="relative mx-auto max-w-md lg:max-w-none">
                 <div className="grid grid-cols-2 gap-3.5 sm:gap-4">
                   {/* Ảnh 1 dọc bên trái: aspect-[3/4] */}
                   <div className="card-sheen relative overflow-hidden rounded-3xl aspect-[3/4] shadow-md ring-1 ring-black/5 bg-stone-100">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src="/banners/trust/cua-hang-1.webp"
                       alt="Showroom và xưởng chậu Aloha"
@@ -308,6 +325,7 @@ export function HomeVisionMission() {
                   <div className="flex flex-col gap-3.5 sm:gap-4 pt-8 sm:pt-10">
                     {/* Ảnh 2 vuông: aspect-square */}
                     <div className="card-sheen relative overflow-hidden rounded-3xl aspect-square shadow-md ring-1 ring-black/5 bg-stone-100">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src="/banners/trust/cua-hang-2.webp"
                         alt="Cây cảnh xanh tốt tại Aloha"
@@ -317,6 +335,7 @@ export function HomeVisionMission() {
                     </div>
                     {/* Ảnh 3: aspect-[4/5] */}
                     <div className="card-sheen relative overflow-hidden rounded-3xl aspect-[4/5] shadow-md ring-1 ring-black/5 bg-stone-100">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src="/banners/trust/cua-hang-3.webp"
                         alt="Không gian trưng bày xanh Aloha"
@@ -358,7 +377,7 @@ export function HomeVisionMission() {
                 </span>
               </div>
 
-              {/* Tiêu đề gradient - Thu nhỏ kích thước thanh lịch chuẩn Sắc Xanh Garden */}
+              {/* Tiêu đề gradient */}
               <div className="reveal" style={{ transitionDelay: "80ms" }}>
                 <h2 className="font-display-serif max-w-2xl text-2xl sm:text-3xl lg:text-[2.1rem] font-semibold text-slate-900 leading-snug sm:leading-tight tracking-tight">
                   Hơn 8 năm{" "}
@@ -409,7 +428,7 @@ export function HomeVisionMission() {
                 </div>
               </div>
 
-              {/* Lưới 4 chỉ số thống kê nổi bật (Stats Grid) với hiệu ứng số tự nhảy chuẩn Sắc Xanh Garden */}
+              {/* Lưới 4 chỉ số thống kê nổi bật (Stats Grid) với hiệu ứng số tự nhảy */}
               <div className="reveal grid grid-cols-2 gap-x-6 gap-y-6 sm:max-w-md pt-2" style={{ transitionDelay: "320ms" }}>
                 <div>
                   <p className="font-display-serif text-3xl sm:text-4xl lg:text-5xl font-semibold text-emerald-800">
@@ -437,22 +456,34 @@ export function HomeVisionMission() {
                 </div>
               </div>
 
-              {/* Link CTA: Câu chuyện của chúng tôi */}
-              <div className="reveal pt-2" style={{ transitionDelay: "400ms" }}>
-                <Link
-                  href="/ve-aloha"
-                  className="group inline-flex items-center gap-2 font-semibold text-emerald-800 hover:text-emerald-950 text-sm sm:text-base"
-                >
-                  <span className="border-b border-emerald-800/40 pb-0.5 group-hover:border-emerald-900 transition-colors">
-                    Câu chuyện của chúng tôi
-                  </span>
-                  <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" aria-hidden />
-                </Link>
-              </div>
+              {/* Link CTA */}
+              {ctaHref && ctaLabel && (
+                <div className="reveal pt-2" style={{ transitionDelay: "400ms" }}>
+                  <Link
+                    href={ctaHref}
+                    className="group inline-flex items-center gap-2 font-semibold text-emerald-800 hover:text-emerald-950 text-sm sm:text-base"
+                  >
+                    <span className="border-b border-emerald-800/40 pb-0.5 group-hover:border-emerald-900 transition-colors">
+                      {ctaLabel}
+                    </span>
+                    <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" aria-hidden />
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </section>
     </div>
+  );
+}
+
+/** Tương thích ngược: render cả 2 phần nếu cần */
+export function HomeVisionMission() {
+  return (
+    <>
+      <HomeVisionSection />
+      <HomeAboutMissionSection />
+    </>
   );
 }

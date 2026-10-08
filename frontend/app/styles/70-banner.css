@@ -210,8 +210,7 @@
   }
 
   .hero-banner__controls {
-    gap: 0.4rem;
-    min-height: 1.25rem;
+    display: none !important;
   }
 
   .hero-banner__dot {

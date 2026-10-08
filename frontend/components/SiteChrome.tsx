@@ -24,6 +24,8 @@ import {
   Users,
   Stethoscope,
   Briefcase,
+  Gift,
+  Clock,
 } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { fetchCategoryTreeCached, shopApiBase, type ShopCategoryNavNode } from "@/lib/api";
@@ -32,6 +34,9 @@ import { HeaderAccountMenu } from "@/components/HeaderAccountMenu";
 import { CategoryMobileNav } from "@/components/CategoryNavMenu";
 import { CategoryMegaMenu } from "@/components/CategoryMegaMenu";
 import { RecruitmentNavDropdown } from "@/components/RecruitmentNavDropdown";
+import { QuaTangNavDropdown } from "@/components/QuaTangNavDropdown";
+import { FooterFacebookCard } from "@/components/footer/FooterFacebookCard";
+import { FooterGoogleMap } from "@/components/footer/FooterGoogleMap";
 import { applyNavConfig } from "@/lib/navConfig";
 import type { NavConfig, AppearanceTheme } from "@/lib/appearanceTypes";
 import { applyThemeCssVars } from "@/lib/themeCss";
@@ -136,6 +141,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
       return "tuyen-dung";
     if (pathname === "/bai-viet" || pathname.startsWith("/bai-viet/")) return "bai-viet";
     if (pathname === "/ve-aloha" || pathname.startsWith("/ve-aloha/")) return "ve-aloha";
+    if (pathname === "/qua-tang" || pathname.startsWith("/qua-tang/")) return "qua-tang";
     if (pathname === "/bac-si-cay") return "bac-si-cay";
     if (pathname === "/uu-dai" || pathname.startsWith("/uu-dai/")) return "noi-bat-uu-dai";
     if (pathname === "/tim") {
@@ -342,6 +348,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
               [
                 { href: "/", label: "Trang chủ", key: "trang-chu", kind: "link" as const },
                 { kind: "mega" as const, key: "danh-muc" },
+                { kind: "qua-tang" as const, key: "qua-tang" },
                 {
                   href: dealsNavHref,
                   label: "Ưu đãi",
@@ -358,6 +365,13 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                 return (
                   <div key="danh-muc" className="flex shrink-0 items-center">
                     <CategoryMegaMenu tree={navApplied.tree} onNavigate={closeMenus} />
+                  </div>
+                );
+              }
+              if (item.kind === "qua-tang") {
+                return (
+                  <div key="qua-tang" className="flex shrink-0 items-center">
+                    <QuaTangNavDropdown active={navActiveKey === "qua-tang"} onNavigate={closeMenus} />
                   </div>
                 );
               }
@@ -551,6 +565,28 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                       </Link>
 
                       <Link
+                        href="/#goi-y-qua-tang"
+                        onClick={closeMenus}
+                        className="flex items-center justify-between p-3.5 transition-all duration-150 hover:bg-[var(--aloha-cream)]/50 active:bg-emerald-50/70 active:scale-[0.98]"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-500">
+                            <Gift size={18} strokeWidth={2} />
+                          </span>
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-sm font-bold text-[var(--aloha-ink)]">Gợi ý Quà tặng</p>
+                              <span className="rounded-full bg-rose-100 text-rose-700 px-1.5 py-0.5 text-[9.5px] font-bold">
+                                20/10
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-500">Cho nàng, gia đình, khai trương & B2B</p>
+                          </div>
+                        </div>
+                        <ChevronRight size={16} className="text-slate-300" />
+                      </Link>
+
+                      <Link
                         href={dealsNavHref}
                         onClick={closeMenus}
                         className="flex items-center justify-between p-3.5 transition-all duration-150 hover:bg-[var(--aloha-cream)]/50 active:bg-emerald-50/70 active:scale-[0.98]"
@@ -606,12 +642,12 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                         className="flex items-center justify-between p-3.5 transition-all duration-150 hover:bg-[var(--aloha-cream)]/50 active:bg-emerald-50/70 active:scale-[0.98]"
                       >
                         <div className="flex items-center gap-3">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[var(--aloha-green)]">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
                             <Leaf size={18} strokeWidth={2} />
                           </span>
                           <div>
                             <p className="text-sm font-bold text-[var(--aloha-ink)]">Về ALOHA</p>
-                            <p className="text-xs text-slate-500">Thế giới chậu cây & câu chuyện thương hiệu</p>
+                            <p className="text-xs text-slate-500">Quà tặng xanh độc bản, xưởng sản xuất & câu chuyện</p>
                           </div>
                         </div>
                         <ChevronRight size={16} className="text-slate-300" />
@@ -747,82 +783,221 @@ export function SiteFooter() {
     <ZaloFloatButton href={zaloHref(footer.zalo || footer.phone)} />
     <footer
       id="ve-chung-toi"
-      className="relative isolate mt-10 overflow-hidden border-t border-[#e7dfc7] bg-[#FDF6E3] text-[#284d32] md:mt-14"
+      className="relative isolate mt-12 overflow-hidden border-t border-[#deddbd] bg-[#FAF8F5] text-stone-800 md:mt-16"
     >
-      {/* Decorative leaves stay behind the content and never intercept links. */}
+      {/* Họa tiết lá tự nhiên phía sau mờ nhẹ thanh lịch */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/decor/leaves-bl.png" alt="" aria-hidden="true" loading="lazy" width={240} height={240}
-        className="pointer-events-none absolute bottom-0 left-0 -z-10 w-28 opacity-20 sm:w-44 lg:w-60 lg:opacity-35" />
+      <img
+        src="/decor/leaves-bl.png"
+        alt=""
+        aria-hidden="true"
+        loading="lazy"
+        width={240}
+        height={240}
+        className="pointer-events-none absolute bottom-0 left-0 -z-10 w-28 opacity-15 sm:w-44 lg:w-56 lg:opacity-25"
+      />
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/decor/leaves-br.png" alt="" aria-hidden="true" loading="lazy" width={240} height={240}
-        className="pointer-events-none absolute bottom-0 right-0 -z-10 w-28 opacity-20 sm:w-44 lg:w-60 lg:opacity-35" />
-      <div className="mx-auto grid max-w-7xl gap-4 px-4 pb-7 pt-10 sm:grid-cols-2 sm:px-6 sm:pt-14 lg:grid-cols-[1.15fr_1fr_1fr] lg:gap-5">
-        <section aria-label="Thương hiệu và địa chỉ" className="min-w-0 rounded-3xl border border-white/60 bg-white/45 p-6 sm:col-span-2 sm:p-8 lg:col-span-1">
-          <Link href="/" aria-label={`${siteName} — Trang chủ`} className="inline-block rounded-lg text-[#284d32] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-green-800">
-            <span className="flex items-start gap-1.5 font-serif text-5xl font-semibold leading-none tracking-[0.04em] sm:text-6xl">
-              ALOHA<Leaf size={23} strokeWidth={1.6} className="mt-0.5 shrink-0" aria-hidden />
-            </span>
-            <span className="mt-3 block text-xs font-medium tracking-[0.17em] sm:text-sm">THẾ GIỚI CHẬU CÂY</span>
-          </Link>
-          <address className="mt-7 flex items-start gap-3 text-sm not-italic leading-7 text-stone-600">
-            <MapPin size={23} strokeWidth={1.7} className="mt-0.5 shrink-0 text-[#456a43]" aria-hidden />
-            <span>{footer.address}</span>
-          </address>
-        </section>
-        <section aria-labelledby="footer-contact-title" className="min-w-0 rounded-3xl border border-white/60 bg-white/45 p-6 sm:p-8">
-          <h2 id="footer-contact-title" className="flex items-center gap-3 text-xl font-bold">
-            <Leaf size={25} strokeWidth={1.7} aria-hidden />Liên hệ
-          </h2>
-          <div className="ml-9 mt-3 h-0.5 w-11 bg-[#d8dfbf]" />
-          <div className="mt-6 flex items-center gap-3">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#e9ecd5]"><Phone size={23} strokeWidth={1.7} aria-hidden /></span>
-            <div className="min-w-0">
-              <p className="text-sm text-stone-600">Zalo / Điện thoại:</p>
-              <a href={zaloHref(footer.zalo || footer.phone)} target="_blank" rel="noopener noreferrer"
-                className="inline-flex min-h-11 items-center text-lg font-semibold text-[#2e7139] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
-                {footer.phone || footer.zalo}
-              </a>
+      <img
+        src="/decor/leaves-br.png"
+        alt=""
+        aria-hidden="true"
+        loading="lazy"
+        width={240}
+        height={240}
+        className="pointer-events-none absolute bottom-0 right-0 -z-10 w-28 opacity-15 sm:w-44 lg:w-56 lg:opacity-25"
+      />
+
+      {/* Lưới 4 cột phẳng liền mạch (Seamless 4-Column Grid) chuẩn quốc tế */}
+      <div className="mx-auto max-w-7xl px-4 pt-12 pb-10 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-12 lg:gap-8">
+          {/* CỘT 1 (lg:col-span-4): THƯƠNG HIỆU & PHÁP LÝ DOANH NGHIỆP */}
+          <div className="lg:col-span-4 flex flex-col justify-between">
+            <div>
+              <Link href="/" aria-label={`${siteName} — Trang chủ`} className="inline-block text-[#0E5242]">
+                <span className="flex items-start gap-1.5 font-serif text-3xl font-semibold leading-none tracking-[0.03em] sm:text-4xl text-[#0E5242]">
+                  ALOHA<Leaf size={18} strokeWidth={1.8} className="mt-0.5 shrink-0 text-[var(--aloha-green)]" aria-hidden />
+                </span>
+                <span className="mt-2 block text-xs font-bold tracking-[0.18em] text-stone-600">THẾ GIỚI CHẬU CÂY</span>
+              </Link>
+
+              <p className="mt-3.5 text-xs sm:text-[13px] leading-relaxed text-stone-600 max-w-sm">
+                Xưởng sản xuất chậu cây &amp; vườn ươm cây cảnh thuần dưỡng. Kiến tạo không gian sống trong lành, thẩm mỹ cho gia đình &amp; văn phòng Việt.
+              </p>
+
+              {/* Thông tin liên hệ nhanh dạng list icon mảnh thanh lịch */}
+              <div className="mt-5 space-y-2.5 text-xs sm:text-[13px] text-stone-700">
+                <div className="flex items-start gap-2.5">
+                  <MapPin size={16} strokeWidth={2} className="mt-0.5 shrink-0 text-[var(--aloha-green)]" aria-hidden />
+                  <span className="leading-snug">{footer.address}</span>
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  <Phone size={15} strokeWidth={2} className="shrink-0 text-[var(--aloha-green)]" aria-hidden />
+                  <span className="text-stone-500">Hotline:</span>
+                  <a
+                    href={zaloHref(footer.zalo || footer.phone)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-bold text-[#0E5242] hover:underline"
+                  >
+                    {footer.phone || footer.zalo} (Zalo)
+                  </a>
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  <Clock size={15} strokeWidth={2} className="shrink-0 text-[var(--aloha-green)]" aria-hidden />
+                  <span className="text-stone-500">Mở cửa:</span>
+                  <span>08:00 – 18:30 (Thứ 2 – Chủ Nhật)</span>
+                </div>
+
+                {footer.email && (
+                  <div className="flex items-center gap-2.5">
+                    <Mail size={15} strokeWidth={2} className="shrink-0 text-[var(--aloha-green)]" aria-hidden />
+                    <span className="text-stone-500">Email:</span>
+                    <a href={`mailto:${footer.email}`} className="truncate hover:underline text-stone-700">
+                      {footer.email}
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Thông tin pháp lý GPKD gom gọn tại đáy Cột 1 */}
+            <div className="mt-6 pt-4 border-t border-stone-200/80 text-[11.5px] text-stone-500 leading-relaxed">
+              <p className="font-semibold text-stone-700 uppercase">HỘ KINH DOANH ALOHA</p>
+              <p className="mt-0.5">GPKD: 41N8043688 • UBND Q.Tân Bình, TP.HCM cấp</p>
             </div>
           </div>
-          {footer.email && (
-            <div className="mt-4 flex items-center gap-3">
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#e9ecd5]"><Mail size={23} strokeWidth={1.7} aria-hidden /></span>
-              <a href={`mailto:${footer.email}`} className="flex min-h-11 min-w-0 items-center break-all text-sm font-semibold text-[#2e7139] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
-                {footer.email}
-              </a>
-            </div>
-          )}
-        </section>
-        <nav aria-labelledby="footer-shopping-title" className="min-w-0 rounded-3xl border border-white/60 bg-white/45 p-6 sm:p-8">
-          <h2 id="footer-shopping-title" className="flex items-center gap-3 text-xl font-bold">
-            <ShoppingBag size={25} strokeWidth={1.7} aria-hidden />Mua sắm
-          </h2>
-          <div className="ml-9 mt-3 h-0.5 w-11 bg-[#d8dfbf]" />
-          <ul className="mt-4 divide-y divide-[#e7dfc7]/60">
-            {[
-              { href: "/tim", label: "Tất cả sản phẩm", icon: LayoutGrid },
-              { href: dealsNavHref, label: "Ưu đãi", icon: BadgePercent },
-              { href: "/ve-aloha", label: "Về Aloha", icon: UserRound },
-              { href: "/bai-viet", label: "Bài viết", icon: FileText },
-              { href: "/bac-si-cay", label: "Bác sĩ cây cảnh", icon: Stethoscope },
-              { href: "/tuyen-dung", label: "Tuyển dụng", icon: Briefcase },
-            ].map(({ href, label, icon: Icon }) => (
-              <li key={href}>
-                <Link href={href} className="group flex min-h-12 items-center gap-3 rounded-md py-2 text-sm text-stone-600 transition hover:text-[#2e7139] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-800">
-                  <Icon size={21} strokeWidth={1.7} className="shrink-0 text-[#456a43]" aria-hidden />
-                  <span>{label}</span>
-                  <ChevronRight size={17} className="ml-auto shrink-0 text-[#65845a] transition-transform group-hover:translate-x-0.5" aria-hidden />
+
+          {/* CỘT 2 (lg:col-span-2): KHÁM PHÁ & QUÀ TẶNG */}
+          <div className="lg:col-span-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-stone-900 pb-2.5 border-b border-stone-200/80">
+              Khám phá &amp; Quà tặng
+            </h3>
+            <ul className="mt-3.5 space-y-2 text-xs sm:text-[13px]">
+              <li>
+                <Link href="/qua-tang/doanh-nghiep" className="text-stone-600 hover:text-[var(--aloha-green)] transition-colors block py-0.5">
+                  Quà tặng doanh nghiệp (B2B)
                 </Link>
               </li>
-            ))}
-          </ul>
-        </nav>
-      </div>
-      <div className="mx-auto max-w-7xl px-4 pb-7 sm:px-6">
-        <div className="flex items-center gap-5" aria-hidden="true">
-          <span className="h-px flex-1 bg-[#deddbd]" /><Leaf size={23} strokeWidth={1.6} className="text-[#789461]" /><span className="h-px flex-1 bg-[#deddbd]" />
+              <li>
+                <Link href="/qua-tang" className="text-stone-600 hover:text-[var(--aloha-green)] transition-colors block py-0.5">
+                  Bộ sưu tập quà tặng độc bản
+                </Link>
+              </li>
+              <li>
+                <Link href="/ve-aloha" className="text-stone-600 hover:text-[var(--aloha-green)] transition-colors block py-0.5">
+                  Về Aloha &amp; Tầm nhìn xanh
+                </Link>
+              </li>
+              <li>
+                <Link href="/ve-aloha#nang-luc-cung-ung" className="text-stone-600 hover:text-[var(--aloha-green)] transition-colors block py-0.5">
+                  Dự án &amp; Xưởng sản xuất
+                </Link>
+              </li>
+              <li>
+                <Link href="/bac-si-cay" className="text-stone-600 hover:text-[var(--aloha-green)] transition-colors block py-0.5">
+                  Bác sĩ cây cảnh AI (Cẩm nang)
+                </Link>
+              </li>
+              <li>
+                <Link href="/bai-viet" className="text-stone-600 hover:text-[var(--aloha-green)] transition-colors block py-0.5">
+                  Tin tức &amp; Kinh nghiệm làm vườn
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* CỘT 3 (lg:col-span-3): CHÍNH SÁCH & HỖ TRỢ */}
+          <div className="lg:col-span-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-stone-900 pb-2.5 border-b border-stone-200/80">
+              Chính sách &amp; Hỗ trợ
+            </h3>
+            <ul className="mt-3.5 space-y-2 text-xs sm:text-[13px]">
+              <li>
+                <Link href="/ve-aloha#gia-tri-cot-loi" className="text-stone-600 hover:text-[var(--aloha-green)] transition-colors block py-0.5">
+                  Cam kết bảo hành &amp; đổi trả cây
+                </Link>
+              </li>
+              <li>
+                <Link href="/ve-aloha#nang-luc-cung-ung" className="text-stone-600 hover:text-[var(--aloha-green)] transition-colors block py-0.5">
+                  Quy trình đóng gói &amp; giao an toàn
+                </Link>
+              </li>
+              <li>
+                <Link href={dealsNavHref} className="text-stone-600 hover:text-[var(--aloha-green)] transition-colors block py-0.5">
+                  Kho voucher &amp; Ưu đãi tháng
+                </Link>
+              </li>
+              <li>
+                <a
+                  href={zaloHref(footer.zalo || footer.phone)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-stone-600 hover:text-[var(--aloha-green)] transition-colors block py-0.5"
+                >
+                  Báo giá sỉ cho công ty &amp; dự án
+                </a>
+              </li>
+            </ul>
+
+            <div className="mt-5 rounded-2xl bg-emerald-50/70 border border-emerald-800/10 p-3 text-[11.5px] text-emerald-950 leading-relaxed">
+              <span className="font-bold text-emerald-900">Hỗ trợ doanh nghiệp:</span> Cung cấp hóa đơn VAT hợp lệ, hợp đồng &amp; chiết khấu quà tặng sự kiện.
+            </div>
+          </div>
+
+          {/* CỘT 4 (lg:col-span-3): SHOWROOM & KẾT NỐI */}
+          <div className="lg:col-span-3 flex flex-col gap-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-stone-900 pb-2.5 border-b border-stone-200/80">
+              Showroom &amp; Kết nối
+            </h3>
+
+            {/* Bản đồ Google Maps tinh gọn */}
+            <FooterGoogleMap
+              address={footer.address}
+              directMapUrl="https://www.google.com/maps/search/?api=1&query=Aloha+Th%E1%BA%BF+Gi%E1%BB%9Bi+Ch%E1%BA%ADu+C%C3%A2y,+90/2+Nguy%E1%BB%85n+Ph%C3%BAc+Chu,+T%C3%A2n+B%C3%ACnh"
+            />
+
+            {/* Fanpage Facebook thẻ tinh gọn */}
+            <FooterFacebookCard
+              pageUrl="https://www.facebook.com/share/19iQ1PMqpx/?mibextid=wwXIfr"
+              pageName="Aloha Thế Giới Chậu Cây"
+            />
+          </div>
         </div>
-        <p className="mt-3 text-center text-xs leading-6 text-stone-600">© {new Date().getFullYear()} {siteName}</p>
+      </div>
+
+      {/* TẦNG ĐÁY (Bottom Bar): Bản quyền & Mạng xã hội */}
+      <div className="border-t border-stone-200/80 bg-white/40">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 py-5 sm:flex-row sm:px-6 lg:px-8">
+          <p className="text-center text-xs text-stone-500 sm:text-left">
+            © {new Date().getFullYear()} {siteName}. Xưởng sản xuất chậu cây &amp; cây cảnh phong thủy.
+          </p>
+
+          <div className="flex items-center gap-4 text-xs font-medium text-stone-600">
+            <a
+              href="https://www.facebook.com/share/19iQ1PMqpx/?mibextid=wwXIfr"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-[#1877F2] transition-colors"
+            >
+              Facebook
+            </a>
+            <span className="text-stone-300">•</span>
+            <a
+              href={zaloHref(footer.zalo || footer.phone)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-[var(--aloha-green)] transition-colors"
+            >
+              Zalo OA
+            </a>
+            <span className="text-stone-300">•</span>
+            <Link href="/ve-aloha" className="hover:text-[var(--aloha-green)] transition-colors">
+              Về Aloha
+            </Link>
+          </div>
+        </div>
       </div>
     </footer>
     </>

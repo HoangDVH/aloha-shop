@@ -41,6 +41,10 @@ const CLIENT_METADATA: Record<
     location: string;
     gridCls: string;
     titleCls?: string;
+    /** Thẻ cao hẹp dưới lg nhưng ảnh ngang: hiện trọn ảnh trên nền mờ của chính nó thay vì cắt. */
+    fitTallBelowLg?: boolean;
+    /** Bản ảnh dọc riêng cho thẻ cao dưới lg; chỉ dùng khi ảnh thẻ vẫn là `forImage` (admin chưa thay ảnh). */
+    tallImageBelowLg?: { forImage: string; src: string };
   }
 > = {
   bidv: {
@@ -60,6 +64,11 @@ const CLIENT_METADATA: Record<
     location: "Bình Dương",
     gridCls: "col-span-1 row-span-2 lg:col-span-2 lg:row-span-1",
     titleCls: "text-xs sm:text-base md:text-lg",
+    fitTallBelowLg: true,
+    tallImageBelowLg: {
+      forImage: "/banners/trust/don-phan-vu.webp",
+      src: "/banners/trust/don-phan-vu-mobile.webp",
+    },
   },
   "eco-retreat": {
     badge: "Bất động sản",
@@ -99,29 +108,6 @@ const CLIENT_METADATA: Record<
   },
 };
 
-const SERVICE_CONFIGS = [
-  {
-    icon: Palette,
-    badgeColor: "text-amber-600",
-    defaultTitle: "In logo chậu & túi quà theo yêu cầu",
-    defaultDesc:
-      "Thiết kế mockup mẫu miễn phí, in sắc nét, bền màu theo nhận diện thương hiệu.",
-  },
-  {
-    icon: Gift,
-    badgeColor: "text-amber-600",
-    defaultTitle: "Gói quà trọn bộ & thiệp chúc mừng",
-    defaultDesc:
-      "Kèm túi đựng, thiệp, nơ, giấy gói, chủ đề đa dạng (phù hợp sinh nhật, khai trương, tri ân...).",
-  },
-  {
-    icon: Truck,
-    badgeColor: "text-amber-600",
-    defaultTitle: "Cung cấp đơn hàng số lượng lớn",
-    defaultDesc:
-      "Chậu theo concept, giao hàng nhanh, đóng gói đồng bộ, chiết khấu doanh nghiệp tốt nhất.",
-  },
-];
 
 export function HomeTrustShowcase({ props }: { props?: Record<string, unknown> }) {
   const data = useMemo(() => parseTrustProps(props), [props]);
@@ -137,10 +123,7 @@ export function HomeTrustShowcase({ props }: { props?: Record<string, unknown> }
     const idMap = new Map(raw.map((c) => [c.id, c]));
     return DEFAULT_TRUST_PROPS.clients.map((fallback) => idMap.get(fallback.id) || fallback);
   }, [data.clients]);
-  const activeServices = useMemo(
-    () => (data.services || []).filter((s) => s.enabled !== false),
-    [data.services]
-  );
+
   // Ảnh không gian showroom & vườn ươm (kind !== 'customer')
   const activeStoreGallery = useMemo(
     () =>
@@ -226,24 +209,7 @@ export function HomeTrustShowcase({ props }: { props?: Record<string, unknown> }
   const posRef = useRef(0);
   const lastTimeRef = useRef<number | null>(null);
 
-  // Điều khiển dải trượt 3 thẻ dịch vụ quà tặng trên mobile (Snap Carousel chuẩn Apple/Shopee)
-  const [activeServiceIdx, setActiveServiceIdx] = useState(0);
-  const serviceScrollRef = useRef<HTMLDivElement>(null);
 
-  const handleServiceScroll = () => {
-    if (!serviceScrollRef.current) return;
-    const el = serviceScrollRef.current;
-    const cardWidth = el.firstElementChild ? (el.firstElementChild as HTMLElement).offsetWidth + 16 : 280;
-    const idx = Math.round(el.scrollLeft / cardWidth);
-    setActiveServiceIdx(Math.max(0, Math.min(activeServices.length - 1, idx)));
-  };
-
-  const scrollToService = (idx: number) => {
-    if (!serviceScrollRef.current) return;
-    const el = serviceScrollRef.current;
-    const cardWidth = el.firstElementChild ? (el.firstElementChild as HTMLElement).offsetWidth + 16 : 280;
-    el.scrollTo({ left: idx * cardWidth, behavior: "smooth" });
-  };
 
   // Gộp cả 2 nguồn ảnh: Không gian vườn ươm (Store) & Khách hàng thực tế (Customer) xen kẽ nhau
   const combinedGallery = useMemo(() => {
@@ -428,12 +394,11 @@ export function HomeTrustShowcase({ props }: { props?: Record<string, unknown> }
     revealElements.forEach((el) => observer.observe(el));
 
     return () => observer.disconnect();
-  }, [activeClients, activeServices, combinedGallery]);
+  }, [activeClients, combinedGallery]);
 
   // Nếu không có mục nào, ẩn khối
   const totalCount =
     activeClients.length +
-    activeServices.length +
     activeStoreGallery.length +
     activeCustomerGallery.length;
   if (totalCount === 0) return null;
@@ -512,6 +477,11 @@ export function HomeTrustShowcase({ props }: { props?: Record<string, unknown> }
               titleCls: "text-xs sm:text-base",
             };
             const delay = (idx % 6) * 80;
+            const tallSrc =
+              meta.tallImageBelowLg && meta.tallImageBelowLg.forImage === client.imageUrl
+                ? meta.tallImageBelowLg.src
+                : null;
+            const fitTall = meta.fitTallBelowLg && !tallSrc;
             return (
               <div
                 key={client.id}
@@ -523,13 +493,28 @@ export function HomeTrustShowcase({ props }: { props?: Record<string, unknown> }
                   onClick={() => openLightbox(activeClients, idx, "Dự án doanh nghiệp tiêu biểu")}
                   className="card-sheen group relative size-full rounded-2xl sm:rounded-3xl overflow-hidden bg-stone-900 border border-stone-200/80 hover:border-emerald-500/50 hover:ring-1 hover:ring-emerald-400/30 shadow-[0_4px_20px_rgba(0,0,0,0.06)] hover:shadow-[0_24px_50px_-12px_rgba(28,76,64,0.3),0_12px_24px_-8px_rgba(0,0,0,0.15)] hover:-translate-y-2 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer flex flex-col justify-between"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={client.imageUrl}
-                    alt={client.title}
-                    loading="lazy"
-                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
-                  />
+                  {fitTall ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={client.imageUrl}
+                      alt=""
+                      aria-hidden
+                      loading="lazy"
+                      className="absolute inset-0 h-full w-full scale-110 object-cover blur-xl brightness-90 lg:hidden"
+                    />
+                  ) : null}
+                  <picture className="absolute inset-0">
+                    {tallSrc ? <source media="(max-width: 1023px)" srcSet={tallSrc} /> : null}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={client.imageUrl}
+                      alt={client.title}
+                      loading="lazy"
+                      className={`absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04] ${
+                        fitTall ? "max-lg:object-contain max-lg:object-[50%_38%]" : ""
+                      }`}
+                    />
+                  </picture>
 
                   {/* Gradient bóng đêm ngả xanh rêu chuẩn organic - làm nổi bật chữ khi hover */}
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0e241f]/95 via-[#0e241f]/35 to-black/20 pointer-events-none transition-all duration-500 group-hover:from-[#071814]/98 group-hover:via-[#0e241f]/45" />
@@ -573,127 +558,8 @@ export function HomeTrustShowcase({ props }: { props?: Record<string, unknown> }
           })}
         </div>
 
-        {/* =========================================================================
-            MỤC 2: DỊCH VỤ QUÀ TẶNG DOANH NGHIỆP (KHÔNG KHUNG NGOÀI)
-           ========================================================================= */}
-        <div className="mb-16 sm:mb-20 md:mb-24">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 sm:mb-10 gap-4">
-            <div className="flex flex-col gap-2.5 max-w-2xl">
-              <div data-show="false" className="reveal" style={{ transitionDelay: "0ms" }}>
-                <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-[#B45309]">
-                  <span className="h-px w-6 bg-[#B45309]/60" aria-hidden="true" />
-                  <span>DỊCH VỤ QUÀ TẶNG DOANH NGHIỆP</span>
-                </span>
-              </div>
-              <div data-show="false" className="reveal" style={{ transitionDelay: "80ms" }}>
-                <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-stone-900 tracking-tight leading-tight">
-                  Giải pháp quà tặng cây xanh trọn gói
-                </h3>
-              </div>
-              <div data-show="false" className="reveal" style={{ transitionDelay: "160ms" }}>
-                <p className="text-xs sm:text-sm md:text-base text-stone-600 leading-relaxed">
-                  Hỗ trợ trọn bộ từ khâu thiết kế tem logo thương hiệu, gói quà trang trọng đến đóng gói giao tận nơi đúng tiến độ cam kết.
-                </p>
-              </div>
-            </div>
-            <div data-show="false" className="reveal shrink-0 self-start sm:self-end" style={{ transitionDelay: "120ms" }}>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50/90 border border-amber-200/90 px-3.5 py-1.5 text-xs font-bold text-amber-900 shadow-2xs">
-                <Gift size={13} className="text-amber-700" />
-                <span>Phục vụ từ 10 đến 1.000+ chậu cây</span>
-              </span>
-            </div>
-          </div>
-
-          {/* Lưới 3 Thẻ Dịch vụ quà tặng:
-              - Mobile (< md): Dải cuộn ngang Snap Carousel (w-[82vw] max-w-[310px]) có peek hint, không bị kéo dài trang
-              - Desktop (md+): Grid 3 cột thu gọn max-w-5xl mx-auto, ảnh vuông vừa vặn thanh lịch
-          */}
-          <div className="max-w-5xl mx-auto">
-            <div
-              ref={serviceScrollRef}
-              onScroll={handleServiceScroll}
-              className="flex md:grid md:grid-cols-3 gap-4 sm:gap-5 lg:gap-6 overflow-x-auto md:overflow-visible snap-x snap-mandatory no-scrollbar -mx-4 px-4 md:mx-0 md:px-0 py-2"
-              style={{ WebkitOverflowScrolling: "touch" }}
-            >
-              {activeServices.map((service, idx) => {
-                const cfg = SERVICE_CONFIGS[idx] || SERVICE_CONFIGS[0];
-                const badges = [
-                  { tag: "0đ PHÍ THIẾT KẾ", bg: "bg-emerald-50 text-emerald-800 border-emerald-200" },
-                  { tag: "CHỈN CHU TRỌN GÓI", bg: "bg-amber-50 text-amber-800 border-amber-200" },
-                  { tag: "CHIẾT KHẤU CAO & VAT", bg: "bg-blue-50 text-blue-800 border-blue-200" },
-                ];
-                const badge = badges[idx] || badges[0];
-                const delay = idx * 100;
-                return (
-                  <div
-                    key={service.id}
-                    data-show="false"
-                    style={{ transitionDelay: `${delay}ms` }}
-                    className="reveal w-[82vw] max-w-[310px] md:w-auto md:max-w-none shrink-0 snap-center flex flex-col"
-                  >
-                    <div
-                      onClick={() => openLightbox(activeServices, idx, "Giải pháp quà tặng doanh nghiệp")}
-                      className="card-sheen group bg-white/95 hover:bg-white border border-[#E7DFD3] hover:border-[#1C4C40]/50 rounded-2xl sm:rounded-3xl p-4 sm:p-5 transition-all duration-500 cursor-pointer shadow-xs hover:shadow-xl hover:-translate-y-1.5 flex flex-col justify-between h-full"
-                    >
-                      <div>
-                        {/* Ảnh dịch vụ - Tỷ lệ vuông 1:1 (aspect-square) */}
-                        <div className="relative aspect-square w-full overflow-hidden rounded-xl sm:rounded-2xl bg-stone-100 border border-stone-200/90 mb-3.5 sm:mb-4">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={service.imageUrl}
-                            alt={service.title}
-                            loading="lazy"
-                            className="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-108"
-                          />
-                          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/95 text-stone-900 px-3 py-1.5 text-xs font-bold shadow-md">
-                              <ZoomIn size={14} /> Phóng to HD
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Badge */}
-                        <span className={`inline-flex items-center text-[10px] sm:text-[10.5px] font-extrabold px-2.5 py-0.5 rounded-lg border mb-2 whitespace-nowrap ${badge.bg}`}>
-                          {badge.tag}
-                        </span>
-
-                        <h4 className="text-sm sm:text-base md:text-lg font-bold text-stone-900 group-hover:text-[#1C4C40] transition-colors leading-snug line-clamp-2">
-                          {service.title || cfg.defaultTitle}
-                        </h4>
-
-                        <p className="mt-1.5 text-xs sm:text-sm text-stone-600 leading-relaxed line-clamp-3">
-                          {service.caption || cfg.defaultDesc}
-                        </p>
-                      </div>
-
-                      <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-xs font-bold text-[#1C4C40]">
-                        <span>Xem ảnh thực tế</span>
-                        <ChevronRight size={15} className="group-hover:translate-x-1 transition-transform" />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Chỉ báo Dots trên Mobile (3 chấm chỉ vị trí thẻ đang xem) */}
-            <div className="flex md:hidden items-center justify-center gap-1.5 mt-3.5">
-              {activeServices.map((service, idx) => (
-                <button
-                  key={service.id}
-                  type="button"
-                  onClick={() => scrollToService(idx)}
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    activeServiceIdx === idx
-                      ? "w-6 bg-[#1C4C40]"
-                      : "w-1.5 bg-stone-300 hover:bg-stone-400"
-                  }`}
-                  aria-label={`Xem dịch vụ ${idx + 1}`}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
+        {/* Khoảng đệm giữa Dự án tiêu biểu và Không gian vườn ươm */}
+        <div className="mb-10 sm:mb-14" />
 
         {/* =========================================================================
             MỤC 3: KHÔNG GIAN VƯỜN ƯƠM & KHÁCH HÀNG THỰC TẾ (REEL PHIM LIÊN HOÀN)

@@ -303,14 +303,9 @@
     height: 100%;
   }
 
-  .hero-banner--full .hero-banner__controls {
-    bottom: 0.5rem;
-    padding: 0.18rem 0.5rem;
-    background: rgba(0, 0, 0, 0.32);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    min-height: 0;
+  .hero-banner--full .hero-banner__controls,
+  .hero-banner__controls {
+    display: none !important;
   }
 
   /* Mobile vuốt để chuyển slide — bỏ mũi tên cho gọn. */

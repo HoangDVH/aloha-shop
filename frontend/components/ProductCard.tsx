@@ -221,7 +221,7 @@ function ProductCardDefault({
     >
       <div className="relative">
         <Link
-          href={product.path}
+          href={product.path || (product.ma ? `/tim?q=${encodeURIComponent(product.ma)}` : "#")}
           onClick={markPending}
           className={`relative block aspect-square w-full overflow-hidden bg-neutral-50 ${
             navPending ? "cursor-wait" : ""
@@ -287,7 +287,7 @@ function ProductCardDefault({
 
       <div className={`flex flex-1 flex-col ${shopee ? "gap-1 p-2 sm:p-2.5" : "gap-1.5 p-2.5 sm:p-3"}`}>
         <Link
-          href={product.path}
+          href={product.path || (product.ma ? `/tim?q=${encodeURIComponent(product.ma)}` : "#")}
           onClick={markPending}
           className={`line-clamp-2 font-medium leading-snug text-neutral-800 transition-colors group-hover:text-[var(--aloha-green)] ${
             shopee

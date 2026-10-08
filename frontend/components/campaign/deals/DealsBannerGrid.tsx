@@ -104,12 +104,33 @@ function SideBanner({
         }
       : undefined;
 
+  if (action === "voucher") {
+    return (
+      <a
+        href={href}
+        onClick={handleClick}
+        className="relative block aspect-[2/1] overflow-hidden rounded-xl bg-[#f7faf5] lg:aspect-auto lg:h-full lg:w-full min-h-0 cursor-pointer"
+        aria-label="Nhận voucher"
+      >
+        <picture className="block h-full w-full">
+          {banner.mobileImageUrl ? <source media="(max-width: 767px)" srcSet={banner.mobileImageUrl} /> : null}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={banner.imageUrl}
+            alt={banner.alt || "Nhận voucher"}
+            className="h-full w-full object-cover"
+            loading="lazy"
+          />
+        </picture>
+      </a>
+    );
+  }
+
   return (
     <Link
       href={href}
       target={target}
       rel={rel}
-      onClick={handleClick}
       className="relative block aspect-[2/1] overflow-hidden rounded-xl bg-[#f7faf5] lg:aspect-auto lg:h-full lg:w-full min-h-0 cursor-pointer"
     >
       <picture className="block h-full w-full">
@@ -117,7 +138,7 @@ function SideBanner({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={banner.imageUrl}
-          alt={banner.alt || (action === "zalo" ? "Tư vấn Zalo" : action === "voucher" ? "Nhận voucher" : "Ưu đãi")}
+          alt={banner.alt || (action === "zalo" ? "Tư vấn Zalo" : "Ưu đãi")}
           className="h-full w-full object-cover"
           loading="lazy"
         />

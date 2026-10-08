@@ -39,6 +39,8 @@ import { registerShopCommissionAdminRoutes } from './shopOrders/commissionAdminR
 import { registerShopOrdersAdminRoutes } from './shopOrders/adminRoutes.js';
 import { registerShopPromotionsRoutes } from './shopPromotions/index.js';
 import { registerShopCampaignRoutes } from './shopCampaigns/index.js';
+import { registerShopGiftRoutes } from './shopGifts/index.js';
+import { registerShopInquiryRoutes } from './shopInquiries/index.js';
 import { registerShopAdminOpsRoutes } from './shopOrders/adminOpsStream.js';
 import { registerKvInvoiceWebhookRoutes } from './shopOrders/kvInvoiceWebhook.js';
 import { startKvDeliveryReconcile } from './shopOrders/kvDeliveryReconcile.js';
@@ -222,6 +224,7 @@ if (uploadsFallbackOrigin) {
 
 // Staff auth (ops DB) + shop storefront + admin
 registerAuthRoutes(app, getOpsDb);
+registerShopInquiryRoutes(app, getOpsDb, getDb);
 registerShopApi(app, getDb, getDb, getCatalogSourceDb);
 registerShopAuthRoutes(app, getDb);
 registerWholesaleRoutes(app, getDb, getOpsDb);
@@ -247,6 +250,7 @@ registerShopCommissionAdminRoutes(app, getOpsDb, getDb);
 registerShopOrdersAdminRoutes(app, getOpsDb, getDb);
 registerShopPromotionsRoutes(app, getOpsDb, getDb);
 registerShopCampaignRoutes(app, getOpsDb, getDb);
+registerShopGiftRoutes(app, getOpsDb, getDb);
 registerShopAdminOpsRoutes(app, getOpsDb, getDb);
 /** KV: CK mark-paid + COD/CK delivery → shop orderStatus → HH khi hoan_thanh */
 registerKvInvoiceWebhookRoutes(app, getDb, getOpsDb);
