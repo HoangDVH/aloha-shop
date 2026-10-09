@@ -69,6 +69,7 @@ export function toAdmin(doc: ShopArticleDoc & { _id?: unknown }) {
 }
 
 export function toPublicList(doc: ShopArticleDoc & { _id?: unknown }) {
+  const videoUrl = String(doc.videoUrl || "").trim();
   return {
     id: idStr(doc),
     title: doc.title || "",
@@ -78,6 +79,8 @@ export function toPublicList(doc: ShopArticleDoc & { _id?: unknown }) {
     excerpt: doc.excerpt || "",
     publishedAt: doc.publishedAt || "",
     updatedAt: doc.updatedAt || "",
+    videoUrl: videoUrl || undefined,
+    hasVideo: Boolean(videoUrl),
   };
 }
 

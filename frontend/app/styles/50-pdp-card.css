@@ -35,7 +35,7 @@
   display: flex;
   justify-content: flex-end;
   align-items: flex-end;
-  margin-top: 0.35rem;
+  margin-top: 0;
   opacity: 1;
   transform: none;
   transition:
@@ -43,7 +43,7 @@
     transform 0.18s ease;
 }
 
-@media (hover: hover) and (pointer: fine) {
+@media (min-width: 640px) and (hover: hover) and (pointer: fine) {
   .product-card__add-wrap {
     opacity: 0;
     transform: translateY(4px);
@@ -89,4 +89,13 @@
 
 .product-card__add-label {
   display: none;
+}
+
+/* Touch target for mobile aligned compactly beside price */
+@media (max-width: 639px), (pointer: coarse) {
+  .product-card__add {
+    width: 2.25rem;
+    height: 2.25rem;
+    min-height: 2.25rem;
+  }
 }

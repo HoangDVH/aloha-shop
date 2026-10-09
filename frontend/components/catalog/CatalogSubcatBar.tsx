@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { CatalogChipRow } from "./CatalogChipRow";
 import {
   useEffect,
   useMemo,
@@ -9,7 +10,6 @@ import {
 } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { X } from "lucide-react";
-import { CatalogMobileCategories, type MobileCategoryGroup } from "./CatalogMobileCategories";
 import {
   fetchCategoryTree,
   type ShopCategoryNavNode,
@@ -89,7 +89,7 @@ function danhMucHref(
   slug: string,
   ids: number[],
   sp: URLSearchParams,
-  opts?: { keepFilters?: boolean }
+  opts: { keepFilters?: boolean } = { keepFilters: true }
 ): string {
   const next = opts?.keepFilters
     ? new URLSearchParams(sp.toString())
@@ -240,12 +240,13 @@ function SelectedChip({
   return (
     <Link
       href={clearHref}
+      data-always-visible
       scroll={false}
       onClick={() => {
         markPinCatalog();
         onClick?.();
       }}
-      className="inline-flex h-9 max-w-[11rem] shrink-0 items-center gap-1.5 rounded-md bg-[#f0f0f0] px-2.5 text-[12px] font-semibold text-[#333] transition hover:bg-[#e6e6e6]"
+      className="inline-flex h-10 max-w-[11rem] shrink-0 items-center gap-1.5 rounded-md bg-[#f0f0f0] px-2.5 text-[12px] font-semibold text-[#333] transition hover:bg-[#e6e6e6]"
       title={`Xóa ${label}`}
     >
       <span className="truncate">{label}</span>
@@ -264,6 +265,7 @@ type PickerProps = {
   showRootL1?: boolean;
   /** Chip lọc phụ (giá, ĐVT…) — cùng hàng nút Lọc */
   filterResultChips?: ReactNode;
+  clearFiltersButton?: ReactNode;
 };
 
 /**
@@ -278,6 +280,7 @@ export function CatalogSubcatPicker({
   filterButton,
   showRootL1 = false,
   filterResultChips,
+  clearFiltersButton,
 }: PickerProps) {
   const sp = useSearchParams();
   const pathname = usePathname();
@@ -364,7 +367,9 @@ export function CatalogSubcatPicker({
   const selectedL3Ids = new Set(selectedL3s.map((n) => n.id));
   const prefix = inFilterSheet ? "sheet" : "bar";
 
-  const clearToTim = "/tim";
+  const resetQuery = new URLSearchParams(sp.toString());
+  for (const key of ["categoryId", "nhom", "page"]) resetQuery.delete(key);
+  const clearToTim = resetQuery.size ? `/tim?${resetQuery}` : "/tim";
   const clearToL1 = l1 ? danhMucHref(l1.slug, [], sp) : clearToTim;
 
   const selectL1Href = (n: ShopCategoryNavNode) => danhMucHref(n.slug, [], sp);
@@ -405,6 +410,7 @@ export function CatalogSubcatPicker({
   if (l1 && depth >= 1) {
     selectedCatChips.push(
       <SelectedChip
+        data-always-visible
         key={`l1-${l1.id}`}
         label={chipLabel(l1.name)}
         clearHref={clearToTim}
@@ -415,6 +421,7 @@ export function CatalogSubcatPicker({
   if (l2 && depth >= 2) {
     selectedCatChips.push(
       <SelectedChip
+        data-always-visible
         key={`l2-${l2.id}`}
         label={chipLabel(l2.name)}
         clearHref={clearToL1}
@@ -425,6 +432,7 @@ export function CatalogSubcatPicker({
   for (const n of selectedL3s) {
     selectedCatChips.push(
       <SelectedChip
+        data-always-visible
         key={`l3-${n.id}`}
         label={chipLabel(n.name)}
         clearHref={clearOneL3Href(n.id)}
@@ -439,21 +447,7 @@ export function CatalogSubcatPicker({
   const showL1Browse =
     showRootL1 && !hasCategoryNav && !hasFilterChips && roots.length > 0;
 
-  const clearAllChip =
-    selectedCatChips.length > 0 ? (
-      <Link
-        key="clear-all"
-        href={clearToTim}
-        scroll={false}
-        onClick={() => {
-          markPinCatalog();
-          onChipClick();
-        }}
-        className="inline-flex h-9 shrink-0 items-center px-1 text-[12px] font-semibold text-[var(--aloha-green)] underline-offset-2 hover:underline"
-      >
-        Xóa tất cả
-      </Link>
-    ) : null;
+  const clearAllChip = clearFiltersButton;
 
   // —— Hàng tùy chọn cấp hiện tại ——
   // Browse L1 chỉ khi showL1Browse; đã chọn L1 → L2; đã chọn L2 → L3
@@ -551,64 +545,17 @@ export function CatalogSubcatPicker({
   }
 
   /* —— Toolbar: lọc phụ trước → chỉ chip kết quả; có chọn L1/L2/L3 mới hiện nhánh —— */
-  const mobileGroups: MobileCategoryGroup[] = [
-    {
-      label: l1 ? chipLabel(l1.name) : "Danh mục",
-      title: "Danh mục",
-      active: Boolean(l1),
-      options: [
-        { id: 0, label: "Tất cả danh mục", href: clearToTim, active: !l1 },
-        ...roots.map(n => ({ id: n.id, label: chipLabel(n.name), href: selectL1Href(n), active: n.id === l1?.id })),
-      ],
-    },
-    ...(allL2.length ? [{
-      label: l2 ? chipLabel(l2.name) : "Chọn nhóm",
-      title: l1 ? chipLabel(l1.name) : "Nhóm sản phẩm",
-      active: Boolean(l2),
-      options: allL2.map(n => ({ id: n.id, label: chipLabel(n.name), href: selectL2Href(n), active: n.id === l2?.id })),
-    }] : []),
-    ...(allL3.length ? [{
-      label: selectedL3s.length ? `Loại · ${selectedL3s.length}` : "Chọn loại",
-      title: l2 ? chipLabel(l2.name) : "Loại sản phẩm",
-      active: selectedL3s.length > 0,
-      options: allL3.map(n => ({ id: n.id, label: chipLabel(n.name), href: toggleL3Href(n), active: selectedL3Ids.has(n.id) })),
-    }] : []),
-  ].filter(group => group.options.length > 0);
-
   return (
-    <div className="min-w-0 flex-1">
-      <CatalogMobileCategories
-        groups={mobileGroups}
-        selected={selectedCatChips.slice((l1 ? 1 : 0) + (l2 ? 1 : 0))}
-        filters={filterResultChips}
-        filterButton={filterButton}
-        clearAll={clearAllChip}
-        onNavigate={() => { markPinCatalog(); onChipClick(); }}
-      />
-      <div className="hidden min-w-0 flex-1 flex-col gap-2 sm:flex">
-      <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-md bg-white">
+    <div className="min-w-0 space-y-2">
+      <CatalogChipRow row="selected" leading={filterButton ? 1 : 0}>
         {filterButton}
-        {hasCategoryNav ? (
-          <>
-            {selectedCatChips}
-            {filterResultChips}
-            {clearAllChip}
-          </>
-        ) : hasFilterChips ? (
-          <>{filterResultChips}</>
-        ) : showL1Browse ? (
-          <CollapsibleChipRow
-            nodes={optionNodes}
-            activeIds={new Set()}
-            hrefFor={optionHref}
-            onChipClick={onChipClick}
-            collapse
-            resetKey="browse-l1"
-          />
-        ) : null}
-      </div>
-      {hasCategoryNav ? optionsRow : null}
-      </div>
+        {hasCategoryNav ? <>{selectedCatChips}{filterResultChips}{clearAllChip}</>
+          : hasFilterChips ? <>{filterResultChips}{clearAllChip}</>
+          : showL1Browse ? optionNodes.map(n => <OptionChip key={n.id} node={n} active={false} href={optionHref(n)} onClick={onChipClick} />) : null}
+      </CatalogChipRow>
+      {hasCategoryNav && optionNodes.length > 0 ? <CatalogChipRow row="children">
+        {optionNodes.map(n => <OptionChip key={n.id} node={n} active={optionActive(n)} data-always-visible={optionActive(n)} href={optionHref(n)} onClick={onChipClick} />)}
+      </CatalogChipRow> : null}
     </div>
   );
 }
@@ -618,6 +565,7 @@ type BarProps = {
   filterButton: ReactNode;
   showRootL1?: boolean;
   filterResultChips?: ReactNode;
+  clearFiltersButton?: ReactNode;
 };
 
 export function CatalogSubcatBar({
@@ -625,6 +573,7 @@ export function CatalogSubcatBar({
   filterButton,
   showRootL1 = false,
   filterResultChips,
+  clearFiltersButton,
 }: BarProps) {
   return (
     <CatalogSubcatPicker
@@ -632,6 +581,7 @@ export function CatalogSubcatBar({
       filterButton={filterButton}
       showRootL1={showRootL1}
       filterResultChips={filterResultChips}
+      clearFiltersButton={clearFiltersButton}
     />
   );
 }

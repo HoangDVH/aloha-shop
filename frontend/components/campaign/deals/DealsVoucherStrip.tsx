@@ -88,7 +88,7 @@ function useJustSaved(claimedIds: Set<string>): Set<string> {
   return fresh;
 }
 
-const PILL = "inline-flex h-7 shrink-0 items-center justify-center gap-1 rounded-md px-3 text-xs font-bold whitespace-nowrap";
+const PILL = "inline-flex h-6 sm:h-[26px] shrink-0 items-center justify-center gap-1 rounded-full px-2.5 sm:px-3 text-[10.5px] sm:text-[11px] font-bold whitespace-nowrap";
 
 /** Nút kiểu Shopee: chưa lưu → "Lưu" (đặc); đã lưu / tự áp dụng → "Dùng ngay" (viền) tới SP áp dụng. */
 function Action({
@@ -119,11 +119,11 @@ function Action({
         type="button"
         onClick={onClaim}
         disabled={busy}
-        className={`${PILL} transition hover:brightness-110 active:scale-95 disabled:opacity-60 cursor-pointer ${
+        className={`${PILL} transition hover:brightness-110 active:scale-95 disabled:opacity-60 cursor-pointer shadow-xs ${
           mystery ? "aloha-mystery-wiggle bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 text-white" : solid
         }`}
       >
-        {mystery ? <Gift size={12} strokeWidth={2.6} aria-hidden /> : null}
+        {mystery ? <Gift size={11} strokeWidth={2.6} aria-hidden /> : null}
         {mystery ? (busy ? "Bóc…" : "Bóc") : busy ? "Lưu…" : "Lưu"}
       </button>
     );
@@ -142,8 +142,8 @@ function Action({
     return <span className={`${PILL} bg-slate-100 font-medium text-slate-400`}>Hết lượt</span>;
   }
   return (
-    <span className={`${PILL} w-7 bg-slate-100 px-0 text-slate-400`}>
-      <Lock size={12} aria-hidden />
+    <span className={`${PILL} w-6 sm:w-6.5 bg-slate-100 px-0 text-slate-400`}>
+      <Lock size={11} aria-hidden />
     </span>
   );
 }
@@ -154,13 +154,13 @@ function Footnote({ v, hint, nowMs, isShip }: { v: CampaignVoucherUI; hint: stri
     const pct = Math.min(100, Math.round((v.claimedCount / v.claimLimitTotal) * 100));
     return (
       <div className="min-w-0 flex-1">
-        <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+        <div className="h-1 overflow-hidden rounded-full bg-slate-100">
           <div
             className={`h-full rounded-full ${isShip ? "bg-[#0F766E]" : "bg-[var(--campaign-primary,#C8102E)]"}`}
             style={{ width: `${Math.max(pct, 4)}%` }}
           />
         </div>
-        <p className="mt-0.5 truncate text-[10.5px] font-semibold text-slate-500">
+        <p className="mt-0.5 truncate text-[9.5px] sm:text-[10px] font-semibold text-slate-500">
           {pct >= 80 ? <span className="text-[var(--campaign-primary,#C8102E)]">Sắp hết · </span> : null}
           Đã lưu {pct}%
         </p>
@@ -169,8 +169,8 @@ function Footnote({ v, hint, nowMs, isShip }: { v: CampaignVoucherUI; hint: stri
   }
   if (hint) {
     return (
-      <p className="flex min-w-0 flex-1 items-center gap-1 text-[10.5px] font-bold text-amber-600">
-        <Flame size={11} className="shrink-0 fill-amber-500 text-amber-500" aria-hidden />
+      <p className="flex min-w-0 flex-1 items-center gap-0.5 text-[9.5px] sm:text-[10px] font-bold text-amber-600">
+        <Flame size={10} className="shrink-0 fill-amber-500 text-amber-500" aria-hidden />
         <span className="truncate">{hint}</span>
       </p>
     );
@@ -179,7 +179,7 @@ function Footnote({ v, hint, nowMs, isShip }: { v: CampaignVoucherUI; hint: stri
   if (Number.isFinite(endMs) && endMs > nowMs) {
     const d = new Date(endMs);
     return (
-      <p className="min-w-0 flex-1 truncate text-[10.5px] font-medium text-slate-400">
+      <p className="min-w-0 flex-1 truncate text-[9.5px] sm:text-[10px] font-medium text-slate-400">
         HSD: {String(d.getDate()).padStart(2, "0")}/{String(d.getMonth() + 1).padStart(2, "0")}
       </p>
     );
@@ -321,57 +321,57 @@ export function DealsVoucherStrip({
           return (
             <li
               key={v.id}
-              className={`relative flex w-[17.2rem] shrink-0 snap-start items-stretch overflow-hidden rounded-2xl bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.08] sm:w-[19.8rem] transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+              className={`relative flex w-[13.8rem] shrink-0 snap-start items-stretch overflow-hidden rounded-xl sm:rounded-2xl bg-white shadow-[0_2px_10px_rgba(0,0,0,0.05)] ring-1 ring-black/[0.06] sm:w-[15rem] transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md ${
                 dim ? "opacity-60" : ""
               } ${focused ? "aloha-focus-pulse" : ""} ${justSaved.has(v.id) ? "aloha-voucher-shine" : ""}`}
             >
               {/* Vết khuyết bán nguyệt trên và dưới (Punch-hole coupon notches) */}
               <span
-                className="pointer-events-none absolute -top-1.5 left-[76px] z-10 h-3 w-3 -translate-x-1/2 rounded-full bg-white ring-1 ring-black/[0.08]"
+                className="pointer-events-none absolute -top-1.5 left-[66px] sm:left-[70px] z-10 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-white ring-1 ring-black/[0.08]"
                 aria-hidden="true"
               />
               <span
-                className="pointer-events-none absolute -bottom-1.5 left-[76px] z-10 h-3 w-3 -translate-x-1/2 rounded-full bg-white ring-1 ring-black/[0.08]"
+                className="pointer-events-none absolute -bottom-1.5 left-[66px] sm:left-[70px] z-10 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-white ring-1 ring-black/[0.08]"
                 aria-hidden="true"
               />
 
               {/* Khối giá trị bên trái - Nổi bật đậm nét, cuống vé gọn gàng chuẩn TMĐT */}
               <div
-                className={`relative flex w-[76px] shrink-0 flex-col items-center justify-center border-r border-dashed border-white/40 px-1 py-2 text-white select-none ${
+                className={`relative flex w-[66px] sm:w-[70px] shrink-0 flex-col items-center justify-center border-r border-dashed border-white/40 px-1 py-1.5 text-white select-none ${
                   isShip
                     ? "bg-gradient-to-br from-[#0D9488] via-[#0F766E] to-[#115E59]"
                     : "bg-gradient-to-br from-[var(--campaign-primary,#C8102E)] via-[#E11D48] to-[#9F1239]"
                 }`}
               >
-                <span className="flex items-center gap-0.5 text-[9px] sm:text-[9.5px] font-black uppercase tracking-wider text-white/90">
+                <span className="flex items-center gap-0.5 text-[8px] sm:text-[8.5px] font-black uppercase tracking-wider text-white/90">
                   {isShip ? (
-                    <Truck size={10} strokeWidth={2.5} aria-hidden />
+                    <Truck size={9} strokeWidth={2.5} aria-hidden />
                   ) : (
-                    <Zap size={10} className="fill-white" strokeWidth={0} aria-hidden />
+                    <Zap size={9} className="fill-white" strokeWidth={0} aria-hidden />
                   )}
                   {top}
                 </span>
-                <span className="mt-1 text-lg sm:text-xl font-black leading-none tabular-nums tracking-tight text-white drop-shadow-xs">
+                <span className="mt-0.5 text-[16px] sm:text-[18px] font-black leading-none tabular-nums tracking-tight text-white drop-shadow-xs">
                   {value}
                 </span>
               </div>
 
-              {/* Thân vé: tiêu đề 2 dòng đầy đủ (không cắt chữ), điều kiện rõ ràng, footnote + nút */}
-              <div className="flex min-w-0 flex-1 flex-col justify-between gap-1.5 py-2.5 pl-3 pr-2.5">
+              {/* Thân vé: tiêu đề 1 dòng gọn gàng, điều kiện gom inline, footnote + nút mini */}
+              <div className="flex min-w-0 flex-1 flex-col justify-between gap-1 py-1.5 pl-2.5 pr-2 sm:py-2 sm:pl-3 sm:pr-2.5">
                 <div className="min-w-0 space-y-0.5">
                   <p
-                    className="line-clamp-2 min-h-[2.1rem] sm:min-h-[2.25rem] text-xs sm:text-[13px] font-bold text-slate-900 leading-snug"
+                    className="truncate text-[11.5px] sm:text-[12px] font-bold text-slate-900 leading-snug"
                     title={v.title || cleanedTitle}
                   >
                     {cleanedTitle}
                   </p>
-                  <div className="flex flex-col text-[10.5px] sm:text-[11px] text-slate-500 leading-tight">
+                  <div className="flex items-center gap-1 text-[10px] sm:text-[10.5px] text-slate-500 leading-tight truncate">
                     <span className="truncate">{minSpend}</span>
-                    {cap ? <span className="truncate text-slate-400">{cap}</span> : null}
+                    {cap ? <span className="truncate text-slate-400">· {cap}</span> : null}
                   </div>
                 </div>
 
-                <div className="flex items-end gap-1.5 pt-0.5">
+                <div className="flex items-center justify-between gap-1 pt-0.5">
                   <Footnote v={v} hint={hint} nowMs={nowMs} isShip={isShip} />
                   <Action
                     voucherId={v.id}

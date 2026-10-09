@@ -18,6 +18,7 @@ type TimSp = {
   attr?: string | string[];
   dvt?: string | string[];
   loai?: string;
+  gift?: string;
   minPrice?: string;
   maxPrice?: string;
   inStock?: string;
@@ -102,6 +103,7 @@ async function CatalogBody({
       loai: loai || undefined,
       page,
       limit: 25,
+      gift: sp.gift || undefined,
       minPrice: minPrice || undefined,
       maxPrice: maxPrice || undefined,
       inStock: inStock || undefined,
@@ -116,6 +118,7 @@ async function CatalogBody({
     if (
       badge === "ban_chay" &&
       !voucher &&
+      !sp.gift &&
       !(prod.items || []).length &&
       !q &&
       !nhomList.length &&
@@ -139,6 +142,7 @@ async function CatalogBody({
     if (
       badge === "uu_dai" &&
       !voucher &&
+      !sp.gift &&
       (prod.items || []).length < 4 &&
       !q &&
       !nhomList.length &&

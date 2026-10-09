@@ -24,9 +24,9 @@ export function DoanhNghiepFormClient() {
 
   return (
     <div className="overflow-hidden rounded-3xl border border-stone-200/90 bg-white p-6 shadow-xl sm:p-10">
-      <div className="grid gap-8 lg:grid-cols-12">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
         {/* Thông tin bên trái */}
-        <div className="lg:col-span-5 space-y-4">
+        <div className="w-full lg:col-span-5 space-y-4">
           <span className="text-xs font-extrabold uppercase tracking-widest text-[var(--aloha-green)]">
             Hợp Tác B2B
           </span>
@@ -63,7 +63,7 @@ export function DoanhNghiepFormClient() {
         </div>
 
         {/* Form bên phải */}
-        <div className="lg:col-span-7">
+        <div className="w-full lg:col-span-7">
           {sent ? (
             <div className="flex h-full flex-col items-center justify-center rounded-2xl bg-emerald-50/80 p-8 text-center text-emerald-900">
               <CheckCircle2 size={48} className="text-[var(--aloha-green)] mb-3" />
@@ -82,7 +82,7 @@ export function DoanhNghiepFormClient() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               {error ? <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p> : null}
-              <div className="grid gap-3.5 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                 <div>
                   <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider">
                     Tên doanh nghiệp / Đơn vị *

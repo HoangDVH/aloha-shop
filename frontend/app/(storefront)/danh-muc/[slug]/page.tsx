@@ -1,3 +1,4 @@
+import { normalizeWebBadge } from "@/lib/webBadge";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { ShopPageLoader } from "@/components/ShopPageLoader";
@@ -19,10 +20,12 @@ type CatSp = {
   attr?: string | string[];
   dvt?: string | string[];
   loai?: string;
+  gift?: string;
   minPrice?: string;
   maxPrice?: string;
   inStock?: string;
   sort?: string;
+  badge?: string;
   page?: string;
 };
 
@@ -135,9 +138,11 @@ async function CategoryBody({
     loai: loai || undefined,
     page,
     limit: 35,
+    gift: sp.gift || undefined,
     minPrice: minPrice || undefined,
     maxPrice: maxPrice || undefined,
     inStock: inStock || undefined,
+    badge: normalizeWebBadge(sp.badge) || undefined,
     sort,
   };
 

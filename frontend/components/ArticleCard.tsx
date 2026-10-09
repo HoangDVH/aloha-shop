@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Play } from "lucide-react";
 import type { ShopArticleListItem } from "@/lib/api";
 
 function formatDate(iso: string) {
@@ -24,6 +25,9 @@ export function ArticleCard({
   variant?: "default" | "editorial";
 }) {
   const href = `/bai-viet/${encodeURIComponent(article.slug)}`;
+  const hasVideo =
+    Boolean(article.hasVideo) ||
+    Boolean(String(article.videoUrl || "").trim());
 
   if (variant === "editorial") {
     return (
@@ -42,6 +46,20 @@ export function ArticleCard({
             ) : (
               <div className="absolute inset-0 bg-[var(--aloha-green-light)]" aria-hidden />
             )}
+            {hasVideo ? (
+              <span
+                className="pointer-events-none absolute bottom-2 right-2 z-[15] inline-flex h-[1.65rem] w-[1.65rem] items-center justify-center rounded-full bg-black/55 text-white shadow-[0_1px_3px_rgba(0,0,0,0.35)] sm:h-7 sm:w-7"
+                title="Có video"
+                aria-label="Bài viết có video"
+              >
+                <Play
+                  size={12}
+                  className="ml-[1px] fill-white sm:h-[13px] sm:w-[13px]"
+                  strokeWidth={0}
+                  aria-hidden
+                />
+              </span>
+            ) : null}
           </div>
           <div className="flex flex-1 flex-col gap-1.5 bg-[#f3f3f3] px-2.5 py-2.5 sm:px-3 sm:py-3">
             <h3 className="line-clamp-2 text-[12px] font-extrabold uppercase leading-snug tracking-wide text-[var(--aloha-ink)] sm:text-[13px]">
@@ -75,6 +93,20 @@ export function ArticleCard({
           ) : (
             <div className="absolute inset-0 bg-[var(--aloha-cream)]" aria-hidden />
           )}
+          {hasVideo ? (
+            <span
+              className="pointer-events-none absolute bottom-2 right-2 z-[15] inline-flex h-[1.65rem] w-[1.65rem] items-center justify-center rounded-full bg-black/55 text-white shadow-[0_1px_3px_rgba(0,0,0,0.35)] sm:h-7 sm:w-7"
+              title="Có video"
+              aria-label="Bài viết có video"
+            >
+              <Play
+                size={12}
+                className="ml-[1px] fill-white sm:h-[13px] sm:w-[13px]"
+                strokeWidth={0}
+                aria-hidden
+              />
+            </span>
+          ) : null}
         </div>
         <div className="flex flex-1 flex-col gap-1 p-2.5 sm:p-3">
           <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--aloha-green)]/80">

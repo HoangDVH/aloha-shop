@@ -130,9 +130,9 @@ export default function DoanhNghiepGiftPage() {
             </Link>
           </div>
 
-          <div className="grid items-center gap-10 lg:grid-cols-12 lg:gap-14">
+          <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-12 lg:gap-14">
             {/* Cột trái: Thông tin tiêu đề & Giới thiệu */}
-            <div className="lg:col-span-7 space-y-5">
+            <div className="w-full lg:col-span-7 space-y-4 sm:space-y-5">
               <div className="inline-flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200 px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider text-amber-800">
                 <Building2 size={13} className="text-amber-700" />
                 <span>DỊCH VỤ QUÀ TẶNG DOANH NGHIỆP</span>
@@ -142,44 +142,63 @@ export default function DoanhNghiepGiftPage() {
                 Giải Pháp Quà Tặng Cây Xanh Trọn Gói
               </h1>
 
-              <p className="text-base sm:text-lg text-stone-700 font-medium leading-relaxed">
+              {/* [MOBILE ONLY] Ảnh đại diện sản phẩm đặt ngay sau tiêu đề để thấy ngay trọn vẹn trong 1 khung */}
+              <div className="block lg:hidden my-3">
+                <div className="overflow-hidden rounded-2xl border border-stone-200/90 bg-white p-2.5 shadow-md">
+                  <div className="overflow-hidden rounded-xl bg-stone-100 aspect-square">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/banners/trust/dich-vu-goi-qua.webp"
+                      alt="Túi quà quai mộc cửa kính sang trọng cho doanh nghiệp"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div className="p-2 text-center">
+                    <p className="text-[11px] font-semibold text-stone-600">
+                      Quy cách set quà tặng doanh nghiệp hoàn chỉnh: Túi quà cửa kính quai mộc, chậu cây in logo, thiệp và cẩm nang chăm sóc.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-sm sm:text-base lg:text-lg text-stone-700 font-medium leading-relaxed">
                 Hỗ trợ trọn bộ từ khâu thiết kế tem logo thương hiệu, gói quà trang trọng đến đóng gói giao tận nơi đúng tiến độ cam kết.
               </p>
 
-              <p className="text-sm sm:text-base text-stone-600 leading-relaxed">
+              <p className="hidden sm:block text-sm sm:text-base text-stone-600 leading-relaxed">
                 Thay vì những giỏ quà bánh kẹo quen thuộc hay hoa tươi mau tàn, cây xanh mang biểu trưng cho sự phát triển bền vững, tươi mới và gắn kết dài lâu. Aloha đồng hành cùng doanh nghiệp trao gửi món quà văn hóa độc bản đến toàn thể cán bộ nhân viên, đối tác và khách hàng.
               </p>
 
               {/* Tag cam kết nhanh */}
-              <div className="flex flex-wrap items-center gap-2.5 pt-1 text-xs font-bold text-stone-700">
+              <div className="flex flex-wrap items-center gap-2 pt-1 text-xs font-bold text-stone-700">
                 <span className="inline-flex items-center gap-1.5 rounded-xl bg-white border border-stone-200 px-3 py-1.5 shadow-2xs">
-                  <CheckCircle2 size={14} className="text-[var(--aloha-green)]" />
-                  Phục vụ từ 10 đến 1.000+ chậu
+                  <CheckCircle2 size={14} className="text-[var(--aloha-green)] shrink-0" />
+                  <span>Phục vụ từ 10 đến 1.000+ chậu</span>
                 </span>
                 <span className="inline-flex items-center gap-1.5 rounded-xl bg-white border border-stone-200 px-3 py-1.5 shadow-2xs">
-                  <CheckCircle2 size={14} className="text-[var(--aloha-green)]" />
-                  Miễn phí in logo thương hiệu
+                  <CheckCircle2 size={14} className="text-[var(--aloha-green)] shrink-0" />
+                  <span>Miễn phí in logo thương hiệu</span>
                 </span>
                 <span className="inline-flex items-center gap-1.5 rounded-xl bg-white border border-stone-200 px-3 py-1.5 shadow-2xs">
-                  <CheckCircle2 size={14} className="text-[var(--aloha-green)]" />
-                  Đầy đủ hóa đơn VAT & Hợp đồng
+                  <CheckCircle2 size={14} className="text-[var(--aloha-green)] shrink-0" />
+                  <span>Đầy đủ hóa đơn VAT &amp; Hợp đồng</span>
                 </span>
               </div>
 
               {/* Nút hành động */}
-              <div className="flex flex-wrap items-center gap-3 pt-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2 sm:pt-3">
                 <a
                   href="#nhan-bao-gia"
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[var(--aloha-green-dark)] px-6 text-sm font-bold text-white shadow-md transition hover:bg-[var(--aloha-green)]"
+                  className="inline-flex min-h-12 w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-[var(--aloha-green-dark)] px-5 sm:px-6 text-sm font-bold text-white shadow-md transition hover:bg-[var(--aloha-green)] text-center"
                 >
                   <Send size={15} />
-                  <span>Nhận Báo Giá Sỉ & Catalog B2B</span>
+                  <span>Nhận Báo Giá Sỉ &amp; Catalog B2B</span>
                 </a>
                 <a
                   href="https://zalo.me/0794901233"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-stone-300 bg-white px-5 text-sm font-bold text-stone-700 shadow-xs transition hover:border-[var(--aloha-green)] hover:text-[var(--aloha-green)]"
+                  className="inline-flex min-h-12 w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-stone-300 bg-white px-5 text-sm font-bold text-stone-700 shadow-xs transition hover:border-[var(--aloha-green)] hover:text-[var(--aloha-green)] text-center"
                 >
                   <MessageCircle size={15} />
                   <span>Tư Vấn Zalo 24/7 (079 490 1233)</span>
@@ -187,8 +206,8 @@ export default function DoanhNghiepGiftPage() {
               </div>
             </div>
 
-            {/* Cột phải: Bức ảnh nổi bật túi quà quai mộc */}
-            <div className="lg:col-span-5">
+            {/* [DESKTOP ONLY] Cột phải: Bức ảnh nổi bật túi quà quai mộc */}
+            <div className="hidden lg:block w-full lg:col-span-5">
               <div className="relative mx-auto max-w-md overflow-hidden rounded-3xl border border-stone-200/80 bg-white p-3 shadow-xl">
                 <div className="overflow-hidden rounded-2xl bg-stone-100 aspect-square">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -227,7 +246,7 @@ export default function DoanhNghiepGiftPage() {
           </div>
 
           {/* Lưới 3 thẻ dịch vụ */}
-          <div className="grid gap-6 md:grid-cols-3 lg:gap-8 max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3 lg:gap-8 max-w-6xl mx-auto">
             {B2B_SERVICES.map((srv, idx) => (
               <div
                 key={idx}
@@ -277,7 +296,7 @@ export default function DoanhNghiepGiftPage() {
             </h2>
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {PROCESS_STEPS.map((step, idx) => (
               <div
                 key={idx}
@@ -315,7 +334,7 @@ export default function DoanhNghiepGiftPage() {
             </p>
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {FEATURED_CLIENTS.map((client, idx) => (
               <div
                 key={idx}

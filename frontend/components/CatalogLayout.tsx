@@ -1,4 +1,6 @@
 "use client";
+import { useCatalogBadgeCounts } from "./catalog/useCatalogBadgeCounts";
+import { CatalogSubcatPicker } from "./catalog/CatalogSubcatBar";
 
 import { useSearchParams, usePathname } from "next/navigation";
 import { useShopRouter } from "@/lib/useShopRouter";
@@ -23,6 +25,7 @@ import {
   useDraftPreviewTotal,
   type DraftState,
 } from "@/components/catalog/draft";
+import { BADGE_TABS, CatalogQuickFilters } from "@/components/catalog/CatalogQuickFilters";
 import { CatalogToolbar } from "@/components/catalog/CatalogToolbar";
 import { CatalogPagination } from "@/components/catalog/CatalogPagination";
 import { CatalogFilterModal } from "@/components/catalog/CatalogFilterModal";
@@ -120,7 +123,16 @@ export function CatalogLayout({
   }, [sp]);
   const minPrice = sp.get("minPrice") || "";
   const maxPrice = sp.get("maxPrice") || "";
-  const inStock = sp.get("inStock") === "1";
+  // Remove retired stock filters from saved URLs without losing other choices.
+  useEffect(() => {
+    if (!sp.has("inStock")) return;
+    const next = new URLSearchParams(sp.toString());
+    next.delete("inStock");
+    next.delete("page");
+    const query = next.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [sp, pathname, router]);
+
   const sort = normalizeCatalogSort(sp.get("sort") || (homeMode ? "ban_chay" : null));
   const allProductsPage = !homeMode && pathname === "/tim";
 
@@ -130,6 +142,17 @@ export function CatalogLayout({
     selectedNhoms,
     selectedCategoryIds
   );
+
+  const badgeCounts = useCatalogBadgeCounts({
+    q: q || undefined,
+    categoryId: effectiveCategoryIds.length ? effectiveCategoryIds : undefined,
+    nhom: (selectedNhoms.length ? selectedNhoms : categoryLocked ? filterNhoms : []).length ? (selectedNhoms.length ? selectedNhoms : filterNhoms) : undefined,
+    home: homeMode && !selectedNhoms.length && !effectiveCategoryIds.length && !q && !sp.get("loai") && !selectedAttrs.length && !selectedDvts.length && !sp.get("gift") && !minPrice && !maxPrice,
+    gift: sp.get("gift") || undefined, loai: sp.get("loai") || undefined,
+    minPrice: Number(minPrice) || undefined, maxPrice: Number(maxPrice) || undefined,
+    maxTon: Number(maxTon) || undefined, attr: selectedAttrs, dvt: selectedDvts,
+    voucher: sp.get("voucher") || undefined,
+  }, !hideFilters && !filtersOnly && (!categoryLocked || effectiveCategoryIds.length > 0 || filterNhoms.length > 0));
 
   useEffect(() => {
     if (hideFilters) {
@@ -237,6 +260,7 @@ export function CatalogLayout({
     if (!categoryLocked) {
       next.delete("nhom");
     }
+    next.delete("gift");
     next.delete("minPrice");
     next.delete("maxPrice");
     next.delete("inStock");
@@ -315,6 +339,7 @@ export function CatalogLayout({
     const next = new URLSearchParams(sp.toString());
     next.delete("page");
     clearAttrDvtParams(next);
+    next.delete("gift");
     next.delete("minPrice");
     next.delete("maxPrice");
     next.delete("inStock");
@@ -327,9 +352,9 @@ export function CatalogLayout({
     }
     for (const a of draft.attrs) next.append("attr", a);
     for (const d of draft.dvts) next.append("dvt", d);
+    if (draft.gift) next.set("gift", draft.gift);
     if (draft.minPrice) next.set("minPrice", draft.minPrice);
     if (draft.maxPrice) next.set("maxPrice", draft.maxPrice);
-    if (draft.inStock) next.set("inStock", "1");
     if (q) next.set("q", q);
     if (badge) next.set("badge", badge);
     if (maxTon) next.set("maxTon", maxTon);
@@ -343,9 +368,9 @@ export function CatalogLayout({
         nhoms: categoryLocked ? d.nhoms : [],
         attrs: [],
         dvts: [],
+        gift: "",
         minPrice: "",
         maxPrice: "",
-        inStock: false,
       };
     });
   };
@@ -394,12 +419,17 @@ export function CatalogLayout({
     selectedDvts,
     minPrice,
     maxPrice,
-    inStock,
+    gift: sp.get("gift") || "",
     pushNhoms,
     removeAttr,
     removeDvt,
     pushParams,
   });
+
+  const displayedFilters = [...activeFilters, ...(badge ? [{
+    key: "badge", label: BADGE_TABS.find(tab => tab.value === "badge:" + (badge === "ban_chay" ? "ban_chay_sap_het" : badge))?.label || badge,
+    clear: () => pushParams({ badge: null, page: null }),
+  }] : [])];
 
   const heading =
     title ||
@@ -441,7 +471,30 @@ export function CatalogLayout({
         </div>
       ) : null}
 
-      <CatalogToolbar
+      {!filtersOnly ? (
+        <CatalogQuickFilters
+          navigation={controls => <CatalogSubcatPicker categoryIds={effectiveCategoryIds} showRootL1={allProductsPage}
+            filterButton={controls}
+            filterResultChips={displayedFilters.length ? displayedFilters.map(t => <button key={t.key} type="button" onClick={t.clear} data-always-visible className="inline-flex h-11 shrink-0 items-center gap-2 rounded-md bg-stone-100 px-3 text-xs">{t.label}<span aria-hidden>×</span></button>) : undefined}
+            clearFiltersButton={<button type="button" data-always-visible className="h-11 shrink-0 px-2 text-sm text-[var(--aloha-green)]" onClick={() => {
+              const next = new URLSearchParams(sp.toString());
+              for (const key of ["categoryId", "nhom", "gift", "minPrice", "maxPrice", "inStock", "loai", "page", "badge"]) next.delete(key);
+              clearAttrDvtParams(next);
+              const qs = next.toString();
+              router.push(qs ? `/tim?${qs}` : "/tim", { scroll: false });
+            }}>Xóa tất cả</button>} />}
+          minPrice={sp.get("minPrice") || ""}
+          maxPrice={sp.get("maxPrice") || ""}
+          badgeCounts={badgeCounts} priceSort={sort} onPriceSortChange={value => pushParams({ sort: value, page: null })}
+          filterCount={secondaryFilterCount + Number(Boolean(badge))}
+          sort={badge ? `badge:${badge === "ban_chay" ? "ban_chay_sap_het" : badge}` : sort}
+          onSortChange={(value) => pushParams({ badge: value.startsWith("badge:") ? value.slice(6) : null, page: null })}
+          onPriceChange={(min, max) => pushParams({ minPrice: min, maxPrice: max, page: null })}
+          onOpenFilters={openFilterModal}
+        />
+      ) : null}
+
+      {filtersOnly ? <CatalogToolbar
         filtersOnly={filtersOnly}
         categoryLocked={categoryLocked}
         allProductsPage={allProductsPage}
@@ -449,6 +502,12 @@ export function CatalogLayout({
         activeFilters={activeFilters}
         secondaryFilterCount={secondaryFilterCount}
         onOpenFilterModal={openFilterModal}
+        onClearFilters={() => {
+          const next = new URLSearchParams(sp.toString());
+          for (const key of ["gift", "minPrice", "maxPrice", "inStock", "loai", "page"]) next.delete(key);
+          clearAttrDvtParams(next);
+          navigateQs(next);
+        }}
         sort={sort}
         priceMenuOpen={priceMenuOpen}
         onSortClick={onSortClick}
@@ -456,9 +515,10 @@ export function CatalogLayout({
           setPriceMenuOpen(false);
           pushParams({ sort: val, page: null });
         }}
-      />
+      /> : null}
 
       <div className="space-y-4">
+        {!filtersOnly && total === 0 && badge ? <button type="button" onClick={() => pushParams({ badge: null, page: null })} className="min-h-11 rounded-lg border border-[var(--aloha-green)] px-4 text-sm font-semibold text-[var(--aloha-green)]">Bỏ lọc nhãn đang chọn</button> : null}
         {!filtersOnly && total === 0 && secondaryFilterCount > 0 ? (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-6 text-center">
             <p className="text-sm font-semibold text-amber-900">Không có sản phẩm khớp bộ lọc</p>

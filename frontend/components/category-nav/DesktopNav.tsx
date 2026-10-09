@@ -10,6 +10,7 @@ import {
   navBarIcon,
   navBarLabel,
   nodeSubs,
+  orderL2Nodes,
 } from "./navLabels";
 import { buildNavSlots } from "./navSlots";
 
@@ -78,9 +79,9 @@ export function MultiColumnFlyout({
   onNavigate?: () => void;
 }) {
   const columns = useMemo(() => {
-    const cols: ShopCategoryNavNode[][] = [nodeSubs(root)];
+    const cols: ShopCategoryNavNode[][] = [orderL2Nodes(root.name, nodeSubs(root))];
     for (let i = 0; i < hoverPath.length; i++) {
-      const subs = nodeSubs(hoverPath[i]);
+      const subs = orderL2Nodes(hoverPath[i].name, nodeSubs(hoverPath[i]));
       if (subs.length) cols.push(subs);
     }
     return cols;

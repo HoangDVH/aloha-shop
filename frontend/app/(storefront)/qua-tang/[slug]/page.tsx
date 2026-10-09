@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Sparkles, Check, ArrowLeft, Heart, MessageCircle, Gift, ShieldCheck } from "lucide-react";
-import { ProductCard } from "@/components/ProductCard";
+import { ScopedProductCatalog } from "@/components/catalog/ScopedProductCatalog";
+import type { ShopProduct } from "@/lib/api";
 
 interface GiftDetailData {
   _id?: string;
@@ -15,7 +16,7 @@ interface GiftDetailData {
   quote: string;
   includedItems: string;
   linkedProductCodes: string[];
-  products?: any[];
+  products?: ShopProduct[];
 }
 
 async function getGiftDetail(slug: string): Promise<GiftDetailData | null> {
@@ -84,9 +85,9 @@ export default async function GiftDetailPage({
             </Link>
           </div>
 
-          <div className="grid items-center gap-8 lg:grid-cols-12 lg:gap-12">
+          <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-12 lg:gap-12">
             {/* Cột trái: Văn bản cảm xúc */}
-            <div className="lg:col-span-7 space-y-5">
+            <div className="w-full lg:col-span-7 space-y-4 sm:space-y-5">
               <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100/80 border border-emerald-200 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-[#0E5242]">
                 <Sparkles size={13} className="text-[#C05621]" />
                 <span>{gift.tag}</span>
@@ -95,6 +96,25 @@ export default async function GiftDetailPage({
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold uppercase tracking-wide text-[#0E5242] leading-tight">
                 {gift.title}
               </h1>
+
+              {/* [MOBILE ONLY] Ảnh đại diện đặt ngay sau tiêu đề để thấy ngay trọn vẹn trong 1 khung */}
+              <div className="block lg:hidden my-3">
+                <div className="overflow-hidden rounded-2xl border border-stone-200/90 bg-white p-2.5 shadow-md">
+                  <div className="overflow-hidden rounded-xl bg-stone-100 aspect-square">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={gift.image}
+                      alt={gift.title}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div className="p-2 text-center">
+                    <span className="text-[11px] font-semibold text-stone-600">
+                      Ảnh chụp cây thật thực tế tại vườn Aloha Shop
+                    </span>
+                  </div>
+                </div>
+              </div>
 
               <p className="text-base sm:text-lg text-stone-700 font-medium italic">
                 “{gift.subtitle}”
@@ -107,12 +127,12 @@ export default async function GiftDetailPage({
               ) : null}
 
               {/* Nút Tư vấn qua Zalo */}
-              <div className="pt-2 flex flex-wrap items-center gap-3">
+              <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 <a
                   href="https://zalo.me/0394107309"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#0E5242] px-6 text-sm font-bold text-white shadow-md transition hover:bg-[#156e59]"
+                  className="inline-flex min-h-11 w-full sm:w-auto items-center justify-center gap-2 rounded-full bg-[#0E5242] px-6 text-sm font-bold text-white shadow-md transition hover:bg-[#156e59] text-center"
                 >
                   <MessageCircle size={16} />
                   <span>Tư vấn đóng gói theo yêu cầu qua Zalo</span>
@@ -120,8 +140,8 @@ export default async function GiftDetailPage({
               </div>
             </div>
 
-            {/* Cột phải: Bức ảnh đại diện quà tặng (Khung vuông 1:1 thấy trọn vẹn toàn bộ ảnh) */}
-            <div className="lg:col-span-5">
+            {/* [DESKTOP ONLY] Cột phải: Bức ảnh đại diện quà tặng (Khung vuông 1:1 thấy trọn vẹn toàn bộ ảnh) */}
+            <div className="hidden lg:block w-full lg:col-span-5">
               <div className="relative mx-auto max-w-md overflow-hidden rounded-3xl border border-stone-200/90 bg-white p-3 shadow-xl">
                 <div className="overflow-hidden rounded-2xl bg-stone-100 aspect-square">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -159,11 +179,7 @@ export default async function GiftDetailPage({
         </div>
 
         {products.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-            {products.map((p) => (
-              <ProductCard key={p._id || p.ma} product={p} />
-            ))}
-          </div>
+          <ScopedProductCatalog products={products} />
         ) : (
           <div className="text-center py-12 rounded-2xl bg-white border border-stone-200/80 p-6">
             <Gift className="mx-auto h-10 w-10 text-stone-300 mb-2" />

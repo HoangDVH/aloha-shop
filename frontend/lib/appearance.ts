@@ -25,6 +25,12 @@ const FALLBACK_BLOCKS: AppearanceBlock[] = [
     props: { variant: "why_aloha" },
   },
   {
+    id: "seed_gift",
+    type: "gift_section",
+    enabled: true,
+    props: { title: "Gợi ý chọn quà tặng" },
+  },
+  {
     id: "seed_noi_bat",
     type: "product_section",
     enabled: true,

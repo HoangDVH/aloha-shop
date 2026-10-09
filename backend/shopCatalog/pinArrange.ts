@@ -58,9 +58,10 @@ export function resolvePinBadgeScope(opts: {
   badge?: string;
   maxTon?: number;
 }): string {
+  const sort = String(opts.sort || "").trim();
+  if (sort === "price_asc" || sort === "price_desc") return "";
   const badge = normalizeWebBadge(opts.badge || "");
   if (badge) return badge;
-  const sort = String(opts.sort || "").trim();
   if (sort === "ban_chay" || (Number(opts.maxTon) > 0 && sort === "ban_chay")) {
     return "ban_chay_sap_het";
   }

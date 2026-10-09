@@ -5,9 +5,9 @@ export type DraftState = {
   nhoms: string[];
   attrs: string[];
   dvts: string[];
+  gift: string;
   minPrice: string;
   maxPrice: string;
-  inStock: boolean;
 };
 
 export function draftFromUrl(sp: URLSearchParams, selectedNhoms: string[]): DraftState {
@@ -15,9 +15,9 @@ export function draftFromUrl(sp: URLSearchParams, selectedNhoms: string[]): Draf
     nhoms: [...selectedNhoms],
     attrs: sp.getAll("attr").filter(Boolean),
     dvts: sp.getAll("dvt").filter(Boolean),
+    gift: sp.get("gift") || "",
     minPrice: sp.get("minPrice") || "",
     maxPrice: sp.get("maxPrice") || "",
-    inStock: sp.get("inStock") === "1",
   };
 }
 
@@ -71,9 +71,9 @@ export function useDraftPreviewTotal({
             categoryId: effectiveCategoryIds.length ? effectiveCategoryIds : undefined,
             attr: draft.attrs.length ? draft.attrs : undefined,
             dvt: draft.dvts.length ? draft.dvts : undefined,
+            gift: draft.gift || undefined,
             minPrice: draft.minPrice ? Number(draft.minPrice) : undefined,
             maxPrice: draft.maxPrice ? Number(draft.maxPrice) : undefined,
-            inStock: draft.inStock || undefined,
             badge: (badge || undefined) as
               | "ban_chay_sap_het"
               | "giam_gia"
@@ -111,9 +111,9 @@ export function useDraftPreviewTotal({
     draft?.nhoms.join("|"),
     draft?.attrs.join("|"),
     draft?.dvts.join("|"),
+    draft?.gift,
     draft?.minPrice,
     draft?.maxPrice,
-    draft?.inStock,
     q,
     badge,
     maxTon,

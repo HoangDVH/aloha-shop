@@ -1,3 +1,4 @@
+import { giftFilterLabel } from "@/lib/giftFilters";
 import { useMemo } from "react";
 import { formatVnd } from "@/lib/api";
 import { leafLabel } from "./catalogLayoutUtils";
@@ -9,7 +10,7 @@ export function useActiveFilters({
   selectedDvts,
   minPrice,
   maxPrice,
-  inStock,
+  gift = "",
   pushNhoms,
   removeAttr,
   removeDvt,
@@ -21,7 +22,7 @@ export function useActiveFilters({
   selectedDvts: string[];
   minPrice: string;
   maxPrice: string;
-  inStock: boolean;
+  gift?: string;
   pushNhoms: (paths: string[]) => void;
   removeAttr: (value: string) => void;
   removeDvt: (value: string) => void;
@@ -33,7 +34,7 @@ export function useActiveFilters({
     n += selectedAttrs.length;
     n += selectedDvts.length;
     if (minPrice || maxPrice) n += 1;
-    if (inStock) n += 1;
+    if (gift) n += 1;
     return n;
   }, [
     categoryLocked,
@@ -42,7 +43,7 @@ export function useActiveFilters({
     selectedDvts.length,
     minPrice,
     maxPrice,
-    inStock,
+    gift,
   ]);
 
   const activeFilters = useMemo(() => {
@@ -87,9 +88,7 @@ export function useActiveFilters({
         clear: () => pushParams({ minPrice: null, maxPrice: null }),
       });
     }
-    if (inStock) {
-      tags.push({ key: "stock", label: "Còn hàng", clear: () => pushParams({ inStock: null }) });
-    }
+    if (gift) tags.push({ key: "gift", label: giftFilterLabel(gift), clear: () => pushParams({ gift: null }) });
     return tags;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -99,7 +98,7 @@ export function useActiveFilters({
     selectedDvts,
     minPrice,
     maxPrice,
-    inStock,
+    gift,
   ]);
 
   return { secondaryFilterCount, activeFilters };

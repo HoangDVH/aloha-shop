@@ -103,6 +103,25 @@ export function ensureCoreHomeProductBlocks(
     (String(b.props?.source || "") === "ban_chay" ||
       String(b.props?.source || "") === "ban_chay_sap_het");
 
+  const hasGift = blocks.some((b) => b.type === "gift_section");
+  if (!hasGift) {
+    const giftBlock: AppearanceBlock = {
+      id: newId("gift_section"),
+      type: "gift_section",
+      enabled: true,
+      props: {
+        title: "Gợi ý chọn quà tặng",
+      },
+    };
+    const featureIdx = blocks.findIndex((b) => b.type === "feature_strip");
+    const heroIdx = blocks.findIndex(
+      (b) => b.type === "hero" || b.type === "banner_carousel"
+    );
+    const insertIdx =
+      featureIdx >= 0 ? featureIdx + 1 : heroIdx >= 0 ? heroIdx + 1 : 0;
+    blocks.splice(insertIdx, 0, giftBlock);
+  }
+
   const hasNoiBat = blocks.some(
     (b) =>
       b.type === "product_section" &&

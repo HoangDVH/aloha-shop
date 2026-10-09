@@ -58,6 +58,7 @@ export function ShopMobileTabBar() {
     pathname.startsWith("/dang-ky");
   const cartBadge = mounted && count > 0 ? count : 0;
   const dealsActive = pathname.startsWith("/uu-dai");
+  const dealsOn = mounted && deals.on;
 
   return (
     <nav
@@ -88,9 +89,9 @@ export function ShopMobileTabBar() {
         <Link
           href="/uu-dai"
           className={`shop-mobile-tab ${dealsActive ? "is-active" : ""}`}
-          style={deals.on ? { color: "var(--aloha-green, #2e7d32)" } : undefined}
+          style={dealsOn ? { color: "var(--aloha-green, #2e7d32)" } : undefined}
           aria-current={dealsActive ? "page" : undefined}
-          aria-label={deals.on ? "Voucher, đang có chương trình" : "Voucher"}
+          aria-label={dealsOn ? "Voucher, đang có chương trình" : "Voucher"}
         >
           <TicketPercent
             size={22}
@@ -98,7 +99,7 @@ export function ShopMobileTabBar() {
             className={dealsActive ? "fill-current/15" : ""}
             aria-hidden
           />
-          <span className={deals.on ? "font-bold" : undefined}>Voucher</span>
+          <span className={dealsOn ? "font-bold" : undefined}>Voucher</span>
         </Link>
 
         <Link

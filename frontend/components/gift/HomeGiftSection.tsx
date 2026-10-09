@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { Sparkles, ArrowRight, Gift, Check, Building2 } from "lucide-react";
+import { Sparkles, ArrowRight, Building2, ChevronRight } from "lucide-react";
+import { GiftCategoryNav } from "@/components/gift/GiftCategoryNav";
 
 export interface GiftCardItem {
   _id?: string;
@@ -19,20 +20,12 @@ export interface GiftCardItem {
   isActive: boolean;
 }
 
-const FILTER_PILLS = [
-  { key: "all", label: "Tất cả gợi ý" },
-  { key: "nguoi-thuong", label: "🌸 Dành Cho Nàng (20/10)" },
-  { key: "gia-dinh", label: "🏡 Gia Đình & Mẹ" },
-  { key: "khai-truong", label: "🏢 Khai Trương & Thăng Chức" },
-  { key: "ban-lam-viec", label: "🌿 Bàn Làm Việc" },
-  { key: "doanh-nghiep", label: "💼 Quà Doanh Nghiệp (B2B)" },
-];
-
 export function HomeGiftSection({ initialItems = [] }: { initialItems?: GiftCardItem[] }) {
   const [items, setItems] = useState<GiftCardItem[]>(initialItems);
-  const [activeFilter, setActiveFilter] = useState("all");
   const [isVisible, setIsVisible] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(0);
   const sectionRef = useRef<HTMLElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Nếu chưa có server data, fetch client side
@@ -62,19 +55,6 @@ export function HomeGiftSection({ initialItems = [] }: { initialItems?: GiftCard
     }
     return () => observer.disconnect();
   }, []);
-
-  const handleFilterClick = (filterKey: string) => {
-    if (filterKey === "doanh-nghiep") {
-      window.location.href = "/qua-tang/doanh-nghiep";
-      return;
-    }
-    setActiveFilter(filterKey);
-  };
-
-  const filteredItems = items.filter((item) => {
-    if (activeFilter === "all") return true;
-    return item.recipientType === activeFilter;
-  });
 
   return (
     <section
@@ -140,33 +120,28 @@ export function HomeGiftSection({ initialItems = [] }: { initialItems?: GiftCard
           </p>
         </div>
 
-        {/* Thanh Bộ Lọc Nhanh (Pills) */}
-        <div className="mt-8 flex items-center justify-start sm:justify-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-          {FILTER_PILLS.map((pill) => {
-            const isActive = activeFilter === pill.key;
-            return (
-              <button
-                key={pill.key}
-                type="button"
-                onClick={() => handleFilterClick(pill.key)}
-                className={`shrink-0 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs sm:text-sm font-semibold transition duration-200 ${
-                  isActive
-                    ? "bg-[#0E5242] text-white shadow-sm"
-                    : "bg-white text-stone-600 border border-stone-200/80 hover:border-emerald-300 hover:text-stone-900"
-                }`}
-              >
-                {pill.label}
-              </button>
-            );
-          })}
-        </div>
+        {/* Thanh Bộ Lọc Nhanh (Pills) chuyển trang trực tiếp */}
+        <GiftCategoryNav activeKey="all" className="mt-8" />
 
-        {/* Lưới Thẻ Quà Tặng Nghệ Thuật (Desktop: Grid / Mobile: Scroll-snap với Peek 15%) */}
-        <div className="mt-10 flex gap-5 overflow-x-auto pb-4 scrollbar-none snap-x snap-mandatory sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible sm:pb-0">
-          {filteredItems.map((item, idx) => (
-            <div
+        {/* Lưới Thẻ Quà Tặng Nghệ Thuật (Bấm trực tiếp vào từng mục để vào trang quà tặng đó) */}
+        <div
+          ref={scrollRef}
+          onScroll={() => {
+            const el = scrollRef.current;
+            if (!el) return;
+            const firstCard = el.firstElementChild as HTMLElement | null;
+            const cardWidth = firstCard?.offsetWidth || 260;
+            const gap = 16;
+            const index = Math.round(el.scrollLeft / (cardWidth + gap));
+            setActiveIdx(Math.min(Math.max(0, index), items.length - 1));
+          }}
+          className="mt-8 sm:mt-10 -mx-4 px-4 flex gap-4 overflow-x-auto pb-3 scrollbar-none snap-x snap-mandatory sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-5 sm:overflow-visible sm:pb-0"
+        >
+          {items.map((item, idx) => (
+            <Link
               key={item._id || item.slug}
-              className={`group flex min-w-[85vw] sm:min-w-0 snap-center flex-col overflow-hidden rounded-2xl border border-stone-200/90 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:border-[var(--aloha-green)] hover:shadow-lg ${
+              href={`/qua-tang/${item.slug}`}
+              className={`group flex w-[74vw] max-w-[310px] min-w-[250px] shrink-0 sm:w-auto sm:max-w-none sm:min-w-0 sm:shrink snap-start flex-col overflow-hidden rounded-2xl border border-stone-200/90 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:border-[var(--aloha-green)] hover:shadow-lg cursor-pointer ${
                 isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
               }`}
               style={{ transitionDelay: `${idx * 80 + 100}ms` }}
@@ -197,42 +172,69 @@ export function HomeGiftSection({ initialItems = [] }: { initialItems?: GiftCard
 
                 {/* Nút Khám phá */}
                 <div className="mt-auto pt-4">
-                  <Link
-                    href={`/qua-tang/${item.slug}`}
-                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-stone-50 py-2.5 text-xs font-bold text-[#0E5242] border border-stone-200/90 transition group-hover:bg-[#0E5242] group-hover:text-white group-hover:border-[#0E5242]"
-                  >
+                  <span className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-stone-50 py-2.5 text-xs font-bold text-[#0E5242] border border-stone-200/90 transition group-hover:bg-[#0E5242] group-hover:text-white group-hover:border-[#0E5242]">
                     <span>Khám phá món quà</span>
                     <ArrowRight size={13} className="transition-transform duration-200 group-hover:translate-x-1" />
-                  </Link>
+                  </span>
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
 
-        {/* Khối kích hoạt quà doanh nghiệp nếu người dùng muốn tư vấn riêng */}
-        <div className="mt-12 rounded-2xl border border-stone-200/90 bg-white p-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3 text-center sm:text-left">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
-              <Building2 className="h-6 w-6" />
+        {/* Chấm phân trang chỉ báo vuốt ngang trên Mobile (Chuẩn Shopee / Apple) */}
+        {items.length > 1 && (
+          <div className="mt-1 flex items-center justify-center gap-1.5 sm:hidden" aria-hidden>
+            {items.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => {
+                  const el = scrollRef.current;
+                  if (!el) return;
+                  const card = el.children[i] as HTMLElement | undefined;
+                  if (card) {
+                    el.scrollTo({ left: card.offsetLeft - 16, behavior: "smooth" });
+                  }
+                }}
+                className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                  activeIdx === i ? "w-6 bg-[#0E5242]" : "w-1.5 bg-stone-300"
+                }`}
+                aria-label={`Chuyển tới gợi ý quà tặng ${i + 1}`}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Khối kích hoạt quà doanh nghiệp (Hiển thị trọn vẹn 100% chữ, tối ưu nhỏ gọn trên Mobile) */}
+        <div className="mt-8 sm:mt-12 rounded-2xl border border-stone-200/90 bg-white p-4 sm:p-6 shadow-2xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-6">
+            {/* Cụm Icon + Nội dung đầy đủ */}
+            <div className="flex items-start gap-3 sm:gap-4 text-left">
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700 mt-0.5">
+                <Building2 className="h-5 w-5 sm:h-6 sm:w-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-sm sm:text-base font-bold text-stone-900 leading-snug">
+                  Bạn cần đặt quà số lượng lớn cho công ty hoặc sự kiện?
+                </h4>
+                <p className="mt-1 text-xs sm:text-sm text-stone-500 leading-relaxed">
+                  Aloha hỗ trợ in logo doanh nghiệp lên chậu, khắc tag gỗ theo tên và xuất hóa đơn VAT đầy đủ.
+                </p>
+              </div>
             </div>
-            <div>
-              <h4 className="text-sm sm:text-base font-bold text-stone-900">
-                Bạn cần đặt quà số lượng lớn cho công ty hoặc sự kiện?
-              </h4>
-              <p className="text-xs text-stone-500 mt-0.5">
-                Aloha hỗ trợ in logo doanh nghiệp lên chậu, khắc tag gỗ theo tên và xuất hóa đơn VAT đầy đủ.
-              </p>
+
+            {/* Nút Xem hồ sơ dự án B2B */}
+            <div className="sm:shrink-0 pt-0.5 sm:pt-0">
+              <Link
+                href="/qua-tang/doanh-nghiep"
+                className="inline-flex w-full sm:w-auto items-center justify-center gap-1.5 rounded-full bg-[#0E5242] px-4 py-2 sm:px-5 sm:py-2.5 text-xs font-bold text-white shadow-xs hover:bg-[#156e59] transition cursor-pointer"
+              >
+                <span>Xem hồ sơ dự án B2B</span>
+                <ArrowRight size={13} />
+              </Link>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => handleFilterClick("doanh-nghiep")}
-            className="shrink-0 inline-flex items-center gap-2 rounded-full bg-[#0E5242] px-5 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[#156e59] transition"
-          >
-            <span>Xem hồ sơ dự án B2B</span>
-            <ArrowRight size={14} />
-          </button>
         </div>
       </div>
     </section>

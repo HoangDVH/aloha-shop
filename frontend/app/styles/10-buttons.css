@@ -51,6 +51,6 @@
 
 .shop-pb-sticky {
   padding-bottom: calc(
-    5.5rem + env(safe-area-inset-bottom, 0px)
+    max(5.5rem, var(--shop-sticky-h, 0px)) + 1rem + env(safe-area-inset-bottom, 0px)
   );
 }

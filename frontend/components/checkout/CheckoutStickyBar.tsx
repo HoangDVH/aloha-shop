@@ -1,7 +1,8 @@
 "use client";
 
 import { createPortal } from "react-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
+import { useStickyBarHeight } from "@/lib/floatingStack";
 import { formatVnd } from "@/lib/api";
 
 type Props = {
@@ -36,16 +37,22 @@ export function CheckoutStickyBar({
   orderBlockedReason,
   onPlaceOrder,
 }: Props) {
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const detailId = useId();
+  const amount = deliveryMethod === "nhan_cua_hang" || shippingFee == null ? Math.max(0, total - discount) : grandTotal;
+  const totalLabel = deliveryMethod === "nhan_cua_hang" ? "Tổng thanh toán" : shippingFee == null ? "Tiền hàng (chưa gồm ship)" : "Tổng tạm tính";
+  const stickyRef = useStickyBarHeight<HTMLDivElement>();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
   const bar = (
     <div
+      ref={stickyRef}
       className="fixed inset-x-0 bottom-0 z-[60] border-t border-[var(--aloha-line)] bg-white px-3 pt-3 pb-[max(0.85rem,env(safe-area-inset-bottom))] shadow-[0_-4px_24px_rgba(0,0,0,0.1)] lg:hidden"
       style={{ position: "fixed" }}
     >
       <div className="mx-auto max-w-7xl space-y-2.5">
-        <div className="space-y-1.5 text-[13px] text-slate-500">
+        {detailsOpen ? <div id={detailId} className="max-h-[40dvh] space-y-1.5 overflow-y-auto text-[13px] text-slate-500">
           <div className="flex items-center justify-between gap-3">
             <span>Tổng tiền hàng</span>
             <span className="tabular-nums">{formatVnd(total)}</span>
@@ -105,27 +112,29 @@ export function CheckoutStickyBar({
               </span>
             </div>
           )}
-        </div>
+        </div> : null}
         {!canSubmit && orderBlockedReason ? (
           <p className="line-clamp-2 text-[11px] leading-snug text-amber-800">
             {orderBlockedReason}
           </p>
         ) : null}
+        <div className="flex items-center gap-3">
+          <button type="button" aria-expanded={detailsOpen} aria-controls={detailId} onClick={() => setDetailsOpen(v => !v)} className="min-h-11 min-w-0 flex-1 text-left">
+            <span className="block text-[11px] text-slate-500">{totalLabel}</span>
+            <span className="block text-base font-bold text-[var(--aloha-price)]">{formatVnd(amount)}</span>
+            <span className="block text-[11px] text-[var(--aloha-green)]">{detailsOpen ? "Thu gọn" : "Xem chi tiết"}</span>
+          </button>
         <button
           type="button"
-          disabled={!canSubmit}
+          disabled={!canSubmit || submitting}
           onClick={onPlaceOrder}
-          className="flex w-full flex-col items-center justify-center rounded-full bg-[var(--aloha-green)] px-4 py-3 text-white shadow-sm transition hover:bg-[var(--aloha-green-hover)] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
+          className="flex min-h-12 shrink-0 flex-col items-center justify-center rounded-xl bg-[var(--aloha-green)] px-4 py-3 text-white shadow-sm transition hover:bg-[var(--aloha-green-hover)] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
         >
           <span className="text-[15px] font-extrabold leading-none">
             {submitting ? "Đang gửi…" : "Đặt hàng"}
           </span>
-          <span className="mt-1 text-[11px] font-medium leading-none opacity-90">
-            {submitting
-              ? "Vui lòng chờ trong giây lát"
-              : "Aloha gửi ảnh xác nhận trước khi đóng gói"}
-          </span>
         </button>
+        </div>
       </div>
     </div>
   );

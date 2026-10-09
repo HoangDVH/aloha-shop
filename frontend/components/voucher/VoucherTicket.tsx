@@ -79,18 +79,18 @@ export function VoucherTicket({
       ? "border-slate-200/60 opacity-80"
       : "border-slate-200/90 hover:border-slate-300 hover:shadow-md";
   const stubBg = disabled ? "bg-slate-200 text-slate-400" : (lg ? STUB_BG_LG : STUB_BG)[tone];
-  const notch = lg ? "h-4 w-4 -right-2 sm:h-5 sm:w-5 sm:-right-2.5" : "h-4 w-4 -right-2";
+  const notch = lg ? "h-3.5 w-3.5 -right-1.5 sm:h-4 sm:w-4 sm:-right-2" : "h-3 w-3 -right-1.5";
 
   return (
     <div
-      className={`relative flex items-stretch rounded-2xl bg-white transition-all duration-200 shadow-2xs border ${border} ${
-        lg ? "min-h-[86px] sm:min-h-[118px]" : ""
+      className={`relative flex items-stretch rounded-xl sm:rounded-2xl bg-white transition-all duration-200 shadow-2xs border ${border} ${
+        lg ? "min-h-[76px] sm:min-h-[82px]" : "min-h-[70px] sm:min-h-[76px]"
       } ${className}`}
     >
-      {/* 1. CUỐNG VÉ BÊN TRÁI (FULL HEIGHT NHƯ ẢNH 1) */}
+      {/* 1. CUỐNG VÉ BÊN TRÁI (FULL HEIGHT, TỶ LỆ GỌN GÀNG CHUẨN TMĐT) */}
       <div
-        className={`relative flex shrink-0 flex-col items-center justify-center rounded-l-2xl text-center select-none overflow-hidden ${
-          lg ? "w-[82px] sm:w-[110px] p-1.5 sm:p-2.5" : "w-[80px] sm:w-[94px] p-2"
+        className={`relative flex shrink-0 flex-col items-center justify-center rounded-l-xl sm:rounded-l-2xl text-center select-none overflow-hidden ${
+          lg ? "w-[72px] sm:w-[78px] p-1 sm:p-1.5" : "w-[66px] sm:w-[72px] p-1"
         } ${stubBg}`}
       >
         {lg && !disabled ? (
@@ -100,8 +100,8 @@ export function VoucherTicket({
           />
         ) : null}
         <div
-          className={`relative flex items-center justify-center gap-1 font-black uppercase tracking-wider text-white/95 leading-tight ${
-            lg ? "text-[10px] sm:text-[13px]" : "text-[9px] sm:text-[10px]"
+          className={`relative flex items-center justify-center gap-0.5 font-black uppercase tracking-wider text-white/95 leading-tight ${
+            lg ? "text-[9px] sm:text-[10px]" : "text-[8px] sm:text-[9px]"
           }`}
         >
           {icon ? <span className="shrink-0">{icon}</span> : null}
@@ -109,52 +109,52 @@ export function VoucherTicket({
         </div>
         <span
           className={`relative font-black tracking-tight leading-none text-white ${
-            lg ? "mt-1 sm:mt-1.5 text-[21px] sm:text-[30px] drop-shadow-sm" : "mt-0.5 text-base sm:text-lg leading-tight"
+            lg ? "mt-0.5 sm:mt-1 text-[18px] sm:text-[21px] drop-shadow-xs" : "mt-0.5 text-base sm:text-lg leading-tight"
           }`}
         >
           {stubValue}
         </span>
         {stubSubLabel ? (
-          <span className="text-[7.5px] sm:text-[8px] font-bold uppercase tracking-tight text-white/80 mt-0.5">
+          <span className="text-[7px] sm:text-[7.5px] font-bold uppercase tracking-tight text-white/80 mt-0.5">
             {stubSubLabel}
           </span>
         ) : null}
 
         {/* Vết cắt khuyết tròn trên đỉnh tại ranh giới cuống vé */}
         <span
-          className={`absolute ${notch} ${lg ? "-top-2 sm:-top-2.5" : "-top-2"} rounded-full border border-slate-200/80 shadow-inner z-10`}
+          className={`absolute ${notch} ${lg ? "-top-1.5 sm:-top-2" : "-top-1.5"} rounded-full border border-slate-200/80 shadow-inner z-10`}
           style={{ backgroundColor: notchBg }}
           aria-hidden="true"
         />
         {/* Vết cắt khuyết tròn dưới đáy tại ranh giới cuống vé */}
         <span
-          className={`absolute ${notch} ${lg ? "-bottom-2 sm:-bottom-2.5" : "-bottom-2"} rounded-full border border-slate-200/80 shadow-inner z-10`}
+          className={`absolute ${notch} ${lg ? "-bottom-1.5 sm:-bottom-2" : "-bottom-1.5"} rounded-full border border-slate-200/80 shadow-inner z-10`}
           style={{ backgroundColor: notchBg }}
           aria-hidden="true"
         />
         {/* Đường gân đứt nét phân cách cuống vé và thân vé */}
         <div
-          className={`absolute right-0 w-0 border-r border-dashed border-white/35 z-10 ${lg ? "top-2.5 bottom-2.5 sm:top-3 sm:bottom-3" : "top-2 bottom-2"}`}
+          className={`absolute right-0 w-0 border-r border-dashed border-white/35 z-10 ${lg ? "top-2 bottom-2 sm:top-2.5 bottom-2.5" : "top-1.5 bottom-1.5"}`}
         />
       </div>
 
       {/* 2. THÂN VÉ BÊN PHẢI (NỀN TRẮNG) */}
       <div
-        className={`relative flex flex-1 items-center justify-between min-w-0 rounded-r-2xl gap-2 h-full ${
-          lg ? "py-2 px-2.5 sm:py-3 sm:pl-3.5 sm:pr-3" : "p-2.5 sm:p-3"
+        className={`relative flex flex-1 items-center justify-between min-w-0 rounded-r-xl sm:rounded-r-2xl gap-2 h-full ${
+          lg ? "py-1.5 px-2.5 sm:py-2 sm:pl-3 sm:pr-2.5" : "p-2 sm:p-2.5"
         }`}
       >
         {lg ? (
           <span
-            className="pointer-events-none absolute left-2 right-3 top-0 h-[3px] rounded-b-full"
+            className="pointer-events-none absolute left-2 right-3 top-0 h-[2px] rounded-b-full"
             style={{ backgroundColor: disabled ? ACCENT.gray : ACCENT[tone] }}
             aria-hidden
           />
         ) : null}
-        <div className={`flex-1 min-w-0 flex flex-col justify-center ${lg ? "space-y-0.5 sm:space-y-1" : "space-y-0.5"}`}>
+        <div className={`flex-1 min-w-0 flex flex-col justify-center ${lg ? "space-y-0.5" : "space-y-0.5"}`}>
           <div className="flex items-start gap-1.5 min-w-0">
             <h4
-              className={`font-bold leading-snug line-clamp-2 break-words ${lg ? "text-[12.5px] sm:text-[14.5px]" : "text-xs sm:text-[13px]"} ${
+              className={`font-bold leading-snug line-clamp-1 break-words ${lg ? "text-[12px] sm:text-[13px]" : "text-[11.5px] sm:text-[12px]"} ${
                 disabled ? "text-slate-500" : "text-slate-900"
               }`}
               title={title}

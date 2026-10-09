@@ -412,7 +412,8 @@ export async function renderHomeMainSections(blocks: AppearanceBlock[] = []) {
     (b) =>
       b.type === "product_section" ||
       b.type === "article_section" ||
-      b.type === "trust_section"
+      b.type === "trust_section" ||
+      b.type === "gift_section"
   );
 
   // Appearance cũ thiếu khối mặc định → vẫn hiện (cuối danh sách); khối có mà đang tắt → ẩn
@@ -458,16 +459,25 @@ export async function renderHomeMainSections(blocks: AppearanceBlock[] = []) {
     });
   }
 
+  // Tự động bổ sung khối gift_section (Gợi ý chọn quà tặng) ngay sau banner nếu cấu hình cũ chưa có
+  if (!main.some((b) => b.type === "gift_section")) {
+    ordered.unshift({
+      id: "home_gift_section_default",
+      type: "gift_section",
+      enabled: true,
+      props: {},
+    });
+  }
+
   const nodes: ReactNode[] = [];
   const rendered = new Set<string>();
-  let renderedGiftSection = false;
   for (const b of ordered) {
     if (b.enabled === false) continue;
+    if (b.type === "gift_section") {
+      nodes.push(<HomeGiftSection key={b.id || "home-gift-section"} />);
+      continue;
+    }
     if (b.type === "trust_section") {
-      if (!renderedGiftSection) {
-        nodes.push(<HomeGiftSection key="home-gift-section-above-trust" />);
-        renderedGiftSection = true;
-      }
       nodes.push(<HomeTrustShowcase key={b.id} props={b.props} />);
       continue;
     }
@@ -487,9 +497,6 @@ export async function renderHomeMainSections(blocks: AppearanceBlock[] = []) {
       continue;
     }
     nodes.push(<HomeCustomProductSection key={b.id} props={b.props || {}} />);
-  }
-  if (!renderedGiftSection) {
-    nodes.push(<HomeGiftSection key="home-gift-section-above-trust" />);
   }
   return <>{nodes}</>;
 }

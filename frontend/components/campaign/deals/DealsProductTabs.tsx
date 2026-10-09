@@ -8,9 +8,9 @@ import { flashStageText, stageChips } from "@/lib/campaign/flashSlots";
 import { useCountdown } from "@/lib/hooks/useCountdown";
 import { fetchLivePrices, type LivePriceRow } from "@/lib/livePrices";
 import { isPromoSelling } from "@/components/campaign/CardPromo";
-import { ProductGrid } from "@/components/ProductCard";
+import { ScopedProductCatalog } from "@/components/catalog/ScopedProductCatalog";
 import {
-  DEALS_FILTERS,
+  legacyDealsPriceRange,
   countDealsFilters,
   matchesDealsFilter,
   toDealsFilter,
@@ -19,7 +19,6 @@ import {
 } from "@/lib/campaign/dealsFilters";
 import { liveRowToProduct } from "./DealsProducts";
 
-const PAGE = 20;
 /** Chiến dịch lớn: chỉ nạp giá tối đa ngần này mã để lọc theo mức giá. */
 const MAX_MAS = 400;
 
@@ -60,7 +59,6 @@ export function DealsProductTabs({
   const searchParams = useSearchParams();
   const sectionRef = useRef<HTMLElement>(null);
   const [rows, setRows] = useState<Record<string, LivePriceRow> | null>(null);
-  const [shown, setShown] = useState(PAGE);
 
   // Logic tính toán Flash Sale
   const nowMs = Date.now() + offsetMs;
@@ -86,10 +84,22 @@ export function DealsProductTabs({
   const activeSlot = slots.find((s) => s.key === activeSlotKey);
 
   const locParam = searchParams.get("loc");
+  const legacyPrice = legacyDealsPriceRange(locParam);
+  const initialMinPrice = searchParams.get("minPrice") ?? legacyPrice?.minPrice ?? "";
+  const initialMaxPrice = searchParams.get("maxPrice") ?? legacyPrice?.maxPrice ?? "";
+  useEffect(() => {
+    const range = legacyDealsPriceRange(searchParams.get("loc"));
+    if (!range) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("loc");
+    if (!params.has("minPrice")) params.set("minPrice", range.minPrice);
+    if (!params.has("maxPrice") && range.maxPrice) params.set("maxPrice", range.maxPrice);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [searchParams, pathname, router]);
   const tabParam = searchParams.get("tab");
   const isFlashPage = mode === "flash-only" || tabParam === "flash-sale" || tabParam === "flash";
   const stage = flashStageText(campaign.display.flashStage);
-  const rawActive = locParam
+  const rawActive = locParam && !legacyPrice
     ? toDealsFilter(locParam)
     : isFlashPage || searchParams.get("slot")
       ? "flash"
@@ -146,9 +156,6 @@ export function DealsProductTabs({
   }, [list, rows]);
 
   const counts = useMemo(() => countDealsFilters(items.map((x) => x.item), activeSlotKey), [items, activeSlotKey]);
-  const filters = DEALS_FILTERS.filter(
-    (f) => (f.id !== "flash" || slots.length > 0) && (f.id === "all" || f.id === "flash" || counts[f.id] > 0)
-  );
   const effective: DealsFilterId = rows && rawActive !== "all" && !counts[rawActive] && rawActive !== "flash" ? "all" : rawActive;
 
   const matched = useMemo(() => {
@@ -161,23 +168,7 @@ export function DealsProductTabs({
     return items.filter((x) => matchesDealsFilter(x.item, effective, activeSlotKey));
   }, [items, isFlashPage, effective, activeSlotKey]);
 
-  const products = useMemo(() => matched.slice(0, shown).map((x) => liveRowToProduct(x.row)), [matched, shown]);
-
-  useEffect(() => setShown(PAGE), [effective, activeSlotKey]);
-
-  const pick = (id: DealsFilterId) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (id === "all") {
-      if (params.get("tab") === "flash-sale") params.set("loc", "all");
-      else params.delete("loc");
-    } else {
-      params.set("loc", id);
-    }
-    const qs = params.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-    const el = sectionRef.current;
-    if (el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
+  const products = useMemo(() => matched.map((x) => liveRowToProduct(x.row)), [matched]);
 
   if (!list.length) return null;
 
@@ -306,35 +297,6 @@ export function DealsProductTabs({
       ) : (
         /* TRANG TỔNG QUAN: HIỂN THỊ THANH LỌC ĐẦY ĐỦ */
         <>
-          <div className="sticky top-[var(--shop-chrome-h,64px)] z-20 -mx-4 px-4 sm:mx-0 sm:px-0 py-2 backdrop-blur-md sm:rounded-2xl bg-white/95 border-b border-slate-100/80">
-            <div role="tablist" aria-label="Lọc sản phẩm ưu đãi" className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {filters.map((f) => {
-                const on = f.id === effective;
-                return (
-                  <button
-                    key={f.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={on}
-                    onClick={() => pick(f.id)}
-                    className={`min-h-[44px] shrink-0 rounded-full px-4 text-[13px] font-bold transition-all cursor-pointer ${
-                      on
-                        ? "bg-[var(--campaign-primary,#C8102E)] text-white shadow-sm scale-[1.02]"
-                        : "bg-white text-slate-700 ring-1 ring-black/[0.06] hover:text-[var(--campaign-primary,#C8102E)]"
-                    }`}
-                  >
-                    {f.label}
-                    {rows && f.id !== "flash" && counts[f.id] > 0 ? (
-                      <span className={`ml-1 text-[11px] font-semibold ${on ? "text-white/80" : "text-slate-400"}`}>
-                        {counts[f.id]}
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           {effective === "flash" && slots.length > 0 ? (
             <div className="space-y-2 pt-1">
               <div
@@ -393,18 +355,7 @@ export function DealsProductTabs({
         </div>
       ) : (
         <>
-          <ProductGrid products={products} shopee columns={4} variant="deal" />
-          {shown < matched.length ? (
-            <div className="flex justify-center pt-2">
-              <button
-                type="button"
-                onClick={() => setShown((n) => n + PAGE)}
-                className="min-h-[44px] rounded-full bg-white px-6 text-sm font-bold text-[var(--campaign-primary,#C8102E)] ring-1 ring-[var(--campaign-primary,#C8102E)]/30 hover:bg-[#FFF5F8] cursor-pointer"
-              >
-                Xem thêm {Math.min(PAGE, matched.length - shown)} sản phẩm
-              </button>
-            </div>
-          ) : null}
+          <ScopedProductCatalog key={`${effective}:${activeSlotKey}:${initialMinPrice}:${initialMaxPrice}`} products={products} variant="deal" initialMinPrice={initialMinPrice} initialMaxPrice={initialMaxPrice} />
         </>
       )}
     </section>

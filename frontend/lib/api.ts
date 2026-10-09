@@ -245,6 +245,7 @@ export async function fetchProducts(
     badge?: "ban_chay_sap_het" | "giam_gia" | "dat_truoc" | "moi" | "uu_dai" | "ban_chay" | "noi_bat";
     /** Chỉ SP áp dụng voucher này (nút "Dùng ngay") */
     voucher?: string;
+    gift?: string;
     signal?: AbortSignal;
   },
   /** Mặc định no-store (danh sách cần tồn mới). SP liên quan trên PDP: truyền revalidate. */
@@ -277,6 +278,7 @@ export async function fetchProducts(
   if (opts.sort) sp.set("sort", opts.sort);
   if (opts.loai) sp.set("loai", String(opts.loai).trim());
   if (opts.badge) sp.set("badge", opts.badge);
+  if (opts.gift) sp.set("gift", opts.gift);
   if (opts.voucher) sp.set("voucher", opts.voucher);
   for (const a of opts.attr || []) {
     const t = String(a || "").trim();
@@ -407,6 +409,8 @@ export type ShopArticleListItem = {
   excerpt: string;
   publishedAt: string;
   updatedAt: string;
+  videoUrl?: string;
+  hasVideo?: boolean;
 };
 
 export type ShopArticleDetail = ShopArticleListItem & {

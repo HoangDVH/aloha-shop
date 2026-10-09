@@ -96,7 +96,7 @@ export function DealsOverview({
     <div className="space-y-8 pb-20 sm:space-y-12 lg:pb-0">
       <DealsBanner
         campaign={campaign}
-        below={<QuickTiles campaign={campaign} vouchers={vouchers} offsetMs={offsetMs} className="sm:px-0" />}
+        below={<QuickTiles campaign={campaign} vouchers={vouchers} offsetMs={offsetMs} className="pt-2 sm:pt-4 sm:px-0" />}
       />
 
       <DealsVoucherStrip vouchers={vouchers} viewer={viewer} offsetMs={offsetMs} focusIds={focusIds} />

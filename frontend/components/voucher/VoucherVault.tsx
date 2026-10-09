@@ -270,12 +270,12 @@ export function VoucherVault({
                   />
                 }
               >
-                <p className="truncate text-[11px] sm:text-xs font-medium text-slate-600">{voucherConditionText(v)}</p>
+                <p className="truncate text-[10.5px] sm:text-[11px] text-slate-500 font-medium leading-tight">{voucherConditionText(v)}</p>
                 {v.mystery ? <MysteryOdds mystery={v.mystery} /> : null}
                 {claimedPct != null && left != null ? (
-                  <div className="flex items-center gap-1.5 sm:gap-2" title={`Đã lưu ${claimedPct}% số lượt`}>
+                  <div className="flex items-center gap-1.5" title={`Đã lưu ${claimedPct}% số lượt`}>
                     <div
-                      className="h-1.5 min-w-8 max-w-20 sm:max-w-24 flex-1 overflow-hidden rounded-full bg-slate-100"
+                      className="h-1 min-w-6 max-w-16 sm:max-w-20 flex-1 overflow-hidden rounded-full bg-slate-100"
                       role="progressbar"
                       aria-valuenow={claimedPct}
                       aria-valuemin={0}
@@ -285,17 +285,17 @@ export function VoucherVault({
                       <div className="h-full rounded-full bg-gradient-to-r from-amber-400 to-red-500" style={{ width: `${claimedPct}%` }} />
                     </div>
                     <span
-                      className={`shrink-0 whitespace-nowrap text-[10px] sm:text-[10.5px] font-semibold ${claimedPct >= 80 ? "text-red-600" : "text-slate-500"}`}
+                      className={`shrink-0 whitespace-nowrap text-[9.5px] sm:text-[10px] font-semibold ${claimedPct >= 80 ? "text-red-600" : "text-slate-400"}`}
                     >
-                      {left > 0 ? `Còn ${left} lượt` : "Hết lượt"}
+                      {left > 0 ? `Còn ${left}` : "Hết lượt"}
                     </span>
                   </div>
                 ) : v.claimRequired && v.claimedCount >= 50 ? (
-                  <p className="text-[10px] sm:text-[10.5px] font-semibold text-slate-500">{v.claimedCount.toLocaleString("vi-VN")} người đã lưu</p>
+                  <p className="text-[9.5px] sm:text-[10px] font-semibold text-slate-400 truncate">{v.claimedCount.toLocaleString("vi-VN")} người đã lưu</p>
                 ) : null}
-                <div className="flex items-center gap-2 text-[10.5px] sm:text-[11px] font-medium text-slate-500">
-                  {v.endDate ? <p>HSD: {vnDate(v.endDate)}</p> : null}
-                  <p className="empty:hidden">
+                <div className="flex items-center gap-1.5 text-[9.5px] sm:text-[10px] text-slate-400 leading-none">
+                  {v.endDate ? <p className="truncate">HSD: {vnDate(v.endDate)}</p> : null}
+                  <p className="empty:hidden truncate">
                     <VoucherStatusLine v={v} state={state} nowMs={nowMs} offsetMs={offsetMs} />
                   </p>
                 </div>

@@ -11,6 +11,18 @@ export const DEALS_FILTERS = [
 
 export type DealsFilterId = (typeof DEALS_FILTERS)[number]["id"];
 
+/** Price has a single control in the shared catalog toolbar. */
+export const DEALS_TYPE_FILTERS = DEALS_FILTERS.filter(f => !["duoi-300k", "300-500k", "tren-500k"].includes(f.id));
+
+export function legacyDealsPriceRange(id: string | null): { minPrice: string; maxPrice: string } | null {
+  switch (id) {
+    case "duoi-300k": return { minPrice: "1", maxPrice: "299999" };
+    case "300-500k": return { minPrice: "300000", maxPrice: "500000" };
+    case "tren-500k": return { minPrice: "500001", maxPrice: "" };
+    default: return null;
+  }
+}
+
 export type DealsFilterItem = {
   ma: string;
   dealHot: boolean;

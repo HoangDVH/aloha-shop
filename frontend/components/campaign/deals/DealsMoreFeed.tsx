@@ -1,34 +1,39 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Heart } from "lucide-react";
 import type { CampaignUI } from "@/lib/campaign/campaignApi";
 import { fetchProducts, type ShopProduct } from "@/lib/api";
 import { ProductGrid } from "@/components/ProductCard";
-import { DealsSectionHead } from "./DealsSectionHead";
 
-const PAGE = 20;
-/** Tự nạp khi cuộn tối đa ngần này trang; sau đó mời sang trang tìm kiếm để trang ưu đãi không dài vô tận. */
-const MAX_AUTO_PAGES = 5;
+const PAGE = 12;
 
-/** "Có thể bạn cũng thích": SP trang chủ còn hàng, bỏ SP đã có trong chiến dịch; cuộn tới đâu nạp tới đó. */
+/** Show twelve suggestions at a time; further pages require an explicit click. */
 export function DealsMoreFeed({ campaign }: { campaign: CampaignUI }) {
-  const exclude = useMemo(() => new Set(campaign.products.map((p) => p.ma.toUpperCase())), [campaign.products]);
+  const excludeKey = campaign.products.map(p => p.ma.toUpperCase()).sort().join("|");
+  const exclude = useMemo(() => new Set(excludeKey.split("|").filter(Boolean)), [excludeKey]);
   const [items, setItems] = useState<ShopProduct[]>([]);
   const [page, setPage] = useState(0);
   const [pages, setPages] = useState(1);
   const [loading, setLoading] = useState(false);
-  const sentinel = useRef<HTMLDivElement>(null);
-  const done = page >= pages || page >= MAX_AUTO_PAGES;
+  const [error, setError] = useState(false);
+  const busy = useRef(false);
+  const request = useRef<AbortController | null>(null);
+  const done = page > 0 && page >= pages;
 
-  const loadNext = useRef<() => void>(() => {});
-  loadNext.current = () => {
-    if (loading || done) return;
-    const next = page + 1;
+  const loadPage = useCallback((next: number, reset = false) => {
+    if (busy.current && !reset) return;
+    request.current?.abort();
+    const controller = new AbortController();
+    request.current = controller;
+    busy.current = true;
     setLoading(true);
-    fetchProducts({ home: true, inStock: true, page: next, limit: PAGE })
+    setError(false);
+    if (reset) { setItems([]); setPage(0); setPages(1); }
+    fetchProducts({ home: true, inStock: true, page: next, limit: PAGE, signal: controller.signal })
       .then((res) => {
+        if (controller.signal.aborted) return;
         setItems((prev) => {
           const seen = new Set(prev.map((p) => p.ma.toUpperCase()));
           const add = res.items.filter((p) => {
@@ -42,23 +47,18 @@ export function DealsMoreFeed({ campaign }: { campaign: CampaignUI }) {
         setPages(res.pages || next);
         setPage(next);
       })
-      .catch(() => setPages(page))
-      .finally(() => setLoading(false));
-  };
+      .catch(() => { if (!controller.signal.aborted) setError(true); })
+      .finally(() => {
+        if (request.current !== controller || controller.signal.aborted) return;
+        busy.current = false;
+        setLoading(false);
+      });
+  }, [exclude]);
 
   useEffect(() => {
-    const el = sentinel.current;
-    if (!el || done) return;
-    if (typeof IntersectionObserver === "undefined") {
-      loadNext.current();
-      return;
-    }
-    const io = new IntersectionObserver((entries) => entries.some((e) => e.isIntersecting) && loadNext.current(), {
-      rootMargin: "600px 0px",
-    });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [done, page]);
+    loadPage(1, true);
+    return () => request.current?.abort();
+  }, [loadPage]);
 
   if (page > 0 && !items.length && done) return null;
 
@@ -89,11 +89,19 @@ export function DealsMoreFeed({ campaign }: { campaign: CampaignUI }) {
           ))}
         </div>
       ) : null}
-      <div ref={sentinel} aria-hidden className="h-px" />
+      {error ? <p role="status" className="text-center text-sm text-rose-700">Chưa tải được sản phẩm. Bạn có thể bấm thử lại.</p> : null}
+      {!done ? (
+        <div className="flex justify-center">
+          <button type="button" disabled={loading} onClick={() => loadPage(page + 1)}
+            className="min-h-11 rounded-full bg-white px-6 text-sm font-bold text-[var(--campaign-primary,#C2185B)] ring-1 ring-[var(--campaign-primary,#C2185B)]/30 hover:bg-[#FFF5F8] disabled:opacity-60">
+            {loading ? "Đang tải…" : error ? "Thử lại" : "Xem thêm"}
+          </button>
+        </div>
+      ) : null}
       {done && items.length ? (
         <div className="flex justify-center">
           <Link
-            href="/tim?inStock=1"
+            href="/tim"
             className="inline-flex min-h-[44px] items-center rounded-full bg-white px-6 text-sm font-bold text-[var(--campaign-primary,#C2185B)] ring-1 ring-[var(--campaign-primary,#C2185B)]/30 hover:bg-[#FFF5F8]"
           >
             Xem tất cả sản phẩm

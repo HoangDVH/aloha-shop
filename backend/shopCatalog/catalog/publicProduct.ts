@@ -188,9 +188,9 @@ export function sortPublicItems(
       : resolvePinBadgeScope({ sort });
   const next = [...items];
   if (sort === "price_asc") {
-    return arrangeByAbsolutePin(next, (a, b) => a.gia - b.gia, scope);
+    return next.sort((a, b) => a.gia - b.gia);
   } else if (sort === "price_desc") {
-    return arrangeByAbsolutePin(next, (a, b) => b.gia - a.gia, scope);
+    return next.sort((a, b) => b.gia - a.gia);
   } else if (sort === "ton_desc") {
     return arrangeByAbsolutePin(
       next,

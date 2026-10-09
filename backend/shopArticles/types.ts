@@ -30,6 +30,7 @@ export type ShopArticlePublic = {
   category: string;
   coverUrl: string;
   videoUrl?: string;
+  hasVideo?: boolean;
   excerpt: string;
   bodyHtml?: string;
   productMas?: string[];

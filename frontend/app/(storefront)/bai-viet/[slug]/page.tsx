@@ -1,3 +1,4 @@
+import { ArticleVideoPlayer } from "@/components/ArticleVideoPlayer";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
@@ -181,13 +182,7 @@ export default async function BaiVietDetailPage({ params }: Props) {
               {/\.(mp4|webm|ogg)(\?|$)/i.test(item.videoUrl) ||
               item.videoUrl.includes("/uploads/") ? (
                 // eslint-disable-next-line jsx-a11y/media-has-caption
-                <video
-                  src={item.videoUrl}
-                  controls
-                  playsInline
-                  preload="metadata"
-                  className="aspect-video w-full"
-                />
+                <ArticleVideoPlayer src={item.videoUrl} title={item.title} />
               ) : (
                 <iframe
                   src={

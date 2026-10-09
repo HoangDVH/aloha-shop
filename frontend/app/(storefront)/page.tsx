@@ -1,3 +1,4 @@
+import { normalizeWebBadge } from "@/lib/webBadge";
 import { Suspense, type ReactNode } from "react";
 import { ShopPageLoader } from "@/components/ShopPageLoader";
 import type { Metadata } from "next";
@@ -22,10 +23,12 @@ type HomeSp = {
   attr?: string | string[];
   dvt?: string | string[];
   loai?: string;
+  gift?: string;
   minPrice?: string;
   maxPrice?: string;
   inStock?: string;
   sort?: string;
+  badge?: string;
   page?: string;
 };
 
@@ -38,6 +41,8 @@ function hasActiveFilters(sp: HomeSp) {
       nhomList.length ||
       attrList.length ||
       dvtList.length ||
+      Boolean(sp.gift) ||
+      Boolean(normalizeWebBadge(sp.badge)) ||
       String(sp.loai || "").trim() ||
       Number(sp.minPrice) ||
       Number(sp.maxPrice) ||
@@ -118,6 +123,7 @@ async function HomeCatalog({
     !loai &&
     !attrList.length &&
     !dvtList.length &&
+    !sp.gift &&
     !minPrice &&
     !maxPrice &&
     !inStock;
@@ -148,9 +154,11 @@ async function HomeCatalog({
       loai: loai || undefined,
       page,
       limit: 36,
+      gift: sp.gift || undefined,
       minPrice: minPrice || undefined,
       maxPrice: maxPrice || undefined,
       inStock: inStock || undefined,
+      badge: normalizeWebBadge(sp.badge) || undefined,
       sort,
     });
     items = prod.items;
@@ -176,7 +184,6 @@ async function HomeCatalog({
                 : q || loaiTitle || "Sản phẩm bán chạy"
           }
           homeMode
-          hideFilters
         >
           {err ? (
             <p className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-200">

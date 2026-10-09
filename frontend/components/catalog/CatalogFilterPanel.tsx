@@ -30,12 +30,11 @@ export type CatalogFilterPanelProps = {
   onPricePreset: (minPrice: string, maxPrice: string | null) => void;
   onMinPriceBlur: (value: string | null) => void;
   onMaxPriceBlur: (value: string | null) => void;
-  inStock: boolean;
-  onInStockChange: (checked: boolean) => void;
   onClearFilters: () => void;
   onClose?: () => void;
   hideClearButton?: boolean;
   embedded?: boolean;
+  hideCategory?: boolean;
 };
 
 export function CatalogFilterPanel({
@@ -60,12 +59,11 @@ export function CatalogFilterPanel({
   onPricePreset,
   onMinPriceBlur: _onMinPriceBlur,
   onMaxPriceBlur: _onMaxPriceBlur,
-  inStock,
-  onInStockChange,
   onClearFilters,
   onClose,
   hideClearButton = false,
   embedded = false,
+  hideCategory = false,
 }: CatalogFilterPanelProps) {
   const body = (
     <>
@@ -88,7 +86,13 @@ export function CatalogFilterPanel({
         </div>
       ) : null}
 
-      {lockCategory || allProductsPage ? (
+      <PriceRangeFilter
+        minPrice={minPrice}
+        maxPrice={maxPrice}
+        onChange={(min, max) => onPricePreset(min, max)}
+      />
+
+      {hideCategory ? null : lockCategory || allProductsPage ? (
         <CatalogSubcatPicker
           categoryIds={categoryIds}
           showRootL1={allProductsPage && !lockCategory}
@@ -109,6 +113,9 @@ export function CatalogFilterPanel({
         </div>
       )}
 
+      {!hideCategory || dvtItems.length > 0 || Object.keys(attributes).length > 0 ? <details open={selectedDvts.length > 0 || selectedAttrs.length > 0 || undefined} className="rounded-xl border border-[var(--aloha-line)] p-3">
+        <summary className="min-h-11 cursor-pointer text-sm font-bold text-stone-700">Lọc chi tiết: kích thước, phân loại, đơn vị{selectedDvts.length + selectedAttrs.length > 0 ? ` (${selectedDvts.length + selectedAttrs.length})` : ""}</summary>
+        <div className="space-y-4 pt-3">
       <FilterChipSection
         title="Đơn vị"
         defaultOpen
@@ -142,22 +149,13 @@ export function CatalogFilterPanel({
           !q
         }
       />
+        </div>
+      </details> : null}
 
-      <PriceRangeFilter
-        minPrice={minPrice}
-        maxPrice={maxPrice}
-        onChange={(min, max) => onPricePreset(min, max)}
-      />
 
-      <label className="flex min-h-11 cursor-pointer items-center gap-2.5 rounded-xl px-1 py-2.5 text-sm font-semibold text-slate-700 hover:bg-[var(--aloha-cream)]">
-        <input
-          type="checkbox"
-          checked={inStock}
-          onChange={(e) => onInStockChange(e.target.checked)}
-          className="h-4 w-4 accent-[var(--aloha-green)]"
-        />
-        Chỉ hiện còn hàng
-      </label>
+
+
+
 
       {!hideClearButton ? (
         <button

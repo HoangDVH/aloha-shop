@@ -3,6 +3,7 @@
 import React from "react";
 import {
   FileText,
+  Gift,
   Image as ImageIcon,
   Layers,
   Plus,
@@ -337,6 +338,25 @@ export function HomePanel({
                 </p>
                 <p className="mt-2 text-[12px] text-gray-500">
                   Khối dịch vụ / Why Aloha — bật/tắt bằng công tắc trên danh sách.
+                </p>
+              </div>
+            );
+          }
+          if (b.type === "gift_section") {
+            return (
+              <div className="rounded-xl border border-gray-200 bg-white p-3.5">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="flex items-center gap-2 text-[13px] font-semibold text-gray-900">
+                    <Gift className="h-4 w-4 text-[var(--aloha-green)]" />
+                    {BLOCK_LABEL[b.type] || "Gợi ý chọn quà tặng"}
+                  </p>
+                  <WbBadge tone={b.enabled ? "success" : "neutral"}>
+                    {b.enabled ? "Đang hiện" : "Đang ẩn"}
+                  </WbBadge>
+                </div>
+                <p className="mt-2 text-[12px] text-gray-500">
+                  Khối Aloha Gift Concierge (Gợi ý chọn quà tặng dịp 20/10, khai trương, gia đình, doanh nghiệp).
+                  Bật/tắt bằng công tắc trên danh sách hoặc kéo thả để đổi thứ tự hiển thị trên trang chủ.
                 </p>
               </div>
             );

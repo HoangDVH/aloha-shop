@@ -1,8 +1,10 @@
 "use client";
+import { GiftCategoryLinks } from "./GiftCategoryLinks";
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronRight, Menu, ChevronDown } from "lucide-react";
+import { ChevronRight, Menu, ChevronDown, Gift } from "lucide-react";
+import { megaMenuAvailableHeight } from "@/lib/megaMenuViewport";
 import { categoryHref, type ShopCategoryNavNode } from "@/lib/api";
 import { isPhongThuyL3, navIllustrationSrc } from "@/lib/navIllustrations";
 import {
@@ -155,10 +157,36 @@ export function CategoryMegaMenu({
   }, [tree]);
   const [open, setOpen] = useState(false);
   const [activeId, setActiveId] = useState<number | null>(null);
+  const [availableHeight, setAvailableHeight] = useState(0);
+  const giftActive = activeId === -1;
   const wrapRef = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const active = roots.find((r) => r.id === activeId) || roots[0] || null;
+
+  useEffect(() => {
+    if (!open) return;
+    const measure = () => {
+      const bottom = wrapRef.current?.getBoundingClientRect().bottom;
+      if (bottom == null) return;
+      const viewport = window.visualViewport;
+      setAvailableHeight(megaMenuAvailableHeight(
+        viewport ? viewport.offsetTop + viewport.height : window.innerHeight, bottom
+      ));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    if (wrapRef.current) observer.observe(wrapRef.current);
+    window.addEventListener("resize", measure);
+    window.addEventListener("scroll", measure, { passive: true });
+    window.visualViewport?.addEventListener("resize", measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", measure);
+      window.visualViewport?.removeEventListener("resize", measure);
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -254,20 +282,21 @@ export function CategoryMegaMenu({
         >
           <div
             className={`flex overflow-hidden rounded-2xl border border-[var(--aloha-line)] bg-white shadow-[0_20px_50px_-18px_rgba(27,94,32,0.28)] ${
-              l2.length ? "w-[min(96vw,58rem)]" : "w-[15rem]"
+              l2.length || giftActive ? "w-[min(96vw,58rem)]" : "w-[15rem]"
             }`}
+            style={{ height: `min(36.5rem, ${availableHeight}px)` }}
             role="menu"
             aria-label="Danh mục sản phẩm"
           >
             {/* Cột 1 — L1 nền trắng */}
             <nav
-              className={`w-[15rem] shrink-0 bg-white py-2.5 ${
-                l2.length ? "border-r border-[var(--aloha-line)]" : ""
+              className={`min-h-0 w-[15rem] shrink-0 overflow-y-auto overscroll-contain bg-white py-2.5 ${
+                l2.length || giftActive ? "border-r border-[var(--aloha-line)]" : ""
               }`}
               aria-label="Nhóm chính"
             >
               {roots.map((node) => {
-                const selected = active?.id === node.id;
+                const selected = !giftActive && active?.id === node.id;
                 const hasKids = nodeSubs(node).length > 0;
                 const showProductCount = !hasKids && nameMatchesAny(node.name, [
                   "BÌNH CẮM HOA", "BÌNH HOA", "HẠT GIỐNG",
@@ -281,6 +310,7 @@ export function CategoryMegaMenu({
                     href={categoryHref(node)}
                     onClick={handleNavigate}
                     onMouseEnter={() => setActiveId(node.id)}
+                    onFocus={() => setActiveId(node.id)}
                     className={`mx-2.5 flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition-colors ${
                       selected
                         ? "bg-[var(--aloha-green-light)] font-bold text-[var(--aloha-green-dark)]"
@@ -325,14 +355,19 @@ export function CategoryMegaMenu({
                   </Link>
                 );
               })}
+              <button type="button" onMouseEnter={() => setActiveId(-1)} onFocus={() => setActiveId(-1)} onClick={() => setActiveId(-1)} aria-expanded={giftActive}
+                className={`mx-2.5 flex min-h-11 w-[calc(100%-1.25rem)] items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold ${giftActive ? "bg-[var(--aloha-green-light)] text-[var(--aloha-green-dark)]" : "text-[var(--aloha-ink)] hover:bg-[#f7f7f5]"}`}>
+                <Gift size={18} className="shrink-0 text-[var(--aloha-green)]" />
+                <span className="flex-1">Quà tặng</span><ChevronRight size={14} />
+              </button>
             </nav>
 
             {/* Cột 2 — chỉ khi L1 có nhóm con */}
-            {l2.length ? (
-            <div className="min-h-[22rem] min-w-0 flex-1 bg-white px-6 py-4">
+            {giftActive ? <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain bg-white px-6 py-4"><GiftCategoryLinks onNavigate={handleNavigate} /></div> : l2.length ? (
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-white px-6 py-4">
               {active ? (
                 <>
-                  <div className="mb-3.5 flex items-start gap-3 border-b border-[var(--aloha-line)] pb-2.5">
+                  <div className="mb-3.5 flex shrink-0 items-start gap-3 border-b border-[var(--aloha-line)] pb-2.5">
                     <span className="mt-0.5 text-[var(--aloha-green)]">
                       {navBarIcon(active.name)}
                     </span>
@@ -350,7 +385,7 @@ export function CategoryMegaMenu({
                     </div>
                   </div>
 
-                    <div className="max-h-[min(76vh,36.5rem)] space-y-5 overflow-y-auto overscroll-contain pr-1.5 pb-2">
+                    <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain pr-1.5 pb-2">
                       {l2.map((section) => {
                         const kids = nodeSubs(section);
                         const withImg = (

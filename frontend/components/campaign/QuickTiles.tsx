@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   Flame,
@@ -89,7 +90,7 @@ function tileHref(href: string, kind: Kind): string {
   return `/uu-dai?${params.toString()}`;
 }
 
-/** Ô lối tắt ưu đãi (trang Ưu đãi): thẻ trắng, icon màu theo loại. */
+/** Thanh chuyển tab ưu đãi (trang Ưu đãi): thanh ngang màu trắng bo góc, icon màu, tab active gradient đỏ kèm nhãn ĐANG XEM. */
 export function QuickTiles({
   campaign,
   vouchers,
@@ -97,7 +98,7 @@ export function QuickTiles({
   activeTab,
   activeLoai,
   className,
-  variant = "tiles",
+  variant = "tabs",
 }: {
   campaign: CampaignUI;
   vouchers: CampaignVoucherUI[];
@@ -128,132 +129,86 @@ export function QuickTiles({
     return t;
   }).slice(0, 8);
 
+  const activeRef = useRef<HTMLLIElement>(null);
+
+  useEffect(() => {
+    if (activeRef.current) {
+      activeRef.current.scrollIntoView({
+        behavior: "smooth",
+        inline: "center",
+        block: "nearest",
+      });
+    }
+  }, [activeTab]);
+
   if (!tiles.length) return null;
 
-  // DẠNG THANH TAB MỎNG NGANG (CHUẨN SHOPEE/LAZADA PC)
-  if (variant === "tabs") {
-    return (
-      <nav
-        aria-label="Chuyển tab ưu đãi"
-        className={`w-full ${className || ""}`}
-        style={{ "--campaign-primary": campaign.display.colors.primary } as React.CSSProperties}
-      >
-        <div className="flex items-center justify-start sm:justify-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-1">
-          <ul
-            role="tablist"
-            className="inline-flex max-w-full items-center gap-1.5 sm:gap-2 rounded-2xl bg-white/95 p-1.5 shadow-sm border border-rose-100/90 backdrop-blur-xs whitespace-nowrap"
-          >
-            {tiles.map((t) => {
-              const tab = tabOf(dealsHref(t.href));
-              const kind = KIND_BY_ICON[t.icon] || (tab ? KIND_BY_TAB[tab] : undefined) || "other";
-              const tone = TONE[kind];
-              const Icon = ICONS[t.icon] || Sparkles;
-
-              const isTop = kind === "top" || tab === "ban-chay";
-              const isShip = kind === "ship";
-              const isVoucherTab = tab === "voucher" || kind === "voucher";
-              const isActive = Boolean(
-                activeTab &&
-                  (isTop
-                    ? activeTab === "ban-chay"
-                    : isShip
-                      ? activeTab === "voucher" && activeLoai === "ship"
-                      : isVoucherTab
-                        ? activeTab === "voucher" && (!activeLoai || activeLoai === "all")
-                        : tab === activeTab)
-              );
-
-              return (
-                <li key={`${t.href}-${t.label}`} role="presentation">
-                  <Link
-                    href={tileHref(t.href, kind)}
-                    role="tab"
-                    aria-selected={isActive}
-                    className={`inline-flex min-h-[38px] sm:min-h-[42px] items-center gap-2 rounded-xl px-3.5 sm:px-5 py-1.5 text-xs sm:text-sm font-bold transition-all duration-200 select-none whitespace-nowrap cursor-pointer ${
-                      isActive
-                        ? "bg-gradient-to-r from-[var(--campaign-primary,#C8102E)] via-[#E11D48] to-[#C8102E] text-white shadow-sm shadow-rose-950/20 scale-[1.02]"
-                        : "text-slate-700 hover:text-[var(--campaign-primary,#C8102E)] hover:bg-rose-50/70"
-                    }`}
-                  >
-                    <Icon
-                      size={17}
-                      strokeWidth={2.2}
-                      aria-hidden
-                      className={isActive ? "text-white" : tone.icon}
-                    />
-                    <span>{t.label}</span>
-                    {isActive ? (
-                      <span className="hidden md:inline-flex items-center rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-bold text-white uppercase tracking-wider">
-                        Đang xem
-                      </span>
-                    ) : null}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      </nav>
-    );
-  }
-
-  // DẠNG Ô VUÔNG LỐI TẮT (DƯỚI BANNER TRANG ƯU ĐÃI)
   return (
     <nav
-      aria-label="Lối tắt ưu đãi"
-      className={`mx-auto max-w-7xl px-4 ${className || ""}`}
+      aria-label="Chuyển tab ưu đãi"
+      className={`w-full ${className || ""}`}
       style={{ "--campaign-primary": campaign.display.colors.primary } as React.CSSProperties}
     >
-      <ul
-        className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pt-3.5 pb-2.5 [scrollbar-width:none] sm:mx-0 sm:grid sm:overflow-visible sm:px-0 sm:pt-3 sm:pb-2 [&::-webkit-scrollbar]:hidden"
-        style={{ gridTemplateColumns: `repeat(${Math.min(tiles.length, 5)}, minmax(0, 1fr))` }}
-      >
-        {tiles.map((t) => {
-          const tab = tabOf(dealsHref(t.href));
-          const kind = KIND_BY_ICON[t.icon] || (tab ? KIND_BY_TAB[tab] : undefined) || "other";
-          const tone = TONE[kind];
-          const Icon = ICONS[t.icon] || Sparkles;
+      <div className="flex items-center justify-start sm:justify-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-2 py-1">
+        <ul
+          role="tablist"
+          className="inline-flex max-w-full items-center gap-1.5 sm:gap-2.5 rounded-2xl sm:rounded-full bg-white p-1.5 sm:p-2 shadow-sm border border-rose-100/90 whitespace-nowrap"
+        >
+          {tiles.map((t) => {
+            const tab = tabOf(dealsHref(t.href));
+            const kind = KIND_BY_ICON[t.icon] || (tab ? KIND_BY_TAB[tab] : undefined) || "other";
+            const tone = TONE[kind];
+            const Icon = ICONS[t.icon] || Sparkles;
 
-          const isTop = kind === "top" || tab === "ban-chay";
-          const isShip = kind === "ship";
-          const isVoucherTab = tab === "voucher" || kind === "voucher";
-          const isActive = Boolean(
-            activeTab &&
-              (isTop
-                ? activeTab === "ban-chay"
-                : isShip
-                  ? activeTab === "voucher" && activeLoai === "ship"
-                  : isVoucherTab
-                    ? activeTab === "voucher" && (!activeLoai || activeLoai === "all")
-                    : tab === activeTab)
-          );
+            const isTop = kind === "top" || tab === "ban-chay";
+            const isShip = kind === "ship";
+            const isVoucherTab = tab === "voucher" || kind === "voucher";
+            const isActive = Boolean(
+              activeTab &&
+                (isTop
+                  ? activeTab === "ban-chay"
+                  : isShip
+                    ? activeTab === "voucher" && activeLoai === "ship"
+                    : isVoucherTab
+                      ? activeTab === "voucher" && (!activeLoai || activeLoai === "all")
+                      : tab === activeTab)
+            );
 
-          return (
-            <li key={`${t.href}-${t.label}`} className="w-[8rem] shrink-0 snap-start sm:w-auto">
-              <Link
-                href={tileHref(t.href, kind)}
-                className={`relative flex h-full flex-col items-center gap-2 rounded-2xl bg-white px-3 py-3.5 text-center transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--aloha-green)] ${
-                  isActive
-                    ? "ring-2 ring-[var(--campaign-primary,#C8102E)] shadow-md z-10"
-                    : "shadow-[0_1px_3px_rgba(15,23,42,0.06)] ring-1 ring-black/[0.04] hover:-translate-y-0.5 hover:shadow-md"
-                }`}
+            return (
+              <li
+                key={`${t.href}-${t.label}`}
+                role="presentation"
+                className="shrink-0"
+                ref={isActive ? activeRef : undefined}
               >
-                {isActive ? (
-                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 inline-flex items-center rounded-full bg-[var(--campaign-primary,#C8102E)] px-2 py-0.5 text-[9px] font-black uppercase text-white whitespace-nowrap z-20">
-                    Đang xem
-                  </span>
-                ) : null}
-                <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${tone.box}`}>
-                  <Icon size={20} strokeWidth={1.9} aria-hidden className={tone.icon} />
-                </span>
-                <span className={`line-clamp-2 text-[12px] leading-tight text-center ${isActive ? "font-black text-[var(--campaign-primary,#C8102E)]" : "font-semibold text-slate-700"}`}>
-                  {t.label}
-                </span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+                <Link
+                  href={tileHref(t.href, kind)}
+                  role="tab"
+                  aria-selected={isActive}
+                  className={`inline-flex min-h-[38px] sm:min-h-[44px] shrink-0 items-center gap-1.5 sm:gap-2 rounded-xl sm:rounded-full px-3.5 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-bold transition-all duration-200 select-none whitespace-nowrap cursor-pointer ${
+                    isActive
+                      ? "bg-gradient-to-r from-[var(--campaign-primary,#C8102E)] via-[#E11D48] to-[#C8102E] text-white shadow-sm shadow-rose-950/20 scale-[1.02]"
+                      : "text-slate-800 hover:text-[var(--campaign-primary,#C8102E)] hover:bg-rose-50/70"
+                  }`}
+                >
+                  <Icon
+                    size={18}
+                    strokeWidth={2.2}
+                    aria-hidden
+                    className={`shrink-0 ${isActive ? "text-white" : tone.icon}`}
+                  />
+                  <span className="whitespace-nowrap">{t.label}</span>
+                  {isActive ? (
+                    <span className="shrink-0 inline-flex items-center rounded-full bg-white/20 px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[11px] font-black text-white uppercase tracking-wider">
+                      ĐANG XEM
+                    </span>
+                  ) : null}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
     </nav>
   );
 }

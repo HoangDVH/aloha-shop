@@ -33,8 +33,6 @@ import { HeaderSearch } from "@/components/HeaderSearch";
 import { HeaderAccountMenu } from "@/components/HeaderAccountMenu";
 import { CategoryMobileNav } from "@/components/CategoryNavMenu";
 import { CategoryMegaMenu } from "@/components/CategoryMegaMenu";
-import { RecruitmentNavDropdown } from "@/components/RecruitmentNavDropdown";
-import { QuaTangNavDropdown } from "@/components/QuaTangNavDropdown";
 import { FooterFacebookCard } from "@/components/footer/FooterFacebookCard";
 import { FooterGoogleMap } from "@/components/footer/FooterGoogleMap";
 import { applyNavConfig } from "@/lib/navConfig";
@@ -133,12 +131,9 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
   const chromeRef = useRef<HTMLElement | null>(null);
 
   const navActiveKey = useMemo(() => {
-    if (
-      pathname.startsWith("/tuyen-dung") ||
-      pathname.startsWith("/tuyen-ctv") ||
-      pathname === "/dang-ky-si"
-    )
-      return "tuyen-dung";
+    if (pathname.startsWith("/tuyen-dung")) return "tuyen-dung";
+    if (pathname.startsWith("/tuyen-ctv")) return "tuyen-ctv";
+    if (pathname === "/dang-ky-si") return "dang-ky-si";
     if (pathname === "/bai-viet" || pathname.startsWith("/bai-viet/")) return "bai-viet";
     if (pathname === "/ve-aloha" || pathname.startsWith("/ve-aloha/")) return "ve-aloha";
     if (pathname === "/qua-tang" || pathname.startsWith("/qua-tang/")) return "qua-tang";
@@ -343,12 +338,11 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
       {/* Hàng menu — Trang chủ → Danh mục → Ưu đãi */}
       <nav className="hidden overflow-visible border-b border-[var(--aloha-line)] bg-white text-[var(--aloha-ink)] lg:block shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
         <div className="mx-auto flex max-w-7xl items-center overflow-visible px-3 sm:px-4 py-1.5 min-h-[50px]">
-          <div className="flex min-w-0 flex-1 items-center justify-between gap-1 xl:gap-1.5">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-1 xl:gap-1.5">
             {(
               [
                 { href: "/", label: "Trang chủ", key: "trang-chu", kind: "link" as const },
                 { kind: "mega" as const, key: "danh-muc" },
-                { kind: "qua-tang" as const, key: "qua-tang" },
                 {
                   href: dealsNavHref,
                   label: "Ưu đãi",
@@ -358,27 +352,15 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                 { href: "/bai-viet", label: "Bài viết", key: "bai-viet", kind: "link" as const },
                 { href: "/bac-si-cay", label: "Bác sĩ cây", key: "bac-si-cay", kind: "link" as const },
                 { href: "/ve-aloha", label: "Về Aloha", key: "ve-aloha", kind: "link" as const },
-                { kind: "recruitment" as const, key: "tuyen-dung" },
+                { href: "/tuyen-dung", label: "Tuyển dụng", key: "tuyen-dung", kind: "link" as const },
+                { href: "/tuyen-ctv", label: "Tuyển cộng tác viên", key: "tuyen-ctv", kind: "link" as const },
+                { href: "/dang-ky-si", label: "Đăng ký sỉ", key: "dang-ky-si", kind: "link" as const },
               ] as const
             ).map((item) => {
               if (item.kind === "mega") {
                 return (
                   <div key="danh-muc" className="flex shrink-0 items-center">
                     <CategoryMegaMenu tree={navApplied.tree} onNavigate={closeMenus} />
-                  </div>
-                );
-              }
-              if (item.kind === "qua-tang") {
-                return (
-                  <div key="qua-tang" className="flex shrink-0 items-center">
-                    <QuaTangNavDropdown active={navActiveKey === "qua-tang"} onNavigate={closeMenus} />
-                  </div>
-                );
-              }
-              if (item.kind === "recruitment") {
-                return (
-                  <div key="tuyen-dung" className="flex shrink-0 items-center">
-                    <RecruitmentNavDropdown active={navActiveKey === "tuyen-dung"} onNavigate={closeMenus} />
                   </div>
                 );
               }
@@ -861,12 +843,6 @@ export function SiteFooter() {
                 )}
               </div>
             </div>
-
-            {/* Thông tin pháp lý GPKD gom gọn tại đáy Cột 1 */}
-            <div className="mt-6 pt-4 border-t border-stone-200/80 text-[11.5px] text-stone-500 leading-relaxed">
-              <p className="font-semibold text-stone-700 uppercase">HỘ KINH DOANH ALOHA</p>
-              <p className="mt-0.5">GPKD: 41N8043688 • UBND Q.Tân Bình, TP.HCM cấp</p>
-            </div>
           </div>
 
           {/* CỘT 2 (lg:col-span-2): KHÁM PHÁ & QUÀ TẶNG */}
@@ -940,10 +916,6 @@ export function SiteFooter() {
                 </a>
               </li>
             </ul>
-
-            <div className="mt-5 rounded-2xl bg-emerald-50/70 border border-emerald-800/10 p-3 text-[11.5px] text-emerald-950 leading-relaxed">
-              <span className="font-bold text-emerald-900">Hỗ trợ doanh nghiệp:</span> Cung cấp hóa đơn VAT hợp lệ, hợp đồng &amp; chiết khấu quà tặng sự kiện.
-            </div>
           </div>
 
           {/* CỘT 4 (lg:col-span-3): SHOWROOM & KẾT NỐI */}
@@ -974,7 +946,7 @@ export function SiteFooter() {
             © {new Date().getFullYear()} {siteName}. Xưởng sản xuất chậu cây &amp; cây cảnh phong thủy.
           </p>
 
-          <div className="flex items-center gap-4 text-xs font-medium text-stone-600">
+          <div className="flex items-center gap-4 text-xs font-medium text-stone-600 sm:pr-14 lg:pr-16">
             <a
               href="https://www.facebook.com/share/19iQ1PMqpx/?mibextid=wwXIfr"
               target="_blank"
@@ -985,17 +957,22 @@ export function SiteFooter() {
             </a>
             <span className="text-stone-300">•</span>
             <a
-              href={zaloHref(footer.zalo || footer.phone)}
+              href="https://www.tiktok.com/@alohathegioichaucay.hcm?_r=1&_t=ZS-9APFATLrEBe"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-[var(--aloha-green)] transition-colors"
+              className="hover:text-black transition-colors"
             >
-              Zalo OA
+              TikTok
             </a>
             <span className="text-stone-300">•</span>
-            <Link href="/ve-aloha" className="hover:text-[var(--aloha-green)] transition-colors">
-              Về Aloha
-            </Link>
+            <a
+              href="https://www.youtube.com/@alohanguyenthegioichaucay"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-[#FF0000] transition-colors"
+            >
+              YouTube
+            </a>
           </div>
         </div>
       </div>

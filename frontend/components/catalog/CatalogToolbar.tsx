@@ -3,7 +3,6 @@
 import React from "react";
 import { SlidersHorizontal, X } from "lucide-react";
 import { CatalogSubcatBar } from "./CatalogSubcatBar";
-import { CatalogSortBar } from "./CatalogSortBar";
 
 export function CatalogToolbar({
   filtersOnly,
@@ -13,6 +12,7 @@ export function CatalogToolbar({
   activeFilters,
   secondaryFilterCount,
   onOpenFilterModal,
+  onClearFilters,
   sort,
   priceMenuOpen,
   onSortClick,
@@ -25,11 +25,17 @@ export function CatalogToolbar({
   activeFilters: Array<{ key: string; label: string; clear: () => void }>;
   secondaryFilterCount: number;
   onOpenFilterModal: () => void;
+  onClearFilters: () => void;
   sort: string | null;
   priceMenuOpen: boolean;
   onSortClick: (key: string) => void;
   onSelectPriceSort: (sortValue: "price_asc" | "price_desc") => void;
 }) {
+  const clearFiltersButton = secondaryFilterCount >= 2 ? (
+    <button type="button" onClick={onClearFilters} className="inline-flex min-h-11 shrink-0 items-center px-2 text-xs font-semibold text-[var(--aloha-green)] underline-offset-2 hover:underline">
+      Xóa bộ lọc
+    </button>
+  ) : null;
   if (filtersOnly) {
     return (
       <div className="flex items-center">
@@ -43,7 +49,7 @@ export function CatalogToolbar({
           }`}
         >
           <SlidersHorizontal size={16} />
-          Lọc
+          Tất cả bộ lọc
         </button>
       </div>
     );
@@ -63,7 +69,7 @@ export function CatalogToolbar({
                     key={t.key}
                     type="button"
                     onClick={t.clear}
-                    className="inline-flex h-9 max-w-[200px] shrink-0 items-center gap-1.5 truncate rounded-md border border-[var(--aloha-line)] bg-white px-2.5 text-xs font-semibold text-slate-700"
+                    className="inline-flex h-10 max-w-[200px] shrink-0 items-center gap-1.5 truncate rounded-md border border-[var(--aloha-line)] bg-white px-2.5 text-xs font-semibold text-slate-700"
                   >
                     <span className="truncate">{t.label}</span>
                     <X size={14} className="shrink-0 text-slate-400" />
@@ -72,45 +78,11 @@ export function CatalogToolbar({
               </>
             ) : null
           }
-          filterButton={
-            <button
-              type="button"
-              onClick={onOpenFilterModal}
-              className={`inline-flex h-10 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm font-bold transition ${
-                secondaryFilterCount > 0
-                  ? "border-[var(--aloha-green)] bg-[var(--aloha-green-light)] text-[var(--aloha-green)]"
-                  : "rounded-xl border-stone-200 bg-white text-stone-700 hover:bg-stone-50 sm:rounded-md sm:border-[var(--aloha-green)] sm:text-[var(--aloha-green)]"
-              }`}
-            >
-              <span className="relative">
-                <SlidersHorizontal size={16} />
-                {secondaryFilterCount > 0 ? (
-                  <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-orange-500" />
-                ) : null}
-              </span>
-              Lọc
-            </button>
-          }
+          filterButton={null /* Trigger is in CatalogQuickFilters. */}
+          clearFiltersButton={clearFiltersButton}
         />
       ) : (
         <div className="flex min-w-0 items-center gap-2">
-          <button
-            type="button"
-            onClick={onOpenFilterModal}
-            className={`inline-flex h-10 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm font-bold transition ${
-              secondaryFilterCount > 0
-                ? "border-[var(--aloha-green)] bg-[var(--aloha-green)] text-white"
-                : "rounded-xl border-stone-200 bg-white text-stone-700 hover:bg-stone-50 sm:rounded-md sm:border-[var(--aloha-green)] sm:text-[var(--aloha-green)]"
-            }`}
-          >
-            <SlidersHorizontal size={16} />
-            Lọc
-            {secondaryFilterCount > 0 ? (
-              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 px-1.5 text-[11px] font-black">
-                {secondaryFilterCount}
-              </span>
-            ) : null}
-          </button>
           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {activeFilters.map((t) => (
               <button
@@ -123,16 +95,11 @@ export function CatalogToolbar({
                 <X size={14} className="shrink-0 text-slate-400" />
               </button>
             ))}
+            {clearFiltersButton}
           </div>
         </div>
       )}
 
-      <CatalogSortBar
-        sort={sort}
-        priceMenuOpen={priceMenuOpen}
-        onSortClick={onSortClick}
-        onSelectPriceSort={onSelectPriceSort}
-      />
     </div>
   );
 }

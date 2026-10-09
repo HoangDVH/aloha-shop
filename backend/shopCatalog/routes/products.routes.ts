@@ -1,3 +1,4 @@
+import { parseGiftQuery, loadGiftFilterCodes } from "../../shopGifts/productFilter.js";
 /**
  * Routes:
  * GET /api/shop/products
@@ -108,13 +109,19 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
         sort === "giam_gia" ? await campaignDealInfo(await ctx.catalogDb(), req) : new Map<string, CatalogDealInfo>();
       const voucherId = parseVoucherQuery(req.query.voucher);
       const voucher = voucherId ? await voucherProductFilter(await ctx.catalogDb(), voucherId) : null;
-      const cacheKey = `shop:products:v38:${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}${dealMasCacheSuffix(dealMas)}|v=${voucherId}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|maxTon=${maxTon}|${sort}${dealInfoCacheSuffix(deals)}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
+      const gift = parseGiftQuery(req.query.gift);
+      if (req.query.gift != null && !gift) {
+        return res.status(400).json({ ok: false, error: "Invalid gift filter" });
+      }
+      const giftCodes = gift ? await loadGiftFilterCodes(await ctx.catalogDb(), gift) : [];
+      const cacheKey = `shop:products:v40:gift=${gift || ""}:${JSON.stringify(giftCodes)}|${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}${dealMasCacheSuffix(dealMas)}|v=${voucherId}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|maxTon=${maxTon}|${sort}${dealInfoCacheSuffix(deals)}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
       const pinScope = resolvePinBadgeScope({ sort, badge, maxTon });
 
       const { body, cache } = await cachedJson(cacheKey, async () => {
         const db = await ctx.catalogDb();
         const filter: Record<string, unknown> = { ...shopFilterBase() };
         const and = [...((filter.$and as unknown[]) || [])];
+        if (gift) and.push({ ma: { $in: giftCodes } });
         if (q) {
           const rx = viLooseRegex(q);
           and.push({
@@ -267,7 +274,7 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
 
         if (!needPostFilter) {
           // Khi limit === 1 (ví dụ preview đếm), nếu không có post-filter phức tạp, chỉ count và lấy 1 item
-          if (limit === 1 && page === 1) {
+          if (limit === 1 && page === 1 && !badge) {
             const [total, sampleDocs] = await Promise.all([
               col.countDocuments(filter as any),
               col.find(filter as any).project(projection).limit(1).toArray(),
@@ -330,7 +337,7 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
         // Tối ưu: Khi chỉ preview đếm kết quả (limit: 1 và page: 1), chỉ cần project các trường tối thiểu cần thiết để lọc
         const docs = await col
           .find(filter as any)
-          .project(limit === 1 && page === 1 ? { ma: 1, ten: 1, giaWeb: 1, giaBan: 1, basePrice: 1, ton: 1, onHand: 1, kvTon: 1, anh: 1, images: 1, categoryId: 1, createdAt: 1 } : projection)
+          .project(projection)
           .limit(5000)
           .toArray();
         const mapped = await mapDocsToPublicWithPriceBooks(db, docs as any[]);

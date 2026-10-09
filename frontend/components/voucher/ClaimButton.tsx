@@ -24,7 +24,7 @@ export function claimStateOf(
 }
 
 const BTN =
-  "inline-flex min-h-[34px] sm:min-h-[36px] items-center justify-center rounded-full px-3.5 sm:px-4 py-1 text-xs sm:text-[13px] font-bold transition-all select-none whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-400";
+  "inline-flex min-h-[26px] sm:min-h-[28px] items-center justify-center rounded-full px-2.5 sm:px-3.5 py-0.5 text-[11px] sm:text-xs font-bold transition-all select-none whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-400";
 
 const BTN_TONE: Record<TicketTone, string> = {
   green: "bg-gradient-to-r from-[#0D9488] to-[#0F766E] text-white hover:brightness-110 shadow-sm shadow-teal-900/15",

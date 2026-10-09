@@ -298,14 +298,14 @@ function ProductCardDefault({
           {product.ten}
         </Link>
 
-        <div className={`mt-auto flex min-h-[2.4rem] flex-nowrap justify-between gap-1.5 pt-0.5 ${wholesaleCard ? "items-center" : "items-end"}`}>
+        <div className={`mt-auto flex items-end justify-between gap-1 pt-0.5 ${wholesaleCard ? "items-center" : "items-end"}`}>
           <div className="min-w-0 flex-1">
           {expectsSi && !pricePending && priceKind === "si" ? (
             <SiPriceBadge price={displayGia} webPrice={webPrice} unit={product.dvt} variant={wholesaleCard ? "wholesale-card" : "card"} />
           ) : (
-          <div className="flex min-h-[2.4rem] min-w-0 flex-col justify-end">
+          <div className="flex min-w-0 flex-col justify-end">
             <div
-              className={`min-w-0 truncate font-extrabold tracking-tight ${
+              className={`min-w-0 break-words font-extrabold tracking-tight ${
                 promoDeal || shopee ? "text-[#EE4D2D]" : "text-[var(--aloha-price)]"
               } ${shopee ? "text-sm sm:text-base" : "text-base sm:text-lg"}`}
             >
@@ -321,12 +321,12 @@ function ProductCardDefault({
                 </span>
               ) : null}
             </div>
-            {promo ? <PromoCalmLine promo={promo} price={displayGia} /> : <div className="mt-0.5 h-[1.05rem]" aria-hidden />}
+            {promo ? <PromoCalmLine promo={promo} price={displayGia} /> : null}
           </div>
           )}
           </div>
           {!purchaseBlocked ? (
-            <div className={`product-card__add-wrap ml-auto shrink-0 ${wholesaleCard ? "!mt-0 self-center" : "self-end"}`}>{addBtn}</div>
+            <div className={`product-card__add-wrap shrink-0 ${wholesaleCard ? "!mt-0 self-center" : "self-end"}`}>{addBtn}</div>
           ) : null}
         </div>
       </div>

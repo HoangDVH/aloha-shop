@@ -16,7 +16,7 @@ export function CatalogSortBar({
   onSelectPriceSort: (sortValue: "price_asc" | "price_desc") => void;
 }) {
   return (
-    <div className="-mx-4 border-y border-[#eee] bg-white sm:mx-0 sm:border-0 sm:bg-transparent">
+    <div className="relative -mx-4 border-y border-[#eee] bg-white sm:mx-0 sm:w-fit sm:border-0 sm:bg-transparent">
       <div className="flex w-full items-center justify-between gap-3 overflow-x-auto px-3 [scrollbar-width:none] sm:justify-start sm:gap-8 sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden">
         <span className="hidden shrink-0 text-sm font-semibold text-slate-500 sm:inline">
           Sắp xếp theo:
@@ -31,6 +31,7 @@ export function CatalogSortBar({
               {isPrice ? (
                 <div className="relative shrink-0" data-price-sort-menu>
                   <button
+                    aria-expanded={priceMenuOpen}
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -42,44 +43,12 @@ export function CatalogSortBar({
                         : "font-medium text-[#444] hover:text-[var(--aloha-green)]"
                     }`}
                   >
-                    Giá
+                    Sắp xếp giá
                     <ChevronUp
                       size={14}
                       className={`transition ${priceMenuOpen ? "" : "rotate-180 opacity-70"}`}
                     />
                   </button>
-                  {priceMenuOpen ? (
-                    <div className="absolute right-0 top-full z-[60] mt-1 min-w-[168px] overflow-hidden rounded-2xl bg-white py-1.5 shadow-lg ring-1 ring-black/8">
-                      <button
-                        type="button"
-                        className={`block w-full px-4 py-2.5 text-left text-sm transition hover:bg-[var(--aloha-cream)] ${
-                          sort === "price_asc"
-                            ? "font-bold text-[var(--aloha-green)]"
-                            : "font-medium text-slate-600"
-                        }`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelectPriceSort("price_asc");
-                        }}
-                      >
-                        Giá thấp - cao
-                      </button>
-                      <button
-                        type="button"
-                        className={`block w-full px-4 py-2.5 text-left text-sm transition hover:bg-[var(--aloha-cream)] ${
-                          sort === "price_desc"
-                            ? "font-bold text-[var(--aloha-green)]"
-                            : "font-medium text-slate-600"
-                        }`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelectPriceSort("price_desc");
-                        }}
-                      >
-                        Giá cao - thấp
-                      </button>
-                    </div>
-                  ) : null}
                 </div>
               ) : (
                 <button
@@ -98,6 +67,38 @@ export function CatalogSortBar({
           );
         })}
       </div>
+      {priceMenuOpen ? (
+        <div data-price-sort-menu className="absolute right-0 top-full z-[60] mt-1 min-w-[168px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl bg-white py-1.5 shadow-lg ring-1 ring-black/8">
+          <button
+            type="button"
+            className={`block w-full px-4 py-2.5 text-left text-sm transition hover:bg-[var(--aloha-cream)] ${
+              sort === "price_asc"
+                ? "font-bold text-[var(--aloha-green)]"
+                : "font-medium text-slate-600"
+            }`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectPriceSort("price_asc");
+            }}
+          >
+            Giá thấp - cao
+          </button>
+          <button
+            type="button"
+            className={`block w-full px-4 py-2.5 text-left text-sm transition hover:bg-[var(--aloha-cream)] ${
+              sort === "price_desc"
+                ? "font-bold text-[var(--aloha-green)]"
+                : "font-medium text-slate-600"
+            }`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectPriceSort("price_desc");
+            }}
+          >
+            Giá cao - thấp
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

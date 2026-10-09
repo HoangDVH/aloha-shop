@@ -18,7 +18,7 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, FileText, Image as ImageIcon, Layers, Palette, ShieldCheck, Sparkles } from "lucide-react";
+import { GripVertical, FileText, Gift, Image as ImageIcon, Layers, Palette, ShieldCheck, Sparkles } from "lucide-react";
 import type { AppearanceBlock } from "../api";
 import { WB, WbToggle } from "../ui";
 
@@ -26,6 +26,7 @@ const BLOCK_LABEL: Record<string, string> = {
   hero: "Banner chính",
   banner_carousel: "Banner carousel",
   feature_strip: "Dịch vụ / Why Aloha",
+  gift_section: "Gợi ý chọn quà tặng",
   product_section: "Nhóm hàng hóa",
   article_section: "Bài viết mới",
   rich_text: "Thông báo",
@@ -37,6 +38,7 @@ const BLOCK_LABEL: Record<string, string> = {
 function blockIcon(type: string) {
   if (type === "hero" || type === "banner_carousel") return ImageIcon;
   if (type === "feature_strip") return Sparkles;
+  if (type === "gift_section") return Gift;
   if (type === "product_section") return Layers;
   if (type === "article_section") return FileText;
   if (type === "trust_section") return ShieldCheck;
@@ -69,7 +71,9 @@ function SortableRow({
         ? String(block.props.title || "Bài viết mới")
         : block.type === "trust_section"
           ? String(block.props.title || "Độ tin cậy / Khách hàng")
-          : BLOCK_LABEL[block.type] || block.type;
+          : block.type === "gift_section"
+            ? String(block.props.title || "Gợi ý chọn quà tặng")
+            : BLOCK_LABEL[block.type] || block.type;
 
   return (
     <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }}>

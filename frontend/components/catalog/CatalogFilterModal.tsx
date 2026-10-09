@@ -1,4 +1,5 @@
 "use client";
+import { GiftFilterSection } from "./GiftFilterSection";
 
 import React from "react";
 import { SlidersHorizontal, X } from "lucide-react";
@@ -25,6 +26,7 @@ export function CatalogFilterModal({
   onCommit,
   draftTotalLoading,
   draftTotal,
+  scoped = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -43,6 +45,7 @@ export function CatalogFilterModal({
   onCommit: () => void;
   draftTotalLoading: boolean;
   draftTotal: number | null;
+  scoped?: boolean;
 }) {
   if (!open) return null;
 
@@ -60,7 +63,7 @@ export function CatalogFilterModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="catalog-filter-title"
-        className="relative z-10 flex max-h-[92vh] w-full max-w-3xl flex-col rounded-t-2xl bg-white shadow-2xl sm:max-h-[85vh] sm:rounded-2xl"
+        className="relative z-10 flex max-h-[92dvh] w-full max-w-3xl flex-col rounded-t-2xl bg-white shadow-2xl sm:max-h-[85dvh] sm:rounded-2xl"
       >
         <div className="flex shrink-0 items-center justify-between border-b border-[var(--aloha-line)] px-4 py-3">
           <h2
@@ -81,8 +84,11 @@ export function CatalogFilterModal({
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
           {activeDraft ? (
+            <>
+            {!scoped ? <GiftFilterSection value={activeDraft.gift} onChange={gift => setDraft(d => d ? { ...d, gift } : d)} onNavigate={onClose} /> : null}
             <CatalogFilterPanel
               embedded
+              hideCategory={scoped}
               hideClearButton
               selectedNhoms={categoryLocked ? filterNhoms : activeDraft.nhoms}
               onNhomsChange={(paths) => {
@@ -122,11 +128,10 @@ export function CatalogFilterModal({
               }
               onMinPriceBlur={(v) => setDraft((d) => (d ? { ...d, minPrice: v || "" } : d))}
               onMaxPriceBlur={(v) => setDraft((d) => (d ? { ...d, maxPrice: v || "" } : d))}
-              inStock={activeDraft.inStock}
-              onInStockChange={(checked) => setDraft((d) => (d ? { ...d, inStock: checked } : d))}
               onClearFilters={clearDraftSecondary}
               onClose={onClose}
             />
+            </>
           ) : null}
         </div>
         <div className="flex shrink-0 gap-2 border-t border-[var(--aloha-line)] bg-white px-4 pt-3 pb-[max(0.85rem,env(safe-area-inset-bottom))]">

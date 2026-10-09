@@ -69,6 +69,7 @@ type CatalogSp = {
   attr?: string | string[];
   dvt?: string | string[];
   loai?: string;
+  gift?: string;
   minPrice?: string;
   maxPrice?: string;
   inStock?: string;
@@ -109,6 +110,7 @@ export function shouldNoIndexCatalog(
   const nhomCount = parseNhomList(sp).length;
   const cidCount = categoryIdCount(sp);
 
+  if (sp.gift) return true;
   if (String(sp.q || "").trim()) return true;
   if (parseAttrList(sp).length) return true;
   if (parseDvtList(sp).length) return true;

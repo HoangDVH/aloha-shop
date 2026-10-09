@@ -19,6 +19,7 @@ import { ProductStickyCta } from "@/components/pdp/ProductStickyCta";
 import { ProductCampaignBox } from "@/components/pdp/ProductCampaignBox";
 import { useCampaignRequoteKey } from "@/lib/campaign/campaignQuote";
 import { useCampaignView } from "@/lib/campaign/useCampaignView";
+import { mobilePurchaseAction } from "@/components/pdp/purchaseAction";
 import { ProductPurchaseSheet } from "@/components/pdp/ProductPurchaseSheet";
 import { ProductShareButton } from "@/components/pdp/ProductShareSheet";
 import { ProductAttachedItems, selectBuyNowLines } from "@/components/pdp/ProductAttachedItems";
@@ -377,6 +378,8 @@ export function ProductDetailView({
     const max = Math.max(1, Math.floor(liveTon) || 1);
     setQty((q) => Math.min(Math.max(1, q), max));
   }, [liveTon, purchaseDisabled, isPreOrder]);
+
+  const mobileAction = mobilePurchaseAction({ needPick, variantsLoading, purchaseDisabled, quantityExceedsStock: activeProduct.allowBackorder === false && qty + cartQty > liveTon });
 
   const addCart = (buyNow = false) => {
     if (purchaseDisabled) {
@@ -796,8 +799,8 @@ export function ProductDetailView({
         preOrder={isPreOrder}
         purchaseDisabled={purchaseDisabled}
         onAddCart={() => addCart(false)}
-        buyDisabled={false}
-        onBuyNow={() => setPurchaseSheetOpen(true)}
+        buyDisabled={mobileAction === "blocked"}
+        onBuyNow={() => { if (mobileAction === "choose") setPurchaseSheetOpen(true); else if (mobileAction === "buy") addCart(true); }}
         isCampaignSale={campaignBuyInBox}
         campaignBuyLabel={isCampaignSaleOpen ? "Mua Giờ Vàng" : isPreOrder ? "Đặt ngay" : "Mua ngay"}
         productName={activeProduct.ten} productImage={activeProduct.anh}

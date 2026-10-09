@@ -202,6 +202,11 @@ export const MOBILE_CAT_ACTIVE_KEY = "aloha:mobile-cat-active";
 
 /** Nhánh con L2 ưu tiên hiển thị trước theo từng nhóm mẹ L1 */
 export const L2_PREFERRED_BY_L1: Record<string, readonly string[]> = {
+  "CÂY CẢNH ĐỦ LOẠI": [
+    "CÂY THÀNH PHẨM TRỒNG SẴN",
+    "CÂY THÀNH PHẨM SALE",
+    "CÂY PHONG THỦY",
+  ],
   "PHỤ KIỆN TRANG TRÍ": ["PHỤ KIỆN TIỂU CẢNH"],
   "CHẬU TRỒNG CÂY": ["CHẬU COMBO THEO BỘ"],
 };

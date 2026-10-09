@@ -1,5 +1,6 @@
 "use client";
 
+import { ArticleVideoPlayer } from "@/components/ArticleVideoPlayer";
 import React from "react";
 import { createPortal } from "react-dom";
 import { ExternalLink, Pencil, X } from "lucide-react";
@@ -125,12 +126,7 @@ export function ArticlePreview({
                 {/\.(mp4|webm|ogg)(\?|$)/i.test(preview.videoUrl) ||
                 preview.videoUrl.includes("/uploads/") ? (
                   // eslint-disable-next-line jsx-a11y/media-has-caption
-                  <video
-                    src={preview.videoUrl}
-                    controls
-                    className="aspect-video w-full"
-                    preload="metadata"
-                  />
+                  <ArticleVideoPlayer src={preview.videoUrl} title={preview.title} />
                 ) : (
                   <iframe
                     src={
