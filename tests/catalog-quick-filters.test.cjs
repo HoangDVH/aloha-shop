@@ -81,3 +81,15 @@ test('price ordering has an independent callback and preserves active badge sele
  assert.deepEqual(calls, ['price_asc']);
  assert.equal(f.nodes.find(n => n.props['data-badge'] === 'moi').props['aria-pressed'], true);
 });
+
+test('price sorting shares the badge row and stays aligned to its right', () => {
+ const f = fixture('', '', 'ban_chay', { onPriceSortChange: () => {} });
+ const group = f.nodes.find(n => n.props.role === 'group');
+ const label = f.nodes.find(n => n.type === 'label');
+ const row = f.nodes.find(n => Array.isArray(n.props.children) && n.props.children.includes(group) && n.props.children.includes(label));
+ assert.ok(row);
+ assert.match(row.props.className, /items-center/);
+ assert.doesNotMatch(row.props.className, /flex-wrap|flex-col/);
+ assert.match(group.props.className, /min-w-0 flex-1/);
+ assert.match(label.props.className, /ml-auto.*shrink-0/);
+});

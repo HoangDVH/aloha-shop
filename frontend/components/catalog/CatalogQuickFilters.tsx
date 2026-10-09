@@ -44,21 +44,23 @@ export function CatalogQuickFilters({ minPrice, maxPrice, filterCount, sort, onS
   return (
     <section aria-label="Lọc và sắp xếp sản phẩm" className="min-w-0 space-y-2 rounded-xl border border-[var(--aloha-line)] bg-white p-2 sm:p-3">
       {navigation ? navigation(controls) : <CatalogChipRow leading={1}>{controls}{results}</CatalogChipRow>}
-      <div role="group" aria-label="Lọc theo nhãn sản phẩm" className="flex w-full items-center gap-4 overflow-x-auto whitespace-nowrap border-t border-stone-100 pt-1">
+      <div className="flex min-w-0 items-center gap-2 border-t border-stone-100 pt-1 sm:gap-4">
+      <div role="group" aria-label="Lọc theo nhãn sản phẩm" className="flex min-w-0 flex-1 items-center gap-4 overflow-x-auto whitespace-nowrap">
         {sortOptions.map(o => <button key={o.value} type="button" data-badge={o.value.slice(6)} aria-pressed={sort === o.value} disabled={badgeCounts[o.value.slice(6)] === 0 && sort !== o.value}
           onClick={() => onSortChange(sort === o.value ? "ban_chay" : o.value)}
           className={`min-h-11 shrink-0 px-2 text-xs sm:text-sm disabled:cursor-not-allowed disabled:opacity-40 ${sort === o.value ? "font-bold text-[var(--aloha-green)]" : "font-medium text-stone-600"}`}>
           {o.label}{badgeCounts[o.value.slice(6)] !== undefined ? ` (${badgeCounts[o.value.slice(6)]})` : ""}
         </button>)}
       </div>
-      {onPriceSortChange ? <label className="flex items-center gap-2 border-t border-stone-100 pt-2 text-xs text-stone-600 sm:text-sm">
-        <span>Sắp xếp giá</span>
+      {onPriceSortChange ? <label className="ml-auto flex shrink-0 items-center gap-2 text-xs text-stone-600 sm:text-sm">
+        <span className="hidden sm:inline">Sắp xếp giá</span>
         <select aria-label="Sắp xếp giá" value={priceSort.startsWith("price_") ? priceSort : "ban_chay"} onChange={e => onPriceSortChange(e.target.value)} className="min-h-11 min-w-0 rounded-lg border border-stone-200 bg-white px-2">
           <option value="ban_chay">Mặc định</option>
           <option value="price_asc">Giá thấp → cao</option>
           <option value="price_desc">Giá cao → thấp</option>
         </select>
       </label> : null}
+      </div>
     </section>
   );
 }
