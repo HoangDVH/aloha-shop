@@ -98,14 +98,15 @@ function ProductCardDefault({
   const manualBadge = product.webBadge;
   const [navPending, setNavPending] = useState(false);
   const navTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const promo = liveCampaignPromo !== undefined ? liveCampaignPromo : product.campaignPromo;
+  const priceKind = livePriceKind ?? product.priceKind;
+  const expectsSi = user?.siStatus === "active" && user.roles.includes("si");
+  const wholesalePricing = expectsSi || priceKind === "si" || priceKind === "si_missing";
+  const promo = wholesalePricing ? null : liveCampaignPromo !== undefined ? liveCampaignPromo : product.campaignPromo;
   const promoSelling = isPromoPriceActive(promo);
   const baseGia = liveGia != null && liveGia >= 0 ? liveGia : product.gia;
   const displayGia = promoSelling && promo?.salePrice != null ? promo.salePrice : baseGia;
   const promoDeal = promoSelling || promoAnchorPrice(promo, displayGia) > 0;
-  const priceKind = livePriceKind ?? product.priceKind;
   const allowBackorder = liveAllowBackorder ?? product.allowBackorder;
-  const expectsSi = user?.siStatus === "active" && user.roles.includes("si");
   const pricePending = Boolean(expectsSi) !== (priceKind === "si" || priceKind === "si_missing");
   const wholesaleCard = expectsSi && !pricePending && priceKind === "si" &&
     (user.siRegion === "HCM" || user.siRegion === "TINH");

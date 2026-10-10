@@ -66,7 +66,10 @@ export function ProductDealCard({
   const [navPending, setNavPending] = useState(false);
   const navTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const promo = liveCampaignPromo !== undefined ? liveCampaignPromo : product.campaignPromo;
+  const priceKind = livePriceKind ?? product.priceKind;
+  const expectsSi = user?.siStatus === "active" && user.roles.includes("si");
+  const wholesalePricing = expectsSi || priceKind === "si" || priceKind === "si_missing";
+  const promo = wholesalePricing ? null : liveCampaignPromo !== undefined ? liveCampaignPromo : product.campaignPromo;
   const allowBackorder = liveAllowBackorder ?? product.allowBackorder;
   const flash =
     flashDealProgress(promo, isPromoSelling(promo), allowBackorder === false ? stockMax(displayTon) : null, Date.now(), stockMax(displayTon)) ??
@@ -74,9 +77,6 @@ export function ProductDealCard({
   const promoSelling = isPromoSelling(promo) && !flash?.soldOut;
   const baseGia = liveGia != null && liveGia >= 0 ? liveGia : product.gia;
   const displayGia = promoSelling && promo?.salePrice != null ? promo.salePrice : baseGia;
-  const priceKind = livePriceKind ?? product.priceKind;
-
-  const expectsSi = user?.siStatus === "active" && user.roles.includes("si");
   const pricePending = Boolean(expectsSi) !== (priceKind === "si" || priceKind === "si_missing");
   const webPrice = liveWebPrice ?? product.webPrice;
 
