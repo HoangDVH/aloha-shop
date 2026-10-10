@@ -16,8 +16,8 @@ type Sp = { page?: string; category?: string; q?: string };
 function chipClass(active: boolean) {
   return `inline-flex items-center rounded-full border px-3.5 py-1.5 text-sm font-semibold transition ${
     active
-      ? "border-[#e6c200] bg-[#ffe566] text-slate-900 shadow-sm"
-      : "border-[#d8dee6] bg-white text-slate-800 hover:border-[#e6c200] hover:bg-[#fff8db]"
+      ? "border-[var(--aloha-green)] bg-[var(--aloha-green)] text-white shadow-sm"
+      : "border-slate-200 bg-white text-slate-700 hover:border-[var(--aloha-green)] hover:text-[var(--aloha-green)] hover:bg-[var(--aloha-green-light)]"
   }`;
 }
 

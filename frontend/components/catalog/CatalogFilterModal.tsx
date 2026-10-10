@@ -27,6 +27,7 @@ export function CatalogFilterModal({
   draftTotalLoading,
   draftTotal,
   scoped = false,
+  categoryContent,
 }: {
   open: boolean;
   onClose: () => void;
@@ -46,6 +47,7 @@ export function CatalogFilterModal({
   draftTotalLoading: boolean;
   draftTotal: number | null;
   scoped?: boolean;
+  categoryContent?: React.ReactNode;
 }) {
   if (!open) return null;
 
@@ -85,10 +87,11 @@ export function CatalogFilterModal({
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
           {activeDraft ? (
             <>
-            {!scoped ? <GiftFilterSection value={activeDraft.gift} onChange={gift => setDraft(d => d ? { ...d, gift } : d)} onNavigate={onClose} /> : null}
+            {categoryContent}
             <CatalogFilterPanel
               embedded
               hideCategory={scoped}
+              afterCategory={!scoped ? <GiftFilterSection value={activeDraft.gift} onChange={gift => setDraft(d => d ? { ...d, gift } : d)} onNavigate={onClose} /> : null}
               hideClearButton
               selectedNhoms={categoryLocked ? filterNhoms : activeDraft.nhoms}
               onNhomsChange={(paths) => {

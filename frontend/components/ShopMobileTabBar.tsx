@@ -89,17 +89,23 @@ export function ShopMobileTabBar() {
         <Link
           href="/uu-dai"
           className={`shop-mobile-tab ${dealsActive ? "is-active" : ""}`}
-          style={dealsOn ? { color: "var(--aloha-green, #2e7d32)" } : undefined}
           aria-current={dealsActive ? "page" : undefined}
-          aria-label={dealsOn ? "Voucher, đang có chương trình" : "Voucher"}
+          aria-label={dealsOn ? "Ưu đãi, đang có chương trình" : "Ưu đãi"}
         >
-          <TicketPercent
-            size={22}
-            strokeWidth={dealsActive ? 2.5 : 2}
-            className={dealsActive ? "fill-current/15" : ""}
-            aria-hidden
-          />
-          <span className={dealsOn ? "font-bold" : undefined}>Voucher</span>
+          <span className="relative inline-flex">
+            <TicketPercent
+              size={22}
+              strokeWidth={dealsActive ? 2.5 : 1.85}
+              className={dealsActive ? "fill-current/15" : ""}
+              aria-hidden
+            />
+            {dealsOn ? (
+              <span className="absolute -right-2.5 -top-1 flex h-[14px] items-center justify-center rounded-full bg-gradient-to-r from-red-500 to-rose-500 px-1 text-[8.5px] font-black uppercase text-white shadow-2xs leading-none tracking-wider">
+                HOT
+              </span>
+            ) : null}
+          </span>
+          <span>Ưu đãi</span>
         </Link>
 
         <Link

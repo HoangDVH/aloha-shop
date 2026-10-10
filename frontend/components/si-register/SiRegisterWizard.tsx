@@ -5,7 +5,16 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Check, Leaf, ShieldCheck, Truck, LoaderCircle } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  Leaf,
+  ShieldCheck,
+  LoaderCircle,
+  MapPin,
+  Package,
+  Sparkles,
+} from "lucide-react";
 import { siRegisterSchema, type SiRegisterInput } from "@/lib/siRegisterSchema";
 import { SiApiError, siRequest, useSiSession } from "@/lib/siQueries";
 import { shopLogout } from "@/lib/auth";
@@ -83,16 +92,176 @@ export function SiRegisterWizard() {
   </label>;
   const busy = lookupMutation.isPending || register.isPending;
 
-  return <div className="min-h-[75vh] bg-[var(--aloha-cream)] px-4 py-8 sm:py-14">
-    <div className="mx-auto grid max-w-[1120px] gap-8 lg:grid-cols-[.8fr_1.2fr] lg:gap-14">
-      <section className="lg:pt-8">
-        <Link href="/" className="text-sm font-semibold text-[var(--aloha-green)]">← Về cửa hàng Aloha</Link>
-        <p className="mt-7 flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-[var(--aloha-green)]"><Leaf size={18} /> Dành cho đối tác</p>
-        <h1 className="mt-4 text-3xl font-bold leading-tight text-[var(--aloha-ink)] sm:text-4xl">Mua sỉ cùng Aloha</h1>
-        <p className="mt-4 max-w-md leading-relaxed text-slate-600">Từ cửa hàng nhỏ đến những đơn hàng lớn. Gửi hồ sơ để Aloha đồng hành cùng công việc kinh doanh của bạn.</p>
-        <div className="mt-8 hidden space-y-5 lg:block">{[[ShieldCheck,"Chính sách giá sỉ rõ ràng","Xem giá dành cho đối tác sau khi hồ sơ được duyệt."],[Leaf,"Lựa chọn phù hợp cửa hàng","Khám phá cây xanh, chậu và sản phẩm của Aloha."],[Truck,"Hỗ trợ đơn hàng của bạn","Trao đổi với Aloha về hàng sẵn và nhu cầu đặt thêm."]].map(([Icon,title,desc]) => { const I = Icon as typeof Leaf; return <div key={String(title)} className="flex gap-3"><span className="h-fit rounded-xl bg-white p-3 text-[var(--aloha-green)]"><I size={22}/></span><div><h2 className="font-semibold">{String(title)}</h2><p className="mt-1 text-sm text-slate-500">{String(desc)}</p></div></div>; })}</div>
-      </section>
-      <section className="rounded-[20px] border border-slate-100 bg-white p-5 shadow-[var(--aloha-shadow)] sm:p-8">
+  return (
+    <div className="min-h-[75vh] bg-[var(--aloha-cream)] px-4 py-8 sm:py-16">
+      <div className="mx-auto max-w-5xl">
+
+        {/* TẦNG 1: CHÍNH SÁCH BÁN SỈ (Rộng rãi, thoáng mắt, dễ đọc) */}
+        <section className="space-y-6">
+          {/* Header trung tâm */}
+          <div className="text-center">
+            <h1 className="text-3xl font-black tracking-tight text-[#0f3822] sm:text-4xl lg:text-5xl">
+              CHÍNH SÁCH BÁN SỈ
+            </h1>
+          </div>
+
+          {/* Banner quy định bắt buộc */}
+          <div className="mx-auto max-w-3xl overflow-hidden rounded-2xl bg-[#0f3822] p-4 text-center text-white shadow-md sm:p-5">
+            <h2 className="text-sm font-black uppercase tracking-wide text-white sm:text-base">
+              CHỈ ÁP DỤNG CHO KHÁCH MUA HÀNG ĐỂ KINH DOANH, BÁN LẠI
+            </h2>
+            <p className="mt-1 text-xs font-medium text-emerald-100 sm:text-sm">
+              Mua theo kiện hoặc theo thùng sẽ có giá tốt hơn mua từng sản phẩm riêng lẻ
+            </p>
+          </div>
+
+          {/* Lưới 2 khối chính sách: 01 TP.HCM & 02 Đi Tỉnh (Chia 2 cột song song trên màn hình lớn) */}
+          <div className="grid gap-6 md:grid-cols-2 items-stretch pt-2">
+            {/* 01: MUA SỈ TẠI TP.HCM */}
+            <div className="relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm transition hover:shadow-md">
+              <div className="absolute left-0 top-0 bottom-0 w-2.5 bg-[#2e7d32]" />
+              <div>
+                <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#e8f5e9] text-base font-black text-[#1b5e20] ring-4 ring-[#e8f5e9]/60">
+                    01
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black uppercase tracking-wide text-[#0f3822]">
+                      MUA SỈ TẠI TP.HCM
+                    </h3>
+                    <p className="text-xs text-slate-500">Nội thành & khu vực lân cận</p>
+                  </div>
+                </div>
+
+                <ul className="mt-4 space-y-2.5 text-sm text-slate-700">
+                  <li className="flex items-start gap-2.5">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#2e7d32]" />
+                    <span>Đơn hàng đầu tiên có giá trị từ <strong className="font-extrabold text-[#0f3822]">2.000.000đ</strong>.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#2e7d32]" />
+                    <span>Từ lần mua tiếp theo, lấy số lượng tùy nhu cầu.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#2e7d32]" />
+                    <span>Áp dụng khi mua tại cửa hàng hoặc nhận tại TP.HCM.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#2e7d32]" />
+                    <span>Khách tự đến lấy hoặc cho xe đến nhận hàng.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#2e7d32]" />
+                    <span>Vui lòng đặt trước vài tiếng để ALOHA chuẩn bị, tránh chờ đợi hoặc kẹt đơn.</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            {/* 02: ĐƠN SỈ GIAO ĐI TỈNH */}
+            <div className="relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm transition hover:shadow-md">
+              <div className="absolute left-0 top-0 bottom-0 w-2.5 bg-[#d49926]" />
+              <div>
+                <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#fef7e0] text-base font-black text-[#b38600] ring-4 ring-[#fef7e0]/60">
+                    02
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black uppercase tracking-wide text-[#0f3822]">
+                      ĐƠN SỈ GIAO ĐI TỈNH
+                    </h3>
+                    <p className="text-xs text-slate-500">Đóng kiện gửi chành xe</p>
+                  </div>
+                </div>
+
+                <p className="mt-3 text-xs italic text-slate-500 sm:text-sm">
+                  Hàng cần kiểm tra và đóng gói kỹ nên thời gian chuẩn bị lâu hơn.
+                </p>
+
+                <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                  <li className="flex items-start gap-2.5">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#d49926]" />
+                    <span>Mua theo thùng hoặc đơn tối thiểu <strong className="font-extrabold text-[#0f3822]">2.000.000đ</strong>.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#d49926]" />
+                    <span>Mua theo thùng có giá tốt hơn mua riêng lẻ.</span>
+                  </li>
+                </ul>
+
+                {/* 3 highlight boxes theo từng dòng hàng */}
+                <div className="mt-4 space-y-2">
+                  <div className="rounded-xl border border-emerald-100/90 bg-[#eef6ed] p-2.5 sm:p-3">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-[#1b5e20]">
+                      CÂY THÀNH PHẨM
+                    </h4>
+                    <p className="mt-0.5 text-xs text-slate-700 sm:text-sm">
+                      Mỗi mẫu lấy tối thiểu <strong className="font-extrabold text-[#0f3822]">5 chậu</strong>.
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-emerald-100/90 bg-[#eef6ed] p-2.5 sm:p-3">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-[#1b5e20]">
+                      CHẬU HOẶC TIỂU CẢNH
+                    </h4>
+                    <p className="mt-0.5 text-xs text-slate-700 sm:text-sm">
+                      Mẫu dưới <strong className="font-extrabold text-[#0f3822]">15.000đ/sản phẩm</strong>: lấy tối thiểu{" "}
+                      <strong className="font-extrabold text-[#0f3822]">5 sản phẩm</strong> cho mỗi mẫu.
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-emerald-100/90 bg-[#eef6ed] p-2.5 sm:p-3">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-[#1b5e20]">
+                      CÂY THÔ
+                    </h4>
+                    <p className="mt-0.5 text-xs text-slate-700 sm:text-sm">
+                      Mỗi mẫu lấy tối thiểu <strong className="font-extrabold text-[#0f3822]">10 cây</strong>.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Tag & Hỗ trợ nhanh */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+            <div className="rounded-full border border-emerald-200/80 bg-[#e8f5e9]/80 py-2 px-5 text-center text-xs font-black uppercase tracking-widest text-[#1b5e20] shadow-sm">
+              BÁN SỈ & BÁN LẺ CHẬU - CÂY - TIỂU CẢNH
+            </div>
+            <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-600">
+              <Leaf size={15} className="text-[var(--aloha-green)]" />
+              <span>Cần hỗ trợ sỉ nhanh?</span>
+              <a
+                href="https://zalo.me"
+                target="_blank"
+                rel="noreferrer"
+                className="font-bold text-[var(--aloha-green)] hover:underline"
+              >
+                Nhắn Zalo 24/7 →
+              </a>
+            </div>
+          </div>
+
+        </section>
+
+        {/* TẦNG 2: FORM ĐĂNG KÝ SỈ (Căn giữa, độc lập, tối ưu tập trung) */}
+        <section
+          id="form-dang-ky"
+          className="mt-12 sm:mt-16 scroll-mt-10 mx-auto max-w-2xl rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-10 shadow-[var(--aloha-shadow)]"
+        >
+          {/* Header trong Form */}
+          <div className="mb-6 border-b border-slate-100 pb-5 text-center">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--aloha-green-light)] px-3 py-1 text-xs font-bold text-[var(--aloha-green)]">
+              <Sparkles size={13} />
+              Hồ sơ đối tác sỉ
+            </span>
+            <h2 className="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl">
+              Đăng ký tài khoản mua sỉ
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Nhận chính sách chiết khấu và báo giá sỉ riêng từ Aloha
+            </p>
+          </div>
         {status === "cho_duyet" || status === "active" || status === "khoa" ? <div className="py-8 text-center">
           <div className="mx-auto mb-5 w-fit rounded-full bg-[var(--aloha-green-light)] p-5 text-[var(--aloha-green)]"><Check size={30}/></div>
           <h2 className="text-2xl font-bold">{status === "active" ? "Tài khoản sỉ đã được mở" : status === "khoa" ? "Tài khoản sỉ tạm khóa" : "Aloha đã nhận hồ sơ của bạn"}</h2>
@@ -167,7 +336,8 @@ export function SiRegisterWizard() {
             {(errorCode === "phone_requires_login" || errorCode === "phone_belongs_to_other") && <button type="button" onClick={() => void continueWithPhoneAccount()} className="inline-flex min-h-10 items-center rounded-lg bg-[var(--aloha-green)] px-3 font-bold text-white">Đăng nhập tài khoản này</button>}
           </div>}
         </>}
-      </section>
+        </section>
+      </div>
     </div>
-  </div>;
+  );
 }

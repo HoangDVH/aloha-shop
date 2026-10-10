@@ -12,6 +12,7 @@ import type { LoginInput, RegisterInput } from "@/lib/authSchemas";
 import type { ShopUser } from "@/lib/auth";
 import { useShopLoadingWhile } from "@/lib/useShopLoadingWhile";
 import { markShopLoggingOut } from "@/lib/useShopLogoutAction";
+import { useHydrated } from "@/lib/useHydratedQuery";
 
 export type ShopAuthAction = "login" | "logout" | "register" | null;
 
@@ -92,8 +93,10 @@ export function ShopAuthProvider({ children }: { children: ReactNode }) {
 
 export function useShopAuth() {
   const ctx = useContext(Ctx);
+  // Each consumer can hydrate later than this provider (streamed Suspense boundaries).
+  const hydrated = useHydrated();
   if (!ctx) throw new Error("useShopAuth outside ShopAuthProvider");
-  return ctx;
+  return hydrated ? ctx : { ...ctx, user: null, loading: true, authBusy: false, authAction: null };
 }
 
 /** Alias tiện dùng trong form — cùng nguồn React Query. */

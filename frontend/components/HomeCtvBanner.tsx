@@ -6,7 +6,7 @@ import Link from "next/link";
  */
 export function HomeCtvBanner() {
   return (
-    <section className="bg-white py-6 sm:py-8">
+    <section data-scroll-reveal className="bg-white py-6 sm:py-8">
       <div className="mx-auto max-w-7xl px-4">
         <div className="home-ctv-banner relative overflow-hidden rounded-[var(--aloha-radius-lg)] shadow-[var(--aloha-shadow)] ring-1 ring-[var(--aloha-line)]">
           <Link

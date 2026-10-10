@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import Link from "next/link";
-import { Sparkles, ArrowRight, Building2, ChevronRight } from "lucide-react";
+import { Sparkles, ArrowRight, Building2, ChevronRight, ChevronLeft } from "lucide-react";
 import { GiftCategoryNav } from "@/components/gift/GiftCategoryNav";
+import { GiftImage } from "@/components/gift/GiftImage";
 
 export interface GiftCardItem {
   _id?: string;
@@ -20,12 +21,25 @@ export interface GiftCardItem {
   isActive: boolean;
 }
 
+function getShortGiftTitle(title: string): string {
+  if (!title) return "";
+  const parts = title.split(/[–—\-]/);
+  if (parts.length > 1 && parts[0].trim().length > 0) {
+    return parts[0].trim();
+  }
+  return title.trim();
+}
+
 export function HomeGiftSection({ initialItems = [] }: { initialItems?: GiftCardItem[] }) {
   const [items, setItems] = useState<GiftCardItem[]>(initialItems);
   const [isVisible, setIsVisible] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
+  const [mobileSlide, setMobileSlide] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
 
   useEffect(() => {
     // Nếu chưa có server data, fetch client side
@@ -40,6 +54,53 @@ export function HomeGiftSection({ initialItems = [] }: { initialItems?: GiftCard
         .catch(() => {});
     }
   }, [initialItems]);
+
+  // Chia danh sách thành các slide (mỗi slide tối đa 2 mục quà tặng chuẩn UI mobile)
+  const mobilePairs = useMemo(() => {
+    if (!items.length) return [];
+    if (items.length === 1) return [[items[0]]];
+    const pairs: GiftCardItem[][] = [];
+    for (let i = 0; i < items.length; i += 2) {
+      if (i + 1 < items.length) {
+        pairs.push([items[i], items[i + 1]]);
+      } else {
+        pairs.push([items[i], items[0]]);
+      }
+    }
+    return pairs;
+  }, [items]);
+
+  // Tự động chuyển động qua lại giữa các slide trên Mobile
+  useEffect(() => {
+    if (mobilePairs.length <= 1 || isPaused) return;
+    const timer = setInterval(() => {
+      setMobileSlide((prev) => (prev + 1) % mobilePairs.length);
+    }, 3600);
+    return () => clearInterval(timer);
+  }, [mobilePairs.length, isPaused]);
+
+  // Cử chỉ vuốt chạm chuyển slide trên Mobile
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setIsPaused(true);
+    touchStartX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    setIsPaused(false);
+    if (touchStartX.current === null || touchEndX.current === null) return;
+    const diff = touchStartX.current - touchEndX.current;
+    if (diff > 40) {
+      setMobileSlide((prev) => (prev + 1) % mobilePairs.length);
+    } else if (diff < -40) {
+      setMobileSlide((prev) => (prev - 1 + mobilePairs.length) % mobilePairs.length);
+    }
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -90,7 +151,7 @@ export function HomeGiftSection({ initialItems = [] }: { initialItems?: GiftCard
             <span>Aloha Gift Concierge</span>
           </div>
 
-          <h2 className="mt-3 text-2xl sm:text-3xl lg:text-4xl font-extrabold uppercase tracking-wide text-[#0E5242]">
+          <h2 data-scroll-reveal className="mt-3 text-2xl sm:text-3xl lg:text-4xl font-extrabold uppercase tracking-wide text-[#0E5242]">
             GỢI Ý CHỌN QUÀ TẶNG
           </h2>
 
@@ -123,25 +184,116 @@ export function HomeGiftSection({ initialItems = [] }: { initialItems?: GiftCard
         {/* Thanh Bộ Lọc Nhanh (Pills) chuyển trang trực tiếp */}
         <GiftCategoryNav activeKey="all" className="mt-8" />
 
-        {/* Lưới Thẻ Quà Tặng Nghệ Thuật (Bấm trực tiếp vào từng mục để vào trang quà tặng đó) */}
+        {/* ========================================================================= */}
+        {/* GIAO DIỆN MOBILE (< 640px): CAROUSEL TỐI ĐA 2 MỤC QUÀ TẶNG, TỰ ĐỘNG CHUYỂN */}
+        {/* ĐỘNG QUA LẠI, NÚT MŨI TÊN TRÒN 2 BÊN MÉP ẢNH, CHẤM TRÒN PHÂN TRANG         */}
+        {/* ========================================================================= */}
+        {mobilePairs.length > 0 && (
+          <div
+            className="relative mt-6 sm:hidden"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onMouseEnter={() => setIsPaused(true)}
+            onMouseLeave={() => setIsPaused(false)}
+          >
+            {/* Khung trượt chứa các cặp (2 mục quà tặng mỗi slide) */}
+            <div className="relative overflow-hidden px-1">
+              <div
+                className="flex transition-transform duration-500 ease-in-out"
+                style={{ transform: `translateX(-${mobileSlide * 100}%)` }}
+              >
+                {mobilePairs.map((pair, pIdx) => (
+                  <div key={pIdx} className="w-full shrink-0 grid grid-cols-2 gap-3 px-1">
+                    {pair.map((item, itemIdx) => (
+                      <Link
+                        key={`${pIdx}-${item._id || item.slug}-${itemIdx}`}
+                        href={`/qua-tang/${item.slug}`}
+                        className="flex flex-col group select-none cursor-pointer active:opacity-90"
+                      >
+                        {/* Ảnh quà tặng tỉ lệ ngang chuẩn hình ảnh mẫu */}
+                        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-md bg-stone-100 shadow-2xs">
+                          <GiftImage
+                            src={item.image}
+                            slug={item.slug}
+                            alt={item.title}
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                        </div>
+
+                        {/* Tiêu đề 2 dòng cố định chiều cao chuẩn sàn TMĐT (Shopee/Apple), hiển thị trọn vẹn 100% không bị che */}
+                        <div className="mt-2 flex h-9 items-center justify-center px-0.5">
+                          <h3 className="text-center text-[13px] font-semibold text-[#0E5242] line-clamp-2 leading-[1.25] break-words">
+                            {getShortGiftTitle(item.title)}
+                          </h3>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Nút điều hướng Tròn Trắng Mờ ở 2 bên mép (đặt ngang tâm ảnh chuẩn ảnh mẫu) */}
+            {mobilePairs.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileSlide((prev) => (prev - 1 + mobilePairs.length) % mobilePairs.length);
+                  }}
+                  className="absolute -left-1 top-[60px] -translate-y-1/2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 shadow-md border border-stone-100 text-stone-700 active:scale-90 transition-transform cursor-pointer backdrop-blur-xs"
+                  aria-label="Gợi ý quà tặng trước"
+                >
+                  <ChevronLeft size={18} strokeWidth={2.4} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileSlide((prev) => (prev + 1) % mobilePairs.length);
+                  }}
+                  className="absolute -right-1 top-[60px] -translate-y-1/2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 shadow-md border border-stone-100 text-stone-700 active:scale-90 transition-transform cursor-pointer backdrop-blur-xs"
+                  aria-label="Gợi ý quà tặng tiếp theo"
+                >
+                  <ChevronRight size={18} strokeWidth={2.4} />
+                </button>
+              </>
+            )}
+
+            {/* Chấm phân trang Dots căn giữa bên dưới (Chấm active đậm hơn như trong ảnh mẫu) */}
+            {mobilePairs.length > 1 && (
+              <div className="mt-3 flex items-center justify-center gap-1.5" aria-hidden>
+                {mobilePairs.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setMobileSlide(i)}
+                    className={`rounded-full transition-all duration-300 cursor-pointer ${
+                      mobileSlide === i
+                        ? "h-2 w-2 bg-stone-700 scale-110"
+                        : "h-1.5 w-1.5 bg-stone-300 hover:bg-stone-400"
+                    }`}
+                    aria-label={`Chuyển tới slide ${i + 1}`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* GIAO DIỆN DESKTOP (sm:grid): GIỮ NGUYÊN LƯỚI THẺ QUÀ TẶNG NGHỆ THUẬT      */}
+        {/* ========================================================================= */}
         <div
           ref={scrollRef}
-          onScroll={() => {
-            const el = scrollRef.current;
-            if (!el) return;
-            const firstCard = el.firstElementChild as HTMLElement | null;
-            const cardWidth = firstCard?.offsetWidth || 260;
-            const gap = 16;
-            const index = Math.round(el.scrollLeft / (cardWidth + gap));
-            setActiveIdx(Math.min(Math.max(0, index), items.length - 1));
-          }}
-          className="mt-8 sm:mt-10 -mx-4 px-4 flex gap-4 overflow-x-auto pb-3 scrollbar-none snap-x snap-mandatory sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-5 sm:overflow-visible sm:pb-0"
+          className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-5 sm:mt-10 sm:overflow-visible sm:pb-0"
         >
           {items.map((item, idx) => (
             <Link
               key={item._id || item.slug}
               href={`/qua-tang/${item.slug}`}
-              className={`group flex w-[74vw] max-w-[310px] min-w-[250px] shrink-0 sm:w-auto sm:max-w-none sm:min-w-0 sm:shrink snap-start flex-col overflow-hidden rounded-2xl border border-stone-200/90 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:border-[var(--aloha-green)] hover:shadow-lg cursor-pointer ${
+              className={`group flex sm:w-auto sm:max-w-none sm:min-w-0 sm:shrink flex-col overflow-hidden rounded-2xl border border-stone-200/90 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:border-[var(--aloha-green)] hover:shadow-lg cursor-pointer ${
                 isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
               }`}
               style={{ transitionDelay: `${idx * 80 + 100}ms` }}
@@ -149,8 +301,9 @@ export function HomeGiftSection({ initialItems = [] }: { initialItems?: GiftCard
               {/* Ảnh cây chụp thật (Khung vuông 1:1 thấy trọn vẹn toàn bộ ảnh) */}
               <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-stone-100">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <GiftImage
                   src={item.image}
+                  slug={item.slug}
                   alt={item.title}
                   className="h-full w-full object-cover transition duration-500 group-hover:scale-103"
                 />
@@ -181,30 +334,6 @@ export function HomeGiftSection({ initialItems = [] }: { initialItems?: GiftCard
             </Link>
           ))}
         </div>
-
-        {/* Chấm phân trang chỉ báo vuốt ngang trên Mobile (Chuẩn Shopee / Apple) */}
-        {items.length > 1 && (
-          <div className="mt-1 flex items-center justify-center gap-1.5 sm:hidden" aria-hidden>
-            {items.map((_, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => {
-                  const el = scrollRef.current;
-                  if (!el) return;
-                  const card = el.children[i] as HTMLElement | undefined;
-                  if (card) {
-                    el.scrollTo({ left: card.offsetLeft - 16, behavior: "smooth" });
-                  }
-                }}
-                className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-                  activeIdx === i ? "w-6 bg-[#0E5242]" : "w-1.5 bg-stone-300"
-                }`}
-                aria-label={`Chuyển tới gợi ý quà tặng ${i + 1}`}
-              />
-            ))}
-          </div>
-        )}
 
         {/* Khối kích hoạt quà doanh nghiệp (Hiển thị trọn vẹn 100% chữ, tối ưu nhỏ gọn trên Mobile) */}
         <div className="mt-8 sm:mt-12 rounded-2xl border border-stone-200/90 bg-white p-4 sm:p-6 shadow-2xs">

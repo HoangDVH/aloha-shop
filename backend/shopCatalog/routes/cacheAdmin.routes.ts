@@ -8,8 +8,16 @@ import type { CatalogCtx } from "../catalog/types.js";
 import { setCors } from "../catalog/cors.js";
 import { syncBus } from "../../syncBus.js";
 import { redisInvalidateShopCache } from "../../redis.js";
+import { publicReadCache } from '../../cache/readCache.js';
+import { requestMetrics } from '../../cache/requestMetrics.js';
 
 export function registerCacheAdminRoutes(app: Express, _ctx: CatalogCtx) {
+  app.get('/api/shop/cache/metrics', (req, res) => {
+    const expected = (process.env.CACHE_METRICS_TOKEN || process.env.INTERNAL_SYNC_SECRET || '').trim();
+    if (!expected || req.headers['x-internal-key'] !== expected) return res.status(401).json({ error: 'unauthorized' });
+    res.setHeader('Cache-Control', 'no-store');
+    return res.json({ ok: true, groups: publicReadCache.metrics(), requests: requestMetrics() });
+  });
   /**
    * Endpoint nội bộ nhận lệnh xóa Cache (Cấp độ 1):
    * Bên project nội bộ gọi khi lưu sản phẩm / sửa giá / đổi tên.

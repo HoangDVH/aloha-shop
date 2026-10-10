@@ -2,19 +2,8 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { TicketLine, VoucherTicket } from "@/components/voucher/VoucherTicket";
-import {
-  Check,
-  X,
-  AlertCircle,
-  Tag,
-  Calendar,
-  ShoppingCart,
-  Percent,
-  Package,
-  Leaf,
-  Truck,
-} from "lucide-react";
+import { VoucherTicket } from "@/components/voucher/VoucherTicket";
+import { Check, X } from "lucide-react";
 import { ReturnedBadge, type VoucherReturnInfo } from "@/components/voucher/ReturnedBadge";
 import { formatVnd } from "@/lib/api";
 import { pctText, sortVouchersGrouped, type MysteryInfo } from "@/lib/voucherFormat";
@@ -119,7 +108,6 @@ export function PromotionModal({
   const [mounted, setMounted] = useState(false);
   const [inputCode, setInputCode] = useState(selectedCode || "");
   const [submittingCode, setSubmittingCode] = useState(false);
-  const [codeOpen, setCodeOpen] = useState(Boolean(selectedCode));
   const [filterType, setFilterType] = useState<"all" | "goods" | "shipping">("all");
   const [viewDetailCand, setViewDetailCand] = useState<EvaluatedCandidateUI | null>(null);
   const [availableShipPromos, setAvailableShipPromos] = useState<AvailablePromotionUI[]>([]);
@@ -349,114 +337,77 @@ export function PromotionModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative flex w-full flex-col bg-[#FAF8F5] shadow-2xl transition-transform duration-300 ease-out
-                   /* Mobile: TikTok Shop bottom-sheet style (hiện từ dưới lên, bo góc trên) */
-                   max-h-[85vh] h-[82vh] rounded-t-[24px] rounded-b-none border-t border-slate-200/90
+        className="relative flex w-full flex-col bg-white shadow-2xl transition-transform duration-300 ease-out
+                   /* Mobile: Bottom sheet drawer (Shopee & TikTok Shop style) */
+                   max-h-[85vh] h-[82vh] rounded-t-2xl rounded-b-none border-t border-slate-200
                    /* Desktop: Centered modal */
-                   sm:h-auto sm:max-h-[88vh] sm:max-w-[490px] sm:rounded-[28px] sm:border sm:border-emerald-900/10
+                   sm:h-auto sm:max-h-[85vh] sm:max-w-[480px] sm:rounded-2xl sm:border sm:border-slate-200
                    overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95"
         role="dialog"
         aria-modal="true"
       >
-        {/* TikTok Shop Mobile Drag Handle Indicator */}
-        <div className="pt-2.5 pb-1 sm:hidden flex justify-center shrink-0 bg-[#FAF8F5]">
-          <div className="h-1.5 w-10 rounded-full bg-slate-300/90" />
+        {/* Mobile Drag Indicator */}
+        <div className="pt-2.5 pb-1 sm:hidden flex justify-center shrink-0 bg-white">
+          <div className="h-1 w-10 rounded-full bg-slate-300" />
         </div>
 
         {/* ========================================================================= */}
-        {/* 1. HEADER CHUẨN DESIGN: % Icon badge + Title + Close Button               */}
+        {/* 1. HEADER: Tiêu đề rõ ràng + Nút Đóng (Tối giản, không icon rườm rà)        */}
         {/* ========================================================================= */}
-        <div className="relative flex items-center justify-between border-b border-slate-200/60 bg-[#FAF8F5] px-5 pt-3 pb-3 shrink-0">
-          <div className="flex items-center gap-3">
-            {/* Soft Green Round Badge with Coupon Icon */}
-            <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-2xl bg-[#EAF2E9] text-[#2E5B32] shadow-2xs shrink-0">
-              <div className="flex items-center justify-center border-2 border-dashed border-[#2E5B32]/40 rounded-lg w-6 h-6 sm:w-7 sm:h-7">
-                <Percent size={14} strokeWidth={2.6} />
-              </div>
-            </div>
-
-            <div>
-              <h2 className="text-base font-bold text-slate-800 leading-tight">
-                Ưu đãi &amp; Mã giảm giá
-              </h2>
-              <p className="text-[12px] text-slate-500 mt-0.5">
-                Tự động áp dụng mức giảm tốt nhất cho đơn hàng
-              </p>
-            </div>
+        <div className="relative flex items-center justify-between border-b border-slate-100 bg-white px-5 py-3.5 shrink-0">
+          <div>
+            <h2 className="text-base font-bold text-slate-800 leading-tight">
+              Ưu đãi &amp; Mã giảm giá
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Áp dụng tối đa 1 mã giảm giá và 1 mã vận chuyển
+            </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Decorative leaf top right on desktop */}
-            <div className="hidden sm:block text-[#4A6B4C]/20 pointer-events-none">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22l1-2.3A4.49 4.49 0 0 0 8 20C19 20 22 3 22 3c-1 2-8 2.52-11 4 2 2 4 4 6 1z" />
-              </svg>
-            </div>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200/50 text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition cursor-pointer"
-              aria-label="Đóng"
-            >
-              <X size={18} />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition cursor-pointer"
+            aria-label="Đóng"
+          >
+            <X size={18} />
+          </button>
         </div>
 
         {/* ========================================================================= */}
-        {/* 2. BODY CONTENT (SCROLLABLE): Ô nhập mã, Danh mục bộ lọc, Danh sách vé    */}
+        {/* 2. BODY: Ô nhập mã + Bộ lọc tab + Danh sách Voucher                        */}
         {/* ========================================================================= */}
-        <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-5 py-3.5 space-y-3.5 bg-[#FAF8F5]">
-          {/* Ô nhập mã ưu đãi / voucher — thu gọn mặc định, hệ thống đã tự áp mã tốt nhất */}
-          {!codeOpen ? (
-            <button
-              type="button"
-              onClick={() => setCodeOpen(true)}
-              className="inline-flex min-h-[40px] items-center gap-1.5 text-sm font-semibold text-[#3B653D] hover:underline"
-            >
-              <Tag size={15} aria-hidden />
-              Nhập mã khác
-            </button>
-          ) : (
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-5 py-3.5 space-y-3.5 bg-slate-50/50">
+          {/* Ô nhập mã ưu đãi / voucher */}
           <form onSubmit={handleApplyInput} className="flex gap-2 items-center">
-            <div className="relative flex-1">
-              <Tag
-                size={16}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-              />
-              <input
-                autoFocus
-                aria-label="Mã ưu đãi"
-                type="text"
-                value={inputCode}
-                onChange={(e) => setInputCode(e.target.value.toUpperCase())}
-                placeholder="Nhập mã ưu đãi / voucher"
-                className="w-full rounded-xl border border-slate-200/90 bg-white py-2.5 pl-9 pr-3 text-sm font-semibold uppercase tracking-wider text-slate-800 placeholder:normal-case placeholder:font-normal placeholder:tracking-normal placeholder:text-slate-400 focus:border-[#3B653D] focus:outline-none focus:ring-2 focus:ring-[#3B653D]/15 shadow-2xs"
-              />
-            </div>
+            <input
+              aria-label="Mã ưu đãi"
+              type="text"
+              value={inputCode}
+              onChange={(e) => setInputCode(e.target.value.toUpperCase())}
+              placeholder="Nhập mã giảm giá"
+              className="flex-1 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold uppercase tracking-wider text-slate-800 placeholder:normal-case placeholder:font-normal placeholder:tracking-normal placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 shadow-2xs"
+            />
             <button
               type="submit"
               disabled={!inputCode.trim() || submittingCode}
-              className="rounded-xl bg-[#3B653D] hover:bg-[#2E5B32] active:scale-95 px-5 py-2.5 text-sm font-bold text-white transition disabled:bg-slate-200 disabled:text-slate-400 shadow-2xs cursor-pointer shrink-0"
+              className="rounded-lg bg-emerald-700 hover:bg-emerald-800 active:scale-95 px-4 py-2 text-sm font-semibold text-white transition disabled:bg-slate-200 disabled:text-slate-400 shadow-2xs cursor-pointer shrink-0"
             >
               {submittingCode ? "..." : "Áp dụng"}
             </button>
           </form>
-          )}
 
           {/* Category Filter Pills (Tất cả • Mã giảm giá • Hỗ trợ ship) */}
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 shrink-0">
             <button
               type="button"
               onClick={() => setFilterType("all")}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer shrink-0 ${
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer shrink-0 ${
                 filterType === "all"
-                  ? "bg-[#E6EFE4] text-[#2E5B32] border border-[#3B653D]/30 shadow-2xs font-bold"
+                  ? "bg-slate-900 text-white shadow-2xs"
                   : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
               }`}
             >
-              <Leaf size={12} className="text-emerald-700" />
               Tất cả
             </button>
 
@@ -465,14 +416,15 @@ export function PromotionModal({
               onClick={() => setFilterType("goods")}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer shrink-0 ${
                 filterType === "goods"
-                  ? "bg-rose-50 text-[#C8102E] border border-rose-300 shadow-2xs font-bold"
+                  ? "bg-rose-600 text-white shadow-2xs"
                   : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
               }`}
             >
-              <Tag size={12} className="text-[#C8102E]" />
-              Mã giảm giá
+              <span>Mã giảm giá</span>
               {eligibleGoods.length > 0 ? (
-                <span className="rounded-full bg-rose-100 text-[#C8102E] px-1.5 py-0.2 text-[10px] font-bold">
+                <span className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
+                  filterType === "goods" ? "bg-white/20 text-white" : "bg-rose-100 text-rose-700"
+                }`}>
                   {eligibleGoods.length}
                 </span>
               ) : null}
@@ -483,14 +435,15 @@ export function PromotionModal({
               onClick={() => setFilterType("shipping")}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer shrink-0 ${
                 filterType === "shipping"
-                  ? "bg-sky-50 text-[#0284C7] border border-sky-300 shadow-2xs font-bold"
+                  ? "bg-sky-700 text-white shadow-2xs"
                   : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
               }`}
             >
-              <Truck size={12} className="text-[#0284C7]" />
               <span>Hỗ trợ ship</span>
               {bestEligibleShip ? (
-                <span className="inline-flex items-center justify-center rounded-full bg-[#0284C7] text-white text-[9px] font-bold px-1.5 py-0.2">
+                <span className={`inline-flex items-center justify-center rounded-full text-[9px] font-bold px-1.5 py-0.2 ${
+                  filterType === "shipping" ? "bg-white/20 text-white" : "bg-sky-100 text-sky-700"
+                }`}>
                   ✓
                 </span>
               ) : null}
@@ -498,17 +451,14 @@ export function PromotionModal({
           </div>
 
           {/* ========================================================================= */}
-          {/* KHỐI 1: 🚚 MÃ MIỄN PHÍ VẬN CHUYỂN (FREESHIP - CHUẨN SHOPEE)               */}
+          {/* KHỐI 1: MÃ MIỄN PHÍ VẬN CHUYỂN (FREESHIP)                                 */}
           {/* ========================================================================= */}
           {(filterType === "all" || filterType === "shipping") && (
             <div className="space-y-2 pt-0.5">
               <div className="flex items-center justify-between px-0.5">
-                <div className="flex items-center gap-1.5">
-                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-100 text-teal-800">
-                    <Truck size={12} strokeWidth={2.5} />
-                  </div>
-                  <span className="text-xs font-bold text-slate-800">Mã Miễn Phí Vận Chuyển</span>
-                </div>
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                  Mã Miễn Phí Vận Chuyển
+                </span>
                 <span className="text-[11px] text-slate-400 font-medium">Áp dụng tối đa 1 mã</span>
               </div>
 
@@ -531,7 +481,7 @@ export function PromotionModal({
                           <div className="flex flex-col items-end gap-1.5">
                             {isShipApplied ? (
                               <div
-                                className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-800 px-3 py-1 text-xs font-bold shadow-2xs"
+                                className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-800 px-2.5 py-1 text-xs font-bold"
                                 title="Đã tự động áp dụng mức hỗ trợ ship tốt nhất"
                               >
                                 <Check size={12} strokeWidth={3} />
@@ -550,12 +500,12 @@ export function PromotionModal({
                           </div>
                         }
                       >
-                        <TicketLine icon={<ShoppingCart size={11} className="text-slate-400 shrink-0" />}>
+                        <p className="text-[11px] text-slate-600 leading-tight">
                           {minOrderText(cand)}
-                        </TicketLine>
-                        <TicketLine icon={<Calendar size={11} className="text-slate-400 shrink-0" />}>
+                        </p>
+                        <p className="text-[11px] text-slate-400 leading-tight">
                           HSD: {formatHsd(cand.endDate)}
-                        </TicketLine>
+                        </p>
                       </VoucherTicket>
                     );
                   })}
@@ -569,17 +519,14 @@ export function PromotionModal({
           )}
 
           {/* ========================================================================= */}
-          {/* KHỐI 2: 🏷️ MÃ GIẢM GIÁ ĐƠN HÀNG (SHOP VOUCHER - CHUẨN SHOPEE)              */}
+          {/* KHỐI 2: MÃ GIẢM GIÁ ĐƠN HÀNG (SHOP VOUCHER)                                */}
           {/* ========================================================================= */}
           {(filterType === "all" || filterType === "goods") && (
             <div className="space-y-2 pt-2 border-t border-slate-200/60">
               <div className="flex items-center justify-between px-0.5">
-                <div className="flex items-center gap-1.5">
-                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-rose-100 text-rose-800">
-                    <Tag size={12} strokeWidth={2.5} />
-                  </div>
-                  <span className="text-xs font-bold text-slate-800">Mã Giảm Giá Shop</span>
-                </div>
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                  Mã Giảm Giá Shop
+                </span>
                 <span className="text-[11px] text-slate-400 font-medium">Áp dụng tối đa 1 mã</span>
               </div>
 
@@ -602,7 +549,7 @@ export function PromotionModal({
                               <button
                                 type="button"
                                 onClick={onRemoveDiscount}
-                                className="inline-flex items-center gap-1 rounded-full bg-rose-100 text-[#C8102E] px-3 py-1 text-xs font-bold shadow-2xs hover:bg-rose-200 transition cursor-pointer group"
+                                className="inline-flex items-center gap-1 rounded-full bg-rose-100 text-[#C8102E] px-2.5 py-1 text-xs font-bold hover:bg-rose-200 transition cursor-pointer group"
                                 title="Bấm để bỏ chọn ưu đãi này"
                               >
                                 <Check size={12} strokeWidth={3} className="group-hover:hidden" />
@@ -619,7 +566,7 @@ export function PromotionModal({
                                     onSelectAutoMode();
                                   }
                                 }}
-                                className="rounded-full bg-[#C8102E] hover:bg-[#A00C24] active:scale-95 px-3.5 py-1 text-xs font-bold text-white transition shadow-2xs cursor-pointer"
+                                className="rounded-full bg-[#C8102E] hover:bg-[#A00C24] active:scale-95 px-3 py-1 text-xs font-bold text-white transition shadow-2xs cursor-pointer"
                               >
                                 Áp dụng
                               </button>
@@ -634,12 +581,12 @@ export function PromotionModal({
                           </div>
                         }
                       >
-                        <TicketLine icon={<ShoppingCart size={11} className="text-slate-400 shrink-0" />}>
+                        <p className="text-[11px] text-slate-600 leading-tight">
                           {minOrderText(cand)}
-                        </TicketLine>
-                        <TicketLine icon={<Calendar size={11} className="text-slate-400 shrink-0" />}>
+                        </p>
+                        <p className="text-[11px] text-slate-400 leading-tight">
                           HSD: {formatHsd(cand.endDate)}
-                        </TicketLine>
+                        </p>
                         {cand.returnedFrom ? <ReturnedBadge info={cand.returnedFrom} /> : null}
                       </VoucherTicket>
                     );
@@ -664,9 +611,10 @@ export function PromotionModal({
             if (allIneligible.length === 0) return null;
             return (
               <div className="space-y-2 pt-2 border-t border-slate-200/60">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400 px-0.5">
-                  <AlertCircle size={13} />
-                  <span>Chưa đủ điều kiện ({allIneligible.length})</span>
+                <div className="flex items-center justify-between px-0.5">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">
+                    Chưa đủ điều kiện ({allIneligible.length})
+                  </span>
                 </div>
                 <div className="space-y-2">
                   {allIneligible.map((cand) => (
@@ -697,14 +645,14 @@ export function PromotionModal({
                         </div>
                       }
                     >
-                      <TicketLine muted icon={<ShoppingCart size={11} className="shrink-0" />}>
+                      <p className="text-[11px] text-slate-400 leading-tight">
                         {minOrderText(cand)}
-                      </TicketLine>
-                      <TicketLine muted icon={<Calendar size={11} className="shrink-0" />}>
+                      </p>
+                      <p className="text-[11px] text-slate-400 leading-tight">
                         HSD: {formatHsd(cand.endDate)}
-                      </TicketLine>
+                      </p>
                       {cand.shortfall && cand.shortfall > 0 ? (
-                        <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-amber-800 bg-amber-50 rounded-md px-2 py-0.5 border border-amber-200/60 max-w-full">
+                        <span className="inline-flex items-center text-[10.5px] font-semibold text-amber-800 bg-amber-50 rounded-md px-2 py-0.5 border border-amber-200/60 max-w-full">
                           Mua thêm {formatVnd(cand.shortfall)} để nhận ưu đãi
                         </span>
                       ) : cand.ineligibleReason ? (
@@ -721,7 +669,7 @@ export function PromotionModal({
         </div>
 
         {/* ========================================================================= */}
-        {/* 5. FOOTER CHUẨN DESIGN & TIKTOK SHOP MOBILE: % Icon + Đã giảm + Nút Xong  */}
+        {/* 3. FOOTER: Tổng tiền giảm + Nút Xong (Tối giản chuẩn Shopee / TikTok)    */}
         {/* ========================================================================= */}
         {(() => {
           const goodsDiscount = quote?.discountTotal || 0;
@@ -733,42 +681,29 @@ export function PromotionModal({
               : 0;
           const totalDiscount = goodsDiscount + shipDiscount;
           return (
-            <div className="relative border-t border-slate-200/90 px-5 pt-3.5 pb-[max(1rem,env(safe-area-inset-bottom))] flex items-center justify-between bg-white shrink-0 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] rounded-b-none sm:rounded-b-[28px]">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EEF5ED] text-[#3B653D] shrink-0">
-                  <Percent size={18} strokeWidth={2.6} />
-                </div>
-
-                <div>
-                  <span className="text-[11px] text-slate-500 font-medium block leading-none">
-                    Đã giảm:
+            <div className="relative border-t border-slate-200 px-5 pt-3 pb-[max(0.875rem,env(safe-area-inset-bottom))] flex items-center justify-between bg-white shrink-0 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] rounded-b-none sm:rounded-b-2xl">
+              <div>
+                <span className="text-xs text-slate-500 font-medium block leading-none">
+                  Tổng giảm giá:
+                </span>
+                <p className="text-lg sm:text-xl font-extrabold text-emerald-700 tabular-nums leading-tight mt-0.5">
+                  {formatVnd(totalDiscount)}
+                </p>
+                {totalDiscount > 0 ? (
+                  <span className="text-[10px] text-slate-400 font-medium block mt-0.5">
+                    {goodsDiscount > 0 && shipDiscount > 0
+                      ? `Giảm ${formatVnd(goodsDiscount)} hàng + ${formatVnd(shipDiscount)} ship`
+                      : shipDiscount > 0
+                      ? `Đã gồm ${formatVnd(shipDiscount)} ship`
+                      : `Giảm ${formatVnd(goodsDiscount)} tiền hàng`}
                   </span>
-                  <p className="text-xl sm:text-2xl font-black text-slate-900 tabular-nums leading-tight mt-0.5">
-                    {formatVnd(totalDiscount)}
-                  </p>
-                  {totalDiscount > 0 ? (
-                    <span className="text-[10.5px] text-slate-500 font-medium block mt-0.5">
-                      {goodsDiscount > 0 && shipDiscount > 0
-                        ? `Gồm ${formatVnd(goodsDiscount)} giảm hàng + ${formatVnd(shipDiscount)} hỗ trợ ship`
-                        : shipDiscount > 0
-                        ? `Đã gồm ${formatVnd(shipDiscount)} hỗ trợ ship`
-                        : `Giảm ${formatVnd(goodsDiscount)} tiền hàng`}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-
-              {/* Decorative leaf bottom on desktop */}
-              <div className="hidden sm:block text-[#3B653D]/20 pointer-events-none">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22l1-2.3A4.49 4.49 0 0 0 8 20C19 20 22 3 22 3c-1 2-8 2.52-11 4 2 2 4 4 6 1z" />
-                </svg>
+                ) : null}
               </div>
 
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-xl bg-[#3B653D] hover:bg-[#2E5B32] active:scale-95 px-7 sm:px-8 py-2.5 sm:py-3 text-sm font-bold text-white shadow-xs transition cursor-pointer"
+                className="rounded-xl bg-emerald-700 hover:bg-emerald-800 active:scale-95 px-6 sm:px-8 py-2.5 text-sm font-bold text-white shadow-2xs transition cursor-pointer"
               >
                 Xong
               </button>
@@ -776,9 +711,7 @@ export function PromotionModal({
           );
         })()}
 
-        {/* ========================================================================= */}
-        {/* 6. POPUP XEM CHI TIẾT ĐIỀU KIỆN KHI BẤM "Xem điều kiện ›"                  */}
-        {/* ========================================================================= */}
+        {/* Modal xem chi tiết điều kiện */}
         <PromotionDetailModal cand={viewDetailCand} onClose={() => setViewDetailCand(null)} />
       </div>
     </div>

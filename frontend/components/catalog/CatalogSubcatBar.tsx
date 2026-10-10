@@ -551,11 +551,8 @@ export function CatalogSubcatPicker({
         {filterButton}
         {hasCategoryNav ? <>{selectedCatChips}{filterResultChips}{clearAllChip}</>
           : hasFilterChips ? <>{filterResultChips}{clearAllChip}</>
-          : showL1Browse ? optionNodes.map(n => <OptionChip key={n.id} node={n} active={false} href={optionHref(n)} onClick={onChipClick} />) : null}
+          : null}
       </CatalogChipRow>
-      {hasCategoryNav && optionNodes.length > 0 ? <CatalogChipRow row="children">
-        {optionNodes.map(n => <OptionChip key={n.id} node={n} active={optionActive(n)} data-always-visible={optionActive(n)} href={optionHref(n)} onClick={onChipClick} />)}
-      </CatalogChipRow> : null}
     </div>
   );
 }

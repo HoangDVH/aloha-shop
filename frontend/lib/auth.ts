@@ -174,12 +174,9 @@ export async function shopUpdateMe(body: {
   });
 }
 
-export function googleStartUrl(next = "/") {
+export function googleStartUrl(next = "/", returnOrigin = "") {
   const n = encodeURIComponent(safeAuthNext(next));
-  const origin =
-    typeof window !== "undefined"
-      ? encodeURIComponent(window.location.origin)
-      : "";
+  const origin = encodeURIComponent(returnOrigin);
   const o = origin ? `&origin=${origin}` : "";
   return `/api/shop/auth/google/start?next=${n}${o}`;
 }

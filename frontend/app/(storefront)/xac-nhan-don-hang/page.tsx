@@ -332,6 +332,20 @@ function CheckoutConfirm() {
   });
 
   const requestPlaceOrder = () => {
+    if (orderBlockedReason) {
+      setError(orderBlockedReason);
+      if (typeof document !== "undefined") {
+        const target = document.getElementById("checkout-address-section");
+        if (target) {
+          target.scrollIntoView({ behavior: "smooth", block: "center" });
+          target.classList.add("ring-2", "!ring-rose-500", "!border-rose-500");
+          setTimeout(() => {
+            target.classList.remove("ring-2", "!ring-rose-500", "!border-rose-500");
+          }, 3000);
+        }
+      }
+      return;
+    }
     setError("");
     setPolicyModalOpen(true);
   };

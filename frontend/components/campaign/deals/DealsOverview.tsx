@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowUp } from "lucide-react";
 import type { CampaignUI, CampaignVoucherUI, CampaignViewerUI } from "@/lib/campaign/campaignApi";
 import { QuickTiles } from "@/components/campaign/QuickTiles";
 import { DealsBanner } from "./DealsBanner";
@@ -51,28 +50,6 @@ export function LazyMount({ minHeight, children }: { minHeight: number; children
   );
 }
 
-function BackToTop() {
-  const [on, setOn] = useState(false);
-  useEffect(() => {
-    const onScroll = () => setOn(window.scrollY > 900);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-  if (!on) return null;
-  return (
-    <button
-      type="button"
-      onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-      aria-label="Lên đầu trang"
-      className="fixed right-3.5 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-white text-[var(--campaign-primary)] shadow-lg ring-1 ring-black/[0.06] transition hover:scale-105 lg:right-7 lg:h-12 lg:w-12"
-      style={{ bottom: "calc(var(--shop-float-bottom) + var(--shop-float-step))" }}
-    >
-      <ArrowUp size={20} aria-hidden />
-    </button>
-  );
-}
-
 /**
  * `/uu-dai` không có `?tab=`: trang cuộn dài kiểu sàn — banner, dải voucher, flash sale, bán chạy,
  * video cây thật, lưới SP lọc được, cam kết + thể lệ, gợi ý thêm.
@@ -116,7 +93,6 @@ export function DealsOverview({
         <DealsMoreFeed campaign={campaign} />
       </LazyMount>
 
-      <BackToTop />
       <DealsShipBar vouchers={vouchers} viewer={viewer} offsetMs={offsetMs} />
     </div>
   );

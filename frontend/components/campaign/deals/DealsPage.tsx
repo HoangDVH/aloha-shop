@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ArrowRight, ChevronRight, FileText, Flame, Gift, Sparkles, TicketPercent, Truck } from "lucide-react";
@@ -18,8 +18,15 @@ import { DealsProductTabs } from "./DealsProductTabs";
 import { DealsMoreFeed } from "./DealsMoreFeed";
 import { DealsSectionHead } from "./DealsSectionHead";
 import { VoucherKindFilter, filterVouchers, toVoucherKind, type VoucherKind } from "./VoucherKindFilter";
+import { openVoucherModal } from "@/lib/campaign/useVoucherModal";
+
+const subscribeHydration = () => () => {};
+const clientHydrated = () => true;
+const serverHydrated = () => false;
 
 export function DealsPage() {
+  // Browser query caches can already contain a campaign while SSR renders loading.
+  const hydrated = useSyncExternalStore(subscribeHydration, clientHydrated, serverHydrated);
   const { loading, data, campaign, viewer, vouchers, offsetMs, lastHours, upcoming } = useCampaignView();
   const pathname = usePathname() || "/uu-dai";
   const searchParams = useSearchParams();
@@ -36,8 +43,9 @@ export function DealsPage() {
   const rawTab = searchParams.get("tab");
   const voucherKind = toVoucherKind(searchParams.get("loai"));
   const tabFromUrl = toDealsTab(rawTab);
-  // Không chọn tab (link popup, banner, tab bar) → trang tổng quan cuộn dài; ?tab= giữ kiểu một mục.
-  const overview = !tabFromUrl && !searchParams.get("loai");
+  // Không chọn tab hoặc chọn voucher → hiển thị trang tổng quan cuộn dài và mở popup voucher; ?tab= khác giữ kiểu một mục.
+  const isVoucherTab = rawTab === "voucher" || tabFromUrl === "voucher";
+  const overview = (!tabFromUrl || isVoucherTab) && !searchParams.get("loai");
   const activeTab: DealsTabId = tabFromUrl || "voucher";
 
   const shownVouchers = useMemo(() => filterVouchers(vouchers, voucherKind), [vouchers, voucherKind]);
@@ -55,16 +63,22 @@ export function DealsPage() {
   const firstRenderRef = useRef(true);
 
   useEffect(() => {
+    if (isVoucherTab) {
+      openVoucherModal();
+    }
+  }, [isVoucherTab]);
+
+  useEffect(() => {
     if (firstRenderRef.current) {
       firstRenderRef.current = false;
       return;
     }
-    if (rawTab && contentRef.current) {
+    if (rawTab && rawTab !== "voucher" && contentRef.current) {
       contentRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }, [rawTab, voucherKind]);
 
-  if (loading) {
+  if (!hydrated || loading) {
     return (
       <div className="mx-auto max-w-7xl space-y-4 px-3 py-4 sm:px-4">
         <div className="aspect-[9/5] animate-pulse rounded-3xl bg-white/70 md:aspect-[8/3]" />

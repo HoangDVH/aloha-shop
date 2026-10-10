@@ -157,11 +157,11 @@ export function VeAlohaLanding() {
             {/* Cột phải: Bức ảnh chân dung chậu quà */}
             <div className="lg:col-span-5">
               <div className="relative mx-auto max-w-md overflow-hidden rounded-2xl border border-stone-200/80 bg-white p-2.5 shadow-xl">
-                <div className="overflow-hidden rounded-xl bg-stone-100 aspect-[3/4]">
+                <div className="overflow-hidden rounded-xl bg-stone-100 aspect-square">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src="/banners/ve-aloha/real-hong-ngoc-2010.jpg"
-                    alt="Món quà xanh độc bản sen đá hồng ngọc tại Aloha"
+                    src="/banners/ve-aloha/cbctpt.jpg"
+                    alt="Cây thành phẩm Cần Thăng Phát Tài (CBCTPT) tại Aloha"
                     className="h-full w-full object-cover transition duration-500 hover:scale-103"
                   />
                 </div>

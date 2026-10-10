@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { notifyShopNavStart } from "@/lib/shopLoading";
+import { useHydrated } from "@/lib/useHydratedQuery";
 
 function GoogleIcon() {
   return (
@@ -28,10 +29,14 @@ function GoogleIcon() {
 
 export function GoogleAuthButton({ href, label }: { href: string; label: string }) {
   const [busy, setBusy] = useState(false);
+  const hydrated = useHydrated();
+  const returnHref = hydrated
+    ? `${href}${href.includes("?") ? "&" : "?"}origin=${encodeURIComponent(window.location.origin)}`
+    : href;
 
   return (
     <a
-      href={href}
+      href={returnHref}
       className="auth-google"
       onClick={() => {
         setBusy(true);

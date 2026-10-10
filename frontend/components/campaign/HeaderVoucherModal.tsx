@@ -336,7 +336,7 @@ export function HeaderVoucherModal({
 
           {/* Link phụ xem thể lệ chi tiết */}
           <Link
-            href="/uu-dai?tab=voucher"
+            href="/uu-dai#the-le"
             onClick={onClose}
             className="mt-2.5 flex items-center justify-center gap-1 text-[11.5px] font-semibold text-slate-400 hover:text-[#FE2C55] transition"
           >

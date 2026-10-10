@@ -187,6 +187,10 @@ export const useCart = create<CartState>()(
           };
         });
 
+        if (result.ok && typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("aloha:cart-bump"));
+        }
+
         return result;
       },
       patchCatalog: (updates) => {

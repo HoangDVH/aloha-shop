@@ -20,11 +20,8 @@ import {
   Home,
   Sparkles,
   Zap,
-  Building2,
-  Users,
   Stethoscope,
   Briefcase,
-  Gift,
   Clock,
 } from "lucide-react";
 import { useCart } from "@/lib/cart";
@@ -47,6 +44,8 @@ import { HeaderVoucherPill, HeaderVoucherGlobalModal } from "@/components/campai
 import { ZaloFloatButton } from "@/components/ZaloFloatButton";
 import { useCampaignView } from "@/lib/campaign/useCampaignView";
 import { useDealsNavAccent } from "@/lib/campaign/navAccent";
+import { PartnerNavDropdown } from "@/components/PartnerNavDropdown";
+import { GiftNavDropdown } from "@/components/GiftNavDropdown";
 const LOGO_HEADER_SRC = "/brand/logo-header-on-theme.png?v=1";
 const LOGO_WIDTH = 976;
 const LOGO_HEIGHT = 194;
@@ -149,6 +148,16 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
     if (pathname === "/" || pathname === "") return "trang-chu";
     return "";
   }, [pathname, searchParams]);
+
+  const [cartBumping, setCartBumping] = useState(false);
+  useEffect(() => {
+    const handleBump = () => {
+      setCartBumping(true);
+      window.setTimeout(() => setCartBumping(false), 550);
+    };
+    window.addEventListener("aloha:cart-bump", handleBump);
+    return () => window.removeEventListener("aloha:cart-bump", handleBump);
+  }, []);
 
   /** Tab bar mobile «Danh mục» → mở drawer danh mục. */
   useEffect(() => {
@@ -269,14 +278,18 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
               <Link
                 href="/gio-hang"
                 data-cart-target=""
-                className={`flex h-9 w-9 items-center justify-center rounded-full text-[var(--aloha-green-dark)] ${chromeHover} transition active:scale-95`}
+                className={`flex h-9 w-9 items-center justify-center rounded-full text-[var(--aloha-green-dark)] ${chromeHover} transition active:scale-95 ${
+                  cartBumping ? "aloha-cart-bump" : ""
+                }`}
                 onClick={closeMenus}
                 aria-label={`Giỏ hàng${count ? `, ${count} sản phẩm` : ""}`}
               >
                 <span className="relative inline-flex">
                   <ShoppingCart size={21} strokeWidth={1.8} aria-hidden />
                   {count > 0 ? (
-                    <span className="absolute -right-2 -top-1.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-[var(--aloha-green)] px-1 text-[9.5px] font-black text-white shadow-xs">
+                    <span className={`absolute -right-2 -top-1.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-[var(--aloha-green)] px-1 text-[9.5px] font-black text-white shadow-xs transition-transform duration-300 ${
+                      cartBumping ? "scale-125 bg-emerald-600" : ""
+                    }`}>
                       {count > 99 ? "99+" : count}
                     </span>
                   ) : null}
@@ -316,14 +329,18 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
             <Link
               href="/gio-hang"
               data-cart-target=""
-              className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-2 text-[var(--aloha-green-dark)] ${chromeHover} sm:px-3`}
+              className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-2 text-[var(--aloha-green-dark)] ${chromeHover} sm:px-3 ${
+                cartBumping ? "aloha-cart-bump" : ""
+              }`}
               onClick={closeMenus}
               aria-label={`Giỏ hàng${count ? `, ${count} sản phẩm` : ""}`}
             >
               <span className="relative inline-flex">
                 <ShoppingCart size={22} strokeWidth={1.75} aria-hidden />
                 {count > 0 ? (
-                  <span className="absolute -right-2.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--aloha-green)] px-1 text-[10px] font-black text-white shadow-sm">
+                  <span className={`absolute -right-2.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--aloha-green)] px-1 text-[10px] font-black text-white shadow-sm transition-transform duration-300 ${
+                    cartBumping ? "scale-125 bg-emerald-600" : ""
+                  }`}>
                     {count > 99 ? "99+" : count}
                   </span>
                 ) : null}
@@ -338,11 +355,12 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
       {/* Hàng menu — Trang chủ → Danh mục → Ưu đãi */}
       <nav className="hidden overflow-visible border-b border-[var(--aloha-line)] bg-white text-[var(--aloha-ink)] lg:block shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
         <div className="mx-auto flex max-w-7xl items-center overflow-visible px-3 sm:px-4 py-1.5 min-h-[50px]">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-1 xl:gap-1.5">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-0.5">
             {(
               [
                 { href: "/", label: "Trang chủ", key: "trang-chu", kind: "link" as const },
                 { kind: "mega" as const, key: "danh-muc" },
+                { kind: "gifts" as const, key: "qua-tang" },
                 {
                   href: dealsNavHref,
                   label: "Ưu đãi",
@@ -353,10 +371,11 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                 { href: "/bac-si-cay", label: "Bác sĩ cây", key: "bac-si-cay", kind: "link" as const },
                 { href: "/ve-aloha", label: "Về Aloha", key: "ve-aloha", kind: "link" as const },
                 { href: "/tuyen-dung", label: "Tuyển dụng", key: "tuyen-dung", kind: "link" as const },
-                { href: "/tuyen-ctv", label: "Tuyển cộng tác viên", key: "tuyen-ctv", kind: "link" as const },
-                { href: "/dang-ky-si", label: "Đăng ký sỉ", key: "dang-ky-si", kind: "link" as const },
+                { key: "partners", kind: "partners" as const },
               ] as const
             ).map((item) => {
+              if (item.kind === "gifts") return <GiftNavDropdown key={item.key} pathname={pathname} onNavigate={closeMenus} />;
+              if (item.kind === "partners") return <PartnerNavDropdown key={item.key} pathname={pathname} onNavigate={closeMenus} />;
               if (item.kind === "mega") {
                 return (
                   <div key="danh-muc" className="flex shrink-0 items-center">
@@ -369,7 +388,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
               const dealsColor = dealsAccent.color || "#C8102E";
 
               if (isDeals) {
-                const dealsCls = `group relative inline-flex min-h-[38px] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-[15px] xl:px-3.5 xl:text-[15.5px] rounded-xl border transition-all duration-150 select-none cursor-pointer active:scale-95 ${
+                const dealsCls = `group relative inline-flex min-h-[38px] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap px-2 py-1.5 text-[13.5px] xl:text-[14px] rounded-xl border transition-all duration-150 select-none cursor-pointer active:scale-95 ${
                   active
                     ? "font-bold text-[#C8102E] bg-rose-50 border-rose-300 shadow-2xs ring-1 ring-rose-200"
                     : "font-semibold text-neutral-800 hover:text-[var(--aloha-green)] hover:bg-neutral-100/70 border-transparent"
@@ -425,7 +444,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                 );
               }
 
-              const cls = `group relative inline-flex min-h-[38px] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap px-3 py-2 text-[15px] xl:px-3.5 xl:text-[15.5px] rounded-xl border transition-all duration-150 select-none cursor-pointer active:scale-95 ${
+              const cls = `group relative inline-flex min-h-[38px] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap px-2 py-2 text-[13.5px] xl:text-[14px] rounded-xl border transition-all duration-150 select-none cursor-pointer active:scale-95 ${
                 active
                   ? "font-bold text-[var(--aloha-green)] bg-emerald-50 border-emerald-200/90 shadow-2xs"
                   : "font-semibold text-neutral-800 hover:text-[var(--aloha-green)] hover:bg-neutral-100/70 border-transparent"
@@ -522,7 +541,10 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
             {mobileNavTab === "cats" ? (
               <CategoryMobileNav tree={navApplied.tree} onNavigate={closeMenus} />
             ) : (
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 pb-[max(2rem,env(safe-area-inset-bottom))]">
+              <div
+                className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 pb-32"
+                style={{ paddingBottom: "calc(var(--shop-mobile-tab-h, 3.35rem) + 4rem + env(safe-area-inset-bottom, 0px))" }}
+              >
                 <div className="space-y-4">
                   <div>
                     <p className="px-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
@@ -546,27 +568,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                         <ChevronRight size={16} className="text-slate-300" />
                       </Link>
 
-                      <Link
-                        href="/#goi-y-qua-tang"
-                        onClick={closeMenus}
-                        className="flex items-center justify-between p-3.5 transition-all duration-150 hover:bg-[var(--aloha-cream)]/50 active:bg-emerald-50/70 active:scale-[0.98]"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-500">
-                            <Gift size={18} strokeWidth={2} />
-                          </span>
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <p className="text-sm font-bold text-[var(--aloha-ink)]">Gợi ý Quà tặng</p>
-                              <span className="rounded-full bg-rose-100 text-rose-700 px-1.5 py-0.5 text-[9.5px] font-bold">
-                                20/10
-                              </span>
-                            </div>
-                            <p className="text-xs text-slate-500">Cho nàng, gia đình, khai trương & B2B</p>
-                          </div>
-                        </div>
-                        <ChevronRight size={16} className="text-slate-300" />
-                      </Link>
+                      <GiftNavDropdown pathname={pathname} onNavigate={closeMenus} mobile />
 
                       <Link
                         href={dealsNavHref}
@@ -645,8 +647,6 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                       {(
                         [
                           { href: "/tuyen-dung", label: "Tuyển dụng nhân viên", badge: "Việc làm", sub: "Cơ hội việc làm & gia nhập đội ngũ Aloha", icon: Briefcase },
-                          { href: "/tuyen-ctv", label: "Tuyển Cộng tác viên (CTV)", badge: "CTV", sub: "Kiếm thêm thu nhập hoa hồng cùng Aloha", icon: Users },
-                          { href: "/dang-ky-si", label: "Đăng ký mua sỉ (B2B)", badge: "Đại lý", sub: "Chính sách chiết khấu & giá sỉ đặc quyền", icon: Building2 },
                         ] as const
                       ).map((item) => (
                         <Link
@@ -673,6 +673,7 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                         </Link>
                       ))}
                     </div>
+                    <div className="mt-2"><PartnerNavDropdown pathname={pathname} onNavigate={closeMenus} mobile /></div>
                   </div>
 
                   <div>
@@ -763,7 +764,7 @@ export function SiteFooter() {
   return (
     <>
     <ZaloFloatButton href={zaloHref(footer.zalo || footer.phone)} />
-    <footer
+    <footer data-scroll-reveal
       id="ve-chung-toi"
       className="relative isolate mt-12 overflow-hidden border-t border-[#deddbd] bg-[#FAF8F5] text-stone-800 md:mt-16"
     >

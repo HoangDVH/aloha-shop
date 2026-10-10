@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CURRENT_CAMPAIGN_KEY } from "./campaignQueries";
+import { useHydratedQuery } from "../useHydratedQuery";
 import {
   claimAllVouchers,
   claimVoucher,
@@ -15,13 +16,13 @@ export const WALLET_KEY = ["shop", "vouchers", "wallet"] as const;
 
 /** Ví của khách; tải lại khi quay lại tab để tab khác thấy "Đã lưu". */
 export function useWallet(enabled = true) {
-  return useQuery({
+  return useHydratedQuery(useQuery({
     queryKey: WALLET_KEY,
     queryFn: fetchWallet,
     enabled,
     staleTime: 15_000,
     refetchOnWindowFocus: true,
-  });
+  }));
 }
 
 function patchClaimed(qc: ReturnType<typeof useQueryClient>, add: string[], remove: string[] = []) {

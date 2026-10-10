@@ -230,7 +230,7 @@ export function HeroBanner({
 
   if (isSingle) {
     return (
-      <section
+      <section data-scroll-reveal
         className={sectionClass}
         aria-label="Banner cửa hàng"
       >
@@ -269,7 +269,7 @@ export function HeroBanner({
   const active = items[selected] || items[0];
 
   return (
-    <section
+    <section data-scroll-reveal
       className={sectionClass}
       aria-label="Banner cửa hàng"
     >

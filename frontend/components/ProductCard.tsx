@@ -297,6 +297,7 @@ function ProductCardDefault({
         >
           {product.ten}
         </Link>
+        {product.giftDimensions ? <p className="text-[11px] leading-relaxed text-stone-500">{product.giftDimensions}</p> : null}
 
         <div className={`mt-auto flex items-end justify-between gap-1 pt-0.5 ${wholesaleCard ? "items-center" : "items-end"}`}>
           <div className="min-w-0 flex-1">

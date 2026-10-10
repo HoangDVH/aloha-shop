@@ -25,7 +25,7 @@ export const CUSTOMER_REVIEWS_SEED: CustomerReview[] = [
     name: "Mạnh Hải",
     location: "Bến Tre",
     rating: 5,
-    image: "/banners/ve-aloha/danhgiaanhhai.jpg",
+    image: "/banners/ve-aloha/cbcttt.jpg",
     content:
       "Chậu và cây cảnh rất đẹp, đúng như hình. Giá hợp lý, đóng gói rất cẩn thận, cây về vẫn tươi tốt. Mình rất thích trải nghiệm mua hàng tại Aloha.",
   },

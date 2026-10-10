@@ -13,6 +13,7 @@ import { MongoClient, Db } from 'mongodb';
 import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
+import { measurePublicRequests } from './cache/requestMetrics.js';
 
 dotenv.config();
 
@@ -167,6 +168,7 @@ async function getCatalogSourceDb(): Promise<Db> {
 }
 
 const app = express();
+app.use(measurePublicRequests);
 
 app.use(compression());
 app.use(cookieParser());

@@ -1,9 +1,9 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Filter, X } from "lucide-react";
 import { ShopCategorySelect } from "@/components/ShopCategorySelect";
 import { FilterChipSection } from "@/components/FilterChipSection";
-import { ShopAttributeFilter } from "@/components/ShopAttributeFilter";
 import { PriceRangeFilter } from "@/components/catalog/PriceRangeFilter";
 import { CatalogSubcatPicker } from "@/components/catalog/CatalogSubcatBar";
 
@@ -35,6 +35,7 @@ export type CatalogFilterPanelProps = {
   hideClearButton?: boolean;
   embedded?: boolean;
   hideCategory?: boolean;
+  afterCategory?: ReactNode;
 };
 
 export function CatalogFilterPanel({
@@ -43,9 +44,6 @@ export function CatalogFilterPanel({
   dvtItems,
   selectedDvts,
   onToggleDvt,
-  attributes,
-  selectedAttrs,
-  onToggleAttr,
   facetsLoading,
   q,
   homeMode,
@@ -64,6 +62,7 @@ export function CatalogFilterPanel({
   hideClearButton = false,
   embedded = false,
   hideCategory = false,
+  afterCategory,
 }: CatalogFilterPanelProps) {
   const body = (
     <>
@@ -86,12 +85,6 @@ export function CatalogFilterPanel({
         </div>
       ) : null}
 
-      <PriceRangeFilter
-        minPrice={minPrice}
-        maxPrice={maxPrice}
-        onChange={(min, max) => onPricePreset(min, max)}
-      />
-
       {hideCategory ? null : lockCategory || allProductsPage ? (
         <CatalogSubcatPicker
           categoryIds={categoryIds}
@@ -113,8 +106,16 @@ export function CatalogFilterPanel({
         </div>
       )}
 
-      {!hideCategory || dvtItems.length > 0 || Object.keys(attributes).length > 0 ? <details open={selectedDvts.length > 0 || selectedAttrs.length > 0 || undefined} className="rounded-xl border border-[var(--aloha-line)] p-3">
-        <summary className="min-h-11 cursor-pointer text-sm font-bold text-stone-700">Lọc chi tiết: kích thước, phân loại, đơn vị{selectedDvts.length + selectedAttrs.length > 0 ? ` (${selectedDvts.length + selectedAttrs.length})` : ""}</summary>
+      {afterCategory}
+
+      <PriceRangeFilter
+        minPrice={minPrice}
+        maxPrice={maxPrice}
+        onChange={(min, max) => onPricePreset(min, max)}
+      />
+
+      {dvtItems.length > 0 ? <details open={selectedDvts.length > 0 || undefined} className="rounded-xl border border-[var(--aloha-line)] p-3">
+        <summary className="min-h-11 cursor-pointer text-sm font-bold text-stone-700">Lọc theo đơn vị{selectedDvts.length > 0 ? ` (${selectedDvts.length})` : ""}</summary>
         <div className="space-y-4 pt-3">
       <FilterChipSection
         title="Đơn vị"
@@ -133,20 +134,6 @@ export function CatalogFilterPanel({
                 hasCategoryScope
               ? undefined
               : "ĐVT phổ biến — chọn nhóm để chính xác hơn"
-        }
-      />
-
-      <ShopAttributeFilter
-        attributes={attributes}
-        selected={selectedAttrs}
-        onToggle={onToggleAttr}
-        loading={facetsLoading}
-        needCategory={
-          !homeMode &&
-          !allProductsPage &&
-          !hasCategoryScope &&
-          !selectedNhoms.length &&
-          !q
         }
       />
         </div>

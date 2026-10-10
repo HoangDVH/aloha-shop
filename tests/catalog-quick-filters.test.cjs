@@ -10,7 +10,7 @@ function fixture(minPrice = '', maxPrice = '', sort = 'ban_chay', extra = {}) {
   vm.runInNewContext(code, { exports, require(name) {
     if (name === './CatalogChipRow') return { CatalogChipRow: 'chip-row' };
     if(name === 'react/jsx-runtime') return { jsx, jsxs: jsx };
-    if(name === 'lucide-react') return { SlidersHorizontal: 'icon' };
+    if(name === 'lucide-react') return { SlidersHorizontal: 'icon', ArrowUp: 'arrow-up', ArrowDown: 'arrow-down' };
     if(name === './PriceRangeFilter') return { PriceRangeFilter: 'custom-price' };
     if(name === './catalogLayoutUtils') return { SORT_OPTIONS: [{ value: 'ban_chay', label: 'Best sellers' }, { value: 'price_asc', label: 'Price ascending' }], PRICE_PRESETS: [{ label: 'Under 100k', min: 0, max: 100000 }, { label: 'Over 2m', min: 2000000, max: 0 }] };
     throw new Error(name);
@@ -75,21 +75,32 @@ test('badge counts disable empty alternatives but allow clearing the selected ba
 test('price ordering has an independent callback and preserves active badge selection', () => {
  const calls = [];
  const f = fixture('', '', 'badge:moi', { priceSort: 'price_desc', onPriceSortChange: v => calls.push(v) });
- const select = f.nodes.find(n => n.type === 'select');
- assert.equal(select.props.value, 'price_desc');
- select.props.onChange({target:{value:'price_asc'}});
+ const price = f.nodes.find(n => n.props['aria-label'] === 'Sắp xếp giá thấp đến cao');
+ assert.equal(price.props['aria-pressed'], true);
+ price.props.onClick();
  assert.deepEqual(calls, ['price_asc']);
  assert.equal(f.nodes.find(n => n.props['data-badge'] === 'moi').props['aria-pressed'], true);
 });
 
-test('price sorting shares the badge row and stays aligned to its right', () => {
+test('price sorting shares one horizontally scrollable row with all badge tabs', () => {
  const f = fixture('', '', 'ban_chay', { onPriceSortChange: () => {} });
  const group = f.nodes.find(n => n.props.role === 'group');
- const label = f.nodes.find(n => n.type === 'label');
- const row = f.nodes.find(n => Array.isArray(n.props.children) && n.props.children.includes(group) && n.props.children.includes(label));
- assert.ok(row);
- assert.match(row.props.className, /items-center/);
- assert.doesNotMatch(row.props.className, /flex-wrap|flex-col/);
- assert.match(group.props.className, /min-w-0 flex-1/);
- assert.match(label.props.className, /ml-auto.*shrink-0/);
+ assert.match(group.props.className, /items-center/);
+ assert.match(group.props.className, /overflow-x-auto whitespace-nowrap/);
+ assert.doesNotMatch(group.props.className, /flex-wrap|flex-col/);
+ assert.equal(f.nodes.filter(n => n.type === 'select').length, 0);
+ const children = fixtureNodes(group);
+ assert.equal(children.filter(n => n.props['data-badge']).length, 4);
+ assert.ok(children.find(n => n.props['aria-label'] === 'Sắp xếp giá thấp đến cao'));
+});
+
+function fixtureNodes(n) { return Array.isArray(n) ? n.flatMap(fixtureNodes) : n && typeof n === 'object' ? [n, ...fixtureNodes(n.props.children)] : []; }
+
+test('price button starts ascending and toggles ascending to descending', () => {
+ for (const [priceSort, expected] of [['ban_chay', 'price_asc'], ['price_asc', 'price_desc']]) {
+  const calls = [];
+  const f = fixture('', '', 'ban_chay', { priceSort, onPriceSortChange: v => calls.push(v) });
+  f.nodes.find(n => n.type === 'button' && n.props['aria-label']?.startsWith('Sắp xếp giá')).props.onClick();
+  assert.deepEqual(calls, [expected]);
+ }
 });

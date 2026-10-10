@@ -1,6 +1,4 @@
 "use client";
-import { GiftCategoryLinks } from "../GiftCategoryLinks";
-import { Gift } from "lucide-react";
 
 import Link from "next/link";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -78,7 +76,7 @@ export function CategoryMobileNav({
     try {
       const raw = sessionStorage.getItem(MOBILE_CAT_ACTIVE_KEY);
       const n = Number(raw);
-      if (Number.isFinite(n) && (n === -1 || roots.some((r) => r.id === n))) saved = n;
+      if (Number.isFinite(n) && roots.some((r) => r.id === n)) saved = n;
     } catch {
       /* ignore */
     }
@@ -96,7 +94,6 @@ export function CategoryMobileNav({
   }, [activeId]);
 
   const active = roots.find((r) => r.id === activeId) || roots[0] || null;
-  const giftActive = activeId === -1;
   if (!roots.length || !active) return null;
 
   const l2 = orderL2Nodes(active.name, nodeSubs(active));
@@ -118,11 +115,12 @@ export function CategoryMobileNav({
     <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-[#F3F4F6]">
       {/* Rail trái — ~28%, xám / trắng khi chọn (TGDĐ) */}
       <nav
-        className="w-[28%] max-w-[6.75rem] shrink-0 overflow-y-auto overscroll-contain pb-4"
+        className="w-[28%] max-w-[6.75rem] shrink-0 overflow-y-auto overscroll-contain pb-28"
+        style={{ paddingBottom: "calc(var(--shop-mobile-tab-h, 3.35rem) + 3rem + env(safe-area-inset-bottom, 0px))" }}
         aria-label="Nhóm hàng"
       >
         {roots.map((node) => {
-          const selected = !giftActive && node.id === active.id;
+          const selected = node.id === active.id;
           return (
             <button
               key={node.id}
@@ -154,17 +152,14 @@ export function CategoryMobileNav({
             </button>
           );
         })}
-        <button type="button" onClick={() => setActiveId(-1)} aria-expanded={giftActive} className={`flex min-h-[3.5rem] w-full flex-col items-center justify-center gap-1 px-1 py-2.5 text-center ${giftActive ? "bg-white font-bold text-[var(--aloha-green)]" : "text-[#666]"}`}>
-          <Gift size={18} /><span className="text-[11px]">Quà tặng</span>
-        </button>
       </nav>
 
-      {/* Cột phải */}
+      {/* Cột phải — có đệm đáy đủ lớn để các mục cuối cùng không bao giờ bị thanh điều hướng đáy che chữ */}
       <div
         ref={rightRef}
-        className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain bg-white px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3"
+        className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain bg-white px-3 pb-32 pt-3"
+        style={{ paddingBottom: "calc(var(--shop-mobile-tab-h, 3.35rem) + 4rem + env(safe-area-inset-bottom, 0px))" }}
       >
-        {giftActive ? <GiftCategoryLinks onNavigate={onNavigate} /> : <>
         {withKids.map(({ section, kids }) => {
           return (
             <section key={section.id} className="mb-6">
@@ -265,7 +260,6 @@ export function CategoryMobileNav({
             </Link>
           </div>
         ) : null}
-        </>}
       </div>
     </div>
   );

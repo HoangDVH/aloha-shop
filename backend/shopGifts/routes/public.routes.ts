@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from 'express';
 import type { Db } from 'mongodb';
-import { listActiveGifts, getGiftBySlug } from '../giftRepo.js';
+import { listActiveGifts } from '../giftRepo.js';
+import { publicReadCache } from '../../cache/readCache.js';
 import { loadGiftProducts } from '../products.js';
 
 export function registerGiftPublicRoutes(app: Express, getShopDb: () => Promise<Db>) {
@@ -8,8 +9,10 @@ export function registerGiftPublicRoutes(app: Express, getShopDb: () => Promise<
   app.get('/api/shop/gifts', async (_req: Request, res: Response) => {
     try {
       const db = await getShopDb();
-      const items = await listActiveGifts(db);
-      res.json({ ok: true, data: items });
+      const result = await publicReadCache.read('gifts', 'active', () => listActiveGifts(db), 60);
+      res.setHeader('X-Shop-Cache', result.cache);
+      res.setHeader('Cache-Control', 'no-store');
+      res.json({ ok: true, data: result.body });
     } catch (err: any) {
       console.error('[shopGifts] GET /api/shop/gifts error:', err);
       res.status(500).json({ ok: false, error: 'Không thể tải danh sách quà tặng' });
@@ -21,7 +24,10 @@ export function registerGiftPublicRoutes(app: Express, getShopDb: () => Promise<
     try {
       const slug = String(req.params.slug || '').trim();
       const db = await getShopDb();
-      const gift = await getGiftBySlug(db, slug);
+      const result = await publicReadCache.read('gifts', 'active', () => listActiveGifts(db), 60);
+      const gift = result.body.find(item => item.slug === slug);
+      res.setHeader('X-Shop-Cache', result.cache);
+      res.setHeader('Cache-Control', 'no-store');
       if (!gift) {
         return res.status(404).json({ ok: false, error: 'Không tìm thấy nhóm quà tặng' });
       }

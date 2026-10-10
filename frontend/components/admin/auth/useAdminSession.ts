@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { useHydratedQuery } from "@/lib/useHydratedQuery";
 import { adminFetch, adminKeys, AdminApiError } from "@/components/admin/api/adminFetch";
 import type { AdminUser, StaffLoginInput } from "@/components/admin/auth/schemas";
 
@@ -15,13 +16,13 @@ export function useAdminSession(opts?: { requireManager?: boolean }) {
   const qc = useQueryClient();
   const isLoginPage = pathname.startsWith("/admin/dang-nhap");
 
-  const me = useQuery({
+  const me = useHydratedQuery(useQuery({
     queryKey: adminKeys.me,
     queryFn: () => adminFetch<MeRes>("/api/auth/me"),
     retry: false,
     staleTime: 60_000,
     enabled: pathname.startsWith("/admin"),
-  });
+  }));
 
   const user = me.data?.user ?? null;
   const isManager = user?.role === "manager" || user?.username === "aloha" || user?.username === "admin";

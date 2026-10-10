@@ -1,6 +1,6 @@
 ﻿"use client";
 import type { ReactNode } from "react";
-import { SlidersHorizontal } from "lucide-react";
+import { ArrowDown, ArrowUp, SlidersHorizontal } from "lucide-react";
 import { CatalogChipRow } from "./CatalogChipRow";
 import { PRICE_PRESETS } from "./catalogLayoutUtils";
 
@@ -44,22 +44,25 @@ export function CatalogQuickFilters({ minPrice, maxPrice, filterCount, sort, onS
   return (
     <section aria-label="Lọc và sắp xếp sản phẩm" className="min-w-0 space-y-2 rounded-xl border border-[var(--aloha-line)] bg-white p-2 sm:p-3">
       {navigation ? navigation(controls) : <CatalogChipRow leading={1}>{controls}{results}</CatalogChipRow>}
-      <div className="flex min-w-0 items-center gap-2 border-t border-stone-100 pt-1 sm:gap-4">
-      <div role="group" aria-label="Lọc theo nhãn sản phẩm" className="flex min-w-0 flex-1 items-center gap-4 overflow-x-auto whitespace-nowrap">
-        {sortOptions.map(o => <button key={o.value} type="button" data-badge={o.value.slice(6)} aria-pressed={sort === o.value} disabled={badgeCounts[o.value.slice(6)] === 0 && sort !== o.value}
+      <div role="group" aria-label="Lọc theo nhãn sản phẩm" className="flex min-w-0 items-center gap-3 overflow-x-auto whitespace-nowrap border-t border-stone-100 pt-1 text-xs [scrollbar-width:none] sm:gap-4 sm:text-sm [&::-webkit-scrollbar]:hidden">
+        <span className="shrink-0 text-stone-600">Sắp xếp theo:</span>
+        {sortOptions.map((o, index) => <span key={o.value} className="inline-flex shrink-0 items-center gap-3 sm:gap-4">
+          {index > 0 ? <span aria-hidden="true" className="text-stone-200">•</span> : null}
+          <button type="button" data-badge={o.value.slice(6)} aria-pressed={sort === o.value} disabled={badgeCounts[o.value.slice(6)] === 0 && sort !== o.value}
+          title={badgeCounts[o.value.slice(6)] !== undefined ? `${o.label}: ${badgeCounts[o.value.slice(6)]} sản phẩm` : undefined}
           onClick={() => onSortChange(sort === o.value ? "ban_chay" : o.value)}
-          className={`min-h-11 shrink-0 px-2 text-xs sm:text-sm disabled:cursor-not-allowed disabled:opacity-40 ${sort === o.value ? "font-bold text-[var(--aloha-green)]" : "font-medium text-stone-600"}`}>
-          {o.label}{badgeCounts[o.value.slice(6)] !== undefined ? ` (${badgeCounts[o.value.slice(6)]})` : ""}
-        </button>)}
-      </div>
-      {onPriceSortChange ? <label className="ml-auto flex shrink-0 items-center gap-2 text-xs text-stone-600 sm:text-sm">
-        <span className="hidden sm:inline">Sắp xếp giá</span>
-        <select aria-label="Sắp xếp giá" value={priceSort.startsWith("price_") ? priceSort : "ban_chay"} onChange={e => onPriceSortChange(e.target.value)} className="min-h-11 min-w-0 rounded-lg border border-stone-200 bg-white px-2">
-          <option value="ban_chay">Mặc định</option>
-          <option value="price_asc">Giá thấp → cao</option>
-          <option value="price_desc">Giá cao → thấp</option>
-        </select>
-      </label> : null}
+          className={`min-h-11 shrink-0 disabled:cursor-not-allowed disabled:opacity-40 ${sort === o.value ? "font-bold text-[var(--aloha-green)]" : "font-medium text-stone-600 hover:text-[var(--aloha-green)]"}`}>
+          {o.label}
+        </button></span>)}
+      {onPriceSortChange ? <>
+        <span aria-hidden="true" className="shrink-0 text-stone-200">•</span>
+        <button type="button" aria-label={priceSort === "price_asc" ? "Sắp xếp giá cao đến thấp" : "Sắp xếp giá thấp đến cao"}
+          aria-pressed={priceSort.startsWith("price_")}
+          onClick={() => onPriceSortChange(priceSort === "price_asc" ? "price_desc" : "price_asc")}
+          className={`inline-flex min-h-11 shrink-0 items-center gap-1 ${priceSort.startsWith("price_") ? "font-bold text-[var(--aloha-green)]" : "font-medium text-stone-600 hover:text-[var(--aloha-green)]"}`}>
+          Giá {priceSort === "price_desc" ? <ArrowDown size={14} /> : <ArrowUp size={14} />}
+        </button>
+      </> : null}
       </div>
     </section>
   );

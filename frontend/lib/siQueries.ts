@@ -1,5 +1,6 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
+import { useHydratedQuery } from "./useHydratedQuery";
 import type { ShopUser } from "./auth";
 
 export async function siRequest<T>(path: string, body?: unknown, method = "POST"): Promise<T> {
@@ -28,5 +29,5 @@ export class SiApiError extends Error {
 }
 export type SiSession = { verified: boolean; user: ShopUser | null; zaloConfigured: boolean; minOrder: number; termsVersion: string };
 export function useSiSession() {
-  return useQuery({ queryKey: ["shop", "si", "session"], queryFn: () => siRequest<SiSession>("/api/shop/auth/si/session"), refetchInterval: 15000, retry: false });
+  return useHydratedQuery(useQuery({ queryKey: ["shop", "si", "session"], queryFn: () => siRequest<SiSession>("/api/shop/auth/si/session"), refetchInterval: 15000, retry: false }));
 }

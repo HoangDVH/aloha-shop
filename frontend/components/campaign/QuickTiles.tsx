@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import type { CampaignUI, CampaignVoucherUI } from "@/lib/campaign/campaignApi";
 import { dealsHref, toDealsTab } from "@/lib/campaign/dealsTabs";
+import { openVoucherModal } from "@/lib/campaign/useVoucherModal";
 
 type Kind = "voucher" | "flash" | "hot" | "gift" | "top" | "ship" | "other";
 
@@ -90,6 +91,12 @@ function tileHref(href: string, kind: Kind): string {
   return `/uu-dai?${params.toString()}`;
 }
 
+function mobileTileLabel(label: string): string {
+  if (label === "Kho voucher") return "Voucher";
+  if (label === "Top Bán Chạy") return "Bán chạy";
+  return label;
+}
+
 /** Thanh chuyển tab ưu đãi (trang Ưu đãi): thanh ngang màu trắng bo góc, icon màu, tab active gradient đỏ kèm nhãn ĐANG XEM. */
 export function QuickTiles({
   campaign,
@@ -146,13 +153,13 @@ export function QuickTiles({
   return (
     <nav
       aria-label="Chuyển tab ưu đãi"
-      className={`w-full ${className || ""}`}
+      className={`w-full max-w-5xl mx-auto ${className || ""}`}
       style={{ "--campaign-primary": campaign.display.colors.primary } as React.CSSProperties}
     >
-      <div className="flex items-center justify-start sm:justify-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-2 py-1">
+      <div className="w-full sm:flex sm:items-center sm:justify-center px-1.5 sm:px-2 py-1">
         <ul
           role="tablist"
-          className="inline-flex max-w-full items-center gap-1.5 sm:gap-2.5 rounded-2xl sm:rounded-full bg-white p-1.5 sm:p-2 shadow-sm border border-rose-100/90 whitespace-nowrap"
+          className="flex w-full sm:w-auto sm:inline-flex items-stretch sm:items-center gap-1 sm:gap-2.5 rounded-2xl sm:rounded-full bg-white p-1 sm:p-2 shadow-xs sm:shadow-sm border border-rose-100/90"
         >
           {tiles.map((t) => {
             const tab = tabOf(dealsHref(t.href));
@@ -178,32 +185,52 @@ export function QuickTiles({
               <li
                 key={`${t.href}-${t.label}`}
                 role="presentation"
-                className="shrink-0"
+                className="flex-1 min-w-0 sm:flex-initial sm:shrink-0"
                 ref={isActive ? activeRef : undefined}
               >
-                <Link
-                  href={tileHref(t.href, kind)}
-                  role="tab"
-                  aria-selected={isActive}
-                  className={`inline-flex min-h-[38px] sm:min-h-[44px] shrink-0 items-center gap-1.5 sm:gap-2 rounded-xl sm:rounded-full px-3.5 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-bold transition-all duration-200 select-none whitespace-nowrap cursor-pointer ${
-                    isActive
-                      ? "bg-gradient-to-r from-[var(--campaign-primary,#C8102E)] via-[#E11D48] to-[#C8102E] text-white shadow-sm shadow-rose-950/20 scale-[1.02]"
-                      : "text-slate-800 hover:text-[var(--campaign-primary,#C8102E)] hover:bg-rose-50/70"
-                  }`}
-                >
-                  <Icon
-                    size={18}
-                    strokeWidth={2.2}
-                    aria-hidden
-                    className={`shrink-0 ${isActive ? "text-white" : tone.icon}`}
-                  />
-                  <span className="whitespace-nowrap">{t.label}</span>
-                  {isActive ? (
-                    <span className="shrink-0 inline-flex items-center rounded-full bg-white/20 px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[11px] font-black text-white uppercase tracking-wider">
-                      ĐANG XEM
-                    </span>
-                  ) : null}
-                </Link>
+                {isVoucherTab ? (
+                  <button
+                    type="button"
+                    onClick={() => openVoucherModal()}
+                    role="tab"
+                    aria-selected={false}
+                    className="flex w-full min-h-[38px] sm:min-h-[44px] items-center justify-center gap-1 sm:gap-2 rounded-xl sm:rounded-full px-1.5 sm:px-5 py-1.5 sm:py-2 text-[11px] sm:text-sm font-bold transition-all duration-200 select-none text-center cursor-pointer text-slate-800 hover:text-[var(--campaign-primary,#C8102E)] hover:bg-rose-50/70"
+                  >
+                    <Icon
+                      size={16}
+                      strokeWidth={2.2}
+                      aria-hidden
+                      className={`shrink-0 sm:w-[18px] sm:h-[18px] ${tone.icon}`}
+                    />
+                    <span className="sm:hidden truncate leading-tight">{mobileTileLabel(t.label)}</span>
+                    <span className="hidden sm:inline whitespace-nowrap">{t.label}</span>
+                  </button>
+                ) : (
+                  <Link
+                    href={tileHref(t.href, kind)}
+                    role="tab"
+                    aria-selected={isActive}
+                    className={`flex w-full min-h-[38px] sm:min-h-[44px] items-center justify-center gap-1 sm:gap-2 rounded-xl sm:rounded-full px-1.5 sm:px-5 py-1.5 sm:py-2 text-[11px] sm:text-sm font-bold transition-all duration-200 select-none text-center cursor-pointer ${
+                      isActive
+                        ? "bg-gradient-to-r from-[var(--campaign-primary,#C8102E)] via-[#E11D48] to-[#C8102E] text-white shadow-xs sm:shadow-sm shadow-rose-950/20 scale-[1.01] sm:scale-[1.02]"
+                        : "text-slate-800 hover:text-[var(--campaign-primary,#C8102E)] hover:bg-rose-50/70"
+                    }`}
+                  >
+                    <Icon
+                      size={16}
+                      strokeWidth={2.2}
+                      aria-hidden
+                      className={`shrink-0 sm:w-[18px] sm:h-[18px] ${isActive ? "text-white" : tone.icon}`}
+                    />
+                    <span className="sm:hidden truncate leading-tight">{mobileTileLabel(t.label)}</span>
+                    <span className="hidden sm:inline whitespace-nowrap">{t.label}</span>
+                    {isActive ? (
+                      <span className="hidden sm:inline-flex shrink-0 items-center rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-black text-white uppercase tracking-wider">
+                        ĐANG XEM
+                      </span>
+                    ) : null}
+                  </Link>
+                )}
               </li>
             );
           })}

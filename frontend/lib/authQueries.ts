@@ -1,6 +1,7 @@
 "use client";
 
 import { advancePriceSession } from "./priceSession";
+import { useHydratedQuery } from "./useHydratedQuery";
 import { refreshCartPricesFromCatalog } from "./cartPriceRefresh";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -32,13 +33,13 @@ export type RegisterMutationInput = Omit<RegisterInput, "passwordConfirm"> & Ctv
 export const shopMeQueryKey = ["shop", "auth", "me"] as const;
 
 export function useShopMeQuery() {
-  return useQuery({
+  return useHydratedQuery(useQuery({
     queryKey: shopMeQueryKey,
     queryFn: fetchShopMe,
     staleTime: 15_000,
     refetchInterval: 30_000,
     retry: false,
-  });
+  }));
 }
 
 export function useShopLoginMutation() {

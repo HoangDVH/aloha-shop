@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Sparkles, Check, ArrowLeft, Heart, MessageCircle, Gift, ShieldCheck } from "lucide-react";
 import { ScopedProductCatalog } from "@/components/catalog/ScopedProductCatalog";
 import type { ShopProduct } from "@/lib/api";
+import { GiftImage } from "@/components/gift/GiftImage";
 
 interface GiftDetailData {
   _id?: string;
@@ -102,8 +103,9 @@ export default async function GiftDetailPage({
                 <div className="overflow-hidden rounded-2xl border border-stone-200/90 bg-white p-2.5 shadow-md">
                   <div className="overflow-hidden rounded-xl bg-stone-100 aspect-square">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <GiftImage
                       src={gift.image}
+                      slug={gift.slug}
                       alt={gift.title}
                       className="h-full w-full object-cover"
                     />
@@ -145,8 +147,9 @@ export default async function GiftDetailPage({
               <div className="relative mx-auto max-w-md overflow-hidden rounded-3xl border border-stone-200/90 bg-white p-3 shadow-xl">
                 <div className="overflow-hidden rounded-2xl bg-stone-100 aspect-square">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <GiftImage
                     src={gift.image}
+                    slug={gift.slug}
                     alt={gift.title}
                     className="h-full w-full object-cover transition duration-500 hover:scale-103"
                   />
@@ -179,7 +182,7 @@ export default async function GiftDetailPage({
         </div>
 
         {products.length > 0 ? (
-          <ScopedProductCatalog products={products} />
+          <ScopedProductCatalog products={products} giftSelection />
         ) : (
           <div className="text-center py-12 rounded-2xl bg-white border border-stone-200/80 p-6">
             <Gift className="mx-auto h-10 w-10 text-stone-300 mb-2" />
