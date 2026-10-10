@@ -11,6 +11,7 @@ import {
   type GetDb,
 } from "../auth/middleware.js";
 import { redisInvalidateShopCache } from "../redis.js";
+import { publicReadCache } from '../cache/readCache.js';
 import { syncBus } from "../syncBus.js";
 import { buildDefaultAppearanceLayout } from "./seed.js";
 import {
@@ -72,9 +73,10 @@ function resolveAppearanceUploadsDir() {
   return dir;
 }
 
-function bumpShopAppearance(source: string) {
+async function bumpShopAppearance(source: string) {
+  await publicReadCache.invalidate('appearance');
   syncBus.publish([APPEARANCE_COL, "aloha_shop_appearance"], source);
-  void redisInvalidateShopCache();
+  await redisInvalidateShopCache();
 }
 
 function emptyNav(): NavConfig {
@@ -309,17 +311,19 @@ export function registerShopAppearanceRoutes(
   app.get("/api/shop/appearance", async (_req, res: Response) => {
     try {
       const shopDb = await getShopDb();
-      const doc = await ensureDoc(shopDb);
-      const published = normalizeLayout(doc.published);
+      const result = await publicReadCache.read('appearance', 'published', async () => {
+        const doc = await ensureDoc(shopDb);
+        const published = normalizeLayout(doc.published);
+        return {
+          theme: published.theme, blocks: published.blocks,
+          nav: published.nav || emptyNav(), version: published.version,
+          publishedAt: doc.publishedAt || null,
+        };
+      }, 15);
+      res.setHeader('X-Shop-Cache', result.cache);
       res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
       res.setHeader("Pragma", "no-cache");
-      res.json({
-        theme: published.theme,
-        blocks: published.blocks,
-        nav: published.nav || emptyNav(),
-        version: published.version,
-        publishedAt: doc.publishedAt || null,
-      });
+      res.json(result.body);
     } catch (e: any) {
       res.status(500).json({ error: e?.message || "appearance_failed" });
     }

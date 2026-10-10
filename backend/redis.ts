@@ -3,6 +3,7 @@
  * Mất Redis → mọi hàm trả null/false, app vẫn chạy bằng Mongo.
  */
 import { createClient, type RedisClientType } from "redis";
+import { publicReadCache } from './cache/readCache.js';
 
 /** Chỉ nối Redis khi .env có REDIS_URL. Máy local không đặt → không thử 6379 (tránh spam ECONNREFUSED / lag). */
 const REDIS_URL = (process.env.REDIS_URL || "").trim();
@@ -192,6 +193,8 @@ export async function redisReleaseLock(key: string, owner: string): Promise<bool
 
 /** Xóa mọi key cache theo prefix collection (SCAN nhẹ). */
 export async function redisInvalidateCollection(coll: string): Promise<void> {
+  if (coll === 'aloha_shop_appearance') await publicReadCache.invalidate('appearance');
+  if (coll === 'aloha_gift_collections') await publicReadCache.invalidate('gifts');
   if (!(await connectMain()) || !client) return;
   const prefix = `aloha:cache:${coll}:`;
   try {
@@ -343,6 +346,7 @@ export function memoryCacheClear(pattern = "shop:"): void {
 
 /** Xóa cache web bán (Cấp độ 1: Danh sách sản phẩm + chi tiết sản phẩm cụ thể nếu có). */
 export async function redisInvalidateShopCache(targetMa?: string): Promise<void> {
+  await publicReadCache.invalidate('catalog');
   // 1. Luôn xóa bộ nhớ đệm RAM cho danh sách sản phẩm + cây nhóm
   memoryCacheClear("shop:products:");
   memoryCacheClear("shop:category-tree");
