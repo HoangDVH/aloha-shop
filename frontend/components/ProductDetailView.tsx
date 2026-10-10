@@ -510,8 +510,8 @@ export function ProductDetailView({
                   />
                 </div>
 
-                {/* NẾU CÓ ƯU ĐÃI THÌ GIÁ ĐƯỢC GỘP THẲNG VÀO PRODUCTCAMPAIGNBOX PHÍA DƯỚI */}
-                {!hasPromo ? (
+                {/* Tài khoản sỉ luôn dùng giá sỉ và giá web thực tế, độc lập với chiến dịch khách lẻ. */}
+                {!hasPromo || expectsSi ? (
                   <div className="flex flex-wrap items-center gap-3">
                     {expectsSi && !pricePending && livePriceKind === "si" ? (
                       <SiPriceBadge
@@ -543,7 +543,7 @@ export function ProductDetailView({
                   </div>
                 ) : null}
 
-                <ProductCampaignBox
+                {!expectsSi ? <ProductCampaignBox
                   ma={activeProduct.ma}
                   promo={livePromo}
                   dvt={activeProduct.dvt}
@@ -555,7 +555,11 @@ export function ProductDetailView({
                   onAddCart={() => addCart(false)}
                   purchaseDisabled={purchaseDisabled}
                   isPreOrder={isPreOrder}
-                />
+                /> : hasPromo ? (
+                  <p className="text-xs text-slate-500">
+                    Ưu đãi chiến dịch dành cho khách lẻ. Tài khoản của bạn áp dụng giá sỉ.
+                  </p>
+                ) : null}
 
                 {!expectsSi ? (
                   <ProductPromotionBadges
