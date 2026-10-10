@@ -756,7 +756,7 @@ export function ProductDetailView({
                   }`}
                 >
                   <ShoppingCart size={17} />
-                  <span>{isPreOrder ? "Đặt trước" : "Thêm giỏ hàng"}</span>
+                  <span>Thêm giỏ hàng</span>
                 </button>
                 <button
                   type="button"

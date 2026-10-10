@@ -52,9 +52,11 @@ test('closed price menu hides options and exposes collapsed trigger state', () =
   assert.deepEqual(calls, ['price']);
 });
 
-test('category results precede horizontally scrolling child options', () => {
+test('category options stay in the filter sheet while selected results stay on the toolbar', () => {
   const source = fs.readFileSync('frontend/components/catalog/CatalogSubcatBar.tsx', 'utf8');
-  assert.ok(source.indexOf('row="selected"') < source.indexOf('row="children"'));
+  assert.ok(source.includes('row="selected"'));
+  assert.ok(!source.includes('row="children"'));
+  assert.ok(source.includes('{sheetOptionsRow}'));
   assert.ok(source.includes('<CatalogChipRow'));
   assert.ok(source.includes('selectedL3s.map((n) => n.id), l3.id'));
   assert.ok(source.includes('keepFilters: true'));

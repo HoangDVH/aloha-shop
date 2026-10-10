@@ -114,9 +114,10 @@ export function CheckoutStickyBar({
           )}
         </div> : null}
         {!canSubmit && orderBlockedReason ? (
-          <p className="line-clamp-2 text-[11px] leading-snug text-amber-800">
-            {orderBlockedReason}
-          </p>
+          <div className="rounded-lg bg-amber-50 border border-amber-200/90 px-2.5 py-1.5 text-[11px] leading-tight text-amber-900 flex items-center gap-1.5 shadow-2xs">
+            <span className="shrink-0 text-amber-600">⚠️</span>
+            <span className="truncate">{orderBlockedReason}</span>
+          </div>
         ) : null}
         <div className="flex items-center gap-3">
           <button type="button" aria-expanded={detailsOpen} aria-controls={detailId} onClick={() => setDetailsOpen(v => !v)} className="min-h-11 min-w-0 flex-1 text-left">
@@ -126,12 +127,16 @@ export function CheckoutStickyBar({
           </button>
         <button
           type="button"
-          disabled={!canSubmit || submitting}
+          disabled={submitting}
           onClick={onPlaceOrder}
-          className="flex min-h-12 shrink-0 flex-col items-center justify-center rounded-xl bg-[var(--aloha-green)] px-4 py-3 text-white shadow-sm transition hover:bg-[var(--aloha-green-hover)] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
+          className={`flex min-h-12 shrink-0 flex-col items-center justify-center rounded-xl px-4 py-3 text-white transition active:scale-95 shadow-xs cursor-pointer ${
+            !canSubmit
+              ? "bg-amber-600 hover:bg-amber-700"
+              : "bg-[var(--aloha-green)] hover:bg-[var(--aloha-green-hover)]"
+          }`}
         >
-          <span className="text-[15px] font-extrabold leading-none">
-            {submitting ? "Đang gửi…" : "Đặt hàng"}
+          <span className="text-[14px] sm:text-[15px] font-extrabold leading-none">
+            {submitting ? "Đang gửi…" : !canSubmit ? "Cần thông tin" : "Đặt hàng"}
           </span>
         </button>
         </div>

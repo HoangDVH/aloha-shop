@@ -109,6 +109,10 @@ function useScrollReveal() {
     if (!el) return;
 
     const targets = el.querySelectorAll<HTMLElement>(".reveal");
+    if (!("IntersectionObserver" in window) || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      targets.forEach(target => target.setAttribute("data-show", "true"));
+      return;
+    }
 
     targets.forEach((target) => {
       if (!target.hasAttribute("data-show")) {
@@ -121,11 +125,7 @@ function useScrollReveal() {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             entry.target.setAttribute("data-show", "true");
-          } else {
-            const rect = entry.boundingClientRect;
-            if (rect.top > window.innerHeight || rect.bottom < 0) {
-              entry.target.setAttribute("data-show", "false");
-            }
+            observer.unobserve(entry.target);
           }
         });
       },

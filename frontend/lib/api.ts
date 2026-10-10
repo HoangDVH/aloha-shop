@@ -6,6 +6,7 @@ export type ShopProductAttr = {
 };
 
 export type ShopProduct = {
+  giftDimensions?: string;
   ma: string;
   ten: string;
   dvt: string;

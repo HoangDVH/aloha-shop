@@ -209,22 +209,29 @@ export function CheckoutSummaryAside({
         </div>
 
         {error ? (
-          <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+          <p className="mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs font-semibold text-red-700">
+            {error}
+          </p>
         ) : null}
 
         {!error && orderBlockedReason ? (
-          <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            {orderBlockedReason}
-          </p>
+          <div className="mt-3 rounded-xl bg-amber-50 border border-amber-200/80 px-3 py-2 text-xs text-amber-900 flex items-start gap-1.5 leading-tight">
+            <span className="shrink-0 text-amber-600 font-bold">⚠️</span>
+            <span>{orderBlockedReason}</span>
+          </div>
         ) : null}
 
         <button
           type="button"
-          disabled={!canSubmit}
+          disabled={submitting}
           onClick={onPlaceOrder}
-          className="mt-4 w-full rounded-full bg-[var(--aloha-green)] py-3.5 text-sm font-bold text-white transition hover:bg-[var(--aloha-green-hover)] disabled:cursor-not-allowed disabled:bg-slate-300"
+          className={`mt-4 w-full rounded-full py-3.5 text-sm font-bold text-white transition active:scale-98 cursor-pointer ${
+            !canSubmit
+              ? "bg-amber-600 hover:bg-amber-700 shadow-xs"
+              : "bg-[var(--aloha-green)] hover:bg-[var(--aloha-green-hover)] shadow-sm"
+          }`}
         >
-          {submitting ? "Đang gửi…" : "Đặt hàng"}
+          {submitting ? "Đang gửi…" : !canSubmit ? "Hoàn tất thông tin để đặt hàng" : "Đặt hàng"}
         </button>
       </section>
     </aside>

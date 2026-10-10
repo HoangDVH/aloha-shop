@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 import { ShopWelcomePopupMount } from "@/components/ShopWelcomePopupMount";
 import { ShopMobileTabBar } from "@/components/ShopMobileTabBar";
+import { StorefrontScrollEffects } from "@/components/StorefrontScrollEffects";
 
 /** Menu danh mục tải phía client (SiteHeader) — không chặn SSR mỗi lần chuyển trang. */
 export default function StorefrontLayout({ children }: { children: React.ReactNode }) {
@@ -18,6 +19,7 @@ export default function StorefrontLayout({ children }: { children: React.ReactNo
         <ShopMobileTabBar />
       </Suspense>
       <ShopWelcomePopupMount />
+      <StorefrontScrollEffects />
     </>
   );
 }

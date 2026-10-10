@@ -67,8 +67,8 @@ function formatDate(iso: string) {
 function chipClass(active: boolean) {
   return `inline-flex shrink-0 items-center rounded-full border px-3 py-1.5 text-[13px] font-semibold transition ${
     active
-      ? "border-[#e6c200] bg-[#ffe566] text-slate-900"
-      : "border-[#d8dee6] bg-white text-slate-800 hover:border-[#e6c200] hover:bg-[#fff8db]"
+      ? "border-[var(--aloha-green)] bg-[var(--aloha-green)] text-white shadow-sm"
+      : "border-slate-200 bg-white text-slate-700 hover:border-[var(--aloha-green)] hover:text-[var(--aloha-green)] hover:bg-[var(--aloha-green-light)]"
   }`;
 }
 

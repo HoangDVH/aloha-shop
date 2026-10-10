@@ -37,7 +37,10 @@ export function CheckoutAddressSection({
   userPhone,
 }: Props) {
   return (
-    <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[var(--aloha-line)]">
+    <section
+      id="checkout-address-section"
+      className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[var(--aloha-line)] transition-all duration-300 scroll-mt-24"
+    >
       <h2 className="mb-4 flex items-center gap-2 text-base font-extrabold text-[var(--aloha-ink)]">
         <MapPin size={18} className="text-[var(--aloha-green)]" />
         Địa chỉ nhận hàng

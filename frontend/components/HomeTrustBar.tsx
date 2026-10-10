@@ -33,7 +33,7 @@ const TRUST_ITEMS = [
  */
 export function HomeTrustBar() {
   return (
-    <section
+    <section data-scroll-reveal
       aria-label="Cam kết chất lượng và dịch vụ Aloha"
       className="border-b border-slate-100 bg-[#FAFBF9]/80 py-3 sm:py-4.5"
     >

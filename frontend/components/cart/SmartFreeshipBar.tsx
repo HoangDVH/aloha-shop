@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Truck, CheckCircle2, ChevronRight, Sparkles } from "lucide-react";
+import { Truck, CheckCircle2, ChevronRight, Sparkles, Check } from "lucide-react";
 import { formatVnd } from "@/lib/api";
 import { formatCompactVnd } from "@/lib/voucherFormat";
 import { getAvailablePromotions, type AvailablePromotionUI } from "@/lib/promotions";
@@ -78,23 +78,24 @@ export function SmartFreeshipBar({
   }, [promos]);
 
   // Tìm mốc kế tiếp cần đạt
-  const { currentTier, nextTier, shortfall, pct, isHighestReached } = useMemo(() => {
+  const { currentTier, nextTier, shortfall, isHighestReached, maxThreshold, overallPct } = useMemo(() => {
     if (!tiers.length) {
-      return { currentTier: null, nextTier: null, shortfall: 0, pct: 100, isHighestReached: true };
+      return { currentTier: null, nextTier: null, shortfall: 0, isHighestReached: true, maxThreshold: 1, overallPct: 100 };
     }
 
     const highest = tiers[tiers.length - 1];
+    const maxVal = highest.threshold;
+    const overallPct = Math.min(100, Math.max(0, Math.round((currentAmount / maxVal) * 100)));
+
     if (currentAmount >= highest.threshold) {
-      return { currentTier: highest, nextTier: null, shortfall: 0, pct: 100, isHighestReached: true };
+      return { currentTier: highest, nextTier: null, shortfall: 0, isHighestReached: true, maxThreshold: maxVal, overallPct: 100 };
     }
 
     const next = tiers.find((t) => t.threshold > currentAmount) || highest;
     const prev = [...tiers].reverse().find((t) => t.threshold <= currentAmount) || null;
-
     const shortfall = Math.max(0, next.threshold - currentAmount);
-    const pct = Math.min(98, Math.max(4, Math.round((currentAmount / next.threshold) * 100)));
 
-    return { currentTier: prev, nextTier: next, shortfall, pct, isHighestReached: false };
+    return { currentTier: prev, nextTier: next, shortfall, isHighestReached: false, maxThreshold: maxVal, overallPct };
   }, [tiers, currentAmount]);
 
   if (!tiers.length) return null;
@@ -150,26 +151,39 @@ export function SmartFreeshipBar({
               </Link>
             </div>
 
-            {/* Tầng 2: Mục tiêu quyền lợi nhận được (100% không bị cắt) */}
+            {/* Tầng 2: Mục tiêu quyền lợi nhận được */}
             <div className="mt-1 flex items-center justify-between pl-8 text-[11.5px] leading-tight">
               <span className="text-slate-600">
                 để được <strong className="text-[#0D9488] font-bold uppercase">{nextTier?.label}</strong>
               </span>
-              <span className="text-[10px] font-semibold text-teal-700/80 tabular-nums">{pct}%</span>
+              <span className="text-[10px] font-semibold text-teal-700/80 tabular-nums">{overallPct}%</span>
             </div>
           </div>
         )}
 
-        {/* Thanh tiến trình siêu mỏng */}
-        <div className="relative mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200/70" aria-hidden>
+        {/* Thanh tiến trình với mốc nhỏ */}
+        <div className="relative mt-2.5 h-1.5 w-full rounded-full bg-slate-200/70" aria-hidden>
           <div
             className={`h-full rounded-full transition-all duration-500 ease-out ${
               isHighestReached
                 ? "bg-gradient-to-r from-emerald-500 to-teal-500"
                 : "bg-gradient-to-r from-[#0D9488] via-emerald-500 to-[#0F766E]"
             }`}
-            style={{ width: `${pct}%` }}
+            style={{ width: `${overallPct}%` }}
           />
+          {tiers.map((tier) => {
+            const pinPct = Math.round((tier.threshold / maxThreshold) * 100);
+            const reached = currentAmount >= tier.threshold;
+            return (
+              <span
+                key={tier.threshold}
+                className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 h-2.5 w-2.5 rounded-full ring-1 ring-white shadow-2xs transition-all ${
+                  reached ? "bg-emerald-600" : "bg-slate-300"
+                }`}
+                style={{ left: `${Math.min(98, Math.max(2, pinPct))}%` }}
+              />
+            );
+          })}
         </div>
       </div>
     );
@@ -244,16 +258,57 @@ export function SmartFreeshipBar({
         )}
       </div>
 
-      {/* Thanh tiến trình Progress Bar */}
-      <div className="relative mt-2.5 h-2 w-full overflow-hidden rounded-full bg-slate-200/70" aria-hidden>
-        <div
-          className={`h-full rounded-full transition-all duration-500 ease-out shadow-xs ${
-            isHighestReached
-              ? "bg-gradient-to-r from-emerald-500 to-teal-500"
-              : "bg-gradient-to-r from-[#0D9488] via-emerald-500 to-[#0F766E]"
-          }`}
-          style={{ width: `${pct}%` }}
-        />
+      {/* Thanh tiến trình Progress Bar với Mốc Milestone Pins */}
+      <div className="relative mt-3.5 pt-1 pb-4" aria-hidden>
+        {/* Track bar */}
+        <div className="relative h-2 w-full overflow-hidden rounded-full bg-slate-200/80">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ease-out shadow-xs ${
+              isHighestReached
+                ? "bg-gradient-to-r from-emerald-500 to-teal-500"
+                : "bg-gradient-to-r from-[#0D9488] via-emerald-500 to-[#0F766E]"
+            }`}
+            style={{ width: `${overallPct}%` }}
+          />
+        </div>
+
+        {/* Milestone Pins */}
+        <div className="pointer-events-none absolute inset-x-0 top-0">
+          {tiers.map((tier) => {
+            const pinPct = Math.round((tier.threshold / maxThreshold) * 100);
+            const reached = currentAmount >= tier.threshold;
+            return (
+              <div
+                key={tier.threshold}
+                className="absolute -top-0.5 -translate-x-1/2 flex flex-col items-center"
+                style={{ left: `${Math.min(97, Math.max(3, pinPct))}%` }}
+              >
+                {/* Pin Dot */}
+                <span
+                  className={`flex h-3.5 w-3.5 items-center justify-center rounded-full ring-2 ring-white shadow-xs transition-all duration-300 ${
+                    reached
+                      ? "bg-emerald-600 text-white scale-110"
+                      : "bg-white border-2 border-slate-300 text-slate-400"
+                  }`}
+                >
+                  {reached ? (
+                    <Check size={8} strokeWidth={3.5} />
+                  ) : (
+                    <span className="h-1 w-1 rounded-full bg-slate-400" />
+                  )}
+                </span>
+                {/* Pin Label */}
+                <span
+                  className={`mt-1.5 text-[10px] sm:text-[10.5px] font-bold whitespace-nowrap transition-colors ${
+                    reached ? "text-emerald-700" : "text-slate-400"
+                  }`}
+                >
+                  {tier.label} ({formatCompactVnd(tier.threshold)})
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

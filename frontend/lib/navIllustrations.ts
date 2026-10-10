@@ -1,45 +1,46 @@
 /**
- * Ảnh minh họa menu mobile — chỉ dùng cho L3 nhánh CÂY PHONG THỦY.
+ * Ảnh cây thật từ kho Aloha — dùng cho L3 CÂY PHONG THỦY trên desktop và mobile.
  * Các nhánh khác lấy ảnh SP từ kho (category-tree.image).
  */
 
-const DEFAULT_ILLUSTRATION = "/nav-illustrations/nav-cay-chung.png";
+const DEFAULT_ILLUSTRATION = "/nav-real-plants/cay-chung.jpg";
 
 function foldName(name: string): string {
   return String(name || "")
     .trim()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/gi, "d")
     .replace(/\s+/g, " ")
     .toUpperCase();
 }
 
-/** Khớp đúng tên L3 Cây phong thủy (đã fold) → ảnh minh họa. */
+/** Ảnh đã đối chiếu từng loại cây; nguồn và mã hàng trong nav-real-plants/sources.json. */
 const EXACT: Record<string, string> = {
-  "CAY BINH AN": "/nav-illustrations/nav-binh-an.png",
-  "CAY BONSAI": "/nav-illustrations/nav-bonsai.png",
-  "CAY CANH TREO": "/nav-illustrations/nav-cay-treo.png",
-  "CAY CAU TIEU TRAM": "/nav-illustrations/nav-cau-tieu-tram.png",
-  "CAY DUONG XI": "/nav-illustrations/nav-duong-xi.png",
-  "CAY DUOI CONG": "/nav-illustrations/nav-duoi-cong.png",
-  "CAY HANH PHUC": "/nav-illustrations/nav-hanh-phuc.png",
-  "CAY HO TUNG": "/nav-illustrations/nav-ho-tung.png",
-  "CAY HONG MON": "/nav-illustrations/nav-hong-mon.png",
-  "CAY KIM GIAO": "/nav-illustrations/nav-kim-giao.png",
-  "CAY KIM NGAN": "/nav-illustrations/nav-kim-ngan.png",
-  "CAY KIM NGAN LUONG": "/nav-illustrations/nav-kim-ngan.png",
-  "CAY KIM TIEN": "/nav-illustrations/nav-kim-tien.png",
-  "CAY LAN Y": "/nav-illustrations/nav-lan-y.png",
-  "CAY LUOI HO": "/nav-illustrations/nav-luoi-ho.png",
-  "CAY NGOC NGAN": "/nav-illustrations/nav-ngoc-ngan.png",
-  "CAY NGU GIA BI": "/nav-illustrations/nav-ngu-gia-bi.png",
-  "CAY PHONG THUY NHIEU LOAI": "/nav-illustrations/nav-cay-chung.png",
-  "CAY TRAU BA": "/nav-illustrations/nav-trau-ba.png",
-  "CAY TRUC PHAT TAI": "/nav-illustrations/nav-truc-phat-tai.png",
-  "CAY TRUONG SINH": "/nav-illustrations/nav-truong-sinh.png",
-  "CAY VAN LOC": "/nav-illustrations/nav-van-loc.png",
-  "DE VUONG KIM CUONG": "/nav-illustrations/nav-de-vuong.png",
-  "LAN HO DIEP": "/nav-illustrations/nav-lan-ho-diep.png",
+  "CAY BINH AN": "/nav-real-plants/binh-an.jpg",
+  "CAY BONSAI": "/nav-real-plants/bonsai.jpg",
+  "CAY CANH TREO": "/nav-real-plants/cay-treo-tpdl.jpg",
+  "CAY CAU TIEU TRAM": "/nav-real-plants/cau-tieu-tram.jpg",
+  "CAY DUONG XI": "/nav-real-plants/duong-xi.jpg",
+  "CAY DUOI CONG": "/nav-real-plants/duoi-cong.jpg",
+  "CAY HANH PHUC": "/nav-real-plants/hanh-phuc.jpg",
+  "CAY HO TUNG": "/nav-real-plants/ho-tung-tlhbs.png",
+  "CAY HONG MON": "/nav-real-plants/hong-mon.jpg",
+  "CAY KIM GIAO": "/nav-real-plants/kim-giao.png",
+  "CAY KIM NGAN": "/nav-real-plants/kim-ngan.jpg",
+  "CAY KIM NGAN LUONG": "/nav-real-plants/kim-ngan-luong.jpg",
+  "CAY KIM TIEN": "/nav-real-plants/kim-tien.jpg",
+  "CAY LAN Y": "/nav-real-plants/lan-y.jpg",
+  "CAY LUOI HO": "/nav-real-plants/luoi-ho.jpg",
+  "CAY NGOC NGAN": "/nav-real-plants/ngoc-ngan.jpg",
+  "CAY NGU GIA BI": "/nav-real-plants/ngu-gia-bi.jpg",
+  "CAY PHONG THUY NHIEU LOAI": "/nav-real-plants/cay-chung.jpg",
+  "CAY TRAU BA": "/nav-real-plants/trau-ba.jpg",
+  "CAY TRUC PHAT TAI": "/nav-real-plants/truc-phat-tai.png",
+  "CAY TRUONG SINH": "/nav-real-plants/truong-sinh.jpg",
+  "CAY VAN LOC": "/nav-real-plants/van-loc.jpg",
+  "DE VUONG KIM CUONG": "/nav-real-plants/de-vuong.jpg",
+  "LAN HO DIEP": "/nav-real-plants/lan-ho-diep.png",
 };
 
 /** Node L3 thuộc nhánh CÂY PHONG THỦY (path chứa đầy đủ). */
@@ -53,7 +54,7 @@ export function isPhongThuyL3(node: { path?: string; name?: string }): boolean {
   return false;
 }
 
-/** Ảnh minh họa L3 Cây phong thủy — không dùng cho nhánh khác. */
+/** Ảnh kho đã chọn cho L3 Cây phong thủy — không dùng cho nhánh khác. */
 export function navIllustrationSrc(name: string): string {
   const f = foldName(name);
   if (!f) return DEFAULT_ILLUSTRATION;

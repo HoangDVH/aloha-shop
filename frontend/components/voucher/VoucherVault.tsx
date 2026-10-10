@@ -1,6 +1,7 @@
 "use client";
 
-import { Check, Gift, Sparkles, TicketPercent, Tag, Truck } from "lucide-react";
+import Link from "next/link";
+import { Check, Gift, Sparkles, TicketPercent, Tag, Truck, Zap } from "lucide-react";
 import type { CampaignVoucherUI, CampaignViewerUI } from "@/lib/campaign/campaignApi";
 import { useVoucherClaims } from "@/lib/campaign/useVoucherClaims";
 import { splitCountdown, useCountdown } from "@/lib/hooks/useCountdown";
@@ -12,6 +13,7 @@ import {
   pctText,
   sortVouchersGrouped,
   voucherConditionText,
+  voucherUseHref,
   withDrawn,
 } from "@/lib/voucherFormat";
 import { MysteryOdds } from "./MysteryOdds";
@@ -19,6 +21,20 @@ import { LoginSheet } from "@/components/campaign/LoginSheet";
 import { VoucherTicket, type TicketTone } from "./VoucherTicket";
 import { ClaimButton, claimStateOf, type ClaimState } from "./ClaimButton";
 import { ClaimSuccessModal } from "./ClaimSuccessModal";
+
+function tikTokDiscountText(v: CampaignVoucherUI): string {
+  if (v.discountType === "percentage") {
+    return `Giảm ${pctText(v)}`;
+  }
+  return `Giảm ${formatCompactVnd(v.discountValue).toUpperCase()}`;
+}
+
+function tikTokMinOrderText(v: CampaignVoucherUI): string {
+  if (v.minOrderThreshold && v.minOrderThreshold > 0) {
+    return `Đơn từ ${formatCompactVnd(v.minOrderThreshold).toUpperCase()}`;
+  }
+  return "Đơn từ 0đ";
+}
 
 const DAY_MS = 86_400_000;
 
@@ -230,11 +246,16 @@ export function VoucherVault({
       >
         {list.map((v) => {
           const state = claimStateOf(v, viewer, claims.claimedIds.has(v.id), nowMs);
-          const claimedPct = claimedPercentOf(v);
+          const isShip = v.benefitType === "shipping";
+          const isMystery = Boolean(v.mystery);
+          const isClaimed = state === "claimed" || state === "auto";
+          const discountText = tikTokDiscountText(v);
+          const minOrderText = tikTokMinOrderText(v);
+          const title = cleanVoucherTitle(v);
           const left = remainingOf(v);
-          const { icon, tone, stubTopLabel, stubValue } = voucherIconAndTone(v);
-          const headline = cleanVoucherTitle(v);
+          const claimedPct = claimedPercentOf(v);
           const focused = focusIds.includes(v.id);
+          const dim = state === "soldOut" || state === "locked";
 
           return (
             <li
@@ -248,58 +269,128 @@ export function VoucherVault({
                   {focusLabel}
                 </span>
               ) : null}
-              <VoucherTicket
-                size="lg"
-                stubValue={stubValue}
-                stubTopLabel={stubTopLabel}
-                icon={icon}
-                tone={tone}
-                title={headline}
-                disabled={state === "soldOut" || state === "locked"}
-                notchBg={notchBg || "var(--campaign-cream, #FFF0F5)"}
-                className={`h-full w-full ${focused ? "ring-2 ring-[var(--campaign-primary,#C8102E)]/60 ring-offset-1" : ""}`}
-                action={
-                  <ClaimButton
-                    state={state}
-                    voucher={v}
-                    viewer={viewer}
-                    offsetMs={offsetMs}
-                    busy={claims.pendingId === v.id}
-                    onClaim={() => claims.claim(v.id)}
-                    tone={tone}
-                  />
-                }
+
+              <div
+                className={`relative flex min-h-[76px] sm:min-h-[82px] w-full overflow-hidden rounded-xl sm:rounded-2xl bg-white border border-stone-200/90 shadow-2xs select-none transition-all duration-200 hover:shadow-md ${
+                  dim ? "opacity-60" : ""
+                } ${focused ? "ring-2 ring-[var(--campaign-primary,#C8102E)]/60 ring-offset-1" : ""}`}
               >
-                <p className="truncate text-[10.5px] sm:text-[11px] text-slate-500 font-medium leading-tight">{voucherConditionText(v)}</p>
-                {v.mystery ? <MysteryOdds mystery={v.mystery} /> : null}
-                {claimedPct != null && left != null ? (
-                  <div className="flex items-center gap-1.5" title={`Đã lưu ${claimedPct}% số lượt`}>
-                    <div
-                      className="h-1 min-w-6 max-w-16 sm:max-w-20 flex-1 overflow-hidden rounded-full bg-slate-100"
-                      role="progressbar"
-                      aria-valuenow={claimedPct}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-label="Tỉ lệ đã lưu"
-                    >
-                      <div className="h-full rounded-full bg-gradient-to-r from-amber-400 to-red-500" style={{ width: `${claimedPct}%` }} />
-                    </div>
-                    <span
-                      className={`shrink-0 whitespace-nowrap text-[9.5px] sm:text-[10px] font-semibold ${claimedPct >= 80 ? "text-red-600" : "text-slate-400"}`}
-                    >
-                      {left > 0 ? `Còn ${left}` : "Hết lượt"}
-                    </span>
-                  </div>
-                ) : v.claimRequired && v.claimedCount >= 50 ? (
-                  <p className="text-[9.5px] sm:text-[10px] font-semibold text-slate-400 truncate">{v.claimedCount.toLocaleString("vi-VN")} người đã lưu</p>
-                ) : null}
-                <div className="flex items-center gap-1.5 text-[9.5px] sm:text-[10px] text-slate-400 leading-none">
-                  {v.endDate ? <p className="truncate">HSD: {vnDate(v.endDate)}</p> : null}
-                  <p className="empty:hidden truncate">
-                    <VoucherStatusLine v={v} state={state} nowMs={nowMs} offsetMs={offsetMs} />
-                  </p>
+                {/* Cuống vé bên trái - Chuẩn TikTok Shop (Ảnh 2 & 3) */}
+                <div
+                  className={`flex w-[62px] sm:w-[68px] shrink-0 flex-col items-center justify-center p-1 sm:p-1.5 border-r border-dashed ${
+                    isShip
+                      ? "bg-[#E6F8F6] text-[#00B5A5] border-[#B2EBE6]"
+                      : "bg-[#FFF0F2] text-[#FE2C55] border-[#FDD3D9]"
+                  }`}
+                >
+                  {isShip ? (
+                    <Truck size={20} strokeWidth={2.2} />
+                  ) : isMystery ? (
+                    <Zap size={20} className="fill-current" strokeWidth={0} />
+                  ) : (
+                    <TicketPercent size={20} strokeWidth={2.2} />
+                  )}
+                  <span className="mt-1 text-[9.5px] sm:text-[10px] font-bold leading-none text-center">
+                    {isShip ? "Vận chuyển" : isMystery ? "Túi mù" : "Sản phẩm"}
+                  </span>
                 </div>
-              </VoucherTicket>
+
+                {/* Vết khuyết bán nguyệt (Notches) */}
+                <span
+                  className="pointer-events-none absolute -top-1.5 left-[62px] sm:left-[68px] z-10 h-3 w-3 -translate-x-1/2 rounded-full border border-stone-200/90"
+                  style={{ backgroundColor: notchBg || "#FFF0F5" }}
+                  aria-hidden="true"
+                />
+                <span
+                  className="pointer-events-none absolute -bottom-1.5 left-[62px] sm:left-[68px] z-10 h-3 w-3 -translate-x-1/2 rounded-full border border-stone-200/90"
+                  style={{ backgroundColor: notchBg || "#FFF0F5" }}
+                  aria-hidden="true"
+                />
+
+                {/* Thân vé bên phải */}
+                <div className="flex min-w-0 flex-1 flex-col justify-between py-1.5 pl-2.5 pr-2 sm:py-2 sm:pl-3 sm:pr-3">
+                  {/* HÀNG 1: TIÊU ĐỀ VOUCHER (Trải rộng 100% thân vé, hiển thị trọn vẹn) */}
+                  <div className="flex items-center justify-between gap-1">
+                    <h4
+                      className="text-[12px] sm:text-[13px] font-bold text-slate-900 leading-tight truncate"
+                      title={v.title || title}
+                    >
+                      {title}
+                    </h4>
+                    {v.claimLimitTotal && v.claimLimitTotal > 1 ? (
+                      <span
+                        className={`shrink-0 rounded-xs px-1 text-[8.5px] sm:text-[9px] font-black text-white ${
+                          isShip ? "bg-[#00B5A5]" : "bg-[#FE2C55]"
+                        }`}
+                      >
+                        x{v.claimLimitTotal}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {/* HÀNG 2: MỨC GIẢM + ĐIỀU KIỆN (BÊN TRÁI) & NÚT HÀNH ĐỘNG (BÊN PHẢI) */}
+                  <div className="flex items-center justify-between gap-1.5 pt-0.5">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline gap-1 flex-wrap">
+                        <span
+                          className={`text-[13.5px] sm:text-[15px] font-black leading-tight shrink-0 ${
+                            isShip ? "text-[#008A7E]" : "text-[#FE2C55]"
+                          }`}
+                        >
+                          {discountText}
+                        </span>
+                        <span className="text-[10px] sm:text-[11px] font-medium text-slate-500 truncate leading-tight">
+                          · {minOrderText}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-0.5 text-[9px] sm:text-[10px] text-slate-400 leading-none">
+                        {v.endDate ? <span>HSD: {vnDate(v.endDate)}</span> : null}
+                        {claimedPct != null && left != null && left <= 20 ? (
+                          <span className="text-red-500 font-semibold">· Còn {left} lượt</span>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="shrink-0">
+                      {isClaimed ? (
+                        <Link
+                          href={voucherUseHref(v.id)}
+                          className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-[11px] font-bold border transition ${
+                            isShip
+                              ? "border-[#00B5A5] text-[#00B5A5] bg-cyan-50/40 hover:bg-cyan-100/50"
+                              : "border-[#FE2C55] text-[#FE2C55] bg-rose-50/40 hover:bg-rose-100/50"
+                          }`}
+                        >
+                          Dùng
+                        </Link>
+                      ) : isMystery && !v.mystery?.drawnPercent ? (
+                        <button
+                          type="button"
+                          disabled={claims.pendingId === v.id || state === "soldOut"}
+                          onClick={() => claims.claim(v.id)}
+                          className="inline-flex items-center justify-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold text-white bg-gradient-to-r from-amber-500 to-rose-500 shadow-xs active:scale-95 disabled:opacity-50 transition cursor-pointer"
+                        >
+                          <Gift size={12} strokeWidth={2.5} />
+                          <span>{claims.pendingId === v.id ? "…" : "Bóc"}</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={claims.pendingId === v.id || state === "soldOut"}
+                          onClick={() => claims.claim(v.id)}
+                          className={`inline-flex items-center justify-center rounded-full px-3.5 py-1 text-[11px] font-bold text-white shadow-xs active:scale-95 disabled:opacity-50 transition cursor-pointer ${
+                            isShip
+                              ? "bg-[#00B5A5] hover:bg-[#009E90]"
+                              : "bg-[#FE2C55] hover:bg-[#E01E43]"
+                          }`}
+                        >
+                          {claims.pendingId === v.id ? "…" : "Nhận"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </li>
           );
         })}
