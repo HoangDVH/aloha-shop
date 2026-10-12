@@ -28,25 +28,33 @@ export function BusinessOverview() {
     { key: "orders" as const, label: "Đơn hoàn thành", Icon: ShoppingBag, money: false },
     { key: "average" as const, label: "Trung bình / đơn", Icon: ReceiptText, money: true }];
   return <div className="mb-6 space-y-5" aria-busy={query.isFetching}>
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <p className="text-sm font-medium text-slate-600">Hoạt động bán hàng trên shop</p>
-      <div className="flex flex-wrap items-center gap-3">
-        <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600"><input type="checkbox" checked={compare} onChange={e => setCompare(e.target.checked)} className="h-4 w-4 accent-blue-600" />So với kỳ trước</label>
-        <TopChartSelect label="Khoảng thời gian bán hàng và chuyển đổi" value={period} options={options} onChange={v => {
-          if (v === "custom") setCustom(range);
-          setPeriod(v as TopPeriod); setGroup(v === "today" ? "hour" : "day");
-        }} />
-        <button type="button" aria-label="Làm mới bán hàng và chuyển đổi" disabled={!valid || query.isFetching} onClick={() => void query.refetch()} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 disabled:opacity-40"><RefreshCw size={16} className={query.isFetching ? "animate-spin" : ""} /></button>
-      </div>
-    </div>
-    {period === "custom" && <div className="flex flex-wrap items-center justify-end gap-3">
-      <label className="text-xs text-slate-500">Từ ngày <input type="date" value={custom.from} max={custom.to} onChange={e => setCustom({ ...custom, from: e.target.value })} className="ml-2 rounded-lg border border-slate-200 p-2 text-sm text-slate-700" /></label>
-      <label className="text-xs text-slate-500">Đến ngày <input type="date" value={custom.to} min={custom.from} onChange={e => setCustom({ ...custom, to: e.target.value })} className="ml-2 rounded-lg border border-slate-200 p-2 text-sm text-slate-700" /></label>
-    </div>}
-    {!valid && <p role="alert" className="text-sm text-red-600">Chọn khoảng ngày hợp lệ, tối đa 366 ngày.</p>}
-    {query.isError && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{query.error.message} <button type="button" onClick={() => void query.refetch()} className="ml-2 underline">Thử lại</button></p>}
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6" aria-label="Kết quả bán hàng">
-      <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-bold text-slate-900">Kết quả bán hàng{period === "today" ? " hôm nay" : ""}</h2><Link href="/admin/don-hang-web" className="text-xs font-medium text-blue-600 hover:underline">Xem đơn shop →</Link></div>
+      {/* Header card tích hợp: Tiêu đề bên trái, bộ lọc điều khiển bên phải */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-bold text-slate-900">Kết quả bán hàng{period === "today" ? " hôm nay" : ""}</h2>
+          <Link href="/admin/don-hang-web" className="text-xs font-medium text-blue-600 hover:underline">Xem đơn shop →</Link>
+        </div>
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+          <label className="flex cursor-pointer items-center gap-1.5 text-xs sm:text-sm text-slate-600 select-none">
+            <input type="checkbox" checked={compare} onChange={e => setCompare(e.target.checked)} className="h-4 w-4 accent-blue-600 rounded" />
+            <span>So với kỳ trước</span>
+          </label>
+          <TopChartSelect label="Khoảng thời gian bán hàng và chuyển đổi" value={period} options={options} onChange={v => {
+            if (v === "custom") setCustom(range);
+            setPeriod(v as TopPeriod); setGroup(v === "today" ? "hour" : "day");
+          }} />
+          <button type="button" aria-label="Làm mới bán hàng và chuyển đổi" disabled={!valid || query.isFetching} onClick={() => void query.refetch()} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 disabled:opacity-40 transition">
+            <RefreshCw size={16} className={query.isFetching ? "animate-spin" : ""} />
+          </button>
+        </div>
+      </div>
+      {period === "custom" && <div className="mt-3 flex flex-wrap items-center justify-end gap-3 text-xs text-slate-500">
+        <label>Từ ngày <input type="date" value={custom.from} max={custom.to} onChange={e => setCustom({ ...custom, from: e.target.value })} className="ml-2 rounded-lg border border-slate-200 p-1.5 text-xs text-slate-700" /></label>
+        <label>Đến ngày <input type="date" value={custom.to} min={custom.from} onChange={e => setCustom({ ...custom, to: e.target.value })} className="ml-2 rounded-lg border border-slate-200 p-1.5 text-xs text-slate-700" /></label>
+      </div>}
+      {!valid && <p role="alert" className="mt-3 text-sm text-red-600">Chọn khoảng ngày hợp lệ, tối đa 366 ngày.</p>}
+      {query.isError && <p role="alert" className="mt-3 rounded-xl bg-red-50 p-4 text-sm text-red-700">{query.error.message} <button type="button" onClick={() => void query.refetch()} className="ml-2 underline">Thử lại</button></p>}
       <div className="mt-5 grid gap-4 sm:grid-cols-3" aria-live="polite">
         {metrics.map(({ key, label, Icon, money }) => {
           const current = data?.sales.summary[key], previous = data?.sales.previous[key];

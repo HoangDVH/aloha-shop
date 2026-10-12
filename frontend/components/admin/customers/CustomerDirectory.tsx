@@ -13,12 +13,14 @@ import { SiOrderSyncPanel } from "../si/SiOrderSyncPanel";
 import { CtvApplicationModal } from "../ctv/CtvApplicationModal";
 import { AddCtvModal, type AddCtvFormValues } from "../ctv/AddCtvModal";
 import { useCtvUiStore } from "../ctv/ctvUiStore";
+import { AccountPermissions } from "./AccountPermissions";
 
 type Account = {
   id: string; fullName: string; email: string; phone: string | null; roles: string[];
   active: boolean; siRegion?: string | null; siStatus?: string | null;
   ctvStatus?: string | null; ctvCode?: string | null; adminNote?: string | null;
   createdAt?: string | null; lastLoginAt?: string | null; authProviders: string[];
+  permissionsRevision?: number;
 };
 type Filters = { customerType: string; affiliate: string; wholesaleStatus: string; accountState: string; pending: string };
 const defaults: Filters = { customerType: "all", affiliate: "all", wholesaleStatus: "all", accountState: "all", pending: "" };
@@ -147,7 +149,7 @@ export default function CustomerDirectory() {
           { title: "Cộng tác viên", key: "ctv", width: 155, render: (_, row) => row.roles.includes("ctv") ? <div><StatusTag ctv value={row.ctvStatus} /><span className="mt-1 block font-mono text-xs text-slate-500">{row.ctvCode || "Chưa cấp mã"}</span></div> : <span className="text-xs text-slate-400">Không phải CTV</span> },
           { title: "Hồ sơ sỉ", key: "si", width: 140, render: (_, row) => row.roles.includes("si") ? <StatusTag value={row.siStatus} /> : <span className="text-slate-400">—</span> },
           { title: "Tài khoản", key: "state", width: 125, render: (_, row) => <span className={`inline-flex items-center gap-1.5 text-xs ${row.active === false ? "text-red-600" : "text-emerald-700"}`}><span className={`h-1.5 w-1.5 rounded-full ${row.active === false ? "bg-red-500" : "bg-emerald-500"}`} />{row.active === false ? "Đã khóa" : "Đang mở"}</span> },
-          { title: "", key: "action", width: 100, render: (_, row) => <Button type="text" aria-label={`Xem hồ sơ ${row.fullName}`} onClick={() => setSelectedId(row.id)}>Chi tiết <ChevronRight size={14} /></Button> },
+          { title: "", key: "action", width: 125, render: (_, row) => <Button type="text" aria-label={`Phân quyền ${row.fullName}`} onClick={() => setSelectedId(row.id)}>Phân quyền <ChevronRight size={14} /></Button> },
         ]} />
     </section>}
 
@@ -179,6 +181,7 @@ function AccountDetails({ account, onChanged, onDeleted, onSi, onCtv }: { accoun
       <div className="mt-3 flex flex-wrap gap-2"><Tag color={category(account).color}>{category(account).label}</Tag>{account.roles.includes("ctv") && <Tag color="cyan">Cộng tác viên</Tag>}{account.active === false && <Tag color="red">Tài khoản đã khóa</Tag>}</div>
     </div>
     <dl className="grid grid-cols-2 gap-4 text-sm">{[["Số điện thoại", account.phone || "—"], ["Ngày tham gia", date(account.createdAt)], ["Đăng nhập gần nhất", date(account.lastLoginAt)], ["Phương thức đăng nhập", account.authProviders?.join(", ") || "—"]].map(([label, value]) => <div key={label}><dt className="mb-1 text-xs text-slate-500">{label}</dt><dd className="break-words text-slate-800">{value}</dd></div>)}</dl>
+    <AccountPermissions account={account} onChanged={onChanged} onWholesale={onSi} />
     <section className="space-y-3 rounded-xl border border-slate-200 p-4"><div className="flex items-center justify-between"><h3 className="font-semibold">Hồ sơ mua sỉ</h3>{account.roles.includes("si") && <StatusTag value={account.siStatus} />}</div>
       {account.roles.includes("si") ? <><p className="text-sm text-slate-500">Xem thông tin kinh doanh, xác minh vùng và quản lý quyền mua sỉ.</p><Button onClick={onSi}>Xem và xử lý hồ sơ sỉ <ArrowUpRight size={14} /></Button></> : <p className="text-sm text-slate-500">Chưa đăng ký mua sỉ. Dùng “Mời khách sỉ” để gửi lời mời đăng ký.</p>}
     </section>

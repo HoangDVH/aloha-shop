@@ -86,6 +86,7 @@ export async function completeShopOrderDelivered(
     return { ok: false, skipped: true, error: "already_cancelled", code: String((existing as any).code) };
   }
   if (orderStatus === "hoan_thanh") {
+    await consumeShopStockHolds(shopDb, String((existing as any).code)).catch(() => 0);
     return {
       ok: true,
       skipped: true,

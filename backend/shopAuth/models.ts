@@ -40,6 +40,7 @@ export type PublicShopAccount = {
   createdAt: string | null;
   lastLoginAt: string | null;
   adminNote?: string | null;
+  permissionsRevision?: number;
   commissionRate?: number | null;
   addresses?: ShopAddressPublic[];
   /** STK nhận hoa hồng (mức 1) — admin có thể mask phía UI */
@@ -141,6 +142,7 @@ export function toPublicShopAccount(doc: Record<string, unknown>): PublicShopAcc
       ? new Date(doc.lastLoginAt as string | Date).toISOString()
       : null,
     adminNote: doc.adminNote != null ? String(doc.adminNote) : null,
+    permissionsRevision: Number(doc.permissionsRevision) || 0,
     commissionRate:
       doc.commissionRate != null && Number.isFinite(Number(doc.commissionRate))
         ? Number(doc.commissionRate)

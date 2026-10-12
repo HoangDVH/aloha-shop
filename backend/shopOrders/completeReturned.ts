@@ -51,6 +51,7 @@ export async function completeShopOrderReturned(
   const now = new Date().toISOString();
 
   if (fullReturn && String((doc as any).orderStatus) === "huy") {
+    await releaseShopStockHolds(shopDb, code);
     // Retry must finish unpaid cancellation as well as post-payment recovery.
     const voided = await voidCommissionsForOrder(shopDb, code, { reason: opts.reason || "return" });
     const clawback = await clawbackPaidOutCommissions(shopDb, code, {

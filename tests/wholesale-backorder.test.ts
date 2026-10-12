@@ -24,6 +24,7 @@ function fixtureDb(products: any[] = [], held = 0) {
     const list = rows[name] ||= [];
     const cursor: any = { project() { return this; }, limit() { return this; }, toArray: async () => list };
     return {
+      createIndex: async () => "fixture_index",
       find: () => cursor,
       findOne: async (query: any) => name === "aloha_products" ? list.find(p => query.$or.some((clause: any) => clause.ma === p.ma)) || null : list.find(p => Object.entries(query).every(([k, v]) => p[k] === v)) || null,
       insertOne: async (doc: any) => { writes.push(name); doc._id = `${name}-${list.length}`; list.push(doc); return { insertedId: doc._id }; },

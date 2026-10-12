@@ -53,3 +53,28 @@ test("failed refresh hides stale revenue and conversion, offers retry and preser
   assert.equal(nodes(tree).filter(n => n.props.role === "alert").length, 1);
   assert.ok(nodes(tree).some(n => n.type === "button" && n.props.children === "Thử lại"));
 });
+
+function conversionTree(visits: number) {
+  const exports: any = {}, jsx = (type: any, props: any) => ({ type, props });
+  const source = ts.transpileModule(readFileSync("frontend/components/admin/ConversionOverview.tsx", "utf8"), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
+  }).outputText;
+  vm.runInNewContext(source, { exports, Date, Intl, require(name: string) {
+    if (name === "react/jsx-runtime") return { jsx, jsxs: jsx };
+    if (name === "@/lib/businessOverview") return business;
+    throw new Error(name);
+  } });
+  const funnel = { visits, cart: 1, checkout: 1, placed: 1, transitions: { cart: 1, checkout: 1, placed: 1 }, trackingSince: "2026-10-12T08:00:00Z" };
+  return exports.ConversionOverview({ data: { ...funnel, previous: funnel }, compare: false });
+}
+test("conversion shows total-traffic rates, continuation counts, small samples and collapsible help", () => {
+  const tree = conversionTree(2), all = nodes(tree);
+  const text = (node: any): string => node == null ? "" : typeof node !== "object" ? String(node) : [].concat(node.props?.children || []).map(text).join("");
+  assert.match(text(tree), /Dữ liệu còn ít: 2 phiên/);
+  assert.match(text(tree), /50% trên tổng truy cập/);
+  assert.match(text(tree), /Tiếp tục 50%/);
+  assert.match(text(tree), /Chưa tiếp tục: 1 phiên/);
+  assert.equal(all.filter(n => n.type === "li").length, 4);
+  assert.equal(all.find(n => n.type === "details").props.open, undefined);
+  assert.doesNotMatch(text(conversionTree(30)), /Dữ liệu còn ít/);
+});

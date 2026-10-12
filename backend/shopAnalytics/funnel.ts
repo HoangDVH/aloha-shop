@@ -28,6 +28,11 @@ export async function recordFunnelEvent(db: Db, input: z.infer<typeof funnelInpu
     if (error?.code !== 11000) throw error;
     if (input.event !== "visit") await db.collection(FUNNEL).updateOne({ sessionId: input.sessionId, visitorId: input.visitorId }, { $min: { [`${input.event}At`]: now } });
   }
+  // A saved cart can open checkout before a later add-to-cart. Keep the first
+  // checkout after an actual cart event, rather than losing that later valid path.
+  if (input.event === "checkout") await db.collection(FUNNEL).updateOne({
+    sessionId: input.sessionId, visitorId: input.visitorId, cartAt: { $lte: now },
+  }, { $min: { orderedCheckoutAt: now } });
 }
 /** Persist backend-confirmed placement; retries keep the first timestamp and original session. */
 export async function confirmFunnelOrder(db: Db, order: Record<string, any>, now = new Date()) {
@@ -44,14 +49,17 @@ export async function funnelStats(db: Db, range: NonNullable<ReturnType<typeof v
   const [rows, first] = await Promise.all([
     db.collection(FUNNEL).aggregate([
       { $match: { startedAt: { $gte: range.start, $lt: range.end } } },
-      { $lookup: { from: "aloha_shop_orders", let: { session: "$sessionId", visitor: "$visitorId" }, pipeline: [
-        { $match: { $expr: { $and: [{ $eq: ["$analyticsSessionId", "$$session"] }, { $eq: ["$analyticsVisitorId", "$$visitor"] }] },
+      { $set: { effectiveCheckoutAt: { $ifNull: ["$orderedCheckoutAt", "$checkoutAt"] },
+        hasCart: { $and: [{ $gte: ["$cartAt", "$startedAt"] }, { $lt: ["$cartAt", range.end] }] } } },
+      { $set: { hasCheckout: { $and: ["$hasCart", { $gte: ["$effectiveCheckoutAt", "$cartAt"] },
+        { $lt: ["$effectiveCheckoutAt", range.end] }] } } },
+      { $lookup: { from: "aloha_shop_orders", let: { session: "$sessionId", visitor: "$visitorId", checkout: "$effectiveCheckoutAt", eligible: "$hasCheckout" }, pipeline: [
+        { $match: { $expr: { $and: ["$$eligible", { $eq: ["$analyticsSessionId", "$$session"] }, { $eq: ["$analyticsVisitorId", "$$visitor"] },
+          { $gte: ["$analyticsPlacedAt", "$$checkout"] }] },
           analyticsPlacedAt: { $gte: range.start, $lt: range.end }, isTest: { $ne: true } } },
         { $limit: 1 }, { $project: { _id: 1 } },
       ], as: "placed" } },
-      { $set: { hasCart: { $and: [{ $gte: ["$cartAt", range.start] }, { $lt: ["$cartAt", range.end] }] },
-        hasCheckout: { $and: [{ $gte: ["$checkoutAt", range.start] }, { $lt: ["$checkoutAt", range.end] }] },
-        hasPlaced: { $gt: [{ $size: "$placed" }, 0] } } },
+      { $set: { hasPlaced: { $gt: [{ $size: "$placed" }, 0] } } },
       { $group: { _id: null, visits: { $sum: 1 }, cart: { $sum: { $cond: ["$hasCart", 1, 0] } },
         checkout: { $sum: { $cond: ["$hasCheckout", 1, 0] } }, placed: { $sum: { $cond: ["$hasPlaced", 1, 0] } },
         cartToCheckout: { $sum: { $cond: [{ $and: ["$hasCart", "$hasCheckout"] }, 1, 0] } },

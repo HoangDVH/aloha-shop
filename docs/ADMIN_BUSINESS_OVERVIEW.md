@@ -16,7 +16,7 @@ Thời điểm bán lấy `deliveredAt`, đơn cũ thiếu trường này dùng 
 
 Backend tạo đơn lưu định danh analytics tùy chọn đã được validate. Sau khi luồng tạo đơn thành công, backend lưu `analyticsPlacedAt`; replay idempotency dùng phiên gốc và không đổi thời điểm đầu tiên. Đơn test bị loại. COD mới đặt vẫn là chuyển đổi dù chưa giao; đơn bị khách hủy sau đó vẫn phản ánh việc đặt thành công, không phải doanh thu.
 
-Phễu đếm phiên bắt đầu và đạt bước trong kỳ chọn. Phiên bắt đầu ngoài kỳ bị loại để giữ cùng tập mẫu cho mọi bước. Một phiên có nhiều đơn tính một lần. Mỗi bước là tập phiên riêng: giỏ lưu sẵn có thể bỏ qua bước thêm giỏ. Tỷ lệ giữa bước dùng giao của hai tập phiên, không lấy số bước sau chia thẳng bước trước. Tỷ lệ chung = phiên có ít nhất một đơn được backend xác nhận / tổng phiên.
+Phễu đếm phiên bắt đầu và đạt bước trong kỳ chọn. Phiên bắt đầu ngoài kỳ bị loại để giữ cùng tập mẫu cho mọi bước. Một phiên có nhiều đơn tính một lần. Các bước phải diễn ra đúng thứ tự trong cùng phiên: startedAt <= cartAt <= checkout <= analyticsPlacedAt. orderedCheckoutAt lưu checkout đầu tiên sau cartAt, kể cả đã mở checkout trước đó. Dữ liệu cũ dùng checkoutAt khi thứ tự hợp lệ. Giỏ lưu sẵn không đi tiếp nếu chưa có bước thêm giỏ trong phiên. Tỷ lệ bước = số phiên bước sau / số phiên bước trước. Tỷ lệ chung = phiên hoàn tất đủ 4 bước / tổng phiên.
 
 Không hồi dựng hành động giỏ/checkout trước khi bật tracking. `trackingSince` là phiên đầu tiên ghi nhận; so sánh chuyển đổi ẩn khi kỳ trước chưa có tracking đầy đủ. Người chặn storage/tracking không được đo. Bot nhận diện được và trang admin bị loại, nhưng quản trị viên mua/xem storefront bình thường vẫn là phiên storefront.
 
@@ -25,3 +25,5 @@ Không hồi dựng hành động giỏ/checkout trước khi bật tracking. `t
 `npm run typecheck:api`, `npm run typecheck:web`; `node --import tsx --test tests/business-overview.test.ts tests/business-overview-ui.test.ts tests/funnel-tracking.test.ts`. Đặt `SHOP_ANALYTICS_TEST_MONGO_URI` để chạy integration trong database tạm có tiền tố `aloha_overview_test_`, tự dọn sau test. Không sửa dữ liệu đơn thật.
 
 Triển khai cả frontend và backend cùng phiên bản để bắt đầu ghi nhận phễu. Không yêu cầu backfill hay đồng bộ doanh số toàn KiotViet.
+
+Giao diện hiển thị tỷ lệ trên tổng truy cập, tiếp tục/chưa tiếp tục ở mỗi bước. Chưa tiếp tục bao gồm khách còn đang mua. Dưới 30 phiên có nhãn dữ liệu ít (ngưỡng trình bày, không phải kiểm định thống kê). Cách tính nằm trong mục ⓘ có thể mở bằng chuột hoặc bàn phím.

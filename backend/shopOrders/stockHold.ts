@@ -4,6 +4,7 @@
  */
 import type { Db } from "mongodb";
 import type { ShopOrderDetail } from "./models.js";
+import { resolveStockHoldRefs } from "./stockHoldRefs.js";
 
 export const SHOP_STOCK_HOLDS = "aloha_shop_stock_holds";
 
@@ -16,6 +17,7 @@ export async function ensureShopStockHoldIndexes(shopDb: Db): Promise<void> {
   const col = shopDb.collection(SHOP_STOCK_HOLDS);
   await Promise.all([
     col.createIndex({ orderId: 1, status: 1 }),
+    col.createIndex({ orderCode: 1, status: 1 }),
     col.createIndex({ ma: 1, status: 1 }),
     col.createIndex({ expiresAt: 1 }, { sparse: true }),
   ]);
@@ -44,9 +46,10 @@ export async function sumHeldQtyByMa(
     ],
   };
   if (ex) {
+    const refs = await resolveStockHoldRefs(shopDb, ex);
     match.$and = [
-      { orderId: { $ne: ex } },
-      { orderCode: { $ne: ex } },
+      { orderId: { $nin: refs } },
+      { orderCode: { $nin: refs } },
     ];
   }
   const rows = await shopDb
@@ -108,6 +111,7 @@ export async function createShopStockHolds(opts: {
   expiresAt?: Date | null;
 }): Promise<void> {
   if (!shopStockHoldEnabled()) return;
+  await ensureShopStockHoldIndexes(opts.shopDb);
   const now = new Date();
   const docs = opts.details
     .filter((d) => !d.preOrder)
@@ -138,11 +142,12 @@ export async function releaseShopStockHolds(
   if (!shopStockHoldEnabled()) return 0;
   const id = String(orderIdOrCode || "").trim();
   if (!id) return 0;
+  const refs = await resolveStockHoldRefs(shopDb, id);
   const now = new Date();
   const r = await shopDb.collection(SHOP_STOCK_HOLDS).updateMany(
     {
       status: "held",
-      $or: [{ orderId: id }, { orderCode: id }],
+      $or: [{ orderId: { $in: refs } }, { orderCode: { $in: refs } }],
     },
     { $set: { status: "released", updatedAt: now, releasedAt: now } }
   );
@@ -156,11 +161,12 @@ export async function consumeShopStockHolds(
   if (!shopStockHoldEnabled()) return 0;
   const id = String(orderIdOrCode || "").trim();
   if (!id) return 0;
+  const refs = await resolveStockHoldRefs(shopDb, id);
   const now = new Date();
   const r = await shopDb.collection(SHOP_STOCK_HOLDS).updateMany(
     {
       status: "held",
-      $or: [{ orderId: id }, { orderCode: id }],
+      $or: [{ orderId: { $in: refs } }, { orderCode: { $in: refs } }],
     },
     { $set: { status: "consumed", updatedAt: now, consumedAt: now } }
   );
@@ -173,13 +179,14 @@ export async function releaseHoldsForExpiredOrders(
   orderCodes: string[]
 ): Promise<void> {
   if (!shopStockHoldEnabled() || !orderCodes.length) return;
+  const refs = [...new Set((await Promise.all(orderCodes.map(code => resolveStockHoldRefs(shopDb, code)))).flat())];
   const now = new Date();
   await shopDb.collection(SHOP_STOCK_HOLDS).updateMany(
     {
       status: "held",
       $or: [
-        { orderCode: { $in: orderCodes } },
-        { orderId: { $in: orderCodes } },
+        { orderCode: { $in: refs } },
+        { orderId: { $in: refs } },
       ],
     },
     { $set: { status: "released", updatedAt: now, releasedAt: now } }
@@ -195,11 +202,12 @@ export async function extendShopStockHoldExpiry(
   if (!shopStockHoldEnabled()) return 0;
   const id = String(orderIdOrCode || "").trim();
   if (!id) return 0;
+  const refs = await resolveStockHoldRefs(shopDb, id);
   const now = new Date();
   const r = await shopDb.collection(SHOP_STOCK_HOLDS).updateMany(
     {
       status: "held",
-      $or: [{ orderId: id }, { orderCode: id }],
+      $or: [{ orderId: { $in: refs } }, { orderCode: { $in: refs } }],
     },
     { $set: { expiresAt: expiresAt || null, updatedAt: now } }
   );

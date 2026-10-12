@@ -69,7 +69,7 @@ export async function holdOrderStock(ctx: KvPushContext): Promise<void> {
     await ensureShopStockHoldIndexes(ctx.shopDb);
     await createShopStockHolds({
       shopDb: ctx.shopDb,
-      orderId: ctx.code,
+      orderId: String(ctx.mongoId),
       orderCode: ctx.code,
       details: holdDetails,
       expiresAt: ctx.expiresAt || null,
@@ -126,7 +126,7 @@ async function pushCodOrReviewOrder(ctx: KvPushContext, code: string): Promise<K
     };
     let nextCode = code;
     if (kvOrderCode && kvOrderCode !== code) {
-      patch.legacyCodes = [code];
+      patch.legacyCodes = [...new Set([...(Array.isArray(ctx.doc.legacyCodes) ? ctx.doc.legacyCodes : []), code])];
       patch.code = kvOrderCode;
       patch.id = kvOrderCode;
       await renameRedemptionOrderCode(ctx.shopDb, code, kvOrderCode);

@@ -176,7 +176,7 @@ export async function createBackorderRequest(db: Db, input: {
   };
   const inserted = await db.collection(SHOP_ORDERS).insertOne(doc);
   try {
-    await createShopStockHolds({ shopDb: db, orderId: code, orderCode: code,
+    await createShopStockHolds({ shopDb: db, orderId: String(inserted.insertedId), orderCode: code,
       details: details.filter(d => (d.availableQty || 0) > 0).map(d => ({ ...d, preOrder: false, quantity: d.availableQty! })),
       expiresAt: holdExpiresAt });
   } catch (error) {

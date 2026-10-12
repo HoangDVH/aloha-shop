@@ -69,7 +69,7 @@ test("public events cannot spoof placements; HTTP routes reject bots/origins and
     assert.equal(dbCalls, 0);
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
 });
-test("Mongo: concurrent stage events, server placement, test exclusion, independent stages and period boundaries", { skip: !process.env.SHOP_ANALYTICS_TEST_MONGO_URI }, async () => {
+test("Mongo: concurrent stage events, server placement, test exclusion, ordered stages and period boundaries", { skip: !process.env.SHOP_ANALYTICS_TEST_MONGO_URI }, async () => {
   const client = new MongoClient(process.env.SHOP_ANALYTICS_TEST_MONGO_URI!, { serverSelectionTimeoutMS: 5000 });
   await client.connect();
   const db = client.db(`aloha_overview_test_${randomUUID().replaceAll("-", "")}`);
@@ -92,7 +92,7 @@ test("Mongo: concurrent stage events, server placement, test exclusion, independ
     await confirmFunnelOrder(db, { ...placed, code: "O2", isTest: true }, now);
     assert.equal((await db.collection("aloha_shop_orders").findOne({ code: "O2" }))!.analyticsPlacedAt, undefined);
     const stats = await funnelStats(db, range);
-    assert.equal(stats.visits, 2); assert.equal(stats.cart, 1); assert.equal(stats.checkout, 2); assert.equal(stats.placed, 1);
+    assert.equal(stats.visits, 2); assert.equal(stats.cart, 1); assert.equal(stats.checkout, 1); assert.equal(stats.placed, 1);
     assert.deepEqual(stats.transitions, { cart: 1, checkout: 1, placed: 1 });
     const sales = await businessStats(db, range, "hour", new Date("2026-10-12T04:00:00Z"));
     assert.equal(sales.summary.orders, 1); assert.equal(sales.summary.revenue, 1000); assert.equal(sales.previous.orders, 1);
@@ -118,5 +118,22 @@ test("Mongo: concurrent stage events, server placement, test exclusion, independ
       const invalidGroup = await fetch(url.replace("group=hour", "group=invalid"), { headers: { Authorization: `Bearer ${token}` } });
       assert.equal(invalidGroup.status, 400);
     } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
+    // Checkout before cart cannot progress the funnel, even with a successful order.
+    const lateCart = new Date(now.getTime() + 60000);
+    await recordFunnelEvent(db, { ...savedCart, event: "cart" }, lateCart);
+    await db.collection("aloha_shop_orders").insertOne({ code: "early", analyticsSessionId: savedCart.sessionId,
+      analyticsVisitorId: savedCart.visitorId, analyticsPlacedAt: new Date(now.getTime() + 120000) });
+    assert.equal((await funnelStats(db, range)).checkout, 1);
+    assert.equal((await funnelStats(db, range)).placed, 1);
+    // A later checkout after adding to cart is valid; an earlier order still is not.
+    await recordFunnelEvent(db, { ...savedCart, event: "checkout" }, new Date(now.getTime() + 180000));
+    assert.equal((await funnelStats(db, range)).checkout, 2);
+    assert.equal((await funnelStats(db, range)).placed, 1);
+    // Lookup must find a later valid order instead of limiting to the earlier one.
+    await db.collection("aloha_shop_orders").insertOne({ code: "later", analyticsSessionId: savedCart.sessionId,
+      analyticsVisitorId: savedCart.visitorId, analyticsPlacedAt: new Date(now.getTime() + 240000) });
+    const ordered = await funnelStats(db, range);
+    assert.equal(ordered.placed, 2);
+    assert.ok(ordered.visits >= ordered.cart && ordered.cart >= ordered.checkout && ordered.checkout >= ordered.placed);
   } finally { await db.dropDatabase(); await client.close(); }
 });

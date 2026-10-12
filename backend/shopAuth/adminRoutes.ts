@@ -21,6 +21,7 @@ import {
 import type { GetShopDb } from "./routes.js";
 import { syncBus } from "../syncBus.js";
 import { directoryFilter } from "./directoryFilters.js";
+import { registerAccountPermissionRoutes } from "./accountPermissions.js";
 
 async function ensureIdx(db: Db) {
   await ensureShopAuthIndexes(db);
@@ -32,6 +33,7 @@ export function registerShopAccountsAdminRoutes(
   getShopDb: GetShopDb
 ) {
   const gate = [requireAuth(getDb), requireActive, requireManager];
+  registerAccountPermissionRoutes(app, getDb, getShopDb);
 
   app.get("/api/shop/admin/accounts/stats", ...gate, async (_req: AuthRequest, res: Response) => {
     try {
