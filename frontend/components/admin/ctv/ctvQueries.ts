@@ -148,21 +148,20 @@ export function useLockBill() {
 export function useMarkBillPaid() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload: string | { period: string; ctvCode?: string }) => {
-      const period = typeof payload === "string" ? payload : payload.period;
-      const ctvCode =
-        typeof payload === "string" ? undefined : payload.ctvCode;
+    mutationFn: (payload: { period: string; ctvCode?: string; expectedRevision: number; expectedAmount: number }) => {
+      const { period, ctvCode, expectedRevision, expectedAmount } = payload;
       return adminFetch(
         `/api/shop/admin/ctv/bills/${encodeURIComponent(period)}/mark-paid`,
         {
           method: "POST",
-          body: ctvCode ? JSON.stringify({ ctvCode }) : undefined,
+          body: JSON.stringify({ ctvCode, expectedRevision, expectedAmount }),
         }
       );
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["admin", "ctv"] });
     },
+    onError: () => { void qc.invalidateQueries({ queryKey: ["admin", "ctv"] }); },
   });
 }
 

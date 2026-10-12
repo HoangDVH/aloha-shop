@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
+import { orderWholesaleHomeProducts } from "../frontend/lib/homeWholesaleOrder.js";
 import { arrangeByAbsolutePin } from "../backend/shopCatalog/pinArrange.js";
 import { WEB_BADGE_VALUES } from "../backend/shopCatalog/webBadge.js";
 
@@ -24,7 +25,7 @@ const code = ts.transpileModule(`(async () => ${branch!.getText(ast)})()`, {
   compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS },
 }).outputText;
 
-type Product = { ma: string; ten: string; webBadge: string; webPin: number; gia: number; ton: number; image: boolean };
+type Product = { ma: string; ten: string; webBadge: string; webPin: number; gia: number; ton: number; image: boolean; nhomPath?: string };
 function products(badge: string): Product[] {
   return Array.from({ length: 8 }, (_, i) => ({
     ma: `P${i}`, ten: `Product ${i}`, webBadge: badge,
@@ -32,7 +33,7 @@ function products(badge: string): Product[] {
   }));
 }
 async function request(docs: Product[], badge: string, options: {
-  page?: number; limit?: number; maxTon?: number; inStock?: boolean; rank?: Map<string, number>;
+  page?: number; limit?: number; maxTon?: number; inStock?: boolean; rank?: Map<string, number>; wholesale?: boolean;
 } = {}) {
   const { page = 1, limit = 20, maxTon = 0, inStock = false } = options;
   const rank = options.rank ?? new Map(docs.slice(0, 5).map((p, i) => [p.ma, 100 - i]));
@@ -45,16 +46,30 @@ async function request(docs: Product[], badge: string, options: {
     },
   };
   const result = await vm.runInNewContext(code, {
+    homeAudience: "common",
+    homeOrder: options.wholesale ? orderWholesaleHomeProducts : (items: Product[]) => items,
     col, db: {}, filter, and: [filter], projection: {}, rank,
     rankedMas: [...rank.keys()], badge, maxTon, inStock,
     minPrice: 0, maxPrice: 0, page, limit, skip: (page - 1) * limit,
     normalizeMa: (ma: string) => ma.trim().toUpperCase(), arrangeByAbsolutePin,
-    mapDocsToPublicWithPriceBooks: async (_db: unknown, rows: Product[]) => ({ docs: rows, items: rows }),
+    mapHomeDocs: async (_db: unknown, rows: Product[]) => ({ docs: rows, items: rows }),
     dedupeListItems: (_rows: Product[], items: Product[]) => items,
     filterRequirePublicImage: (items: Product[]) => items.filter(p => p.image),
   });
   return JSON.parse(JSON.stringify(result));
 }
+
+test("wholesale home revenue branch orders the full eligible list before pagination", async () => {
+  const docs = products("noi_bat");
+  docs.forEach((p, i) => { p.nhomPath = i < 3 ? "CÂY CẢNH ĐỦ LOẠI >> CÂY THÀNH PHẨM SALE" : i < 5 ? "CÂY CẢNH ĐỦ LOẠI >> CÂY PHONG THỦY" : "CHẬU TRỒNG CÂY >> CHẬU BÁT TRÀNG"; });
+  const first = await request(docs, "noi_bat", { wholesale: true, limit: 3 });
+  assert.deepEqual(first.items.map((p: Product) => p.ma), ["P7", "P5", "P3"]);
+  const pages = await Promise.all([1, 2, 3].map(page => request(docs, "noi_bat", { wholesale: true, page, limit: 3 })));
+  const full = await request(docs, "noi_bat", { wholesale: true });
+  assert.deepEqual(pages.flatMap(p => p.items.map((x: Product) => x.ma)), full.items.map((x: Product) => x.ma));
+  assert.deepEqual(full.items.slice(-3).map((p: Product) => p.ma), ["P0", "P1", "P2"]);
+  assert.notDeepEqual(first.items, (await request(docs, "noi_bat", { limit: 3 })).items);
+});
 
 for (const badge of WEB_BADGE_VALUES) {
   test(`${badge}: an unranked product pinned at 4 precedes ranked products`, async () => {

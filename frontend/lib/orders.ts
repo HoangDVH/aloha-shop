@@ -195,6 +195,7 @@ export async function deleteAddress(id: string) {
 }
 
 export type PlaceOrderInput = {
+  analytics?: { visitorId: string; sessionId: string };
   backorderAccepted?: boolean;
   policyAccepted?: boolean;
   addressId?: string;

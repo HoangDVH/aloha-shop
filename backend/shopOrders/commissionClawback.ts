@@ -5,6 +5,7 @@ import type { Db } from "mongodb";
 import { normalizeCtvCode, SHOP_ACCOUNTS } from "../shopAuth/models.js";
 import { SHOP_COMMISSIONS } from "./commissionModels.js";
 import { SHOP_ORDERS } from "./models.js";
+import { runCommissionFinance } from "./billSettlement.js";
 
 export const SHOP_CTV_LEDGER = "aloha_shop_ctv_ledger";
 export const SHOP_ACCOUNTS_CTV_DEBT_FIELD = "ctvBalanceDebt";
@@ -36,6 +37,7 @@ export async function clawbackPaidOutCommissions(
   const code = String(orderCode || "").trim();
   if (!code) return { clawed: 0, amount: 0 };
   await ensureCtvLedgerIndexes(shopDb);
+  return runCommissionFinance(shopDb, async () => {
 
   const filter: Record<string, unknown> = {
     orderCode: code,
@@ -56,15 +58,16 @@ export async function clawbackPaidOutCommissions(
     const amt = Math.max(0, Math.round(Number((row as any).amount) || 0));
     if (!ctv || !ma || amt <= 0) continue;
 
-    const existing = await shopDb.collection(SHOP_CTV_LEDGER).findOne({
+    const entryFilter = {
       type: "clawback",
       orderCode: code,
       ma,
       ctvCode: ctv,
-    });
-    if (existing) continue;
-
-    await shopDb.collection(SHOP_CTV_LEDGER).insertOne({
+    };
+    let existing = await shopDb.collection(SHOP_CTV_LEDGER).findOne(entryFilter);
+    if (existing && existing.debtApplied !== false) continue;
+    if (!existing) {
+    const inserted = await shopDb.collection(SHOP_CTV_LEDGER).insertOne({
       type: "clawback",
       orderCode: code,
       ma,
@@ -75,9 +78,21 @@ export async function clawbackPaidOutCommissions(
       source,
       commissionId: (row as any)._id || null,
       recovered: false,
+      debtApplied: false,
+      period: row.billingPeriod || null,
       createdAt: now,
       updatedAt: now,
     });
+    existing = await shopDb.collection(SHOP_CTV_LEDGER).findOne({ _id: inserted.insertedId });
+    }
+    const entryId = String(existing!._id);
+    const account = await shopDb.collection(SHOP_ACCOUNTS).findOne({ ctvCode: ctv });
+    if (!account) throw new Error("ctv_account_missing");
+    await shopDb.collection(SHOP_ACCOUNTS).updateOne(
+      { _id: account._id, ctvDebtEntries: { $ne: entryId } },
+      { $inc: { [SHOP_ACCOUNTS_CTV_DEBT_FIELD]: amt }, $addToSet: { ctvDebtEntries: entryId }, $set: { updatedAt: now } },
+    );
+    await shopDb.collection(SHOP_CTV_LEDGER).updateOne({ _id: existing!._id }, { $set: { debtApplied: true, updatedAt: now } });
 
     await shopDb.collection(SHOP_COMMISSIONS).updateOne(
       { _id: (row as any)._id },
@@ -91,19 +106,6 @@ export async function clawbackPaidOutCommissions(
         },
       }
     );
-
-    // Cộng nợ CTV trên account (nếu có collection accounts)
-    try {
-      await shopDb.collection(SHOP_ACCOUNTS).updateOne(
-        { ctvCode: ctv },
-        {
-          $inc: { [SHOP_ACCOUNTS_CTV_DEBT_FIELD]: amt },
-          $set: { updatedAt: now },
-        }
-      );
-    } catch {
-      /* ignore nếu schema khác */
-    }
 
     clawed += 1;
     amount += amt;
@@ -123,4 +125,5 @@ export async function clawbackPaidOutCommissions(
   }
 
   return { clawed, amount };
+  });
 }

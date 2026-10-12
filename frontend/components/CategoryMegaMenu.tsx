@@ -13,6 +13,8 @@ import {
   orderL2Nodes,
   toTitleCaseVi,
 } from "@/components/CategoryNavMenu";
+import { useShopAuth } from "@/components/ShopAuthProvider";
+import { isWholesaleHomeViewer } from "@/lib/homeWholesaleOrder";
 
 /** 5 cột × 3 hàng */
 const L3_COLS = 5;
@@ -23,10 +25,23 @@ function nodeSubs(node: ShopCategoryNavNode): ShopCategoryNavNode[] {
   return node.subs || [];
 }
 
-/** Thứ tự L1 mega menu — Phụ kiện ngay sau Bình hoa. */
+/** Thứ tự L1 mega menu — Cây cảnh đầu, Phụ kiện ngay sau Bình hoa. */
 const MEGA_L1_ORDER = [
   "CÂY CẢNH ĐỦ LOẠI",
   "CHẬU TRỒNG CÂY",
+  "BÌNH CẮM HOA",
+  "PHỤ KIỆN TRANG TRÍ",
+  "ĐẤT ĐÁ GIÁ THỂ DINH DƯỠNG TRỒNG CÂY",
+  "HẠT GIỐNG",
+  "ĐĨA LÓT CHẬU",
+  "DỤNG CỤ TRỒNG CÂY",
+  "TÚI VÀ HỘP ĐỂ SẢN PHẨM",
+] as const;
+
+/** Thứ tự L1 cho khách sỉ (HCM & Tỉnh): Chậu cây lên đầu tiên */
+const MEGA_L1_ORDER_WHOLESALE = [
+  "CHẬU TRỒNG CÂY",
+  "CÂY CẢNH ĐỦ LOẠI",
   "BÌNH CẮM HOA",
   "PHỤ KIỆN TRANG TRÍ",
   "ĐẤT ĐÁ GIÁ THỂ DINH DƯỠNG TRỒNG CÂY",
@@ -148,12 +163,18 @@ export function CategoryMegaMenu({
   tree: ShopCategoryNavNode[];
   onNavigate?: () => void;
 }) {
+  const { user } = useShopAuth();
+  const isWholesale = isWholesaleHomeViewer(user);
+
   const roots = useMemo(() => {
     const visible = tree.filter(
       (n) => !nameMatchesAny(n.name, ["KHÁC", "VẬT TƯ VÀ THIẾT BỊ", "QUÀ TẶNG CÂY"])
     );
-    return orderNodesByPreferredNames(visible, MEGA_L1_ORDER);
-  }, [tree]);
+    return orderNodesByPreferredNames(
+      visible,
+      isWholesale ? MEGA_L1_ORDER_WHOLESALE : MEGA_L1_ORDER
+    );
+  }, [tree, isWholesale]);
   const [open, setOpen] = useState(false);
   const [activeId, setActiveId] = useState<number | null>(null);
   const [availableHeight, setAvailableHeight] = useState(0);
@@ -161,6 +182,10 @@ export function CategoryMegaMenu({
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const active = roots.find((r) => r.id === activeId) || roots[0] || null;
+
+  useEffect(() => {
+    if (roots[0]) setActiveId(roots[0].id);
+  }, [isWholesale]);
 
   useEffect(() => {
     if (!open) return;
@@ -232,8 +257,8 @@ export function CategoryMegaMenu({
 
   const l2 = useMemo(() => {
     if (!active) return [];
-    return orderL2Nodes(active.name, nodeSubs(active));
-  }, [active]);
+    return orderL2Nodes(active.name, nodeSubs(active), isWholesale);
+  }, [active, isWholesale]);
 
   if (!roots.length) return null;
 

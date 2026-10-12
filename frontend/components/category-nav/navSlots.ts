@@ -79,10 +79,26 @@ export function buildNavSlots(tree: ShopCategoryNavNode[]): NavSlot[] {
   return slots;
 }
 
-export function orderMobileRoots(tree: ShopCategoryNavNode[]): ShopCategoryNavNode[] {
+export const MOBILE_ROOT_ORDER_WHOLESALE = [
+  "CHẬU TRỒNG CÂY",
+  "CÂY CẢNH ĐỦ LOẠI",
+  "BÌNH CẮM HOA",
+  "PHỤ KIỆN TRANG TRÍ",
+  "ĐẤT ĐÁ GIÁ THỂ DINH DƯỠNG TRỒNG CÂY",
+  "HẠT GIỐNG",
+  "ĐĨA LÓT CHẬU",
+  "DỤNG CỤ TRỒNG CÂY",
+  "TÚI VÀ HỘP ĐỂ SẢN PHẨM",
+] as const;
+
+export function orderMobileRoots(
+  tree: ShopCategoryNavNode[],
+  isWholesale: boolean = false
+): ShopCategoryNavNode[] {
   const used = new Set<number>();
   const ordered: ShopCategoryNavNode[] = [];
-  for (const name of MOBILE_ROOT_ORDER) {
+  const rootOrder = isWholesale ? MOBILE_ROOT_ORDER_WHOLESALE : MOBILE_ROOT_ORDER;
+  for (const name of rootOrder) {
     const hit = tree.find(
       (n) => !used.has(n.id) && nameMatchesAny(n.name, [name])
     );

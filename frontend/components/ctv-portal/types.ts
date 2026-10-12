@@ -18,6 +18,12 @@ export type BillRow = {
   billStatus: string;
   net: number;
   gross?: number;
+  adjustments?: number;
+  debtOffset?: number;
+  paidAmount?: number | null;
+  voidedAt?: string | null;
+  adjustmentEntries?: Array<{ id: string; orderCode: string; ma: string; amount: number; reason: string; at?: string | null }>;
+  postPaymentAdjustments?: Array<{ id: string; orderCode: string; ma: string; amount: number; reason: string; at?: string | null }>;
   orderCount: number;
   paidAt: string | null;
   lockedAt?: string | null;

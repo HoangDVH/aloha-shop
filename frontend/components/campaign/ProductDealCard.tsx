@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Loader2, Play, Truck } from "lucide-react";
+import { Gift, Loader2, Play, Truck } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { isPreOrderTon, stockMax } from "@/lib/cart";
@@ -15,7 +15,7 @@ import { formatCompactVnd } from "@/lib/voucherFormat";
 import { canPurchaseZeroPrice } from "@/lib/testBuyer";
 import { firstFileVideo } from "@/lib/campaign/productVideo";
 import { DealQuickAdd } from "./DealQuickAdd";
-import { DealGiftBox } from "./DealGiftBox";
+import { giftSummary } from "./DealGiftBox";
 import { DealCardVideo } from "./DealCardVideo";
 
 const RANK_STYLE = [
@@ -101,6 +101,7 @@ export function ProductDealCard({
   const purchaseBlocked = pricePending || zeroPriceBlocked || (preOrder && allowBackorder === false);
   const cartProduct: ShopProduct = { ...product, gia: displayGia, ton: displayTon, priceKind, allowBackorder };
   const videoSrc = firstFileVideo(product);
+  const gift = giftSummary(promo);
 
   const clearNavTimer = () => {
     if (navTimerRef.current) {
@@ -172,6 +173,23 @@ export function ProductDealCard({
           </span>
         ) : null}
 
+        {gift ? (
+          <span
+            className={`pointer-events-none absolute z-10 inline-flex items-center gap-1 rounded-md bg-gradient-to-r from-amber-500 to-amber-600 px-1.5 py-0.5 text-[10px] sm:text-[10.5px] font-bold text-white shadow-xs ${
+              rank ? "left-2 top-10" : "left-2 top-1.5"
+            }`}
+            title={gift.text}
+          >
+            <Gift size={11} className="stroke-[2.5] shrink-0" aria-hidden />
+            <span>Tặng quà</span>
+            {gift.value > 0 ? (
+              <span className="hidden sm:inline font-semibold opacity-90">
+                · {formatCompactVnd(gift.value).toUpperCase()}
+              </span>
+            ) : null}
+          </span>
+        ) : null}
+
         {discountPct > 0 ? (
           <span className="pointer-events-none absolute right-0 top-1.5 z-10 rounded-l-md bg-[#E53935] py-0.5 pl-2 pr-1.5 text-[10px] font-black text-white shadow-xs sm:text-[11px]">
             -{discountPct}%
@@ -229,8 +247,6 @@ export function ProductDealCard({
             </span>
           </div>
         ) : null}
-
-        <DealGiftBox promo={promo} />
       </div>
     </article>
   );

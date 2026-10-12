@@ -18,6 +18,7 @@ import { LoginSheet } from "@/components/campaign/LoginSheet";
 import { claimStateOf, type ClaimState } from "@/components/voucher/ClaimButton";
 import { ClaimSuccessModal } from "@/components/voucher/ClaimSuccessModal";
 import { openVoucherModal } from "@/lib/campaign/useVoucherModal";
+import { formatVnd } from "@/lib/api";
 
 const DAY_MS = 86_400_000;
 /** HSD chỉ nhắc khi sắp hết; "người đã lưu" chỉ hiện khi đủ đông để thành bằng chứng. */
@@ -218,12 +219,12 @@ function tikTokDiscountText(v: CampaignVoucherUI): string {
   if (v.discountType === "percentage") {
     return `Giảm ${pctText(v)}`;
   }
-  return `Giảm ${formatCompactVnd(v.discountValue).toUpperCase()}`;
+  return `Giảm ${formatVnd(v.discountValue)}`;
 }
 
 function tikTokMinOrderText(v: CampaignVoucherUI): string {
   if (v.minOrderThreshold && v.minOrderThreshold > 0) {
-    return `Đơn từ ${formatCompactVnd(v.minOrderThreshold).toUpperCase()}`;
+    return `Đơn từ ${formatVnd(v.minOrderThreshold)}`;
   }
   return "Đơn từ 0đ";
 }
@@ -419,7 +420,7 @@ function TikTokMobileVoucherStrip({
           return (
             <div
               key={v.id}
-              className="relative flex min-h-[74px] w-[275px] shrink-0 overflow-hidden rounded-xl bg-white border border-stone-200/90 shadow-2xs select-none"
+              className="relative flex min-h-[78px] w-[275px] shrink-0 overflow-hidden rounded-xl bg-white border border-stone-200/90 shadow-2xs select-none"
             >
               {/* Cuống vé bên trái - Tối ưu 54px chuẩn gọn TikTok/Shopee */}
               <div
@@ -466,28 +467,26 @@ function TikTokMobileVoucherStrip({
                   ) : null}
                 </div>
 
-                {/* HÀNG 2: MỨC GIẢM + ĐIỀU KIỆN (BÊN TRÁI) & NÚT HÀNH ĐỘNG (BÊN PHẢI) */}
+                {/* HÀNG 2: MỨC GIẢM (TRÊN) & ĐIỀU KIỆN (DƯỚI) - BÊN PHẢI LÀ NÚT HÀNH ĐỘNG */}
                 <div className="flex items-center justify-between gap-1.5 pt-0.5">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline gap-1">
-                      <span
-                        className={`text-[13px] font-black leading-tight shrink-0 ${
-                          isShip ? "text-[#008A7E]" : "text-[#FE2C55]"
-                        }`}
-                      >
-                        {discountText}
-                      </span>
-                      <span className="text-[9.5px] font-medium text-slate-500 truncate leading-tight">
-                        · {minOrderText}
-                      </span>
-                    </div>
+                  <div className="min-w-0 flex-1 flex flex-col justify-center">
+                    <span
+                      className={`text-[13px] font-black leading-tight truncate ${
+                        isShip ? "text-[#008A7E]" : "text-[#FE2C55]"
+                      }`}
+                    >
+                      {discountText}
+                    </span>
+                    <span className="text-[10px] font-medium text-slate-500 leading-tight truncate mt-0.5">
+                      {minOrderText}
+                    </span>
                   </div>
 
-                  <div className="shrink-0">
+                  <div className="shrink-0 self-center">
                     {isClaimed ? (
                       <Link
                         href={voucherUseHref(v.id)}
-                        className={`inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-[10.5px] font-bold border transition ${
+                        className={`inline-flex items-center justify-center rounded-full px-2.5 py-1 text-[10.5px] font-bold border transition ${
                           isShip
                             ? "border-[#00B5A5] text-[#00B5A5] bg-cyan-50/40"
                             : "border-[#FE2C55] text-[#FE2C55] bg-rose-50/40"
@@ -495,12 +494,22 @@ function TikTokMobileVoucherStrip({
                       >
                         Dùng
                       </Link>
+                    ) : isMystery && !v.mystery?.drawnPercent ? (
+                      <button
+                        type="button"
+                        disabled={claims.pendingId === v.id || state === "soldOut"}
+                        onClick={() => claims.claim(v.id)}
+                        className="inline-flex items-center justify-center gap-0.5 rounded-full px-2.5 py-1 text-[10.5px] font-bold text-white bg-gradient-to-r from-amber-500 to-rose-500 shadow-xs active:scale-95 disabled:opacity-50 transition cursor-pointer"
+                      >
+                        <Gift size={11} strokeWidth={2.5} />
+                        <span>{claims.pendingId === v.id ? "…" : "Bóc"}</span>
+                      </button>
                     ) : (
                       <button
                         type="button"
                         disabled={claims.pendingId === v.id || state === "soldOut"}
                         onClick={() => claims.claim(v.id)}
-                        className={`inline-flex items-center justify-center rounded-full px-3 py-0.5 text-[10.5px] font-bold text-white shadow-xs active:scale-95 disabled:opacity-50 transition cursor-pointer ${
+                        className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-[10.5px] font-bold text-white shadow-xs active:scale-95 disabled:opacity-50 transition cursor-pointer ${
                           isShip ? "bg-[#00B5A5] hover:bg-[#009E90]" : "bg-[#FE2C55] hover:bg-[#E01E43]"
                         }`}
                       >
@@ -724,7 +733,7 @@ export function DealsVoucherStrip({
             return (
               <li
                 key={v.id}
-                className={`relative flex min-h-[76px] w-[285px] shrink-0 snap-start overflow-hidden rounded-xl sm:rounded-2xl bg-white border border-stone-200/90 shadow-2xs select-none transition-all duration-200 hover:shadow-md ${
+                className={`relative flex min-h-[80px] w-[285px] shrink-0 snap-start overflow-hidden rounded-xl sm:rounded-2xl bg-white border border-stone-200/90 shadow-2xs select-none transition-all duration-200 hover:shadow-md ${
                   dim ? "opacity-60" : ""
                 } ${focused ? "aloha-focus-pulse" : ""} ${justSaved.has(v.id) ? "aloha-voucher-shine" : ""}`}
               >
@@ -773,24 +782,22 @@ export function DealsVoucherStrip({
                     ) : null}
                   </div>
 
-                  {/* HÀNG 2: MỨC GIẢM + ĐIỀU KIỆN (BÊN TRÁI) & NÚT HÀNH ĐỘNG (BÊN PHẢI) */}
+                  {/* HÀNG 2: MỨC GIẢM (TRÊN) & ĐIỀU KIỆN (DƯỚI) - BÊN PHẢI LÀ NÚT HÀNH ĐỘNG */}
                   <div className="flex items-center justify-between gap-1.5 pt-0.5">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline gap-1">
-                        <span
-                          className={`text-[13.5px] sm:text-[15px] font-black leading-tight shrink-0 ${
-                            isShip ? "text-[#008A7E]" : "text-[#FE2C55]"
-                          }`}
-                        >
-                          {discountText}
-                        </span>
-                        <span className="text-[10px] sm:text-[11px] font-medium text-slate-500 truncate leading-tight">
-                          · {minOrderText}
-                        </span>
-                      </div>
+                    <div className="min-w-0 flex-1 flex flex-col justify-center">
+                      <span
+                        className={`text-[13.5px] sm:text-[14.5px] font-black leading-tight truncate ${
+                          isShip ? "text-[#008A7E]" : "text-[#FE2C55]"
+                        }`}
+                      >
+                        {discountText}
+                      </span>
+                      <span className="text-[10px] sm:text-[11px] font-medium text-slate-500 leading-tight truncate mt-0.5">
+                        {minOrderText}
+                      </span>
                     </div>
 
-                    <div className="shrink-0">
+                    <div className="shrink-0 self-center">
                       {isClaimed ? (
                         <Link
                           href={voucherUseHref(v.id)}

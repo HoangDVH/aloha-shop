@@ -54,6 +54,7 @@ export function KyThang({ onDone }: { onDone: () => void }) {
         </select>
         <button
           type="button"
+          disabled={Boolean(bill && ["locked", "paid", "cancelled"].includes(bill.status))}
           className="rounded-lg bg-emerald-700 px-3 py-2 text-sm font-bold text-white"
           onClick={async () => {
             const ok = window.confirm(`Chốt kỳ ${period}? Không sửa lung tung sau khi chốt.`);
@@ -84,7 +85,7 @@ export function KyThang({ onDone }: { onDone: () => void }) {
               try {
                 await api(`/api/shop/admin/ctv/bills/${encodeURIComponent(period)}/mark-paid`, {
                   method: "POST",
-                  body: JSON.stringify({}),
+                  body: JSON.stringify({ expectedRevision: Number(bill.revision || 0), expectedAmount: (bill.ctvLines || []).filter((l: any) => !l.paidAt && !l.voidedAt).reduce((sum: number, l: any) => sum + Number(l.net || 0), 0) }),
                 });
                 toast.success("Đã đánh dấu chi");
                 onDone();
@@ -124,7 +125,7 @@ export function KyThang({ onDone }: { onDone: () => void }) {
                   <b>{l.ctvCode}</b> · {l.orderCount} đơn · {formatVnd(l.net)}
                   {l.paidAt ? " · đã chi" : ""}
                 </span>
-                {bill.status === "locked" && !l.paidAt ? (
+                {bill.status === "locked" && !l.paidAt && !l.voidedAt ? (
                   <button
                     type="button"
                     className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold"
@@ -133,7 +134,7 @@ export function KyThang({ onDone }: { onDone: () => void }) {
                         `/api/shop/admin/ctv/bills/${encodeURIComponent(period)}/mark-paid`,
                         {
                           method: "POST",
-                          body: JSON.stringify({ ctvCode: l.ctvCode }),
+                          body: JSON.stringify({ ctvCode: l.ctvCode, expectedRevision: Number(bill.revision || 0), expectedAmount: Number(l.net || 0) }),
                         }
                       );
                       toast.success(`Đã chi ${l.ctvCode}`);

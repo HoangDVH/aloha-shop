@@ -1,3 +1,4 @@
+import { reconcileKvIdentities } from "./kvProductIdentity.js";
 /**
  * Poll tồn/giá từ KiotViet → chỉ $set field ĐÃ CÓ trên aloha_shop_db.aloha_products.
  * Không thêm thuộc tính mới (inventories, kvTon, source, …) — ngoại lệ duy nhất: isActive
@@ -233,6 +234,8 @@ export async function runShopKvStockPoll(
     });
     const raw = await fetchKvProducts(creds, token, { lastModifiedFrom });
 
+    const identityChanges = await reconcileKvIdentities(db, raw);
+    if (identityChanges.length) syncBus.publish(["aloha_products"], "kv-code-identity", { ids: identityChanges });
     const byMa = new Map<string, Record<string, unknown>>();
     const rawCodes = new Set<string>();
     for (const p of raw) {

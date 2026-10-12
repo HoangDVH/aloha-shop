@@ -1,4 +1,7 @@
-import type { ReactNode } from "react";
+import { HomeSectionOrder } from "@/components/HomeSectionOrder";
+import { isFinishedPlantCategory } from "@/lib/homeWholesaleOrder";
+import type { HomeProductsQuery } from "@/lib/useWholesaleHomeProducts";
+import { isValidElement, type ReactNode } from "react";
 import { HeroBanner, type HeroSlide } from "@/components/HeroBanner";
 import { HomeTrustBar } from "@/components/HomeTrustBar";
 import { HomeFeaturedCategories } from "@/components/HomeFeaturedCategories";
@@ -8,7 +11,7 @@ import { HomeArticleSection } from "@/components/HomeArticleSection";
 import { HomeProductSection } from "@/components/HomeProductSection";
 import { HomeTrustShowcase } from "@/components/HomeTrustShowcase";
 import { HomeGiftSection } from "@/components/gift/HomeGiftSection";
-import { categoryHref, fetchArticles, fetchProducts } from "@/lib/api";
+import { categoryHref, fetchArticles, fetchProducts, fetchCategoryTree, type ShopCategoryNavNode } from "@/lib/api";
 import type { AppearanceBlock } from "@/lib/appearanceTypes";
 
 const LOW_STOCK_MAX = 8;
@@ -66,15 +69,13 @@ async function loadProductSection(props: Record<string, unknown>) {
     source === "ban_chay" ||
     source === "noi_bat";
 
+  let query: HomeProductsQuery = { page: 1, limit, sort };
   let products: Awaited<ReturnType<typeof fetchProducts>>["items"] = [];
   let banChayByRevenue = false;
   try {
     if (source === "moi") {
-      const res = await fetchProducts({
-        page: 1,
-        limit,
-        sort: "moi",
-      });
+      query = { page: 1, limit, sort: "moi" };
+      const res = await fetchProducts(query);
       products = res.items || [];
     } else if (byBadge) {
       const badgeKey =
@@ -87,6 +88,7 @@ async function loadProductSection(props: Record<string, unknown>) {
               | "moi"
               | "uu_dai"
               | "noi_bat");
+      query = { page: 1, limit, badge: badgeKey, sort: "ten" };
       let res = await fetchProducts({
         page: 1,
         limit,
@@ -99,9 +101,11 @@ async function loadProductSection(props: Record<string, unknown>) {
       ) {
         res = await fetchProducts({ page: 1, limit, sort: "ban_chay" });
         banChayByRevenue = true;
+        query = { page: 1, limit, sort: "ban_chay" };
       }
       products = res.items || [];
     } else {
+      query = { page: 1, limit, sort, categoryId: byCategory && categoryId > 0 ? categoryId : undefined, nhom: byCategory && !(categoryId > 0) && nhomPath ? nhomPath : undefined };
       const res = await fetchProducts({
         page: 1,
         limit,
@@ -133,13 +137,13 @@ async function loadProductSection(props: Record<string, unknown>) {
             : "/tim?sort=ban_chay";
 
   const isUuDai = source === "uu_dai" || props.badge === "uu_dai" || title.toLowerCase().includes("ưu đãi");
-  return { title, href, products, limit, variant: isUuDai ? ("deal" as const) : ("default" as const) };
+  return { title, href, products, limit, query, variant: isUuDai ? ("deal" as const) : ("default" as const) };
 }
 
 async function ProductSectionBlock({ props }: { props: Record<string, unknown> }) {
   const s = await loadProductSection(props);
   if (!s.products.length) return null;
-  return <HomeProductSection title={s.title} href={s.href} products={s.products} variant={s.variant} />;
+  return <HomeProductSection title={s.title} href={s.href} products={s.products} variant={s.variant} query={s.query} limit={s.limit} />;
 }
 
 /** Mục SP admin tự thêm — cùng khung full-width với các mục mặc định trang chủ. */
@@ -150,6 +154,7 @@ async function HomeCustomProductSection({ props }: { props: Record<string, unkno
     <HomeFeaturedProducts
       title={s.title.toLocaleUpperCase("vi-VN")}
       products={s.products}
+      query={s.query}
       href={s.href}
       limit={s.limit}
     />
@@ -273,6 +278,7 @@ async function HomeNoiBatSection({ props }: { props: BlockProps }) {
     <HomeFeaturedProducts
       title={(String(props?.title || "").trim() || "Sản phẩm nổi bật").toLocaleUpperCase("vi-VN")}
       products={items}
+      query={{ badge: "noi_bat", sort: "ten" }}
       href="/tim?badge=noi_bat"
       limit={limit}
       ctaLabel="Xem thêm sản phẩm nổi bật →"
@@ -317,6 +323,7 @@ async function HomeUuDaiSection({ props }: { props: BlockProps }) {
     <HomeFeaturedProducts
       title={uuDaiTitle.toLocaleUpperCase("vi-VN")}
       products={uuDai}
+      query={{ badge: "uu_dai", sort: "ten" }}
       href="/tim?badge=uu_dai"
       limit={uuDaiLimit}
       ctaLabel="Xem thêm sản phẩm ưu đãi →"
@@ -349,6 +356,7 @@ async function HomeBanChaySection({ props }: { props: BlockProps }) {
     <HomeFeaturedProducts
       title={(String(props?.title || "").trim() || "Sản phẩm bán chạy").toLocaleUpperCase("vi-VN")}
       products={banChay}
+      query={{ sort: "ban_chay" }}
       href="/tim?sort=ban_chay"
       limit={banChayLimit}
     />
@@ -380,6 +388,7 @@ async function HomeMoiSection({ props }: { props: BlockProps }) {
     <HomeFeaturedProducts
       title={(String(props?.title || "").trim() || "Sản phẩm mới").toLocaleUpperCase("vi-VN")}
       products={moi}
+      query={{ sort: "moi" }}
       href="/tim?sort=moi"
       limit={moiLimit}
       ctaLabel="Xem thêm sản phẩm mới →"
@@ -498,7 +507,27 @@ export async function renderHomeMainSections(blocks: AppearanceBlock[] = []) {
     }
     nodes.push(<HomeCustomProductSection key={b.id} props={b.props || {}} />);
   }
-  return <>{nodes}</>;
+  const categoryPaths = new Map<number, string>();
+  if (ordered.some(b => Number(b.props?.categoryId) > 0)) {
+    try {
+      const tree = await fetchCategoryTree();
+      const walk = (items: ShopCategoryNavNode[]) => {
+        for (const item of items) {
+          categoryPaths.set(item.id, item.path || item.name);
+          walk(item.subs || []);
+        }
+      };
+      walk(tree.items || []);
+    } catch { /* Category names/paths remain available as a fallback. */ }
+  }
+  const sections = nodes.map((node, index) => {
+    const id = isValidElement(node) ? String(node.key || index) : String(index);
+    const props = ordered.find(b => b.id === id)?.props;
+    const category = [props?.nhomPath, props?.categorySlug, props?.nhomSlug,
+      props?.categoryName, props?.nhomName, categoryPaths.get(Number(props?.categoryId))].filter(Boolean).join(" >> ");
+    return { id, node, finished: isFinishedPlantCategory(category) };
+  });
+  return <HomeSectionOrder sections={sections} />;
 }
 
 export async function renderProductBlocks(blocks: AppearanceBlock[]) {

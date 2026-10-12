@@ -72,7 +72,7 @@ export function CommissionsHub({
   const bill = billQ.data?.bill;
   const preview = billQ.data?.preview;
   const st = (statsQ.data || {}) as Record<string, unknown>;
-  const billLocked = bill?.status === "locked" || bill?.status === "paid";
+  const billLocked = bill?.status === "locked" || bill?.status === "paid" || bill?.status === "cancelled";
   const tableLines = billLocked
     ? (Array.isArray(bill?.ctvLines) ? bill.ctvLines : [])
     : (Array.isArray(preview?.ctvLines) ? preview!.ctvLines : []);
@@ -269,7 +269,7 @@ export function CommissionsHub({
                   <Button
                     type="primary"
                     loading={lockM.isPending}
-                    disabled={bill?.status === "locked" || bill?.status === "paid"}
+                    disabled={billLocked}
                     onClick={() => {
                       const ok = window.confirm(
                         `Chốt kỳ ${period}? Sau khi chốt, các dòng đủ điều kiện sẽ vào kỳ thanh toán.`
@@ -303,10 +303,10 @@ export function CommissionsHub({
                     disabled={bill?.status !== "locked"}
                     onClick={() => {
                       const ok = window.confirm(
-                        `Đánh dấu đã chuyển khoản cả kỳ ${period}?`
+                        `Xác nhận đã chi ${formatVnd(tableLines.filter((l: any) => !l.paidAt && !l.voidedAt).reduce((sum: number, l: any) => sum + Number(l.net || 0), 0))} cho kỳ ${period}? Kiểm tra số tiền chuyển khoản thực tế trước khi xác nhận.`
                       );
                       if (!ok) return;
-                      paidM.mutate(period, {
+                      paidM.mutate({ period, expectedRevision: Number(bill.revision || 0), expectedAmount: tableLines.filter((l: any) => !l.paidAt && !l.voidedAt).reduce((sum: number, l: any) => sum + Number(l.net || 0), 0) }, {
                         onSuccess: () =>
                           toast.success("Đã đánh dấu thanh toán xong"),
                         onError: (e: unknown) => toast.error((e as Error).message),
@@ -362,11 +362,21 @@ export function CommissionsHub({
                       ),
                     },
                     {
+                      title: "Điều chỉnh",
+                      key: "adjustments",
+                      render: (_: unknown, line: any) => <div className="text-xs text-slate-600">
+                        <div>{formatVnd(Number(line.adjustments || 0))}</div>
+                        {line.debtOffset > 0 && <div>Bù trừ nợ: −{formatVnd(line.debtOffset)}</div>}
+                        {(line.adjustmentEntries || []).map((entry: any) => <div key={entry.id}>{entry.orderCode}: {entry.reason} ({formatVnd(entry.amount)})</div>)}
+                        {(line.postPaymentAdjustments || []).map((entry: any) => <div key={entry.id}>Thu hồi sau chi · {entry.orderCode}: {formatVnd(entry.amount)}</div>)}
+                      </div>,
+                    },
+                    {
                       title: "Chi CTV",
                       key: "paid",
                       width: 140,
                       render: (_: unknown, l: any) =>
-                        l.paidAt ? (
+                        l.voidedAt ? <Tag>Đã hủy khoản chi</Tag> : l.paidAt ? (
                           <Tag color="cyan">Đã chi</Tag>
                         ) : bill?.status === "locked" ? (
                           <Button
@@ -375,11 +385,11 @@ export function CommissionsHub({
                             onClick={(e) => {
                               e.stopPropagation();
                               const ok = window.confirm(
-                                `Xác nhận đã chuyển khoản cho ${l.ctvCode}?`
+                                `Xác nhận đã chi ${formatVnd(Number(l.net || 0))} cho ${l.ctvCode}${l.debtOffset > 0 ? `, đã bù trừ nợ ${formatVnd(l.debtOffset)}` : ""}?`
                               );
                               if (!ok) return;
                               paidM.mutate(
-                                { period, ctvCode: String(l.ctvCode || "") },
+                                { period, ctvCode: String(l.ctvCode || ""), expectedRevision: Number(bill.revision || 0), expectedAmount: Number(l.net || 0) },
                                 {
                                   onSuccess: () =>
                                     toast.success(`Đã chi ${l.ctvCode}`),
@@ -389,7 +399,7 @@ export function CommissionsHub({
                               );
                             }}
                           >
-                            Chi CTV này
+                            {Number(l.net || 0) === 0 && l.debtOffset > 0 ? "Xác nhận bù trừ" : "Chi CTV này"}
                           </Button>
                         ) : (
                           <Text type="secondary">Chưa chốt kỳ</Text>
@@ -430,12 +440,14 @@ export function CommissionsHub({
             onPayCtv={
               bill?.status === "locked"
                 ? (code) => {
+                    const line = tableLines.find((l: any) => l.ctvCode === code && !l.paidAt && !l.voidedAt);
+                    if (!line) { toast.error("Không còn khoản chi cho CTV này."); return; }
                     const ok = window.confirm(
-                      `Xác nhận đã chuyển khoản cho ${code}?`
+                      `Xác nhận đã chi ${formatVnd(Number(line.net || 0))} cho ${code}?`
                     );
                     if (!ok) return;
                     paidM.mutate(
-                      { period, ctvCode: code },
+                      { period, ctvCode: code, expectedRevision: Number(bill.revision || 0), expectedAmount: Number(line.net || 0) },
                       {
                         onSuccess: () => toast.success(`Đã chi ${code}`),
                         onError: (e: unknown) => toast.error((e as Error).message),

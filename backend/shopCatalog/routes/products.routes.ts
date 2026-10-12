@@ -1,3 +1,6 @@
+import { currentPriceMode } from "../../shopWholesale/priceContext.js";
+import { merchFields, overlaySiMerch } from "../../shopAppearance/merchAudience.js";
+import { orderWholesaleHomeProducts } from "../../../frontend/lib/homeWholesaleOrder.js";
 import { parseGiftQuery, loadGiftFilterCodes } from "../../shopGifts/productFilter.js";
 /**
  * Routes:
@@ -71,6 +74,8 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
       const q = String(req.query.q || "").trim();
       const nhomList = parseNhomQuery(req);
       const categoryIdList = parseCategoryIdQuery(req);
+      const wholesaleHome = req.query.homeOrder === "wholesale";
+      const homeOrder = <T extends Parameters<typeof orderWholesaleHomeProducts>[0][number]>(items: T[]) => wholesaleHome ? orderWholesaleHomeProducts(items) : items;
       const homeScope = String(req.query.home || "") === "1";
       const page = Math.max(1, Number(req.query.page) || 1);
       const limit = Math.min(48, Math.max(1, Number(req.query.limit) || 24));
@@ -114,11 +119,15 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
         return res.status(400).json({ ok: false, error: "Invalid gift filter" });
       }
       const giftCodes = gift ? await loadGiftFilterCodes(await ctx.catalogDb(), gift) : [];
-      const cacheKey = `shop:products:v40:gift=${gift || ""}:${JSON.stringify(giftCodes)}|${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}${dealMasCacheSuffix(dealMas)}|v=${voucherId}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|maxTon=${maxTon}|${sort}${dealInfoCacheSuffix(deals)}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
+      const cacheKey = `shop:products:v42:order=${wholesaleHome ? "wholesale" : "default"}:gift=${gift || ""}:${JSON.stringify(giftCodes)}|${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}${dealMasCacheSuffix(dealMas)}|v=${voucherId}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|maxTon=${maxTon}|${sort}${dealInfoCacheSuffix(deals)}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
       const pinScope = resolvePinBadgeScope({ sort, badge, maxTon });
 
       const { body, cache } = await cachedJson(cacheKey, async () => {
         const db = await ctx.catalogDb();
+        const siFields = merchFields(badge === "noi_bat" ? "si_noi_bat" : "si_uu_dai");
+        const privateBadge = wholesaleHome && currentPriceMode() === "si" && (badge === "noi_bat" || badge === "uu_dai");
+        const homeAudience = privateBadge && await db.collection(COL).findOne({ [siFields.badge]: true }, { projection: { _id: 1 } }) ? "wholesale" : "common";
+        const mapHomeDocs = (db: Parameters<typeof mapDocsToPublicWithPriceBooks>[0], docs: Record<string, unknown>[]) => mapDocsToPublicWithPriceBooks(db, homeAudience === "wholesale" ? overlaySiMerch(docs, badge) : docs);
         const filter: Record<string, unknown> = { ...shopFilterBase() };
         const and = [...((filter.$and as unknown[]) || [])];
         if (gift) and.push({ ma: { $in: giftCodes } });
@@ -164,7 +173,7 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
         if (dvtMongo) and.push(dvtMongo);
         const loaiMongo = mongoLoaiFilter(loai);
         if (loaiMongo) and.push(loaiMongo);
-        const badgeMongo = webBadgeMongoFilter(badge, dealMas);
+        const badgeMongo = homeAudience === "wholesale" ? { [siFields.badge]: true } : webBadgeMongoFilter(badge, dealMas);
         if (badgeMongo) and.push(badgeMongo);
         if (sort === "giam_gia") and.push(discountMongoFilter([...deals.keys()]));
         if (voucher && Object.keys(voucher.filter).length) and.push(voucher.filter);
@@ -197,6 +206,7 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
           trongLuong: 1,
           webPin: 1,
           webBadge: 1,
+          webSiFeatured: 1, webSiFeaturedPin: 1, webSiDeals: 1, webSiDealsPin: 1,
           kvId: 1,
           id: 1,
           createdAt: 1,
@@ -236,7 +246,7 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
               .find(eligibleFilter as any)
               .project(projection)
               .toArray();
-            const mapped = await mapDocsToPublicWithPriceBooks(db, eligibleDocs as any[]);
+            const mapped = await mapHomeDocs(db, eligibleDocs as any[]);
             let items = dedupeListItems(mapped.docs, mapped.items);
             if (minPrice > 0) items = items.filter((p) => p.gia >= minPrice);
             if (maxPrice > 0) items = items.filter((p) => p.gia <= maxPrice);
@@ -260,7 +270,8 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
             );
             const total = items.length;
             return {
-              items: items.slice(skip, skip + limit),
+              homeAudience,
+              items: homeOrder(items).slice(skip, skip + limit),
               total,
               page,
               limit,
@@ -274,12 +285,12 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
 
         if (!needPostFilter) {
           // Khi limit === 1 (ví dụ preview đếm), nếu không có post-filter phức tạp, chỉ count và lấy 1 item
-          if (limit === 1 && page === 1 && !badge) {
+          if (limit === 1 && page === 1 && !badge && !wholesaleHome) {
             const [total, sampleDocs] = await Promise.all([
               col.countDocuments(filter as any),
               col.find(filter as any).project(projection).limit(1).toArray(),
             ]);
-            const sampleMapped = await mapDocsToPublicWithPriceBooks(db, sampleDocs as any[]);
+            const sampleMapped = await mapHomeDocs(db, sampleDocs as any[]);
             const sampleItems = filterRequirePublicImage(
               filterZeroPriceUnlessTestBuyer(
                 dedupeListItems(sampleMapped.docs, sampleMapped.items),
@@ -302,7 +313,7 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
             .sort({ ten: 1 })
             .limit(5000)
             .toArray();
-          const mapped = await mapDocsToPublicWithPriceBooks(db, docs as any[]);
+          const mapped = await mapHomeDocs(db, docs as any[]);
           const createdMsByMa = new Map<string, number>();
           for (const d of mapped.docs as Record<string, unknown>[]) {
             const ma = normalizeMa(d.ma);
@@ -325,7 +336,8 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
           );
           const total = all.length;
           return {
-            items: all.slice(skip, skip + limit),
+            homeAudience,
+            items: homeOrder(all).slice(skip, skip + limit),
             total,
             page,
             limit,
@@ -340,7 +352,7 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
           .project(projection)
           .limit(5000)
           .toArray();
-        const mapped = await mapDocsToPublicWithPriceBooks(db, docs as any[]);
+        const mapped = await mapHomeDocs(db, docs as any[]);
         let items = filterZeroPriceUnlessTestBuyer(
           dedupeListItems(mapped.docs, mapped.items),
           buyerEmail
@@ -354,7 +366,7 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
         items = filterRequirePublicImage(items);
 
         // Khi preview đếm (limit: 1), bỏ qua sắp xếp tốn kém
-        if (limit === 1 && page === 1) {
+        if (limit === 1 && page === 1 && !wholesaleHome) {
           const total = items.length;
           return {
             items: items.slice(0, 1),
@@ -377,8 +389,9 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
         items = sortPublicItems(items, sort, createdMsByMa, pinScope, deals);
 
         const total = items.length;
-        const pageItems = items.slice(skip, skip + limit);
+        const pageItems = homeOrder(items).slice(skip, skip + limit);
         return {
+          homeAudience,
           items: pageItems,
           total,
           page,

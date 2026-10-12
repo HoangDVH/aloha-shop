@@ -14,6 +14,8 @@ import { endOfTodayMs, useCountdown } from "@/lib/hooks/useCountdown";
 import { useCampaignView } from "@/lib/campaign/useCampaignView";
 import type { CampaignUI } from "@/lib/campaign/campaignApi";
 
+import { useWholesaleHomeProducts } from "@/lib/useWholesaleHomeProducts";
+
 type Props = {
   products: ShopProduct[];
 };
@@ -67,7 +69,7 @@ function parseSlotTarget(slots: CampaignUI["slots"] | undefined, nowMs: number) 
 }
 
 export function HomeLowStockSale({ products }: Props) {
-  const items = products.slice(0, 6);
+  const items = useWholesaleHomeProducts(products, { inStock: true, maxTon: 8, sort: "ban_chay" }, 6);
   const desktopItems = items.slice(0, 3);
   const liveMap = useLiveProductPrices(items);
   const { campaign, offsetMs } = useCampaignView();

@@ -5,6 +5,7 @@ import { persist } from "zustand/middleware";
 import type { ShopProduct, ShopProductAttr } from "./api";
 import { getGuestCtvCode, normalizeCtvCode } from "./ctv";
 import { normalizeCartAttributes } from "./cartVariant";
+import { trackFunnel } from "./funnelTracking";
 
 export type CartLine = {
   ma: string;
@@ -188,6 +189,7 @@ export const useCart = create<CartState>()(
         });
 
         if (result.ok && typeof window !== "undefined") {
+          trackFunnel("cart");
           window.dispatchEvent(new CustomEvent("aloha:cart-bump"));
         }
 

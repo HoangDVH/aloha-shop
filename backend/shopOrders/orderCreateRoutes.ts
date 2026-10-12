@@ -47,6 +47,8 @@ import {
 } from "./create/campaignStep.js";
 import { releaseOrderPromotions } from "./create/promotionHolds.js";
 import { releaseUnsavedHolds } from "../shopCampaigns/orderCampaign.js";
+import { isBot } from "../shopVisits/service.js";
+import { confirmFunnelOrder, confirmReplayedOrder, funnelIdentity } from "../shopAnalytics/funnel.js";
 
 type CheckoutForm = {
   deliveryMethod: "giao_tan_noi" | "nhan_cua_hang";
@@ -256,7 +258,10 @@ async function createShopOrder(
   });
   const replay = await findIdempotentReplay(shopDb, accountId, idempotencyKey, bodyHash);
   if (replay.kind === "conflict") return res.status(409).json(replay.body);
-  if (replay.kind === "reused") return res.status(200).json(replay.body);
+  if (replay.kind === "reused") {
+    await confirmReplayedOrder(shopDb, accountId, idempotencyKey).catch(() => {});
+    return res.status(200).json(replay.body);
+  }
 
   // Mongo trước — tránh orphan KV nếu insert lỗi
   let code = newShopOrderCode();
@@ -337,6 +342,10 @@ async function createShopOrder(
     anchorSavings: campaign.anchorSavings,
   });
 
+  const analytics = funnelIdentity.safeParse(body.analytics);
+  if (analytics.success && !notes.isTest && !isBot(String(req.headers["user-agent"] || ""))) {
+    Object.assign(doc, { analyticsSessionId: analytics.data.sessionId, analyticsVisitorId: analytics.data.visitorId });
+  }
   let insertRes;
   try {
     insertRes = await shopDb.collection(SHOP_ORDERS).insertOne(doc);
@@ -380,6 +389,7 @@ async function createShopOrder(
   const pushed = await pushOrderToKv(pushCtx);
   if (isStepFail(pushed)) return res.status(pushed.status).json(pushed.body);
   code = pushed.code;
+  await confirmFunnelOrder(shopDb, { ...doc, code }).catch(() => {});
 
   syncBus.publish(["shop_orders"], "shop-order-create", { ids: [code] });
   void notifyOrderStatus(shopDb, doc, "dat_hang").catch((e) =>

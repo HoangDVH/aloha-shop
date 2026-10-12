@@ -59,6 +59,7 @@ export const BILL_STATUS_LABEL: Record<string, string> = {
 };
 
 export function billStatusLabel(status: string | null | undefined): string {
+  if (status === "cancelled") return "Đã hủy kỳ chi";
   const s = String(status || "").trim();
   if (!s) return "Chưa chốt";
   return BILL_STATUS_LABEL[s] || s;

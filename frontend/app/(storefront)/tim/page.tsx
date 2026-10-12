@@ -1,3 +1,4 @@
+import { WholesaleHomeCatalog } from "@/components/WholesaleHomeCatalog";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { ShopPageLoader } from "@/components/ShopPageLoader";
@@ -25,6 +26,7 @@ type TimSp = {
   maxTon?: string;
   sort?: string;
   badge?: string;
+  homeOrder?: string;
   voucher?: string;
 };
 
@@ -86,6 +88,13 @@ async function CatalogBody({
           | "ban_chay")
       : undefined;
 
+  if (sp.homeOrder === "wholesale" && (badge === "noi_bat" || badge === "uu_dai")) {
+    return <WholesaleHomeCatalog query={{ q: q || undefined, nhom: nhomList.length ? nhomList : undefined,
+      attr: attrList, dvt: dvtList, loai: loai || undefined, page, limit: 25, gift: sp.gift,
+      minPrice: minPrice || undefined, maxPrice: maxPrice || undefined, inStock: inStock || undefined,
+      maxTon: maxTon || undefined, sort, badge, voucher: voucher || undefined }} />;
+  }
+
   let items: Awaited<ReturnType<typeof fetchSessionProducts>>["items"] = [];
   let total = 0;
   let pages = 1;
@@ -141,6 +150,7 @@ async function CatalogBody({
     // /tim?badge=uu_dai: nếu ít hơn 4 SP → bổ sung thêm SP bán chạy/sắp hết (đồng bộ với mục Ưu đãi ở trang chủ)
     if (
       badge === "uu_dai" &&
+      prod.homeAudience !== "wholesale" &&
       !voucher &&
       !sp.gift &&
       (prod.items || []).length < 4 &&

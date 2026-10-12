@@ -51,7 +51,8 @@ export async function completeShopOrderReturned(
   const now = new Date().toISOString();
 
   if (fullReturn && String((doc as any).orderStatus) === "huy") {
-    // Idempotent: vẫn cố clawback nếu chưa
+    // Retry must finish unpaid cancellation as well as post-payment recovery.
+    const voided = await voidCommissionsForOrder(shopDb, code, { reason: opts.reason || "return" });
     const clawback = await clawbackPaidOutCommissions(shopDb, code, {
       reason: opts.reason || "hoan_hang",
       source: opts.source || opts.confirmedBy || "return",
@@ -60,7 +61,7 @@ export async function completeShopOrderReturned(
       ok: true,
       skipped: true,
       code,
-      voided: 0,
+      voided,
       clawback,
       data: doc as any,
     };
@@ -77,7 +78,7 @@ export async function completeShopOrderReturned(
     $set.returnReason = String(opts.reason || "hoan_hang").slice(0, 200);
   }
 
-  await shopDb.collection(SHOP_ORDERS).updateOne({ _id: (doc as any)._id }, { $set });
+  await shopDb.collection(SHOP_ORDERS).updateOne({ _id: (doc as any)._id }, { $set, ...(ma ? { $addToSet: { returnedProductCodes: ma } } : {}) });
 
   if (fullReturn) {
     await releaseShopStockHolds(shopDb, code).catch(() => 0);

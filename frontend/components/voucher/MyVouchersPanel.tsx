@@ -6,6 +6,7 @@ import { RotateCcw, Ticket, TicketPercent, Truck, Zap } from "lucide-react";
 import { useWallet } from "@/lib/campaign/walletQueries";
 import type { WalletItemState, WalletItemUI } from "@/lib/campaign/walletApi";
 import { cleanVoucherTitle, formatCompactVnd, pctText, voucherUseHref } from "@/lib/voucherFormat";
+import { formatVnd } from "@/lib/api";
 
 type WalletTab = WalletItemUI["tab"];
 
@@ -41,7 +42,7 @@ function vnDate(iso: string | null | undefined) {
 function tikTokDiscountText(v: { benefitType?: "goods" | "shipping"; discountType: string; discountValue: number; mystery?: any }): string {
   if (v.benefitType === "shipping") {
     if (v.discountType === "fixed" && v.discountValue > 0) {
-      return `Giảm ${formatCompactVnd(v.discountValue).toUpperCase()}`;
+      return `Giảm ${formatVnd(v.discountValue)}`;
     }
     if (v.discountType === "percentage" && v.discountValue > 0) {
       return `Giảm ${v.discountValue}%`;
@@ -51,19 +52,19 @@ function tikTokDiscountText(v: { benefitType?: "goods" | "shipping"; discountTyp
   if (v.discountType === "percentage") {
     return `Giảm ${pctText(v)}`;
   }
-  return `Giảm ${formatCompactVnd(v.discountValue).toUpperCase()}`;
+  return `Giảm ${formatVnd(v.discountValue)}`;
 }
 
 function tikTokMinOrderText(v: { minOrderThreshold?: number }): string {
   if (v.minOrderThreshold && v.minOrderThreshold > 0) {
-    return `Đơn từ ${formatCompactVnd(v.minOrderThreshold).toUpperCase()}`;
+    return `Đơn từ ${formatVnd(v.minOrderThreshold)}`;
   }
   return "Mọi đơn hàng";
 }
 
 function tikTokCapText(v: { discountType: string; maxDiscountVnd?: number }): string {
   if (v.discountType === "percentage" && v.maxDiscountVnd && v.maxDiscountVnd > 0) {
-    return `Tối đa ${formatCompactVnd(v.maxDiscountVnd).toUpperCase()}`;
+    return `Tối đa ${formatVnd(v.maxDiscountVnd)}`;
   }
   return "";
 }

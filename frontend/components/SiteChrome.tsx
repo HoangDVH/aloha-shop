@@ -556,14 +556,9 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                         onClick={closeMenus}
                         className="flex items-center justify-between p-3.5 transition-all duration-150 hover:bg-[var(--aloha-cream)]/50 active:bg-emerald-50/70 active:scale-[0.98]"
                       >
-                        <div className="flex items-center gap-3">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[var(--aloha-green)]">
-                            <Home size={18} strokeWidth={2} />
-                          </span>
-                          <div>
-                            <p className="text-sm font-bold text-[var(--aloha-ink)]">Trang chủ</p>
-                            <p className="text-xs text-slate-500">Cây cảnh, chậu cây & phụ kiện</p>
-                          </div>
+                        <div>
+                          <p className="text-sm font-bold text-[var(--aloha-ink)]">Trang chủ</p>
+                          <p className="text-xs text-slate-500">Cây cảnh, chậu cây & phụ kiện</p>
                         </div>
                         <ChevronRight size={16} className="text-slate-300" />
                       </Link>
@@ -575,19 +570,14 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                         onClick={closeMenus}
                         className="flex items-center justify-between p-3.5 transition-all duration-150 hover:bg-[var(--aloha-cream)]/50 active:bg-emerald-50/70 active:scale-[0.98]"
                       >
-                        <div className="flex items-center gap-3">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[var(--aloha-green)]">
-                            <BadgePercent size={18} strokeWidth={2} />
-                          </span>
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <p className="text-sm font-bold text-[var(--aloha-ink)]">Ưu đãi nổi bật</p>
-                              <span className="rounded-full bg-gradient-to-r from-red-500 to-rose-500 px-1.5 py-0.5 text-[9.5px] font-black uppercase text-white shadow-xs">
-                                HOT
-                              </span>
-                            </div>
-                            <p className="text-xs text-slate-500">Sản phẩm giá tốt, sẵn hàng giao ngay</p>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-sm font-bold text-[var(--aloha-ink)]">Ưu đãi nổi bật</p>
+                            <span className="rounded-full bg-gradient-to-r from-red-500 to-rose-500 px-1.5 py-0.5 text-[9.5px] font-black uppercase text-white shadow-xs">
+                              HOT
+                            </span>
                           </div>
+                          <p className="text-xs text-slate-500">Sản phẩm giá tốt, sẵn hàng giao ngay</p>
                         </div>
                         <ChevronRight size={16} className="text-slate-300" />
                       </Link>
@@ -597,25 +587,21 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                         onClick={closeMenus}
                         className="flex items-center justify-between p-3.5 transition-all duration-150 hover:bg-[var(--aloha-cream)]/50 active:bg-emerald-50/70 active:scale-[0.98]"
                       >
-                        <div className="flex items-center gap-3">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[var(--aloha-green)]">
-                            <FileText size={18} strokeWidth={2} />
-                          </span>
-                          <div>
-                            <p className="text-sm font-bold text-[var(--aloha-ink)]">Bài viết & Cẩm nang</p>
-                            <p className="text-xs text-slate-500">Mẹo chăm sóc cây, phối chậu đẹp</p>
-                          </div>
+                        <div>
+                          <p className="text-sm font-bold text-[var(--aloha-ink)]">Bài viết & Cẩm nang</p>
+                          <p className="text-xs text-slate-500">Mẹo chăm sóc cây, phối chậu đẹp</p>
                         </div>
                         <ChevronRight size={16} className="text-slate-300" />
                       </Link>
 
-                      <Link href="/bac-si-cay" onClick={closeMenus} className="flex items-center justify-between p-3.5 transition-all duration-150 hover:bg-[var(--aloha-cream)]/50 active:bg-emerald-50/70 active:scale-[0.98]">
-                        <div className="flex items-center gap-3">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[var(--aloha-green)]"><Stethoscope size={18} strokeWidth={2} /></span>
-                          <div>
-                            <p className="text-sm font-bold text-[var(--aloha-ink)]">Bác sĩ cây cảnh</p>
-                            <p className="text-xs text-slate-500">Chụp ảnh cây bệnh, AI bắt bệnh miễn phí</p>
-                          </div>
+                      <Link
+                        href="/bac-si-cay"
+                        onClick={closeMenus}
+                        className="flex items-center justify-between p-3.5 transition-all duration-150 hover:bg-[var(--aloha-cream)]/50 active:bg-emerald-50/70 active:scale-[0.98]"
+                      >
+                        <div>
+                          <p className="text-sm font-bold text-[var(--aloha-ink)]">Bác sĩ cây cảnh</p>
+                          <p className="text-xs text-slate-500">Chụp ảnh cây bệnh, AI bắt bệnh miễn phí</p>
                         </div>
                         <ChevronRight size={16} className="text-slate-300" />
                       </Link>
@@ -625,14 +611,9 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                         onClick={closeMenus}
                         className="flex items-center justify-between p-3.5 transition-all duration-150 hover:bg-[var(--aloha-cream)]/50 active:bg-emerald-50/70 active:scale-[0.98]"
                       >
-                        <div className="flex items-center gap-3">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
-                            <Leaf size={18} strokeWidth={2} />
-                          </span>
-                          <div>
-                            <p className="text-sm font-bold text-[var(--aloha-ink)]">Về ALOHA</p>
-                            <p className="text-xs text-slate-500">Quà tặng xanh độc bản, xưởng sản xuất & câu chuyện</p>
-                          </div>
+                        <div>
+                          <p className="text-sm font-bold text-[var(--aloha-ink)]">Về ALOHA</p>
+                          <p className="text-xs text-slate-500">Quà tặng xanh độc bản, xưởng sản xuất & câu chuyện</p>
                         </div>
                         <ChevronRight size={16} className="text-slate-300" />
                       </Link>
@@ -644,36 +625,25 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
                       Tuyển dụng & Hợp tác
                     </p>
                     <div className="mt-2 divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
-                      {(
-                        [
-                          { href: "/tuyen-dung", label: "Tuyển dụng nhân viên", badge: "Việc làm", sub: "Cơ hội việc làm & gia nhập đội ngũ Aloha", icon: Briefcase },
-                        ] as const
-                      ).map((item) => (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          onClick={closeMenus}
-                          className="flex items-center justify-between p-3.5 transition hover:bg-[var(--aloha-cream)]/50 active:bg-[var(--aloha-cream)]"
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[var(--aloha-green)]">
-                              <item.icon size={18} strokeWidth={2} />
+                      <Link
+                        href="/tuyen-dung"
+                        onClick={closeMenus}
+                        className="flex items-center justify-between p-3.5 transition-all duration-150 hover:bg-[var(--aloha-cream)]/50 active:bg-emerald-50/70 active:scale-[0.98]"
+                      >
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-sm font-bold text-[var(--aloha-ink)]">Tuyển dụng nhân viên</p>
+                            <span className="rounded-md bg-stone-100 px-1.5 py-0.5 text-[9.5px] font-bold text-stone-600">
+                              Việc làm
                             </span>
-                            <div>
-                              <div className="flex items-center gap-1.5">
-                                <p className="text-sm font-bold text-[var(--aloha-ink)]">{item.label}</p>
-                                <span className="rounded-md bg-stone-100 px-1.5 py-0.5 text-[9.5px] font-bold text-stone-600">
-                                  {item.badge}
-                                </span>
-                              </div>
-                              <p className="text-xs text-slate-500">{item.sub}</p>
-                            </div>
                           </div>
-                          <ChevronRight size={16} className="text-slate-300" />
-                        </Link>
-                      ))}
+                          <p className="text-xs text-slate-500">Cơ hội việc làm & gia nhập đội ngũ Aloha</p>
+                        </div>
+                        <ChevronRight size={16} className="text-slate-300" />
+                      </Link>
+
+                      <PartnerNavDropdown pathname={pathname} onNavigate={closeMenus} mobile />
                     </div>
-                    <div className="mt-2"><PartnerNavDropdown pathname={pathname} onNavigate={closeMenus} mobile /></div>
                   </div>
 
                   <div>

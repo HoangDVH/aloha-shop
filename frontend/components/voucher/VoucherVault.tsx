@@ -21,17 +21,18 @@ import { LoginSheet } from "@/components/campaign/LoginSheet";
 import { VoucherTicket, type TicketTone } from "./VoucherTicket";
 import { ClaimButton, claimStateOf, type ClaimState } from "./ClaimButton";
 import { ClaimSuccessModal } from "./ClaimSuccessModal";
+import { formatVnd } from "@/lib/api";
 
 function tikTokDiscountText(v: CampaignVoucherUI): string {
   if (v.discountType === "percentage") {
     return `Giảm ${pctText(v)}`;
   }
-  return `Giảm ${formatCompactVnd(v.discountValue).toUpperCase()}`;
+  return `Giảm ${formatVnd(v.discountValue)}`;
 }
 
 function tikTokMinOrderText(v: CampaignVoucherUI): string {
   if (v.minOrderThreshold && v.minOrderThreshold > 0) {
-    return `Đơn từ ${formatCompactVnd(v.minOrderThreshold).toUpperCase()}`;
+    return `Đơn từ ${formatVnd(v.minOrderThreshold)}`;
   }
   return "Đơn từ 0đ";
 }

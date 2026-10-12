@@ -1,3 +1,4 @@
+import { merchAudienceSchema, merchFields, merchBadge, ensureSiMerchIndexes } from "./merchAudience.js";
 import type { Express, Response } from "express";
 import {
   requireAuth,
@@ -97,6 +98,10 @@ export function registerShopProductsAdminRoutes(
     async (req: AuthRequest, res: Response) => {
       try {
         const db = await productsDb();
+        const audienceResult = merchAudienceSchema.safeParse(req.query.audience ?? "common");
+        if (!audienceResult.success) { res.status(400).json({ error: "invalid_audience" }); return; }
+        const audience = audienceResult.data;
+        const fields = merchFields(audience);
         const q = String(req.query.q || "").trim();
         const nhomList = parseNhomList(req.query as Record<string, unknown>);
         const categoryIdList = parseCategoryIdList(
@@ -122,7 +127,10 @@ export function registerShopProductsAdminRoutes(
               $or: [{ hienThiWeb: { $ne: false } }, { hienThiWeb: { $exists: false } }],
             });
         }
-        if (badge === "auto") {
+        if (audience !== "common") {
+          if (badge === "auto") and.push({ [fields.badge]: { $ne: true } });
+          else if (badge !== "all") and.push({ [fields.badge]: badge === fields.label ? true : { $eq: "invalid" } });
+        } else if (badge === "auto") {
           and.push({
             $or: [
               { webBadge: { $exists: false } },
@@ -160,6 +168,7 @@ export function registerShopProductsAdminRoutes(
           hienThiWeb: 1,
           webPin: 1,
           webBadge: 1,
+          webSiFeatured: 1, webSiFeaturedPin: 1, webSiDeals: 1, webSiDealsPin: 1,
           barcode: 1,
           seoTitle: 1,
           seoDescription: 1,
@@ -170,7 +179,7 @@ export function registerShopProductsAdminRoutes(
         const badgeNorm = normalizeWebBadge(badge);
         const sortPinned =
           badgeNorm && badge !== "auto"
-            ? { webPin: 1 as const, ten: 1 as const }
+            ? { [fields.pin]: 1 as const, ten: 1 as const }
             : { ten: 1 as const };
 
         if (q) {
@@ -183,8 +192,8 @@ export function registerShopProductsAdminRoutes(
           const matched = all.filter((d) => productMatchesQuery(d, q));
           if (badgeNorm && badge !== "auto") {
             matched.sort((a, b) => {
-              const pa = Number(a.webPin) > 0 ? Number(a.webPin) : 1e9;
-              const pb = Number(b.webPin) > 0 ? Number(b.webPin) : 1e9;
+              const pa = Number(a[fields.pin]) > 0 ? Number(a[fields.pin]) : 1e9;
+              const pb = Number(b[fields.pin]) > 0 ? Number(b[fields.pin]) : 1e9;
               if (pa !== pb) return pa - pb;
               return String(a.ten || "").localeCompare(String(b.ten || ""), "vi");
             });
@@ -226,8 +235,8 @@ export function registerShopProductsAdminRoutes(
           gia: publicPrice(aligned as any),
           ton: publicTon(aligned as any),
           hienThiWeb: aligned.hienThiWeb !== false,
-          webPin: Number(aligned.webPin) > 0 ? Math.round(Number(aligned.webPin)) : 0,
-          webBadge: normalizeWebBadge(aligned.webBadge),
+          webPin: Number(aligned[fields.pin]) > 0 ? Math.round(Number(aligned[fields.pin])) : 0,
+          webBadge: normalizeWebBadge(merchBadge(aligned, audience)),
           seoTitle: String(aligned.seoTitle || ""),
           seoDescription: String(aligned.seoDescription || ""),
         };
@@ -251,6 +260,10 @@ export function registerShopProductsAdminRoutes(
     ...gate,
     async (req: AuthRequest, res: Response) => {
       try {
+        const audienceResult = merchAudienceSchema.safeParse(req.body?.audience ?? "common");
+        if (!audienceResult.success) { res.status(400).json({ error: "invalid_audience" }); return; }
+        const audience = audienceResult.data;
+        const fields = merchFields(audience);
         const db = await productsDb();
         const ma = String(req.params.ma || "").trim();
         if (!ma) {
@@ -258,7 +271,7 @@ export function registerShopProductsAdminRoutes(
           return;
         }
         const col = db.collection(COL);
-        const cur = await findProductByMa(col, ma, { ma: 1, webBadge: 1, webPin: 1 });
+        const cur = await findProductByMa(col, ma, { ma: 1, webBadge: 1, webPin: 1, [fields.badge]: 1, [fields.pin]: 1 });
         if (!cur) {
           res.status(404).json({ error: "not_found" });
           return;
@@ -267,10 +280,10 @@ export function registerShopProductsAdminRoutes(
         const $set: Record<string, unknown> = {
           merchandisingUpdatedAt: new Date().toISOString(),
         };
-        let nextBadge = normalizeWebBadge(cur.webBadge);
+        let nextBadge = normalizeWebBadge(merchBadge(cur, audience));
         if (req.body?.webBadge !== undefined) {
           const rawBadge = String(req.body.webBadge ?? "").trim();
-          if (rawBadge && !normalizeWebBadge(rawBadge)) {
+          if (rawBadge && (!normalizeWebBadge(rawBadge) || (audience !== "common" && rawBadge !== fields.label))) {
             res.status(400).json({
               error: "invalid_web_badge",
               message: `Nhãn không hợp lệ: ${rawBadge}`,
@@ -278,10 +291,10 @@ export function registerShopProductsAdminRoutes(
             return;
           }
           nextBadge = normalizeWebBadge(rawBadge);
-          $set.webBadge = nextBadge;
+          $set[fields.badge] = audience === "common" ? nextBadge : Boolean(nextBadge);
         }
 
-        let nextPin = Number(cur.webPin) > 0 ? Math.round(Number(cur.webPin)) : 0;
+        let nextPin = Number(cur[fields.pin]) > 0 ? Math.round(Number(cur[fields.pin])) : 0;
         if (req.body?.webPin !== undefined) {
           const n = Number(req.body.webPin);
           nextPin = Number.isFinite(n) && n > 0 ? Math.min(9999, Math.round(n)) : 0;
@@ -289,8 +302,9 @@ export function registerShopProductsAdminRoutes(
 
         // Xóa nhãn → xóa ghim. Ghim khi chưa có nhãn → không lưu.
         if (!nextBadge) nextPin = 0;
-        $set.webPin = nextPin;
+        $set[fields.pin] = nextPin;
 
+        if (audience !== "common") await ensureSiMerchIndexes(db);
         const clearedMas: string[] = [];
         if (nextBadge && nextPin > 0) {
           const badgeIn =
@@ -299,8 +313,8 @@ export function registerShopProductsAdminRoutes(
               : [nextBadge];
           const rivals = await col
             .find({
-              webPin: nextPin,
-              webBadge: { $in: badgeIn },
+              [fields.pin]: nextPin,
+              [fields.badge]: audience === "common" ? { $in: badgeIn } : true,
               _id: { $ne: cur._id },
             } as any)
             .project({ ma: 1 })
@@ -313,7 +327,7 @@ export function registerShopProductsAdminRoutes(
               { _id: r._id } as any,
               {
                 $set: {
-                  webPin: 0,
+                  [fields.pin]: 0,
                   merchandisingUpdatedAt: new Date().toISOString(),
                 },
               }

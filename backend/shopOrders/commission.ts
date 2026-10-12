@@ -6,13 +6,13 @@ import { SHOP_ACCOUNTS, normalizeCtvCode } from "../shopAuth/models.js";
 import { SHOP_ORDERS, type ShopOrderDetail } from "./models.js";
 import {
   SHOP_COMMISSIONS,
-  SHOP_COMMISSION_BILLS,
   SHOP_CTV_PRODUCT_RATES,
   SHOP_CTV_FRAUD_EVENTS,
   getCtvSettings,
   type CommissionStatus,
 } from "./commissionModels.js";
 import { checkOrderFraudFlags } from "./ctvFraud.js";
+import { cancelCommissionRows, createLockedCommissionBill, confirmCommissionBillPaid, type BillPaymentConfirmation } from "./billSettlement.js";
 
 function roundVnd(n: number): number {
   return Math.round(Number(n) || 0);
@@ -179,7 +179,7 @@ export async function holdCommissionsForOrder(
     const imageUrl = String(d.imageUrl || "").trim() || undefined;
     try {
       await shopDb.collection(SHOP_COMMISSIONS).updateOne(
-        { orderCode: code, ma, ctvCode: ctv },
+        { orderCode: code, ma, ctvCode: ctv, billingPeriod: { $in: [null, ""] }, status: { $nin: ["billed", "paid_out"] } },
         {
           $setOnInsert: {
             orderCode: code,
@@ -211,6 +211,7 @@ export async function holdCommissionsForOrder(
       );
       created += 1;
     } catch (e) {
+      if ((e as any)?.code === 11000) continue; // An already billed/paid line must remain immutable.
       console.warn("[commission] hold upsert", code, ma, e);
     }
   }
@@ -254,51 +255,17 @@ export async function clearHeldCommissions(
 
 /** Hủy HH theo đơn (hoàn/hủy) — chưa paid_out. */
 export async function voidCommissionsForOrder(
-  shopDb: Db,
-  orderCode: string,
-  opts?: { ma?: string; reason?: string }
+  shopDb: Db, orderCode: string, opts?: { ma?: string; reason?: string }
 ): Promise<number> {
   const code = String(orderCode || "").trim();
   if (!code) return 0;
-  const filter: Record<string, unknown> = {
-    orderCode: code,
-    status: { $in: ["held", "eligible", "flagged", "billed"] },
-  };
-  if (opts?.ma) filter.ma = String(opts.ma).trim().toUpperCase();
-  const now = new Date().toISOString();
-  const r = await shopDb.collection(SHOP_COMMISSIONS).updateMany(filter, {
-    $set: {
-      status: "cancelled",
-      cancelledAt: now,
-      cancelReason: opts?.reason || "order_void",
-      updatedAt: now,
-    },
-  });
-  return r.modifiedCount || 0;
+  return cancelCommissionRows(shopDb, { orderCode: code, ...(opts?.ma ? { ma: String(opts.ma).trim().toUpperCase() } : {}) }, opts?.reason || "order_void");
 }
 
-export async function voidUnpaidCommissionsForCtv(
-  shopDb: Db,
-  ctvCode: string,
-  reason: string
-): Promise<number> {
+export async function voidUnpaidCommissionsForCtv(shopDb: Db, ctvCode: string, reason: string): Promise<number> {
   const code = normalizeCtvCode(ctvCode);
-  const now = new Date().toISOString();
-  const r = await shopDb.collection(SHOP_COMMISSIONS).updateMany(
-    {
-      ctvCode: code,
-      status: { $in: ["held", "eligible", "flagged", "billed"] },
-    },
-    {
-      $set: {
-        status: "cancelled",
-        cancelledAt: now,
-        cancelReason: reason,
-        updatedAt: now,
-      },
-    }
-  );
-  return r.modifiedCount || 0;
+  if (!code) return 0;
+  return cancelCommissionRows(shopDb, { ctvCode: code }, reason);
 }
 
 /**
@@ -527,6 +494,7 @@ export async function buildEligiblePeriodPreview(
     .collection(SHOP_COMMISSIONS)
     .find({
       status: "eligible",
+      isAdjustment: { $ne: true },
       billingPeriod: { $in: [null, ""] },
       eligibleAt: eligibleAtFilter,
     })
@@ -534,7 +502,7 @@ export async function buildEligiblePeriodPreview(
 
   const byCtv = new Map<
     string,
-    { ctvCode: string; gross: number; orderCount: number; lineCount: number; ids: unknown[] }
+    { ctvCode: string; gross: number; adjustments: number; orderCount: number; lineCount: number; ids: unknown[] }
   >();
   for (const r of rows) {
     const ctv = String((r as any).ctvCode || "");
@@ -543,6 +511,7 @@ export async function buildEligiblePeriodPreview(
     const cur = byCtv.get(ctv) || {
       ctvCode: ctv,
       gross: 0,
+      adjustments: 0,
       orderCount: 0,
       lineCount: 0,
       ids: [],
@@ -581,11 +550,12 @@ export async function buildEligiblePeriodPreview(
     const cur = byCtv.get(ctv) || {
       ctvCode: ctv,
       gross: 0,
+      adjustments: 0,
       orderCount: 0,
       lineCount: 0,
       ids: [],
     };
-    cur.gross += amt;
+    cur.adjustments += amt;
     cur.ids.push((a as any)._id);
     byCtv.set(ctv, cur);
   }
@@ -594,8 +564,8 @@ export async function buildEligiblePeriodPreview(
     .map((c) => ({
       ctvCode: c.ctvCode,
       gross: roundVnd(c.gross),
-      adjustments: 0,
-      net: roundVnd(c.gross),
+      adjustments: roundVnd(c.adjustments),
+      net: roundVnd(c.gross + c.adjustments),
       orderCount: c.orderCount,
       lineCount: c.lineCount,
     }))
@@ -612,7 +582,7 @@ export async function buildEligiblePeriodPreview(
         commission: roundVnd(ctvLines.reduce((s, x) => s + x.net, 0)),
         orderCount: new Set(rows.map((r) => String((r as any).orderCode))).size,
         ctvCount: ctvLines.length,
-        adjustments: 0,
+        adjustments: roundVnd(ctvLines.reduce((s, x) => s + x.adjustments, 0)),
         lineCount: rows.length + adjDocs.length,
       },
       commissionIds,
@@ -620,128 +590,12 @@ export async function buildEligiblePeriodPreview(
   };
 }
 
-export async function lockMonthlyBill(
-  shopDb: Db,
-  period: string,
-  lockedBy: string
-): Promise<{ ok: boolean; bill?: Record<string, unknown>; error?: string }> {
-  const built = await buildEligiblePeriodPreview(shopDb, period);
-  if (!built.ok) return { ok: false, error: built.error };
-
-  const existing = await shopDb.collection(SHOP_COMMISSION_BILLS).findOne({ period });
-  if (existing && (existing as any).status === "locked") {
-    return { ok: false, error: "already_locked" };
-  }
-  if (existing && (existing as any).status === "paid") {
-    return { ok: false, error: "already_paid" };
-  }
-
-  const { preview } = built;
-  const settings = await getCtvSettings(shopDb);
-  const now = new Date().toISOString();
-  const billId = `BILL-${period}`;
-
-  const bill = {
-    id: billId,
-    period,
-    status: "locked" as const,
-    settleDay: settings.settleDay,
-    lockedAt: now,
-    lockedBy: lockedBy || "admin",
-    totals: preview.totals,
-    ctvLines: preview.ctvLines,
-    updatedAt: now,
-    createdAt: (existing as any)?.createdAt || now,
-  };
-
-  await shopDb.collection(SHOP_COMMISSION_BILLS).updateOne(
-    { period },
-    { $set: bill },
-    { upsert: true }
-  );
-
-  if (preview.commissionIds.length) {
-    await shopDb.collection(SHOP_COMMISSIONS).updateMany(
-      { _id: { $in: preview.commissionIds as any[] } },
-      {
-        $set: {
-          status: "billed",
-          billId,
-          billingPeriod: period,
-          billedAt: now,
-          updatedAt: now,
-        },
-      }
-    );
-  }
-
-  return { ok: true, bill };
+export async function lockMonthlyBill(shopDb: Db, period: string, lockedBy: string)
+  : Promise<{ ok: boolean; bill?: Record<string, unknown>; error?: string }> {
+  return createLockedCommissionBill(shopDb, period, lockedBy || "admin", () => buildEligiblePeriodPreview(shopDb, period));
 }
 
-export async function markBillPaid(
-  shopDb: Db,
-  period: string,
-  opts?: { ctvCode?: string; paidBy?: string }
-): Promise<{ ok: boolean; error?: string; modified?: number }> {
-  const bill = await shopDb.collection(SHOP_COMMISSION_BILLS).findOne({ period });
-  if (!bill) return { ok: false, error: "bill_not_found" };
-  if ((bill as any).status === "paid" && !opts?.ctvCode) {
-    return { ok: false, error: "already_paid" };
-  }
-  if ((bill as any).status !== "locked" && (bill as any).status !== "paid") {
-    return { ok: false, error: "bill_not_locked" };
-  }
-
-  const now = new Date().toISOString();
-  const filter: Record<string, unknown> = {
-    billingPeriod: period,
-    status: "billed",
-  };
-  if (opts?.ctvCode) filter.ctvCode = normalizeCtvCode(opts.ctvCode);
-
-  const r = await shopDb.collection(SHOP_COMMISSIONS).updateMany(filter, {
-    $set: {
-      status: "paid_out",
-      paidOutAt: now,
-      paidOutBy: opts?.paidBy || "admin",
-      updatedAt: now,
-    },
-  });
-
-  if (opts?.ctvCode) {
-    const ctvLines = Array.isArray((bill as any).ctvLines) ? [...(bill as any).ctvLines] : [];
-    const next = ctvLines.map((l: any) =>
-      String(l.ctvCode) === normalizeCtvCode(opts.ctvCode!)
-        ? { ...l, paidAt: now }
-        : l
-    );
-    const allPaid = next.every((l: any) => l.paidAt);
-    await shopDb.collection(SHOP_COMMISSION_BILLS).updateOne(
-      { period },
-      {
-        $set: {
-          ctvLines: next,
-          ...(allPaid ? { status: "paid", paidAt: now } : {}),
-          updatedAt: now,
-        },
-      }
-    );
-  } else {
-    await shopDb.collection(SHOP_COMMISSION_BILLS).updateOne(
-      { period },
-      {
-        $set: {
-          status: "paid",
-          paidAt: now,
-          paidBy: opts?.paidBy || "admin",
-          updatedAt: now,
-          ctvLines: (Array.isArray((bill as any).ctvLines) ? (bill as any).ctvLines : []).map(
-            (l: any) => ({ ...l, paidAt: l.paidAt || now })
-          ),
-        },
-      }
-    );
-  }
-
-  return { ok: true, modified: r.modifiedCount || 0 };
+export async function markBillPaid(shopDb: Db, period: string, opts?: BillPaymentConfirmation)
+  : Promise<{ ok: boolean; error?: string; modified?: number; paidAmount?: number }> {
+  return confirmCommissionBillPaid(shopDb, period, opts);
 }

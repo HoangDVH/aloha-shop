@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Gift, Heart, Home, Sparkles, Building2, UserCheck } from "lucide-react";
+import { ChevronDown, Heart, Home, Sparkles, Building2, UserCheck } from "lucide-react";
 
 type QuaTangNavDropdownProps = {
   active?: boolean;
@@ -112,10 +112,7 @@ export function QuaTangNavDropdown({ active, onNavigate }: QuaTangNavDropdownPro
         aria-expanded={open}
         aria-haspopup="true"
       >
-        <span className="shrink-0 text-[var(--aloha-green)] group-hover:scale-110 transition-transform">
-          <Gift size={16} />
-        </span>
-        <span>Quà tặng</span>
+        <span>Gợi ý quà tặng</span>
         <ChevronDown
           size={14}
           strokeWidth={2.25}

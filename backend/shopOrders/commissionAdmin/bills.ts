@@ -2,6 +2,15 @@ import type { Express } from "express";
 import type { CommissionAdminCtx, AuthRequest } from "./shared.js";
 import { SHOP_COMMISSION_BILLS } from "../commissionModels.js";
 import { SHOP_ACCOUNTS, normalizeCtvCode } from "../../shopAuth/models.js";
+import { reconcileCommissionBills } from "../billSettlement.js";
+import { z } from "zod";
+
+const paymentInput = z.object({ ctvCode: z.string().min(3).max(20).optional(), expectedRevision: z.number().int().nonnegative(), expectedAmount: z.number().int().nonnegative() }).strict();
+const paymentErrors: Record<string, string> = {
+  bill_changed: "Số tiền hoặc phiên bản kỳ chi đã thay đổi. Tải lại, kiểm tra số tiền mới rồi xác nhận lại.",
+  bill_confirmation_required: "Tải lại kỳ chi để xác nhận phiên bản và số tiền hiện tại.",
+  bill_nothing_to_pay: "Không còn khoản hoa hồng cần chi trong kỳ này.",
+};
 import {
   buildEligiblePeriodPreview,
   lockMonthlyBill,
@@ -15,6 +24,7 @@ export function registerBills(app: Express, ctx: CommissionAdminCtx) {
     try {
       const shopDb = await getShopDb();
       await ensure(shopDb);
+      await reconcileCommissionBills(shopDb);
       const period = String(req.query.period || "").trim();
       if (period) {
         const bill = await shopDb.collection(SHOP_COMMISSION_BILLS).findOne({ period });
@@ -111,14 +121,18 @@ export function registerBills(app: Express, ctx: CommissionAdminCtx) {
       const shopDb = await getShopDb();
       await ensure(shopDb);
       const period = String(req.params.period || "").trim();
+      const parsed = paymentInput.safeParse(req.body);
+      if (!parsed.success) return res.status(409).json({ error: "bill_confirmation_required", message: paymentErrors.bill_confirmation_required });
       const ctvCode = req.body?.ctvCode
         ? normalizeCtvCode(String(req.body.ctvCode))
         : undefined;
       const result = await markBillPaid(shopDb, period, {
         ctvCode,
+        expectedRevision: parsed.data.expectedRevision,
+        expectedAmount: parsed.data.expectedAmount,
         paidBy: req.auth?.username || "admin",
       });
-      if (!result.ok) return res.status(400).json(result);
+      if (!result.ok) return res.status(result.error === "bill_changed" ? 409 : 400).json({ ...result, message: paymentErrors[result.error || ""] || result.error });
       return res.json(result);
     } catch (e: any) {
       return res.status(500).json({ error: e?.message || "mark_paid_failed" });

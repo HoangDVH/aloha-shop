@@ -9,6 +9,8 @@ import {
   useLiveProductPrices,
 } from "@/lib/useLiveProductPrices";
 
+import { useWholesaleHomeProducts } from "@/lib/useWholesaleHomeProducts";
+
 const VIEW_ALL_HREF = "/tim?badge=noi_bat";
 const HOME_NOI_BAT_LIMIT = 6;
 
@@ -18,7 +20,7 @@ export function HomeFeaturedCategories({
 }: {
   products: ShopProduct[];
 }) {
-  const items = products.slice(0, HOME_NOI_BAT_LIMIT);
+  const items = useWholesaleHomeProducts(products, { badge: "noi_bat", sort: "ten" }, HOME_NOI_BAT_LIMIT);
   const liveMap = useLiveProductPrices(items);
   if (!items.length) return null;
 

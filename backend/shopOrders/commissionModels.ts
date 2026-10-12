@@ -158,6 +158,9 @@ export async function ensureCommissionIndexes(shopDb: Db) {
       shopDb
         .collection(SHOP_COMMISSION_BILLS)
         .createIndex({ period: 1 }, { unique: true, background: true }),
+      shopDb.collection(SHOP_COMMISSION_BILLS).createIndex({ status: 1, lockedAt: 1 }),
+      shopDb.collection("aloha_shop_ctv_ledger").createIndex({ type: 1, period: 1, ctvCode: 1 }),
+      shopDb.collection("aloha_shop_ctv_ledger").createIndex({ ctvCode: 1, type: 1, recovered: 1, createdAt: 1 }),
       shopDb
         .collection(SHOP_CTV_PRODUCT_RATES)
         .createIndex({ ctvCode: 1, ma: 1 }, { unique: true, background: true }),

@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
+import { useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
+import { funnelSession, trackFunnel } from "@/lib/funnelTracking";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { shopUpdateMe } from "@/lib/auth";
 import { shopMeQueryKey } from "@/lib/authQueries";
@@ -112,6 +113,8 @@ export function usePlaceOrder({
   const attemptRef = useRef<{ fingerprint: string; key: string } | null>(null);
   const qc = useQueryClient();
   const showShip = shopShowCheckoutShipping();
+  const hasCheckout = Boolean(user && selected.length);
+  useEffect(() => { if (hasCheckout) trackFunnel("checkout"); }, [hasCheckout]);
 
   const placeMut = useMutation({
     mutationFn: placeShopOrder,
@@ -246,7 +249,10 @@ export function usePlaceOrder({
           : `ord-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
       if (attemptRef.current?.fingerprint !== fingerprint) attemptRef.current = { fingerprint, key: nextKey };
       const idempotencyKey = attemptRef.current.key;
+      const analytics = funnelSession();
+      trackFunnel("checkout", analytics);
       const res = await placeMut.mutateAsync({
+        analytics,
         backorderAccepted: true,
         policyAccepted: true,
         addressId,

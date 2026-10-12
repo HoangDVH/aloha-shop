@@ -242,6 +242,8 @@ export async function fetchProducts(
     loai?: string;
     /** Phạm vi trang chủ: bán chạy ∪ cây thành phẩm */
     home?: boolean;
+    /** Explicit presentation profile used only by wholesale home sections. */
+    homeOrder?: "wholesale";
     /** Lọc theo nhãn tay: ban_chay_sap_het | giam_gia | dat_truoc | moi | uu_dai */
     badge?: "ban_chay_sap_het" | "giam_gia" | "dat_truoc" | "moi" | "uu_dai" | "ban_chay" | "noi_bat";
     /** Chỉ SP áp dụng voucher này (nút "Dùng ngay") */
@@ -276,6 +278,7 @@ export async function fetchProducts(
   if (opts.maxPrice != null && opts.maxPrice > 0) sp.set("maxPrice", String(opts.maxPrice));
   if (opts.inStock) sp.set("inStock", "1");
   if (opts.maxTon != null && opts.maxTon > 0) sp.set("maxTon", String(opts.maxTon));
+  if (opts.homeOrder) sp.set("homeOrder", opts.homeOrder);
   if (opts.sort) sp.set("sort", opts.sort);
   if (opts.loai) sp.set("loai", String(opts.loai).trim());
   if (opts.badge) sp.set("badge", opts.badge);
@@ -298,6 +301,7 @@ export async function fetchProducts(
         : { cache: "no-store" as const };
   return shopFetch<{
     items: ShopProduct[];
+    homeAudience?: "common" | "wholesale";
     total: number;
     page: number;
     limit: number;

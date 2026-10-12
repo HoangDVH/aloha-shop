@@ -214,7 +214,7 @@ export function PayoutPanel() {
               Tổng số tiền đã thanh toán
             </p>
             <Statistic
-              value={formatVnd(totalPaidOut || stats?.paidOut.amount || 0)}
+              value={formatVnd(billsQ.isSuccess ? totalPaidOut : stats?.paidOut.amount || 0)}
             />
           </Col>
           <Col xs={24} lg={14}>
@@ -255,7 +255,7 @@ export function PayoutPanel() {
                   </div>
                   <div className="font-extrabold">
                     {formatVnd(
-                      Math.max(stats?.billed.amount || 0, totalLocked)
+                      billsQ.isSuccess ? totalLocked : stats?.billed.amount || 0
                     )}
                   </div>
                   <div className="mt-0.5 text-[10px] text-slate-400">
@@ -269,7 +269,7 @@ export function PayoutPanel() {
                     {CTV_COMMISSION_UX.paid_out.label}
                   </div>
                   <div className="font-extrabold">
-                    {formatVnd(stats?.paidOut.amount || 0)}
+                    {formatVnd(billsQ.isSuccess ? totalPaidOut : stats?.paidOut.amount || 0)}
                   </div>
                   <div className="mt-0.5 text-[10px] text-slate-400">
                     {CTV_COMMISSION_UX.paid_out.explain}
@@ -286,6 +286,7 @@ export function PayoutPanel() {
         className="shadow-sm overflow-hidden"
         styles={{ body: { padding: 0 } }}
       >
+        <p className="px-4 pt-3 text-xs leading-5 text-slate-500">Khoản hoàn sau khi đã chi được ghi nhận là nợ và bù trừ vào kỳ tiếp theo. Lịch sử số tiền đã chuyển được giữ nguyên.</p>
         {billsQ.isLoading && !bills.length ? (
           <div className="flex justify-center py-16">
             <Spin />
@@ -300,8 +301,8 @@ export function PayoutPanel() {
             <div className="space-y-3 p-3.5 md:hidden">
               {filteredBills.map((r) => {
                 const lab = formatPeriodLabel(r.period);
-                const paid = r.billStatus === "paid" || r.paidAt;
-                const label = paid
+                const paid = !r.voidedAt && (r.billStatus === "paid" || r.paidAt);
+                const label = r.voidedAt || r.billStatus === "cancelled" ? "Đã hủy khoản chi" : paid
                   ? CTV_COMMISSION_UX.paid_out.label
                   : r.billStatus === "locked"
                     ? CTV_COMMISSION_UX.billed.label
@@ -394,8 +395,8 @@ export function PayoutPanel() {
                     title: "Trạng thái",
                     dataIndex: "billStatus",
                     render: (s: string, r: BillRow) => {
-                      const paid = s === "paid" || r.paidAt;
-                      const label = paid
+                      const paid = !r.voidedAt && (s === "paid" || r.paidAt);
+                      const label = r.voidedAt || s === "cancelled" ? "Đã hủy khoản chi" : paid
                         ? CTV_COMMISSION_UX.paid_out.label
                         : s === "locked"
                           ? CTV_COMMISSION_UX.billed.label
@@ -446,10 +447,14 @@ export function PayoutPanel() {
             <p>
               Thực nhận: <strong>{formatVnd(billDetail.net)}</strong>
             </p>
+            <p>Điều chỉnh hoàn/hủy: <strong>{formatVnd(billDetail.adjustments || 0)}</strong></p>
+            <p>Bù trừ nợ kỳ trước: <strong>{formatVnd(billDetail.debtOffset || 0)}</strong></p>
+            {(billDetail.adjustmentEntries || []).map(entry => <p key={entry.id}>{entry.orderCode} · {entry.reason}: <strong>{formatVnd(entry.amount)}</strong></p>)}
+            {(billDetail.postPaymentAdjustments || []).map(entry => <p key={entry.id}>Thu hồi sau chi · {entry.orderCode} · {entry.reason}: <strong>{formatVnd(entry.amount)}</strong></p>)}
             <p>
               Trạng thái:{" "}
               <strong>
-                {billDetail.billStatus === "paid" || billDetail.paidAt
+                {billDetail.voidedAt || billDetail.billStatus === "cancelled" ? "Đã hủy khoản chi" : billDetail.billStatus === "paid" || billDetail.paidAt
                   ? CTV_COMMISSION_UX.paid_out.label
                   : billDetail.billStatus === "locked"
                     ? CTV_COMMISSION_UX.billed.label

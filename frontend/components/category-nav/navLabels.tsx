@@ -211,19 +211,36 @@ export const L2_PREFERRED_BY_L1: Record<string, readonly string[]> = {
   "CHẬU TRỒNG CÂY": ["CHẬU COMBO THEO BỘ"],
 };
 
+/** Nhánh con L2 ưu tiên cho khách sỉ: không ưu tiên thành phẩm, ưu tiên cây phong thủy */
+export const L2_PREFERRED_BY_L1_WHOLESALE: Record<string, readonly string[]> = {
+  "CÂY CẢNH ĐỦ LOẠI": [
+    "CÂY PHONG THỦY",
+  ],
+  "PHỤ KIỆN TRANG TRÍ": ["PHỤ KIỆN TIỂU CẢNH"],
+  "CHẬU TRỒNG CÂY": ["CHẬU COMBO THEO BỘ"],
+};
+
+export function isFinishedPlantNode(node: ShopCategoryNavNode): boolean {
+  const f = foldKey(node.name);
+  return f.includes("THANH PHAM TRONG SAN") || f.includes("THANH PHAM SALE");
+}
+
 /**
  * Sắp xếp các nhánh con L2 bên phải danh mục:
  * 1. Ưu tiên các nhánh được cấu hình ưu tiên (vd. "Chậu combo theo bộ", "Phụ kiện tiểu cảnh").
  * 2. Ưu tiên các nhánh có nhiều nhóm con L3 hơn lên đầu (subs.length giảm dần).
  * 3. Nếu cùng số nhóm con, ưu tiên nhánh có nhiều sản phẩm hơn (count giảm dần).
  * 4. Các nhánh ít/không có con (chỉ 1 ảnh đơn) sẽ nằm ở dưới.
+ * 5. Đối với khách sỉ: đưa nhóm Thành phẩm trồng sẵn và Thành phẩm sale xuống cuối cùng.
  */
 export function orderL2Nodes(
   parentName: string,
-  nodes: ShopCategoryNavNode[]
+  nodes: ShopCategoryNavNode[],
+  isWholesale: boolean = false
 ): ShopCategoryNavNode[] {
+  const prefConfig = isWholesale ? L2_PREFERRED_BY_L1_WHOLESALE : L2_PREFERRED_BY_L1;
   let preferred: readonly string[] = [];
-  for (const [key, list] of Object.entries(L2_PREFERRED_BY_L1)) {
+  for (const [key, list] of Object.entries(prefConfig)) {
     if (nameMatchesAny(parentName, [key])) {
       preferred = list;
       break;
@@ -238,7 +255,7 @@ export function orderL2Nodes(
     }
   });
 
-  return [...nodes].sort((a, b) => {
+  const sorted = [...nodes].sort((a, b) => {
     const aPref = preferredMap.has(a.id);
     const bPref = preferredMap.has(b.id);
     if (aPref && !bPref) return -1;
@@ -255,4 +272,12 @@ export function orderL2Nodes(
     const bCount = Number.isFinite(b.count) ? b.count : 0;
     return bCount - aCount;
   });
+
+  if (isWholesale && nameMatchesAny(parentName, ["CÂY CẢNH ĐỦ LOẠI", "CÂY CẢNH"])) {
+    const normalNodes = sorted.filter((n) => !isFinishedPlantNode(n));
+    const finishedNodes = sorted.filter((n) => isFinishedPlantNode(n));
+    return [...normalNodes, ...finishedNodes];
+  }
+
+  return sorted;
 }

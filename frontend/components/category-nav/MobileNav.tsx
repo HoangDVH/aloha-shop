@@ -13,6 +13,8 @@ import {
   orderL2Nodes,
 } from "./navLabels";
 import { orderMobileRoots } from "./navSlots";
+import { useShopAuth } from "@/components/ShopAuthProvider";
+import { isWholesaleHomeViewer } from "@/lib/homeWholesaleOrder";
 
 export function mobileTileSrc(node: ShopCategoryNavNode): string {
   if (isPhongThuyL3(node)) return navIllustrationSrc(node.name);
@@ -66,9 +68,15 @@ export function CategoryMobileNav({
   tree: ShopCategoryNavNode[];
   onNavigate?: () => void;
 }) {
-  const roots = useMemo(() => orderMobileRoots(tree), [tree]);
+  const { user } = useShopAuth();
+  const isWholesale = isWholesaleHomeViewer(user);
+  const roots = useMemo(() => orderMobileRoots(tree, isWholesale), [tree, isWholesale]);
   const [activeId, setActiveId] = useState<number | null>(null);
   const rightRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (roots[0]) setActiveId(roots[0].id);
+  }, [isWholesale]);
 
   useEffect(() => {
     if (!roots.length) return;
@@ -96,7 +104,10 @@ export function CategoryMobileNav({
   const active = roots.find((r) => r.id === activeId) || roots[0] || null;
   if (!roots.length || !active) return null;
 
-  const l2 = orderL2Nodes(active.name, nodeSubs(active));
+  const l2 = useMemo(() => {
+    if (!active) return [];
+    return orderL2Nodes(active.name, nodeSubs(active), isWholesale);
+  }, [active, isWholesale]);
   const leafOnly = l2
     .filter((n) => !nodeSubs(n).length)
     .filter(mobileTileHasImage)

@@ -5,15 +5,17 @@ import type { Express } from "express";
 import type { ShopAuthRequest } from "../../shopAuth/routes.js";
 import { SHOP_COMMISSION_BILLS } from "../commissionModels.js";
 import type { CtvMeCtx } from "./shared.js";
+import { reconcileCommissionBills } from "../billSettlement.js";
 
 export function registerCtvMeBillsRoute(app: Express, ctx: CtvMeCtx) {
   app.get("/api/shop/ctv/me/bills", ctx.auth, async (req: ShopAuthRequest, res) => {
     try {
       const activeCtv = await ctx.requireActiveCtv(req, res);
       if (!activeCtv) return;
+      await reconcileCommissionBills(activeCtv.shopDb);
       const rows = await activeCtv.shopDb
         .collection(SHOP_COMMISSION_BILLS)
-        .find({ status: { $in: ["locked", "paid"] } })
+        .find({ status: { $in: ["locked", "paid", "cancelled"] } })
         .sort({ period: -1 })
         .limit(24)
         .toArray();
@@ -27,8 +29,14 @@ export function registerCtvMeBillsRoute(app: Express, ctx: CtvMeCtx) {
             billStatus: (b as any).status,
             net: Number(line.net) || 0,
             gross: Number(line.gross ?? line.amount) || Number(line.net) || 0,
+            adjustments: Number(line.adjustments) || 0,
+            debtOffset: Number(line.debtOffset) || 0,
+            adjustmentEntries: line.adjustmentEntries || [],
+            postPaymentAdjustments: line.postPaymentAdjustments || [],
+            paidAmount: line.paidAmount ?? null,
+            voidedAt: line.voidedAt || null,
             orderCount: Number(line.orderCount) || 0,
-            paidAt: line.paidAt || (b as any).paidAt || null,
+            paidAt: line.voidedAt ? null : line.paidAt || (b as any).paidAt || null,
             lockedAt: (b as any).lockedAt || null,
           };
         })

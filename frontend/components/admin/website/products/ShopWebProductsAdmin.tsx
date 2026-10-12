@@ -48,6 +48,10 @@ type BadgeFilter = "all" | "auto" | WebBadge;
 
 export function ShopWebProductsAdmin() {
   /** Chữ đang gõ — chỉ nuôi dropdown. */
+  const [audience, setAudience] = useState<"common" | "si_noi_bat" | "si_uu_dai">("common");
+  const siBadge = audience === "si_noi_bat" ? "noi_bat" : "uu_dai";
+  const badgeOptions = audience === "common" ? BADGE_OPTIONS : BADGE_OPTIONS.filter(o => !o.value || o.value === siBadge);
+  const badgeFilterOptions = audience === "common" ? BADGE_FILTER_OPTIONS : BADGE_FILTER_OPTIONS.filter(o => o.value === "auto" || o.value === siBadge);
   const [draft, setDraft] = useState("");
   /** Từ khóa đã áp vào bảng (Enter / chọn SP). */
   const [appliedQ, setAppliedQ] = useState("");
@@ -76,12 +80,14 @@ export function ShopWebProductsAdmin() {
         page: String(page),
         limit: String(pageSize),
         visible,
+        audience,
       });
       if (appliedQ.trim()) params.set("q", appliedQ.trim());
       for (const n of selectedNhoms) {
         const p = String(n || "").trim();
         if (p) params.append("nhom", p);
       }
+      params.set("audience", audience);
       if (badgeFilter !== "all") params.set("badge", badgeFilter);
       const r = await websiteApi<{
         items: Row[];
@@ -97,7 +103,7 @@ export function ShopWebProductsAdmin() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, appliedQ, visible, selectedNhoms, badgeFilter]);
+  }, [page, pageSize, appliedQ, visible, selectedNhoms, badgeFilter, audience]);
 
   useEffect(() => {
     void load();
@@ -124,6 +130,7 @@ export function ShopWebProductsAdmin() {
         const p = String(n || "").trim();
         if (p) params.append("nhom", p);
       }
+      params.set("audience", audience);
       if (badgeFilter !== "all") params.set("badge", badgeFilter);
       void websiteApi<{ items: Row[] }>(`/api/shop/admin/products?${params}`)
         .then((r) => {
@@ -139,7 +146,7 @@ export function ShopWebProductsAdmin() {
         });
     }, 220);
     return () => clearTimeout(t);
-  }, [draft, visible, selectedNhoms, badgeFilter]);
+  }, [draft, visible, selectedNhoms, badgeFilter, audience]);
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
@@ -214,7 +221,7 @@ export function ShopWebProductsAdmin() {
         clearedMas?: string[];
       }>(`/api/shop/admin/products/${encodeURIComponent(row.ma)}/merchandising`, {
         method: "PATCH",
-        body: JSON.stringify(patch),
+        body: JSON.stringify({ ...patch, audience }),
       });
       const savedBadge =
         r.webBadge !== undefined ? r.webBadge : patch.webBadge;
@@ -279,6 +286,29 @@ export function ShopWebProductsAdmin() {
 
   return (
     <div className="flex min-h-[calc(100vh-10rem)] flex-col bg-white p-4 md:p-5">
+      <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+        <label className="flex flex-wrap items-center gap-2 text-sm font-semibold">
+          Danh sách đang chỉnh
+          <select
+            value={audience}
+            disabled={loading || Boolean(busyMa) || applyingDefaults}
+            className="rounded-md border border-emerald-200 bg-white px-3 py-2"
+            onChange={e => {
+              setAudience(e.target.value as typeof audience);
+              setBadgeFilter("all"); setPage(1); setRows([]); setSuggestions([]); setLoading(true);
+            }}
+          >
+            <option value="common">Danh sách chung</option>
+            <option value="si_noi_bat">Khách sỉ – Nổi bật</option>
+            <option value="si_uu_dai">Khách sỉ – Ưu đãi</option>
+          </select>
+        </label>
+        <p className="mt-2 text-xs text-gray-600">
+          {audience === "common"
+            ? "Danh sách chung dùng cho khách lẻ và các tài khoản khác. Khách sỉ dùng danh sách chung khi chưa chọn sản phẩm riêng cho mục đó."
+            : "Chỉ áp dụng cho sỉ HCM và sỉ tỉnh đã duyệt. Gắn nhãn để thêm, chọn Chưa gắn để bỏ khỏi danh sách này. Một sản phẩm có thể thuộc cả hai danh sách sỉ. Chỉnh ở đây không thay đổi nhãn, ghim hoặc hiển thị của khách lẻ. Ưu đãi không tự thay đổi giá bán."}
+        </p>
+      </div>
       <div className="mb-4 border-b border-gray-200 pb-4">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -293,7 +323,7 @@ export function ShopWebProductsAdmin() {
             <WbBtn
               type="button"
               variant="secondary"
-              disabled={applyingDefaults || loading}
+              disabled={applyingDefaults || loading || audience !== "common"}
               onClick={() => void applyDefaultBadges()}
               className="!h-9 !text-[12px]"
             >
@@ -443,7 +473,7 @@ export function ShopWebProductsAdmin() {
               value={badgeFilter === "all" ? "" : badgeFilter}
               allLabel="Tất cả nhãn"
               placeholder="Tất cả nhãn"
-              options={BADGE_FILTER_OPTIONS}
+              options={badgeFilterOptions}
               onChange={(v) => {
                 setPage(1);
                 setBadgeFilter((v as BadgeFilter) || "all");
@@ -595,7 +625,7 @@ export function ShopWebProductsAdmin() {
                           void saveMerch({ ...row, webBadge }, patch);
                         }}
                       >
-                        {BADGE_OPTIONS.map((o) => (
+                        {badgeOptions.map((o) => (
                           <option key={o.value || "auto"} value={o.value}>
                             {o.label}
                           </option>
@@ -605,7 +635,7 @@ export function ShopWebProductsAdmin() {
                     <td className="px-4 py-3 text-center">
                       <button
                         type="button"
-                        disabled={busyMa === row.ma}
+                        disabled={busyMa === row.ma || audience !== "common"}
                         onClick={() => void toggle(row)}
                         className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-[12px] font-semibold transition disabled:opacity-50 ${
                           row.hienThiWeb

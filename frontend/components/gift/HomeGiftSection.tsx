@@ -198,68 +198,70 @@ export function HomeGiftSection({ initialItems = [] }: { initialItems?: GiftCard
             onMouseLeave={() => setIsPaused(false)}
           >
             {/* Khung trượt chứa các cặp (2 mục quà tặng mỗi slide) */}
-            <div className="relative overflow-hidden px-1">
-              <div
-                className="flex transition-transform duration-500 ease-in-out"
-                style={{ transform: `translateX(-${mobileSlide * 100}%)` }}
-              >
-                {mobilePairs.map((pair, pIdx) => (
-                  <div key={pIdx} className="w-full shrink-0 grid grid-cols-2 gap-3 px-1">
-                    {pair.map((item, itemIdx) => (
-                      <Link
-                        key={`${pIdx}-${item._id || item.slug}-${itemIdx}`}
-                        href={`/qua-tang/${item.slug}`}
-                        className="flex flex-col group select-none cursor-pointer active:opacity-90"
-                      >
-                        {/* Ảnh quà tặng tỉ lệ ngang chuẩn hình ảnh mẫu */}
-                        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-md bg-stone-100 shadow-2xs">
-                          <GiftImage
-                            src={item.image}
-                            slug={item.slug}
-                            alt={item.title}
-                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          />
-                        </div>
+            <div className="relative">
+              <div className="overflow-hidden px-1">
+                <div
+                  className="flex transition-transform duration-500 ease-in-out"
+                  style={{ transform: `translateX(-${mobileSlide * 100}%)` }}
+                >
+                  {mobilePairs.map((pair, pIdx) => (
+                    <div key={pIdx} className="w-full shrink-0 grid grid-cols-2 gap-3 px-1">
+                      {pair.map((item, itemIdx) => (
+                        <Link
+                          key={`${pIdx}-${item._id || item.slug}-${itemIdx}`}
+                          href={`/qua-tang/${item.slug}`}
+                          className="flex flex-col group select-none cursor-pointer active:opacity-90"
+                        >
+                          {/* Ảnh quà tặng khung vuông 1:1 chuẩn mobile */}
+                          <div className="relative aspect-square w-full overflow-hidden rounded-md bg-stone-100 shadow-2xs">
+                            <GiftImage
+                              src={item.image}
+                              slug={item.slug}
+                              alt={item.title}
+                              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
+                          </div>
 
-                        {/* Tiêu đề 2 dòng cố định chiều cao chuẩn sàn TMĐT (Shopee/Apple), hiển thị trọn vẹn 100% không bị che */}
-                        <div className="mt-2 flex h-9 items-center justify-center px-0.5">
-                          <h3 className="text-center text-[13px] font-semibold text-[#0E5242] line-clamp-2 leading-[1.25] break-words">
-                            {getShortGiftTitle(item.title)}
-                          </h3>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                ))}
+                          {/* Tiêu đề 2 dòng cố định chiều cao chuẩn sàn TMĐT (Shopee/Apple), hiển thị trọn vẹn 100% không bị che */}
+                          <div className="mt-2 flex h-9 items-center justify-center px-0.5">
+                            <h3 className="text-center text-[13px] font-semibold text-[#0E5242] line-clamp-2 leading-[1.25] break-words">
+                              {getShortGiftTitle(item.title)}
+                            </h3>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  ))}
+                </div>
               </div>
+
+              {/* Nút điều hướng Tròn Trắng Mờ ở 2 bên mép (đặt ngang tâm ảnh chuẩn ảnh mẫu) */}
+              {mobilePairs.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileSlide((prev) => (prev - 1 + mobilePairs.length) % mobilePairs.length);
+                    }}
+                    className="absolute -left-1 top-[calc(50%-22px)] -translate-y-1/2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 shadow-md border border-stone-100 text-stone-700 active:scale-90 transition-transform cursor-pointer backdrop-blur-xs"
+                    aria-label="Gợi ý quà tặng trước"
+                  >
+                    <ChevronLeft size={18} strokeWidth={2.4} />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileSlide((prev) => (prev + 1) % mobilePairs.length);
+                    }}
+                    className="absolute -right-1 top-[calc(50%-22px)] -translate-y-1/2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 shadow-md border border-stone-100 text-stone-700 active:scale-90 transition-transform cursor-pointer backdrop-blur-xs"
+                    aria-label="Gợi ý quà tặng tiếp theo"
+                  >
+                    <ChevronRight size={18} strokeWidth={2.4} />
+                  </button>
+                </>
+              )}
             </div>
-
-            {/* Nút điều hướng Tròn Trắng Mờ ở 2 bên mép (đặt ngang tâm ảnh chuẩn ảnh mẫu) */}
-            {mobilePairs.length > 1 && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMobileSlide((prev) => (prev - 1 + mobilePairs.length) % mobilePairs.length);
-                  }}
-                  className="absolute -left-1 top-[60px] -translate-y-1/2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 shadow-md border border-stone-100 text-stone-700 active:scale-90 transition-transform cursor-pointer backdrop-blur-xs"
-                  aria-label="Gợi ý quà tặng trước"
-                >
-                  <ChevronLeft size={18} strokeWidth={2.4} />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMobileSlide((prev) => (prev + 1) % mobilePairs.length);
-                  }}
-                  className="absolute -right-1 top-[60px] -translate-y-1/2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 shadow-md border border-stone-100 text-stone-700 active:scale-90 transition-transform cursor-pointer backdrop-blur-xs"
-                  aria-label="Gợi ý quà tặng tiếp theo"
-                >
-                  <ChevronRight size={18} strokeWidth={2.4} />
-                </button>
-              </>
-            )}
 
             {/* Chấm phân trang Dots căn giữa bên dưới (Chấm active đậm hơn như trong ảnh mẫu) */}
             {mobilePairs.length > 1 && (

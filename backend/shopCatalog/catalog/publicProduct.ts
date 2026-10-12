@@ -275,6 +275,7 @@ export function dedupeListItems(
 export function shopFilterBase(): Record<string, unknown> {
   return {
     $and: [
+      { mergedInto: { $exists: false } },
       { $or: [{ isActive: { $ne: false } }, { isActive: { $exists: false } }] },
       {
         $or: [
@@ -335,6 +336,12 @@ export async function findByProductSlug(db: Db, slug: string) {
     }
   }
 
+  if (codePart) {
+    const alias = await col.findOne({ $and: [
+      ...(active.$and as object[]), { kvCodeAliases: codePart.toUpperCase() },
+    ] } as any);
+    if (alias) return alias;
+  }
   const want = (codePart || raw).toLowerCase();
   const docs = await col
     .find(active as any)

@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { SiPriceBadge } from "@/components/si-pricing/SiPriceBadge";
-import { Loader2, Play, ShoppingBag } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { Play, ShoppingBag } from "lucide-react";
+import { ProductLinkPending } from "@/components/ProductLinkPending";
 import { isPreOrderTon, useCart } from "@/lib/cart";
 import { useToast } from "@/components/Toast";
 import { formatVnd, type ShopProduct } from "@/lib/api";
@@ -37,15 +36,6 @@ export function cardStatusBadges(s: {
   if (!s.preOrder && s.manualBadge === "giam_gia" && !s.promoDeal) out.push({ label: "SALE", tone: "sale" });
   if (!s.preOrder && s.manualBadge === "uu_dai" && !s.hasPromo) out.push({ label: "ƯU\u00A0ĐÃI", tone: "sale" });
   return out;
-}
-
-function ImagePendingOverlay({ active }: { active: boolean }) {
-  if (!active) return null;
-  return (
-    <span className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-white/50 backdrop-blur-[1px]">
-      <Loader2 className="h-7 w-7 animate-spin text-[var(--aloha-green)]" aria-hidden />
-    </span>
-  );
 }
 
 type ProductCardProps = {
@@ -90,14 +80,11 @@ function ProductCardDefault({
 }: Omit<ProductCardProps, "variant">) {
   const add = useCart((s) => s.add);
   const toast = useToast();
-  const pathname = usePathname();
   const { user } = useShopAuth();
   const displayTon = liveTon != null && Number.isFinite(liveTon) ? liveTon : product.ton;
   const preOrder = isPreOrderTon(displayTon);
   const lowStock = !preOrder && displayTon > 0 && displayTon <= 8;
   const manualBadge = product.webBadge;
-  const [navPending, setNavPending] = useState(false);
-  const navTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const priceKind = livePriceKind ?? product.priceKind;
   const expectsSi = user?.siStatus === "active" && user.roles.includes("si");
   const wholesalePricing = expectsSi || priceKind === "si" || priceKind === "si_missing";
@@ -116,32 +103,6 @@ function ProductCardDefault({
     : 0;
   const zeroPriceBlocked = priceKind === "si_missing" || (!(displayGia > 0) && !canPurchaseZeroPrice(user?.email));
   const purchaseBlocked = pricePending || zeroPriceBlocked || (preOrder && allowBackorder === false);
-
-  const clearNavTimer = () => {
-    if (navTimerRef.current) {
-      clearTimeout(navTimerRef.current);
-      navTimerRef.current = null;
-    }
-  };
-
-  useEffect(() => {
-    clearNavTimer();
-    setNavPending(false);
-  }, [pathname]);
-
-  useEffect(() => {
-    const handleReset = () => {
-      clearNavTimer();
-      setNavPending(false);
-    };
-    window.addEventListener("popstate", handleReset);
-    window.addEventListener("pageshow", handleReset);
-    return () => {
-      clearNavTimer();
-      window.removeEventListener("popstate", handleReset);
-      window.removeEventListener("pageshow", handleReset);
-    };
-  }, []);
 
   const onAdd = (e?: React.MouseEvent) => {
     e?.preventDefault();
@@ -172,26 +133,6 @@ function ProductCardDefault({
     );
   };
 
-  const markPending = (e?: React.MouseEvent) => {
-    if (e) {
-      if (
-        e.defaultPrevented ||
-        e.button !== 0 ||
-        e.metaKey ||
-        e.ctrlKey ||
-        e.shiftKey ||
-        e.altKey
-      ) {
-        return;
-      }
-    }
-    clearNavTimer();
-    setNavPending(true);
-    navTimerRef.current = setTimeout(() => {
-      setNavPending(false);
-      navTimerRef.current = null;
-    }, 3000);
-  };
   const hasVideo =
     (Array.isArray(product.videos) && product.videos.length > 0) ||
     Boolean(String(product.videoUrl || "").trim());
@@ -216,17 +157,12 @@ function ProductCardDefault({
 
   return (
     <article
-      className={`group relative flex flex-col overflow-hidden rounded-xl bg-white shadow-xs ring-1 ring-black/[0.06] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-md hover:ring-black/[0.1] animate-fade-up ${
-        navPending ? "opacity-85" : ""
-      }`}
+      className="group relative flex flex-col overflow-hidden rounded-xl bg-white shadow-xs ring-1 ring-black/[0.06] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-md hover:ring-black/[0.1] animate-fade-up"
     >
       <div className="relative">
         <Link
           href={product.path || (product.ma ? `/tim?q=${encodeURIComponent(product.ma)}` : "#")}
-          onClick={markPending}
-          className={`relative block aspect-square w-full overflow-hidden bg-neutral-50 ${
-            navPending ? "cursor-wait" : ""
-          }`}
+          className="relative block aspect-square w-full overflow-hidden bg-neutral-50"
         >
           {product.anh ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -258,7 +194,7 @@ function ProductCardDefault({
             </span>
           ) : null}
 
-          <ImagePendingOverlay active={navPending} />
+          <ProductLinkPending overlay />
         </Link>
 
         {wholesaleDiscount > 0 ? (
@@ -289,14 +225,14 @@ function ProductCardDefault({
       <div className={`flex flex-1 flex-col ${shopee ? "gap-1 p-2 sm:p-2.5" : "gap-1.5 p-2.5 sm:p-3"}`}>
         <Link
           href={product.path || (product.ma ? `/tim?q=${encodeURIComponent(product.ma)}` : "#")}
-          onClick={markPending}
           className={`line-clamp-2 font-medium leading-snug text-neutral-800 transition-colors group-hover:text-[var(--aloha-green)] ${
             shopee
               ? "min-h-[2.1rem] sm:min-h-[2.35rem] text-[12px] sm:text-[13px]"
               : "min-h-[2.4rem] text-sm"
-          } ${navPending ? "cursor-wait" : ""}`}
+          }`}
         >
           {product.ten}
+          <ProductLinkPending />
         </Link>
         {product.giftDimensions ? <p className="text-[11px] leading-relaxed text-stone-500">{product.giftDimensions}</p> : null}
 

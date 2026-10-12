@@ -2,6 +2,7 @@ import type { Express } from "express";
 import type { CommissionAdminCtx, AuthRequest } from "./shared.js";
 import { SHOP_COMMISSION_BILLS } from "../commissionModels.js";
 import { SHOP_ACCOUNTS, normalizeCtvCode } from "../../shopAuth/models.js";
+import { reconcileCommissionBills } from "../billSettlement.js";
 
 export function registerBillsExport(app: Express, ctx: CommissionAdminCtx) {
   const { getShopDb, gate, ensure } = ctx;
@@ -14,6 +15,7 @@ export function registerBillsExport(app: Express, ctx: CommissionAdminCtx) {
       try {
         const shopDb = await getShopDb();
         await ensure(shopDb);
+        await reconcileCommissionBills(shopDb);
         const period = String(req.params.period || "").trim();
         if (!/^\d{4}-\d{2}(-K[12])?$/.test(period)) {
           return res.status(400).json({ error: "invalid_period" });
@@ -62,11 +64,16 @@ export function registerBillsExport(app: Express, ctx: CommissionAdminCtx) {
           { header: "accountName", key: "accountName", width: 24 },
           { header: "gross", key: "gross", width: 14 },
           { header: "adjustments", key: "adjustments", width: 14 },
+          { header: "debtOffset", key: "debtOffset", width: 14 },
           { header: "net", key: "net", width: 14 },
           { header: "orderCount", key: "orderCount", width: 12 },
           { header: "debt", key: "debt", width: 12 },
           { header: "missingStk", key: "missingStk", width: 12 },
+          { header: "paymentStatus", key: "paymentStatus", width: 18 },
+          { header: "adjustmentReason", key: "adjustmentReason", width: 45 },
         ];
+        const history = wb.addWorksheet("LichSu");
+        history.columns = sheet.columns;
         const missing: any[] = [];
         for (const line of lines) {
           const code = normalizeCtvCode(String(line.ctvCode || ""));
@@ -83,13 +90,19 @@ export function registerBillsExport(app: Express, ctx: CommissionAdminCtx) {
             accountName: String(pb.accountName || ""),
             gross: Number(line.gross) || 0,
             adjustments: Number(line.adjustments) || 0,
+            debtOffset: Number(line.debtOffset) || 0,
             net: Number(line.net) || 0,
             orderCount: Number(line.orderCount) || 0,
             debt: Number(acc?.ctvBalanceDebt) || 0,
             missingStk: hasStk ? "" : "1",
+            paymentStatus: line.voidedAt ? "cancelled" : line.paidAt || status === "paid" ? "paid" : "pending",
+            adjustmentReason: (line.adjustmentEntries || []).map((entry: any) => `${entry.orderCode}: ${entry.reason} (${entry.amount})`).join("; "),
           };
-          sheet.addRow(row);
-          if (!hasStk) missing.push(row);
+          history.addRow(row);
+          if (row.paymentStatus === "pending" && row.net > 0) {
+            sheet.addRow(row);
+            if (!hasStk) missing.push(row);
+          }
         }
         const missSheet = wb.addWorksheet("ThieuSTK");
         missSheet.columns = sheet.columns;

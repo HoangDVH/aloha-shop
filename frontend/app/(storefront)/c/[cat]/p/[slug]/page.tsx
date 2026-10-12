@@ -1,7 +1,8 @@
+import { ProductViewTracker } from "@/components/ProductViewTracker";
 import { getSessionProductByPath } from "@/lib/shopCatalogSessionServer";
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { formatVnd } from "@/lib/api";
 import { getProductByPath } from "@/lib/shopProductServer";
 import { ProductDetailView } from "@/components/ProductDetailView";
@@ -114,8 +115,10 @@ export async function generateMetadata({
 
 export default async function ProductDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ cat: string; slug: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { cat, slug } = await params;
   const path = `/c/${cat}/p/${slug}`;
@@ -132,6 +135,13 @@ export default async function ProductDetailPage({
     item = null;
   }
   if (!item) notFound();
+  if (item.path && item.path !== path) {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(searchParams ? await searchParams : {})) {
+      for (const part of Array.isArray(value) ? value : value === undefined ? [] : [value]) query.append(key, part);
+    }
+    permanentRedirect(`${item.path}${query.size ? `?${query}` : ""}`);
+  }
 
   const publicProduct = await getProductByPath(path).then(r => r.item).catch(() => null);
   const pageUrl = `${SHOP_ORIGIN}${item.path || path}`;
@@ -154,6 +164,7 @@ export default async function ProductDetailPage({
           __html: JSON.stringify(buildBreadcrumbJsonLd(crumbs)),
         }}
       />
+      <ProductViewTracker productCode={item.ma} />
       <ProductDetailView product={item} />
       <Suspense fallback={<RelatedProductsSkeleton />}>
         <RelatedProductsSection nhom={item.nhom || ""} ma={item.ma} />

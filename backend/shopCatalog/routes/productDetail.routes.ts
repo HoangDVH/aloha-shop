@@ -187,7 +187,7 @@ export function registerProductDetailRoutes(app: Express, ctx: CatalogCtx) {
       // Không Redis — giá/tồn phải khớp Mongo ngay (giỏ/search đã no-cache).
       res.setHeader("Cache-Control", "no-store");
       const db = await ctx.catalogDb();
-      const doc = await db.collection(COL).findOne({
+      let doc = await db.collection(COL).findOne({
         $and: [
           ...(shopFilterBase().$and as object[]),
           {
@@ -201,6 +201,7 @@ export function registerProductDetailRoutes(app: Express, ctx: CatalogCtx) {
           },
         ],
       } as any);
+      if (!doc) doc = await db.collection(COL).findOne({ $and: [...(shopFilterBase().$and as object[]), { kvCodeAliases: ma.toUpperCase() }] } as any);
       if (!doc) {
         res.status(404).json({ error: "not_found" });
         return;
