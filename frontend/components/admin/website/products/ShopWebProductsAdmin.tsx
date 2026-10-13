@@ -1,7 +1,7 @@
 "use client";
 
 import React, { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { Eye, EyeOff, Loader2, RefreshCw, Search, X } from "lucide-react";
+import { Eye, EyeOff, HelpCircle, Loader2, RefreshCw, Search, Sparkles, X } from "lucide-react";
 import { toast } from "@/components/admin/toast";
 import { FilterSearchSelect } from "@/components/admin/ui/FilterSearchSelect";
 import { InstantTextInput } from "@/components/admin/ui/InstantTextInput";
@@ -47,12 +47,42 @@ const BADGE_FILTER_OPTIONS = [
 
 type BadgeFilter = "all" | "auto" | WebBadge;
 
+const AUDIENCE_TABS = [
+  { id: "common" as const, label: "Danh sách chung (Khách lẻ)" },
+  { id: "si_noi_bat" as const, label: "Khách sỉ – Nổi bật" },
+  { id: "si_uu_dai" as const, label: "Khách sỉ – Ưu đãi" },
+];
+
 export function ShopWebProductsAdmin() {
   /** Chữ đang gõ — chỉ nuôi dropdown. */
   const [audience, setAudience] = useState<"common" | "si_noi_bat" | "si_uu_dai">("common");
+  const [showGuide, setShowGuide] = useState(false);
+  const guideRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!showGuide) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (guideRef.current && !guideRef.current.contains(e.target as Node)) {
+        setShowGuide(false);
+      }
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [showGuide]);
+
   const siBadge = audience === "si_noi_bat" ? "noi_bat" : "uu_dai";
   const badgeOptions = audience === "common" ? BADGE_OPTIONS : BADGE_OPTIONS.filter(o => !o.value || o.value === siBadge);
   const badgeFilterOptions = audience === "common" ? BADGE_FILTER_OPTIONS : BADGE_FILTER_OPTIONS.filter(o => o.value === "auto" || o.value === siBadge);
+
+  const handleAudienceChange = (val: typeof audience) => {
+    if (val === audience || loading || Boolean(busyMa) || applyingDefaults) return;
+    setAudience(val);
+    setBadgeFilter("all");
+    setPage(1);
+    setRows([]);
+    setSuggestions([]);
+    setLoading(true);
+  };
   const [draft, setDraft] = useState("");
   /** Từ khóa đã áp vào bảng (Enter / chọn SP). */
   const [appliedQ, setAppliedQ] = useState("");
@@ -287,69 +317,144 @@ export function ShopWebProductsAdmin() {
 
   return (
     <div className="flex min-h-[calc(100vh-10rem)] flex-col bg-white p-4 md:p-5">
-      <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-        <label className="flex flex-wrap items-center gap-2 text-sm font-semibold">
-          Danh sách đang chỉnh
-          <select
-            value={audience}
-            disabled={loading || Boolean(busyMa) || applyingDefaults}
-            className="rounded-md border border-emerald-200 bg-white px-3 py-2"
-            onChange={e => {
-              setAudience(e.target.value as typeof audience);
-              setBadgeFilter("all"); setPage(1); setRows([]); setSuggestions([]); setLoading(true);
-            }}
-          >
-            <option value="common">Danh sách chung</option>
-            <option value="si_noi_bat">Khách sỉ – Nổi bật</option>
-            <option value="si_uu_dai">Khách sỉ – Ưu đãi</option>
-          </select>
-        </label>
-        <p className="mt-2 text-xs text-gray-600">
-          {audience === "common"
-            ? "Danh sách chung dùng cho khách lẻ và các tài khoản khác. Khách sỉ dùng danh sách chung khi chưa chọn sản phẩm riêng cho mục đó."
-            : "Chỉ áp dụng cho sỉ HCM và sỉ tỉnh đã duyệt. Gắn nhãn để thêm, chọn Chưa gắn để bỏ khỏi danh sách này. Một sản phẩm có thể thuộc cả hai danh sách sỉ. Chỉnh ở đây không thay đổi nhãn, ghim hoặc hiển thị của khách lẻ. Ưu đãi không tự thay đổi giá bán."}
-        </p>
-      </div>
-      <div className="mb-4 border-b border-gray-200 pb-4">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 className="text-[15px] font-semibold text-gray-900">Hàng hóa trên web</h2>
-            <p className="mt-0.5 text-[12px] text-gray-500">
-              Hiện/ẩn · Ghim theo nhãn đang chọn (số = vị trí trong nhãn đó; cùng số cùng
-              nhãn sẽ thay SP cũ; mục «Sản phẩm mới» ưu tiên các SP ghim nhãn Mới) · Đã gắn nhãn = khóa đến khi chọn «Chưa gắn» rồi «Áp nhãn
-              mặc định». 5 nhãn: Nổi bật · Bán chạy và sắp hết · Giảm giá · Đặt trước · Mới.
-            </p>
+      {/* HEADER SECTION (CLEAN & STREAMLINED CHUẨN SHOPIFY / SHOPEE SELLER) */}
+      <div className="mb-4 space-y-3.5 border-b border-gray-200 pb-4">
+        {/* Hàng 1: Tiêu đề + Thống kê số lượng + Nút Hướng dẫn ghim/nhãn + Nút Áp nhãn mặc định */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h2 className="text-[16px] font-bold text-gray-900 tracking-tight">Hàng hóa trên web</h2>
+            <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
+              Tổng {total.toLocaleString("vi-VN")} hàng hóa
+              {appliedQ ? <span className="ml-1 font-normal text-emerald-600">· lọc «{appliedQ}»</span> : null}
+            </span>
+
+            {/* Popover Hướng dẫn ghim & nhãn — Gom gọn toàn bộ wall-of-text cũ */}
+            <div className="relative" ref={guideRef}>
+              <button
+                type="button"
+                onClick={() => setShowGuide((v) => !v)}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
+                  showGuide
+                    ? "bg-emerald-100 text-emerald-900 border border-emerald-300"
+                    : "bg-gray-100 hover:bg-gray-200/80 text-gray-700 border border-gray-200/80"
+                }`}
+                title="Xem quy tắc ghim vị trí và gắn nhãn sản phẩm"
+              >
+                <HelpCircle className="h-3.5 w-3.5 text-emerald-700" />
+                <span>Hướng dẫn ghim & nhãn</span>
+              </button>
+
+              {showGuide ? (
+                <div className="absolute left-0 top-full z-50 mt-1.5 w-[360px] sm:w-[440px] rounded-xl border border-gray-200 bg-white p-4 shadow-xl text-xs text-gray-700 animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-2 mb-3">
+                    <h4 className="font-bold text-gray-900 flex items-center gap-1.5 text-[13px]">
+                      <HelpCircle className="h-4 w-4 text-emerald-600" />
+                      Quy tắc ghim vị trí & gắn nhãn trên web
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => setShowGuide(false)}
+                      className="text-gray-400 hover:text-gray-600 rounded-full p-1"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-2.5 leading-relaxed text-[12px]">
+                    <div className="flex items-start gap-2">
+                      <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">1</span>
+                      <p>
+                        <strong className="text-gray-900">Vị trí ghim:</strong> Số nhỏ hiển thị trước trong nhãn đang gắn. Trùng số cùng nhãn sẽ tự động thay thế SP cũ.
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">2</span>
+                      <p>
+                        <strong className="text-gray-900">Mục «Sản phẩm mới»:</strong> Hệ thống tự động ưu tiên các SP được ghim nhãn <em>Mới</em>.
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">3</span>
+                      <p>
+                        <strong className="text-gray-900">Khóa nhãn:</strong> SP đã gắn nhãn sẽ được cố định, không bị tự động ghi đè. Để đổi, chọn <em>«Chưa gắn»</em> rồi bấm <em>«Áp nhãn mặc định»</em>.
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">4</span>
+                      <p>
+                        <strong className="text-gray-900">5 nhãn hỗ trợ:</strong> Nổi bật · Bán chạy và sắp hết · Giảm giá · Đặt trước · Mới.
+                      </p>
+                    </div>
+                  </div>
+
+                  {audience !== "common" ? (
+                    <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200/80 p-2.5 text-[11px] text-amber-900 leading-normal">
+                      <strong>Lưu ý danh sách sỉ:</strong> Chỉ áp dụng cho tài khoản sỉ HCM & sỉ tỉnh đã duyệt. Chỉnh ở danh sách này không thay đổi nhãn hay ghim của khách lẻ.
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+
+          {/* Nút Áp nhãn mặc định */}
+          {audience === "common" ? (
             <WbBtn
               type="button"
               variant="secondary"
-              disabled={applyingDefaults || loading || audience !== "common"}
+              disabled={applyingDefaults || loading}
               onClick={() => void applyDefaultBadges()}
-              className="!h-9 !text-[12px]"
+              className="!h-8 !text-[12px] !px-3 font-semibold text-emerald-800 hover:bg-emerald-50 border-emerald-200"
+              title="Gắn tự động các nhãn mặc định cho các sản phẩm chưa khóa nhãn"
             >
               {applyingDefaults ? (
                 <>
                   <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Đang áp…
                 </>
               ) : (
-                "Áp nhãn mặc định"
+                <>
+                  <Sparkles className="mr-1.5 h-3.5 w-3.5 text-emerald-600" /> Áp nhãn mặc định
+                </>
               )}
             </WbBtn>
-            <p className="text-[12px] font-medium text-gray-600">
-              Tổng{" "}
-              <span className="tabular-nums text-[#0F9D58]">
-                {total.toLocaleString("vi-VN")}
-              </span>{" "}
-              hàng hóa
-              {appliedQ ? (
-                <span className="ml-1 text-gray-400">· lọc «{appliedQ}»</span>
-              ) : null}
-            </p>
-          </div>
+          ) : null}
         </div>
 
-        <div className="mt-4 grid items-center gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.1fr)_minmax(180px,0.85fr)_minmax(150px,0.65fr)_minmax(150px,0.65fr)_auto]">
+        {/* Hàng 2: Segmented Tabs chọn Danh sách đang chỉnh (Thay thế hộp xanh alert cũ) */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-0.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold text-gray-500">Danh sách:</span>
+            <div className="inline-flex items-center rounded-lg bg-gray-100 p-0.5 border border-gray-200/80">
+              {AUDIENCE_TABS.map((tab) => {
+                const active = audience === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    disabled={loading || Boolean(busyMa) || applyingDefaults}
+                    onClick={() => handleAudienceChange(tab.id)}
+                    className={`relative inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                      active
+                        ? "bg-white text-emerald-800 shadow-2xs font-bold"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
+                    }`}
+                  >
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <span className="text-[11px] text-gray-400 italic">
+            {audience === "common"
+              ? "Áp dụng khách lẻ & mặc định cho khách sỉ"
+              : "Chỉ áp dụng với sỉ HCM & sỉ tỉnh đã duyệt"}
+          </span>
+        </div>
+
+        {/* Hàng 3: BỘ LỌC TÌM KIẾM (GIỮ NGUYÊN 100% TÍNH NĂNG) */}
+        <div className="mt-3.5 grid items-center gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.1fr)_minmax(180px,0.85fr)_minmax(150px,0.65fr)_minmax(150px,0.65fr)_auto]">
           <div ref={wrapRef} className="relative z-20 min-w-0">
             <div className="relative flex h-9 items-center rounded-md border border-[#D4CDC0] bg-white px-2.5 transition focus-within:border-[#0F9D58] focus-within:ring-1 focus-within:ring-[#0F9D58]/25">
               <Search className="mr-2 h-4 w-4 shrink-0 text-gray-400" />

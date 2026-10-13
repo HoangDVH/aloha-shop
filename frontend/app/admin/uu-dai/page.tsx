@@ -26,13 +26,11 @@ import { KiotVietTab } from "@/components/admin/promotions/page/KiotVietTab";
 import {
   allCodesColumns,
   promotionColumns,
-  redemptionColumns,
 } from "@/components/admin/promotions/page/columns";
 import { exportPromotionsToCsv } from "@/components/admin/promotions/page/exportPromotionsCsv";
 import type {
   AllCodeItem,
   RedemptionLog,
-  ReportOverview,
 } from "@/components/admin/promotions/page/types";
 
 function SearchToolbar(props: {
@@ -82,7 +80,7 @@ function AdminPromotionsContent() {
 
   const [promotions, setPromotions] = useState<PromotionItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [activeTabKey, setActiveTabKey] = useState<string>(tabParam || "campaigns");
+  const [activeTabKey, setActiveTabKey] = useState<string>(["campaigns", "programs", "codes", "kiotviet"].includes(tabParam || "") ? tabParam! : "campaigns");
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
 
@@ -98,16 +96,11 @@ function AdminPromotionsContent() {
 
   const [kvStatus, setKvStatus] = useState<any>(null);
 
-  const [, setReport] = useState<ReportOverview | null>(null);
   const [recentRedemptions, setRecentRedemptions] = useState<RedemptionLog[]>([]);
-  const [loadingReport, setLoadingReport] = useState(false);
-  const [redemptionSearchQuery, setRedemptionSearchQuery] = useState("");
 
   // Sync tab with URL search parameter
   useEffect(() => {
-    if (tabParam && ["campaigns", "programs", "codes", "reports", "kiotviet"].includes(tabParam)) {
-      setActiveTabKey(tabParam);
-    }
+    setActiveTabKey(["campaigns", "programs", "codes", "kiotviet"].includes(tabParam || "") ? tabParam! : "campaigns");
   }, [tabParam]);
 
   const fetchPromotions = async () => {
@@ -162,7 +155,6 @@ function AdminPromotionsContent() {
 
   const fetchReport = async () => {
     try {
-      setLoadingReport(true);
       const res = await fetch("/api/shop/admin/promotions/reports/overview");
       if (!res.ok) {
         if (res.status === 401) return;
@@ -170,13 +162,10 @@ function AdminPromotionsContent() {
       }
       const data = await res.json();
       if (data.ok) {
-        setReport(data.stats || null);
         setRecentRedemptions(data.recentRedemptions || []);
       }
     } catch (e: any) {
       message.error(e?.message || "Lỗi tải báo cáo ưu đãi");
-    } finally {
-      setLoadingReport(false);
     }
   };
 
@@ -188,8 +177,7 @@ function AdminPromotionsContent() {
   useEffect(() => {
     if (activeTabKey === "codes" && allCodes.length === 0) fetchAllCodes();
     if (activeTabKey === "kiotviet" && !kvStatus) fetchKvStatus();
-    if (activeTabKey === "reports" && recentRedemptions.length === 0) fetchReport();
-  }, [activeTabKey, allCodes.length, kvStatus, recentRedemptions.length]);
+  }, [activeTabKey, allCodes.length, kvStatus]);
 
   const handleDuplicate = async (item: PromotionItem) => {
     try {
@@ -224,12 +212,6 @@ function AdminPromotionsContent() {
     if (!q) return allCodes;
     return allCodes.filter((c) => includesQuery(q, c.code, c.promotionName, c.assignedBuyerPhone));
   }, [allCodes, codeSearchQuery]);
-
-  const displayedRedemptions = useMemo(() => {
-    const q = redemptionSearchQuery.toLowerCase().trim();
-    if (!q) return recentRedemptions;
-    return recentRedemptions.filter((r) => includesQuery(q, r.orderCode, r.promotionId, r.buyerPhone));
-  }, [recentRedemptions, redemptionSearchQuery]);
 
   const handleExport = () => {
     if (!exportPromotionsToCsv(displayedPromotions)) {
@@ -396,54 +378,6 @@ function AdminPromotionsContent() {
     </div>
   );
 
-  const reportsTab = (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-base sm:text-lg font-bold text-slate-900">Lịch sử sử dụng & Đối soát</h2>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">
-              {displayedRedemptions.length} giao dịch
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Nhật ký sử dụng mã giảm giá trên các đơn hàng thực tế, phục vụ đối soát doanh thu.
-          </p>
-        </div>
-        <Button
-          icon={<RefreshCw size={14} className={loadingReport ? "animate-spin" : ""} />}
-          onClick={fetchReport}
-          loading={loadingReport}
-          className="!h-9 !rounded-lg text-xs"
-        >
-          Làm mới
-        </Button>
-      </div>
-
-      <SearchToolbar
-        placeholder="Tìm theo mã đơn hàng, SĐT khách..."
-        value={redemptionSearchQuery}
-        onChange={setRedemptionSearchQuery}
-        onRefresh={fetchReport}
-        loading={loadingReport}
-        summary={
-          <>
-            Hiển thị <strong>{displayedRedemptions.length}</strong> giao dịch
-          </>
-        }
-      />
-      <div className="overflow-x-auto rounded-xl border border-slate-200/80">
-        <Table
-          columns={redemptionColumns}
-          dataSource={displayedRedemptions}
-          rowKey="_id"
-          loading={loadingReport}
-          pagination={{ pageSize: 15 }}
-        />
-      </div>
-    </div>
-  );
-
   return (
     <div className="space-y-4">
       {/* Main Content (Navigated cleanly from Admin Sidebar) */}
@@ -453,7 +387,6 @@ function AdminPromotionsContent() {
         <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-6 shadow-xs">
           {activeTabKey === "programs" && programsTab}
           {activeTabKey === "codes" && codesTab}
-          {activeTabKey === "reports" && reportsTab}
           {activeTabKey === "kiotviet" && <KiotVietTab />}
         </div>
       )}

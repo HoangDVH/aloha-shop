@@ -106,6 +106,7 @@ export interface PromotionAuditDoc {
 }
 
 export interface CartItemToEvaluate {
+  volumePricing?: { basePrice: number; discountPercent: number; quantity: number };
   ma: string;
   ten?: string;
   price: number;

@@ -1,8 +1,10 @@
 "use client";
 
 import React from "react";
+import { Dropdown } from "antd";
 import {
   FileText,
+  ChevronDown,
   Gift,
   Image as ImageIcon,
   Layers,
@@ -52,24 +54,14 @@ export function HomePanel({
     <div className="space-y-4">
       <WbSectionLabel
         action={
-          <div className="flex flex-wrap items-center gap-1.5">
-            <button
-              type="button"
-              onClick={addProductSection}
-              className="inline-flex h-8 items-center gap-1 rounded-lg border border-solid border-[var(--aloha-green)]/40 bg-[var(--aloha-green-light)] px-2.5 text-[11px] font-bold text-[var(--aloha-green-mid)] shadow-sm hover:brightness-95"
-              style={{ borderStyle: "solid" }}
-            >
-              <Plus className="h-3.5 w-3.5" /> Thêm mục SP
+          <Dropdown trigger={["click"]} menu={{ items: [
+            { key: "product", label: "Mục sản phẩm", icon: <Layers size={15} /> },
+            { key: "article", label: "Mục bài viết", icon: <FileText size={15} /> },
+          ], onClick: ({ key }) => { if (key === "product") addProductSection(); else if (key === "article") addArticleSection(); } }}>
+            <button type="button" className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-slate-100 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-200" aria-label="Thêm khối trang chủ">
+              <Plus size={15} /> Thêm khối <ChevronDown size={13} />
             </button>
-            <button
-              type="button"
-              onClick={addArticleSection}
-              className="inline-flex h-8 items-center gap-1 rounded-lg border border-solid border-[var(--aloha-green)]/40 bg-white px-2.5 text-[11px] font-bold text-[var(--aloha-green-mid)] shadow-sm hover:bg-[var(--aloha-green-light)]"
-              style={{ borderStyle: "solid" }}
-            >
-              <FileText className="h-3.5 w-3.5" /> Thêm bài viết
-            </button>
-          </div>
+          </Dropdown>
         }
       >
         Khối trang chủ

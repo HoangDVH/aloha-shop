@@ -46,7 +46,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         <Drawer open={menuOpen} onClose={() => setMenuOpen(false)} placement="left" title="Điều hướng" size={248} styles={{ body: { padding: 0 } }} destroyOnHidden>
           <div className="h-full [&>aside]:h-full">
             <Suspense fallback={null}>
-              <AdminSidebar />
+              <AdminSidebar onNavigate={() => setMenuOpen(false)} />
             </Suspense>
           </div>
         </Drawer>

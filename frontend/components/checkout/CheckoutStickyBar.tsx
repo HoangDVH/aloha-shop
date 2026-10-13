@@ -8,6 +8,9 @@ import { formatVnd } from "@/lib/api";
 type Props = {
   total: number;
   discount?: number;
+  volumeDiscount?: number;
+  flashDiscount?: number;
+  productDiscount?: number;
   grandTotal: number;
   shippingFee: number | null;
   shippingDiscount?: number;
@@ -27,6 +30,9 @@ type Props = {
 export function CheckoutStickyBar({
   total,
   discount = 0,
+  volumeDiscount = 0,
+  flashDiscount = 0,
+  productDiscount = 0,
   grandTotal,
   shippingFee,
   shippingDiscount = 0,
@@ -40,6 +46,7 @@ export function CheckoutStickyBar({
   const [detailsOpen, setDetailsOpen] = useState(false);
   const detailId = useId();
   const amount = deliveryMethod === "nhan_cua_hang" || shippingFee == null ? Math.max(0, total - discount) : grandTotal;
+  const voucherDiscount = Math.max(0, discount - volumeDiscount - flashDiscount - productDiscount);
   const totalLabel = deliveryMethod === "nhan_cua_hang" ? "Tổng thanh toán" : shippingFee == null ? "Tiền hàng (chưa gồm ship)" : "Tổng tạm tính";
   const stickyRef = useStickyBarHeight<HTMLDivElement>();
   const [mounted, setMounted] = useState(false);
@@ -57,10 +64,13 @@ export function CheckoutStickyBar({
             <span>Tổng tiền hàng</span>
             <span className="tabular-nums">{formatVnd(total)}</span>
           </div>
-          {discount > 0 ? (
+          {productDiscount > 0 && <div className="flex justify-between text-emerald-700"><span>Giảm giá sản phẩm</span><span>-{formatVnd(productDiscount)}</span></div>}
+          {volumeDiscount > 0 && <div className="flex justify-between text-emerald-700"><span>Giảm theo số lượng</span><span>-{formatVnd(volumeDiscount)}</span></div>}
+          {flashDiscount > 0 && <div className="flex justify-between text-emerald-700"><span>Giảm Flash Sale</span><span>-{formatVnd(flashDiscount)}</span></div>}
+          {voucherDiscount > 0 ? (
             <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold">
-              <span>Giảm giá ưu đãi</span>
-              <span className="tabular-nums">-{formatVnd(discount)}</span>
+              <span>Voucher tiền hàng</span>
+              <span className="tabular-nums">-{formatVnd(voucherDiscount)}</span>
             </div>
           ) : null}
           {showShipping ? (

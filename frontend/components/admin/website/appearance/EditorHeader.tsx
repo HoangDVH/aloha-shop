@@ -4,22 +4,19 @@ import React from "react";
 import {
   Check,
   Clock,
-  ExternalLink,
+  Eye,
   History,
   Loader2,
-  Monitor,
   MoreHorizontal,
   Palette,
-  RefreshCw,
+  Save,
   RotateCcw,
-  Smartphone,
 } from "lucide-react";
 import type { AppearanceHistoryMeta } from "../api";
 import {
   WbBadge,
   WbBtn,
   WbField,
-  WbIconSegment,
   wbInput,
   wbSelect,
 } from "../ui";
@@ -32,8 +29,8 @@ export function EditorHeader({
   primary,
   dirtyFlag,
   scheduledAt,
-  device,
-  setDevice,
+  previewOpen,
+  onTogglePreview,
   toolsRef,
   toolsOpen,
   setToolsOpen,
@@ -49,13 +46,12 @@ export function EditorHeader({
   clearSchedule,
   syncPreview,
   applyPublish,
-  shopPreviewUrl,
 }: {
   primary: string;
   dirtyFlag: boolean;
   scheduledAt: string | null;
-  device: "desktop" | "mobile";
-  setDevice: (d: "desktop" | "mobile") => void;
+  previewOpen: boolean;
+  onTogglePreview: () => void;
   toolsRef: React.RefObject<HTMLDivElement | null>;
   toolsOpen: boolean;
   setToolsOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -71,10 +67,9 @@ export function EditorHeader({
   clearSchedule: () => Promise<void>;
   syncPreview: () => Promise<void>;
   applyPublish: () => Promise<void>;
-  shopPreviewUrl: string;
 }) {
   return (
-    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-gray-200 bg-white px-4">
+    <header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-gray-200 bg-white px-3 py-3 sm:px-4">
       <div className="flex min-w-0 flex-1 items-center gap-2.5">
         <div
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white"
@@ -88,7 +83,7 @@ export function EditorHeader({
         {dirtyFlag ? (
           <WbBadge tone="warn">Chưa áp dụng</WbBadge>
         ) : (
-          <WbBadge tone="success">Đã đồng bộ</WbBadge>
+          <WbBadge tone="success">Đã áp dụng</WbBadge>
         )}
         {scheduledAt ? (
           <button
@@ -102,30 +97,20 @@ export function EditorHeader({
         ) : null}
       </div>
 
-      <div className="hidden md:block">
-        <WbIconSegment
-          value={device}
-          onChange={setDevice}
-          options={[
-            { id: "desktop", title: "Desktop", Icon: Monitor },
-            { id: "mobile", title: "Mobile", Icon: Smartphone },
-          ]}
-        />
-      </div>
-
-      <div className="flex flex-1 items-center justify-end gap-1.5">
+      <div className="flex items-center justify-end gap-1.5 max-sm:w-full">
         <div ref={toolsRef} className="relative">
           <WbBtn
             variant="ghost"
             className="!px-2.5"
             onClick={() => setToolsOpen((o) => !o)}
-            title="Lịch sử & hẹn giờ"
+            title="Công cụ: lịch sử, hoàn tác và hẹn giờ"
+            aria-label="Mở công cụ giao diện"
+            aria-expanded={toolsOpen}
           >
             <MoreHorizontal className="h-4 w-4" />
-            <span className="hidden xl:inline">Thêm</span>
           </WbBtn>
           {toolsOpen ? (
-            <div className="absolute right-0 top-full z-50 mt-1.5 w-[340px] rounded-xl border border-gray-200 bg-white p-3.5 shadow-xl">
+            <div className="absolute left-0 top-full z-50 mt-1.5 max-h-[75dvh] w-[min(340px,calc(100vw-3rem))] overflow-y-auto rounded-xl border border-gray-200 bg-white p-3.5 shadow-xl sm:left-auto sm:right-0">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <p className="text-[12px] font-semibold text-gray-900">
                   Lịch sử & hẹn giờ
@@ -138,7 +123,7 @@ export function EditorHeader({
                     void revert();
                   }}
                 >
-                  <RotateCcw className="h-3 w-3" /> Hoàn tác XB
+                  <RotateCcw className="h-3 w-3" /> Hoàn tác
                 </WbBtn>
               </div>
 
@@ -179,7 +164,7 @@ export function EditorHeader({
                   </p>
                   <p className="mb-2 text-[11px] leading-snug text-amber-800/90">
                     Web shop chỉ đổi đúng giờ hẹn. Muốn khách thấy ngay → bấm
-                    «Áp dụng». Khung xem trước cũng là bản đang lên web.
+                    «Áp dụng». Khung Website hiện tại hiển thị bản đã áp dụng.
                   </p>
                   <div className="grid grid-cols-2 gap-2">
                     <WbField label="Ngày">
@@ -238,18 +223,18 @@ export function EditorHeader({
           disabled={saving}
           onClick={() => void syncPreview()}
           className="!px-2.5"
-          title="Lưu nháp & làm mới xem trước"
+          title="Lưu bản nháp, chưa áp dụng lên website"
         >
           {saving ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : (
-            <RefreshCw className="h-3.5 w-3.5" />
+            <Save className="h-3.5 w-3.5" />
           )}
-          <span className="hidden sm:inline">Đồng bộ</span>
+          <span>Lưu nháp</span>
         </WbBtn>
-        <WbBtn variant="ghost" href={shopPreviewUrl} className="!px-2.5">
-          <ExternalLink className="h-3.5 w-3.5" />
-          <span className="hidden lg:inline">Xem trước</span>
+        <WbBtn variant="ghost" onClick={onTogglePreview} aria-expanded={previewOpen} className="!px-2.5" title="Xem website đang được áp dụng">
+          <Eye className="h-3.5 w-3.5" />
+          <span>Website hiện tại</span>
         </WbBtn>
         <WbBtn variant="primary" disabled={saving} onClick={() => void applyPublish()}>
           {saving ? (

@@ -1,3 +1,4 @@
+import { calculateTierPrice } from "../../frontend/lib/volumePricing.js";
 import { isActiveWholesale } from "../shopWholesale/policy.js";
 import type { Response } from "express";
 import type { Db } from "mongodb";
@@ -117,6 +118,8 @@ export async function applyCatalogPrices(
     byMa.set(key, d);
   }
   const pbByMa = await loadPriceBooksByMa(mainDb, mas);
+  const quantities = new Map<string, number>();
+  for (const d of details) if (!d.isGift) quantities.set(d.productCode, (quantities.get(d.productCode) || 0) + d.quantity);
   const out: ShopOrderDetail[] = [];
   for (const d of details) {
     const raw = byMa.get(d.productCode);
@@ -131,6 +134,7 @@ export async function applyCatalogPrices(
     }
     const doc = applyPriceBookOverlay(raw, pbByMa.get(d.productCode));
     const { gia, priceKind } = resolveShopPrice(doc, isActiveWholesale(opts?.account) ? "si" : "web");
+    const tier = priceKind === "web" && !d.isGift ? calculateTierPrice(gia, quantities.get(d.productCode) || d.quantity) : null;
     if (priceKind === "si_missing" && !opts?.quoteOnly) return { ok: false, error: `${d.productCode} chưa có giá sỉ — vui lòng liên hệ báo giá` };
     if (!(gia > 0) && !allowZeroPrice && !opts?.quoteOnly) {
       return {
@@ -146,7 +150,8 @@ export async function applyCatalogPrices(
         variant && !baseName.includes(variant)
           ? `${baseName} (${variant})`
           : baseName,
-      price: gia,
+      price: tier?.unitPrice ?? gia,
+      volumePricing: tier && tier.savedAmount > 0 ? { basePrice: gia, discountPercent: tier.tier.discountPercent, quantity: quantities.get(d.productCode)! } : undefined,
       priceKind,
       discount: 0,
       imageUrl: d.imageUrl || (doc.anh ? String(doc.anh) : undefined),

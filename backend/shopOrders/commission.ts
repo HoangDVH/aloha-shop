@@ -133,7 +133,22 @@ export async function holdCommissionsForOrder(
   let created = 0;
   let flagged = 0;
 
+  // Commission identity is order + SKU + CTV; flash pricing can split that SKU into several rows.
+  const grouped = new Map<string, { d: ShopOrderDetail; net: number; qty: number; gross: number }>();
   for (const d of details) {
+    if (d.isGift) continue;
+    const ma = String(d.productCode || "").trim().toUpperCase();
+    const ctv = normalizeCtvCode(String(d.ctvCode || ""));
+    const key = JSON.stringify([ma, ctv]);
+    const group = grouped.get(key) || { d, net: 0, qty: 0, gross: 0 };
+    const qty = Math.max(1, Math.floor(Number(d.quantity) || 1));
+    group.net += lineNet(d);
+    group.qty += qty;
+    group.gross += Math.max(0, Number(d.price) || 0) * qty;
+    grouped.set(key, group);
+  }
+
+  for (const { d, net, qty, gross } of grouped.values()) {
     const ctv = normalizeCtvCode(String(d.ctvCode || ""));
     const ma = String(d.productCode || "").trim().toUpperCase();
     if (!ctv || ctv.length < 3 || !ma) continue;
@@ -164,7 +179,6 @@ export async function holdCommissionsForOrder(
       continue;
     }
 
-    const net = lineNet(d);
     if (net <= 0) continue;
     const { rate, source } = await resolveRate(shopDb, mainDb, ctv, ma);
     if (!(rate > 0)) continue;
@@ -174,8 +188,7 @@ export async function holdCommissionsForOrder(
     const status: CommissionStatus = fraud.hardFlags.length ? "flagged" : "held";
     if (fraud.hardFlags.length) flagged += 1;
 
-    const qty = Math.max(1, Math.floor(Number(d.quantity) || 1));
-    const unitPrice = Math.max(0, Number(d.price) || 0);
+    const unitPrice = gross / qty;
     const imageUrl = String(d.imageUrl || "").trim() || undefined;
     try {
       await shopDb.collection(SHOP_COMMISSIONS).updateOne(

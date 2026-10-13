@@ -7,6 +7,7 @@ import { Alert, Button, Drawer, Empty, Input, Popconfirm, Select, Skeleton, Tabl
 import { ArrowUpRight, ChevronRight, RefreshCw, Search, UserPlus, X } from "lucide-react";
 import { siRequest } from "@/lib/siQueries";
 import { requireDirectoryResponse } from "@/lib/customerDirectoryResponse";
+import { customerReviewTarget } from "@/lib/customerReviewTarget";
 import { InviteWholesale } from "../si/InviteWholesale";
 import { SiAccountsPanel, type SiAccountRow } from "../si/SiAccountsPanel";
 import { SiOrderSyncPanel } from "../si/SiOrderSyncPanel";
@@ -97,6 +98,12 @@ export default function CustomerDirectory() {
   const change = (key: keyof Filters, value: string) => { setFilters(f => ({ ...f, [key]: value })); setPage(1); };
   const clear = () => { setFilters(defaults); setSearch(""); setDebouncedSearch(""); setPage(1); };
   const filtered = search !== "" || Object.entries(filters).some(([key, value]) => value !== defaults[key as keyof Filters]);
+  const openCustomer = (row: Account) => {
+    const target = customerReviewTarget(row);
+    if (target === "si") setSiId(row.id);
+    else if (target === "ctv") reviewCtv(row.id);
+    else setSelectedId(row.id);
+  };
 
   return <div className="mx-auto max-w-[1600px] space-y-3 pb-8">
     {stats.error && <Alert type="warning" showIcon title="Chưa tải được thống kê" action={<Button onClick={() => void stats.refetch()}>Thử lại</Button>} />}
@@ -140,16 +147,19 @@ export default function CustomerDirectory() {
         pagination={{ current: page, pageSize, total: list.data?.total || 0, showSizeChanger: true, pageSizeOptions: [15, 30, 50],
           onChange: (next, size) => { setPage(size !== pageSize ? 1 : next); setPageSize(size); }, showTotal: total => `${total.toLocaleString("vi-VN")} khách hàng` }}
         columns={[
-          { title: "Khách hàng", key: "name", width: 260, fixed: "left" as const, render: (_, row) => <button type="button" onClick={() => setSelectedId(row.id)} className="flex w-full items-center gap-3 rounded-lg text-left focus-visible:outline-2 focus-visible:outline-green-700">
+          { title: "Khách hàng", key: "name", width: 260, fixed: "left" as const, render: (_, row) => <button type="button" onClick={() => openCustomer(row)} className="flex w-full items-center gap-3 rounded-lg text-left focus-visible:outline-2 focus-visible:outline-green-700">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#edf4e9] font-semibold text-[#456b3c]">{(row.fullName || row.email || "?").slice(0, 1).toUpperCase()}</span>
             <span className="min-w-0"><span className="block font-semibold text-slate-800">{row.fullName || "Chưa có tên"}</span><span className="block max-w-[210px] truncate text-xs text-slate-500">{row.email || "Chưa có email"}</span></span>
           </button> },
           { title: "Số điện thoại", dataIndex: "phone", width: 145, render: value => <span className="whitespace-nowrap text-slate-600">{value || "—"}</span> },
           { title: "Loại khách", key: "type", width: 185, render: (_, row) => <Tag color={category(row).color}>{category(row).label}</Tag> },
           { title: "Cộng tác viên", key: "ctv", width: 155, render: (_, row) => row.roles.includes("ctv") ? <div><StatusTag ctv value={row.ctvStatus} /><span className="mt-1 block font-mono text-xs text-slate-500">{row.ctvCode || "Chưa cấp mã"}</span></div> : <span className="text-xs text-slate-400">Không phải CTV</span> },
-          { title: "Hồ sơ sỉ", key: "si", width: 140, render: (_, row) => row.roles.includes("si") ? <StatusTag value={row.siStatus} /> : <span className="text-slate-400">—</span> },
+          { title: "Hồ sơ sỉ", key: "si", width: 140, render: (_, row) => row.roles.includes("si") ? <button type="button" aria-label={`Xem hồ sơ sỉ ${row.fullName}`} onClick={() => setSiId(row.id)} className="rounded focus-visible:outline-2 focus-visible:outline-green-700"><StatusTag value={row.siStatus} /></button> : <span className="text-slate-400">—</span> },
           { title: "Tài khoản", key: "state", width: 125, render: (_, row) => <span className={`inline-flex items-center gap-1.5 text-xs ${row.active === false ? "text-red-600" : "text-emerald-700"}`}><span className={`h-1.5 w-1.5 rounded-full ${row.active === false ? "bg-red-500" : "bg-emerald-500"}`} />{row.active === false ? "Đã khóa" : "Đang mở"}</span> },
-          { title: "", key: "action", width: 125, render: (_, row) => <Button type="text" aria-label={`Phân quyền ${row.fullName}`} onClick={() => setSelectedId(row.id)}>Phân quyền <ChevronRight size={14} /></Button> },
+          { title: "", key: "action", width: 140, render: (_, row) => <div className="flex flex-col items-start">
+            {customerReviewTarget(row) !== "account" && <Button type="link" aria-label={`Xem hồ sơ ${row.fullName}`} onClick={() => openCustomer(row)}>Xem hồ sơ <ChevronRight size={14} /></Button>}
+            <Button type="text" aria-label={`Phân quyền ${row.fullName}`} onClick={() => setSelectedId(row.id)}>Phân quyền <ChevronRight size={14} /></Button>
+          </div> },
         ]} />
     </section>}
 

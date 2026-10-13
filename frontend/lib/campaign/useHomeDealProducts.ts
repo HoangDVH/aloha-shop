@@ -5,6 +5,7 @@ import type { ShopProduct } from "@/lib/api";
 import { fetchLivePrices, type LivePriceRow } from "@/lib/livePrices";
 import { liveRowToProduct } from "@/components/campaign/deals/DealsProducts";
 import { useCampaignView } from "./useCampaignView";
+import { placeDealPins } from "./dealProductOrder";
 
 /**
  * Danh sách SSR được tải không kèm phiên đăng nhập, nên thiếu chiến dịch chỉ tài khoản thử thấy (hoặc vừa
@@ -53,25 +54,4 @@ export function useHomeDealProducts(ssr: ShopProduct[], limit: number): ShopProd
     );
     return placeDealPins([...first, ...rest]).slice(0, limit);
   }, [campaignMas, rows, ssr, ssrByMa, limit]);
-}
-
-/** Ghim nhãn «Ưu đãi» (webPin = vị trí tuyệt đối) — cùng quy tắc với server; còn lại giữ nguyên thứ tự. */
-function placeDealPins(list: ShopProduct[]): ShopProduct[] {
-  const pinned = new Map<number, ShopProduct>();
-  const rest: ShopProduct[] = [];
-  for (const p of list) {
-    const n = p.webBadge === "uu_dai" ? Math.round(Number(p.webPin) || 0) : 0;
-    if (n > 0 && !pinned.has(n)) pinned.set(n, p);
-    else rest.push(p);
-  }
-  if (!pinned.size) return list;
-  const out: ShopProduct[] = [];
-  const maxPin = Math.max(...pinned.keys());
-  let u = 0;
-  for (let slot = 1; slot <= maxPin; slot++) {
-    const hit = pinned.get(slot);
-    if (hit) out.push(hit);
-    else if (u < rest.length) out.push(rest[u++]);
-  }
-  return [...out, ...rest.slice(u)];
 }

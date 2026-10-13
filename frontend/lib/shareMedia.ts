@@ -46,12 +46,11 @@ export async function loadShareFile(
   return new File([blob], `${baseName}.${EXT[type] || (item.kind === "video" ? "mp4" : "jpg")}`, { type });
 }
 
-/** Chỉ điện thoại/tablet: bảng chia sẻ của máy mới có Zalo/Facebook nhận file. */
+/** Detect browser file sharing capabilities on both desktop and mobile. */
 export function canShareFilesOnDevice(): boolean {
-  if (typeof window === "undefined" || typeof navigator.canShare !== "function") return false;
-  if (!window.matchMedia?.("(pointer: coarse)").matches) return false;
+  if (typeof window === "undefined" || typeof navigator.share !== "function" || typeof navigator.canShare !== "function") return false;
   try {
-    return navigator.canShare({ files: [new File([""], "x.jpg", { type: "image/jpeg" })] });
+    return navigator.canShare({ files: [new File(["probe"], "x.jpg", { type: "image/jpeg" })] });
   } catch {
     return false;
   }

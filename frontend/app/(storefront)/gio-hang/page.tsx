@@ -118,6 +118,7 @@ export default function CartPage() {
   useCampaignCartNotices(campaign);
   const flashSavings = campaign?.flashSavings || 0;
   const anchorSavings = campaign?.anchorSavings || 0;
+  const volumeSavings = campaign?.volumeSavings || 0;
   const discountAmount = promoQuote?.discountTotal || 0;
   // Có báo giá server thì dùng giá server (giá trong giỏ máy có thể cũ / bị sửa).
   const tamTinh = promoQuote ? promoQuote.subtotal + flashSavings : localTamTinh;
@@ -154,7 +155,7 @@ export default function CartPage() {
 
       {/* THANH TIẾN TRÌNH FREESHIP THÔNG MINH (CHO CẢ DESKTOP LẪN MOBILE) */}
       {lines.length > 0 ? (
-        <SmartFreeshipBar currentAmount={tamTinh} />
+        <SmartFreeshipBar currentAmount={promoQuote?.subtotal ?? tamTinh} showMoreShopping={false} />
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
@@ -253,7 +254,9 @@ export default function CartPage() {
               <ul className="divide-y divide-[var(--aloha-line)]">
                 {lines.map((l) => {
                   const fl = l.selected ? flashLineFor(campaign, l.ma) : null;
-                  const lineTotal = fl ? fl.lineTotal : l.gia * l.qty;
+                  const serverRows = (campaign?.lines || []).filter(row => row.ma === l.ma && !row.isGift);
+                  const unitPrice = serverRows[0]?.price ?? l.gia;
+                  const lineTotal = serverRows.length ? serverRows.reduce((sum, row) => sum + row.price * row.quantity, 0) : l.gia * l.qty;
                   return (
                   <li
                     key={l.ma}
@@ -295,7 +298,7 @@ export default function CartPage() {
                         {/* Mobile price/qty */}
                         <div className="mt-2 flex flex-wrap items-center gap-3 md:hidden">
                           <span className="text-sm text-slate-700">
-                            <CartUnitPrice gia={l.gia} qty={l.qty} flash={fl} />
+                            <CartUnitPrice gia={unitPrice} qty={l.qty} flash={fl} />
                           </span>
                           <QtyCtrl
                             qty={l.qty}
@@ -322,7 +325,7 @@ export default function CartPage() {
                       </div>
                     </div>
                     <div className="hidden text-center text-sm text-slate-700 md:block">
-                      <CartUnitPrice gia={l.gia} qty={l.qty} flash={fl} />
+                      <CartUnitPrice gia={unitPrice} qty={l.qty} flash={fl} />
                     </div>
                     <div className="hidden flex-col items-center md:flex">
                       <QtyCtrl
@@ -401,9 +404,9 @@ export default function CartPage() {
           <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-[var(--aloha-line)]">
             <div className="flex items-center justify-between text-sm text-slate-600">
               <span>Tạm tính</span>
-              <span>{formatVnd(tamTinh + anchorSavings)}</span>
+              <span>{formatVnd(tamTinh + anchorSavings + volumeSavings)}</span>
             </div>
-            <SavingsRows flash={flashSavings} voucher={discountAmount} anchor={anchorSavings} voucherPromo={promoQuote?.applied} />
+            <SavingsRows flash={flashSavings} volume={volumeSavings} voucher={discountAmount} anchor={anchorSavings} voucherPromo={promoQuote?.applied} />
             <div className="my-3 border-t border-[var(--aloha-line)]" />
             <div className="flex items-center justify-between">
               <div>
@@ -445,8 +448,8 @@ export default function CartPage() {
             </label>
             <div className="min-w-0 flex-1 text-right">
               <p className="text-[11px] text-slate-500">
-                {discountAmount + flashSavings + anchorSavings > 0
-                  ? `Tiết kiệm ${formatVnd(discountAmount + flashSavings + anchorSavings)}`
+                {discountAmount + flashSavings + anchorSavings + volumeSavings > 0
+                  ? `Tiết kiệm ${formatVnd(discountAmount + flashSavings + anchorSavings + volumeSavings)}`
                   : `Tổng (${selectedQty})`}
               </p>
               <p className="truncate text-base font-black text-[var(--aloha-price)]">{formatVnd(tongSauGiam)}</p>

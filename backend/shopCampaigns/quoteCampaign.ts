@@ -9,6 +9,7 @@ export type QuoteLine = {
   ten: string;
   quantity: number;
   price: number;
+  volumePricing?: ShopOrderDetail["volumePricing"];
   listPrice?: number;
   flash?: boolean;
   isGift?: boolean;
@@ -21,6 +22,7 @@ export type CampaignQuote = {
   items: CartItemToEvaluate[];
   lines: QuoteLine[];
   flashSavings: number;
+  volumeSavings: number;
   anchorSavings: number;
   notices: string[];
 };
@@ -31,6 +33,7 @@ function toLine(d: ShopOrderDetail): QuoteLine {
     ten: d.productName,
     quantity: d.quantity,
     price: d.price,
+    volumePricing: d.volumePricing,
     ...(d.flash ? { flash: true, listPrice: d.flash.listPrice } : {}),
     ...(d.isGift ? { isGift: true, giftFor: d.gift?.giftFor, note: d.note } : {}),
   };
@@ -47,6 +50,7 @@ export async function quoteWithCampaign(
     productName: it.ten,
     quantity: it.quantity,
     price: it.price,
+    volumePricing: it.volumePricing,
   }));
   const r = await priceWithCampaign(db, details, buyer);
   const byMa = new Map(items.map((it) => [it.ma, it]));
@@ -57,6 +61,7 @@ export async function quoteWithCampaign(
     items: evalItems,
     lines: r.details.map(toLine),
     flashSavings: r.flashSavings,
+    volumeSavings: r.details.reduce((n, d) => n + (d.volumePricing ? Math.max(0, d.volumePricing.basePrice - (d.flash?.listPrice ?? d.price)) * d.quantity : 0), 0),
     anchorSavings: r.anchorSavings,
     notices: r.notices,
   };

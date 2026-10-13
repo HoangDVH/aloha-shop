@@ -33,6 +33,8 @@ export function WbBtn({
   onClick,
   href,
   title,
+  "aria-label": ariaLabel,
+  "aria-expanded": ariaExpanded,
 }: {
   children: React.ReactNode;
   variant?: "primary" | "secondary" | "ghost" | "danger";
@@ -42,6 +44,8 @@ export function WbBtn({
   onClick?: () => void;
   href?: string;
   title?: string;
+  "aria-label"?: string;
+  "aria-expanded"?: boolean;
 }) {
   const base =
     "inline-flex h-9 items-center justify-center gap-1.5 rounded-lg px-3.5 text-[13px] font-semibold transition disabled:pointer-events-none disabled:opacity-45";
@@ -64,7 +68,7 @@ export function WbBtn({
     );
   }
   return (
-    <button type={type} disabled={disabled} onClick={onClick} className={cls} title={title}>
+    <button type={type} disabled={disabled} onClick={onClick} className={cls} title={title} aria-label={ariaLabel} aria-expanded={ariaExpanded}>
       {children}
     </button>
   );

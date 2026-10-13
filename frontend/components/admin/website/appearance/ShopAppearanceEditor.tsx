@@ -43,6 +43,7 @@ export function ShopAppearanceEditor() {
   const [saving, setSaving] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [side, setSide] = useState<SidePanel>("home");
   const [previewKey, setPreviewKey] = useState(0);
   const [history, setHistory] = useState<AppearanceHistoryMeta[]>([]);
@@ -140,7 +141,7 @@ export function ShopAppearanceEditor() {
       await saveDraftQuiet();
       setDirtyFlag(true);
       refreshPreview();
-      toast.success("Đã lưu nháp. Xem trước = bản đang lên web — bấm Áp dụng để khách thấy ngay");
+      toast.success("Đã lưu nháp — bấm Áp dụng để cập nhật website cho khách");
     } catch (e: any) {
       toast.error(e?.message || "Đồng bộ thất bại");
     } finally {
@@ -367,8 +368,8 @@ export function ShopAppearanceEditor() {
         primary={primary}
         dirtyFlag={dirtyFlag}
         scheduledAt={scheduledAt}
-        device={device}
-        setDevice={setDevice}
+        previewOpen={previewOpen}
+        onTogglePreview={() => setPreviewOpen((v) => !v)}
         toolsRef={toolsRef}
         toolsOpen={toolsOpen}
         setToolsOpen={setToolsOpen}
@@ -384,11 +385,10 @@ export function ShopAppearanceEditor() {
         clearSchedule={clearSchedule}
         syncPreview={syncPreview}
         applyPublish={applyPublish}
-        shopPreviewUrl={SHOP_PREVIEW_URL}
       />
 
       <div className="flex min-h-0 flex-1">
-        <aside className="flex w-[min(100%,380px)] shrink-0 flex-col border-r border-gray-200 bg-white lg:w-[400px]">
+        <aside className="flex min-w-0 flex-1 flex-col bg-white">
           <div className="shrink-0 border-b border-gray-100 px-3 py-2.5">
             <WbSegment
               value={side}
@@ -448,13 +448,17 @@ export function ShopAppearanceEditor() {
           </div>
         </aside>
 
-        <EditorPreview
-          device={device}
-          previewKey={previewKey}
-          previewSrc={previewSrc}
-          iframeRef={iframeRef}
-          shopPreviewUrl={SHOP_PREVIEW_URL}
-        />
+        {previewOpen && (
+          <EditorPreview
+            device={device}
+            setDevice={setDevice}
+            onClose={() => setPreviewOpen(false)}
+            previewKey={previewKey}
+            previewSrc={previewSrc}
+            iframeRef={iframeRef}
+            shopPreviewUrl={SHOP_PREVIEW_URL}
+          />
+        )}
       </div>
     </div>
   );

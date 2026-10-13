@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ShopProduct } from "@/lib/api";
 import { fetchLivePrices, type LivePriceRow } from "@/lib/livePrices";
 import { ScopedProductCatalog } from "@/components/catalog/ScopedProductCatalog";
+import { placeDealPins } from "@/lib/campaign/dealProductOrder";
 
 export function liveRowToProduct(r: LivePriceRow): ShopProduct {
   return {
@@ -25,6 +26,8 @@ export function liveRowToProduct(r: LivePriceRow): ShopProduct {
     isActive: r.isActive !== false,
     path: r.path || "",
     categoryId: r.categoryId,
+    webBadge: r.webBadge,
+    webPin: r.webPin,
     categorySlug: "",
     productSlug: "",
     campaignPromo: r.campaignPromo ?? null,
@@ -74,10 +77,10 @@ export function DealsProducts({
 
   const products = useMemo(
     () =>
-      [...new Set(mas)]
+      placeDealPins([...new Set(mas)]
         .map((m) => rows[m.toUpperCase()])
         .filter((r): r is LivePriceRow => Boolean(r && r.isActive !== false))
-        .map(liveRowToProduct),
+        .map(liveRowToProduct)),
     [mas, rows],
   );
 

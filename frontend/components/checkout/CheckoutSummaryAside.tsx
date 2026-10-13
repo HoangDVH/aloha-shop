@@ -12,6 +12,7 @@ type Props = {
   discount?: number;
   /** Giảm do giá flash so với giá thường (`total` là tiền hàng giá thường). */
   flashDiscount?: number;
+  volumeDiscount?: number;
   /** Giá trước KM − giá web: chỉ hiển thị, không trừ thêm (`total` đã là giá web). */
   anchorDiscount?: number;
   appliedTitle?: string;
@@ -40,6 +41,7 @@ export function CheckoutSummaryAside({
   total,
   discount = 0,
   flashDiscount = 0,
+  volumeDiscount = 0,
   anchorDiscount = 0,
   appliedTitle,
   voucherPromo,
@@ -58,8 +60,8 @@ export function CheckoutSummaryAside({
   onPlaceOrder,
 }: Props) {
   const showShip = shopShowCheckoutShipping();
-  const goodsAfter = Math.max(0, total - flashDiscount - discount);
-  const saved = anchorDiscount + flashDiscount + discount + (showShip ? shippingDiscount : 0);
+  const goodsAfter = Math.max(0, total - flashDiscount);
+  const saved = anchorDiscount + volumeDiscount + flashDiscount + discount + (showShip ? shippingDiscount : 0);
 
   return (
     <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
@@ -108,7 +110,7 @@ export function CheckoutSummaryAside({
       ) : null}
 
       {/* Desktop: chi tiết thanh toán đầy đủ */}
-      <section className="rounded-[var(--aloha-radius-lg)] bg-white p-5 shadow-[var(--aloha-shadow)] ring-1 ring-black/[0.04] hidden lg:block">
+      <section className="hidden rounded-[var(--aloha-radius-lg)] bg-white p-5 shadow-[var(--aloha-shadow)] ring-1 ring-black/[0.04] lg:block">
         <h2 className="mb-3 text-base font-extrabold text-[var(--aloha-ink)]">
           Chi tiết thanh toán
         </h2>
@@ -118,7 +120,7 @@ export function CheckoutSummaryAside({
         <div className="space-y-2.5 text-[15px] text-slate-500">
           <div className="flex items-center justify-between gap-3">
             <span>Tổng tiền hàng</span>
-            <span className="tabular-nums">{formatVnd(total + anchorDiscount)}</span>
+            <span className="tabular-nums">{formatVnd(total + anchorDiscount + volumeDiscount)}</span>
           </div>
           {anchorDiscount > 0 ? (
             <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold">
@@ -126,6 +128,7 @@ export function CheckoutSummaryAside({
               <span className="tabular-nums">-{formatVnd(anchorDiscount)}</span>
             </div>
           ) : null}
+          {volumeDiscount > 0 && <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold"><span>Giảm theo số lượng</span><span>-{formatVnd(volumeDiscount)}</span></div>}
           {flashDiscount > 0 ? (
             <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold">
               <span>Giảm Flash Sale</span>

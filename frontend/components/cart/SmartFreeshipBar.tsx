@@ -37,12 +37,14 @@ export function SmartFreeshipBar({
   variant = "default",
   moreHref,
   appliedDiscount = 0,
+  showMoreShopping = true,
 }: {
   currentAmount: number;
   className?: string;
   variant?: "default" | "compact";
   moreHref?: string;
   appliedDiscount?: number;
+  showMoreShopping?: boolean;
 }) {
   const defaultMoreHref = useMoreShoppingHref();
   const targetHref = moreHref || defaultMoreHref;
@@ -128,7 +130,7 @@ export function SmartFreeshipBar({
                 </p>
               </div>
 
-              <Link
+              {showMoreShopping && <Link
                 href={targetHref}
                 className="group inline-flex shrink-0 items-center gap-0.5 rounded-full border border-teal-200/90 bg-white/95 px-2.5 py-0.5 text-[11px] font-bold text-teal-800 shadow-2xs transition-all hover:bg-white hover:text-teal-900 active:scale-95 select-none"
               >
@@ -137,7 +139,7 @@ export function SmartFreeshipBar({
                   size={11}
                   className="text-teal-600 transition-transform duration-200 group-hover:translate-x-0.5"
                 />
-              </Link>
+              </Link>}
             </div>
 
             {/* Tầng 2: Mục tiêu quyền lợi nhận được */}
@@ -228,7 +230,7 @@ export function SmartFreeshipBar({
         </div>
 
         {/* Nút hành động Mua thêm nếu chưa đạt mốc cao nhất */}
-        {!isHighestReached ? (
+        {!isHighestReached && showMoreShopping ? (
           <Link
             href={targetHref}
             className="group inline-flex min-h-[30px] sm:min-h-[32px] shrink-0 items-center gap-0.5 rounded-full border border-teal-200/90 bg-white/95 px-2.5 sm:px-3 py-1 text-[11px] sm:text-xs font-bold text-teal-800 shadow-2xs transition-all hover:bg-white hover:text-teal-900 hover:shadow-xs active:scale-95 select-none"
@@ -239,12 +241,12 @@ export function SmartFreeshipBar({
               className="text-teal-600 transition-transform duration-200 group-hover:translate-x-0.5"
             />
           </Link>
-        ) : (
+        ) : isHighestReached ? (
           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100/90 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
             <Sparkles size={12} className="text-amber-500 fill-amber-500" />
             {appliedDiscount > 0 ? "Đã áp dụng" : "Xem điều kiện"}
           </span>
-        )}
+        ) : null}
       </div>
 
       {/* Thanh tiến trình Progress Bar với Mốc Milestone Pins */}

@@ -2,6 +2,7 @@
 
 import { priceSessionGeneration } from "./priceSession";
 import { shopApiBase } from "./api";
+import type { ShopProduct } from "./api";
 import type { CampaignPromoUI } from "./campaign/campaignApi";
 
 export type LivePriceRow = {
@@ -21,6 +22,8 @@ export type LivePriceRow = {
   trongLuong?: number;
   isActive?: boolean;
   categoryId?: number;
+  webBadge?: ShopProduct["webBadge"];
+  webPin?: number;
   campaignPromo?: CampaignPromoUI | null;
 };
 

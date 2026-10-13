@@ -65,12 +65,12 @@ export function voucherBasisLabel(flash: number, anchor: number): string | null 
   return anchor > 0 ? "giảm giá sản phẩm" : null;
 }
 
-type SavingsProps = { flash: number; voucher: number; ship?: number; anchor?: number; voucherPromo?: VoucherPromo };
+type SavingsProps = { flash: number; voucher: number; ship?: number; anchor?: number; volume?: number; voucherPromo?: VoucherPromo };
 
 /** "Giảm giá sản phẩm / Giảm Flash Sale / Voucher shop / Hỗ trợ phí ship" + tổng "Bạn đã tiết kiệm". */
-export function SavingsRows({ flash, voucher, ship = 0, anchor = 0, voucherPromo }: SavingsProps) {
-  const total = anchor + flash + voucher + ship;
-  const basis = voucherBasisLabel(flash, anchor);
+export function SavingsRows({ flash, voucher, ship = 0, anchor = 0, volume = 0, voucherPromo }: SavingsProps) {
+  const total = anchor + volume + flash + voucher + ship;
+  const basis = volume > 0 ? "giảm theo số lượng" : voucherBasisLabel(flash, anchor);
   if (total <= 0) return null;
   const row = (label: string, v: number) =>
     v > 0 ? (
@@ -82,6 +82,7 @@ export function SavingsRows({ flash, voucher, ship = 0, anchor = 0, voucherPromo
   return (
     <>
       {row("Giảm giá sản phẩm", anchor)}
+      {row("Giảm theo số lượng", volume)}
       {row("Giảm Flash Sale", flash)}
       {row("Voucher shop", voucher)}
       {basis && voucher > 0 ? <VoucherBasisNote promo={voucherPromo} basis={basis} /> : null}

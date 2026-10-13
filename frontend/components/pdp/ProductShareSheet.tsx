@@ -101,7 +101,7 @@ function ProductShareSheet({ ma, name, path, price, images, videos, ctvCode, onC
 
   useEffect(() => () => loader.current?.abort(), []);
 
-  // Điện thoại: tải sẵn file khi mở bảng để lúc bấm Zalo/Facebook, navigator.share còn trong lượt thao tác của khách.
+  // Preload on supported browsers so sharing stays within the click gesture.
   useEffect(() => {
     if (!deviceShare) return;
     loader.current ??= new AbortController();
@@ -327,7 +327,7 @@ function ProductShareSheet({ ma, name, path, price, images, videos, ctvCode, onC
               </ul>
               <p className="mt-1.5 text-xs leading-relaxed text-stone-500">
                 {deviceShare
-                  ? "Facebook nhận riêng ảnh/video đã chọn. Bấm «Sao chép nội dung & link» để dán vào bài viết. Ứng dụng nhận có thể không hỗ trợ một số bộ file; bạn có thể lưu file để đăng từ thư viện."
+                  ? "Chọn ứng dụng nhận trong bảng chia sẻ của máy. Facebook nhận riêng ảnh/video; bấm «Sao chép nội dung & link» để dán vào bài viết. Nếu không có ứng dụng bạn cần hoặc không nhận đủ file, hãy lưu file để đăng trực tiếp."
                   : "Bấm «Lưu ảnh & video», chọn file trong Facebook/Zalo rồi dán nội dung và link. Bỏ chọn tất cả ảnh/video nếu chỉ muốn chia sẻ link."}
               </p>
               {Object.values(loadState).includes("error") && <button type="button" onClick={() => setLoadState(s => Object.fromEntries(Object.entries(s).filter(([, state]) => state !== "error")))} className="mt-2 text-sm font-semibold text-rose-700 underline">Thử tải lại ảnh/video lỗi</button>}

@@ -43,6 +43,7 @@ export async function requestPromotionQuote(
           campaign: {
             lines: Array.isArray(data.lines) ? data.lines : [],
             flashSavings: Number(data.flashSavings) || 0,
+            volumeSavings: Number(data.volumeSavings) || 0,
             anchorSavings: Number(data.anchorSavings) || 0,
             notices: Array.isArray(data.campaignNotices) ? data.campaignNotices : [],
           },
@@ -69,6 +70,7 @@ export interface AvailablePromotionUI {
   minOrderThreshold?: number;
   thresholdOperator?: ">" | ">=";
   targetCustomer?: "all" | "retail" | "wholesale" | "new_web" | "returning_web";
+  claimRequired?: boolean;
   scope?: "all" | "category" | "product";
   categoryIds?: string[];
   productMas?: string[];

@@ -5,7 +5,12 @@ import { Ticket, Truck, Info, X, Check, Calendar, ArrowRight } from "lucide-reac
 import { getAvailablePromotions, type AvailablePromotionUI } from "@/lib/promotions";
 import type { ShopProduct } from "@/lib/api";
 import { formatVnd } from "@/lib/api";
-import { formatVoucherBadge, pctText } from "@/lib/voucherFormat";
+import { formatVoucherBadge, pctText, formatCompactVnd } from "@/lib/voucherFormat";
+import { useVoucherClaims } from "@/lib/campaign/useVoucherClaims";
+import { LoginSheet } from "@/components/campaign/LoginSheet";
+import { useToast } from "@/components/Toast";
+import { useShopAuth } from "@/components/ShopAuthProvider";
+import { PdpVoucherSheet } from "./PdpVoucherSheet";
 
 interface ProductPromotionBadgesProps {
   product: ShopProduct;
@@ -20,15 +25,10 @@ interface FormattedBadge {
 }
 
 const formatBadgeText = (p: AvailablePromotionUI) => formatVoucherBadge(p);
-
-/** "Hỗ trợ phí ship 30.000đ đơn từ 1.000.000đ" */
 function shipBadgeLabel(p: AvailablePromotionUI): string {
   if (p.discountType !== "fixed" || !(p.discountValue > 0)) return formatVoucherBadge(p).label;
-  let text = `Hỗ trợ phí ship ${formatVnd(p.discountValue)}`;
-  if (p.minOrderThreshold && p.minOrderThreshold > 0) text += ` đơn từ ${formatVnd(p.minOrderThreshold)}`;
-  return text;
+  return `Hỗ trợ phí ship ${formatVnd(p.discountValue)}${p.minOrderThreshold ? ` đơn từ ${formatVnd(p.minOrderThreshold)}` : ""}`;
 }
-
 export function ProductPromotionBadges({
   product,
   livePrice,
@@ -37,6 +37,15 @@ export function ProductPromotionBadges({
   const [promotions, setPromotions] = useState<AvailablePromotionUI[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [selectedPromo, setSelectedPromo] = useState<AvailablePromotionUI | null>(null);
+  const [voucherOpen, setVoucherOpen] = useState(false);
+  const claims = useVoucherClaims();
+  const toast = useToast();
+  const { user } = useShopAuth();
+  useEffect(() => {
+    if (!claims.claimedVoucherId) return;
+    toast.push("Đã lưu voucher vào ví. Mã sẽ được kiểm tra và áp dụng khi thanh toán.");
+    claims.clearClaimedVoucherId();
+  }, [claims.claimedVoucherId, claims.clearClaimedVoucherId, toast]);
 
   useEffect(() => {
     let active = true;
@@ -53,13 +62,10 @@ export function ProductPromotionBadges({
     return () => {
       active = false;
     };
-  }, []);
+  }, [user?.id, user?.siStatus, user?.siRegion]);
 
-  const applicableBadges = useMemo<FormattedBadge[]>(() => {
-    if (!promotions.length) return [];
-
-    // Lọc theo đối tượng và phạm vi áp dụng của SP
-    const matched = promotions.filter((p) => {
+  const applicablePromotions = useMemo(() => {
+    return promotions.filter((p) => {
       // Bỏ qua voucher sỉ nếu đang xem giá lẻ
       if (p.targetCustomer === "wholesale" && !isWholesale) return false;
       if (p.targetCustomer === "retail" && isWholesale) return false;
@@ -82,6 +88,14 @@ export function ProductPromotionBadges({
 
       return true;
     });
+
+  }, [promotions, product, isWholesale]);
+
+  const applicableBadges = useMemo<FormattedBadge[]>(() => {
+    if (!promotions.length) return [];
+
+    // Lọc theo đối tượng và phạm vi áp dụng của SP
+    const matched = applicablePromotions;
 
     // Chia nhóm: Voucher giảm tiền hàng & Voucher vận chuyển (KHÔNG CÓ TÍCH XU)
     const goodsPromos = matched.filter((p) => p.benefitType !== "shipping");
@@ -121,7 +135,7 @@ export function ProductPromotionBadges({
     }
 
     return badges;
-  }, [promotions, product, isWholesale]);
+  }, [applicablePromotions]);
 
   if (!loaded || applicableBadges.length === 0) {
     return null;
@@ -129,38 +143,40 @@ export function ProductPromotionBadges({
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2 pt-1">
-        <span className="text-xs font-medium text-slate-500 shrink-0">
-          Mã giảm áp dụng:
-        </span>
+      <section className="space-y-2 pt-1" aria-label="Voucher và khuyến mãi">
+        <button type="button" onClick={() => setVoucherOpen(true)} className="flex min-h-9 w-full items-center justify-between text-left text-sm font-semibold text-slate-800" aria-haspopup="dialog"><span>Voucher &amp; khuyến mãi</span><ArrowRight size={15} className="text-slate-400" /></button>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap">
           {applicableBadges.map(({ promotion, label, type }) => {
             const isShipping = type === "shipping";
             return (
               <button
                 key={promotion.id}
                 type="button"
-                onClick={() => setSelectedPromo(promotion)}
-                title="Bấm để xem chi tiết điều kiện mã"
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold shadow-xs transition cursor-pointer select-none active:scale-[0.98] ${
-                  isShipping
-                    ? "bg-[#ecfdf5] text-[#065f46] border border-[#a7f3d0] hover:bg-[#d1fae5]"
-                    : "bg-[#fff9eb] text-[#b45309] border border-[#fde68a] hover:bg-[#fef3c7]"
-                }`}
+                onClick={() => promotion.claimRequired ? claims.claim(promotion.id) : setSelectedPromo(promotion)}
+                disabled={Boolean(claims.pendingId)}
+                title={`${promotion.title}${promotion.minOrderThreshold ? ` · Đơn từ ${formatVnd(promotion.minOrderThreshold)}` : ""} · ${promotion.claimRequired ? "Bấm để lưu voucher" : "Bấm xem điều kiện"}`}
+                className={`flex min-h-14 w-[250px] sm:w-[270px] shrink-0 items-stretch overflow-hidden rounded-lg border text-left transition disabled:opacity-50 ${isShipping ? "border-[#bce9df] bg-[#f0fbf8] text-[#087a69] hover:bg-[#e4f7f1]" : "border-[#f4cfc2] bg-[#fff5ef] text-[#b5482d] hover:bg-[#ffede2]"}`}
               >
-                {isShipping ? (
-                  <Truck className="h-3.5 w-3.5 shrink-0 text-[#059669]" />
-                ) : (
-                  <Ticket className="h-3.5 w-3.5 shrink-0 text-[#d97706]" />
-                )}
-                <span>{label}</span>
+                <span className="flex w-12 shrink-0 flex-col items-center justify-center gap-1 border-r border-dashed border-current/20 px-1 py-1 text-center">
+                  {isShipping ? <Truck size={16} /> : <Ticket size={16} />}
+                  <span className="w-full text-center text-[9px] font-medium leading-tight">{isShipping ? "Vận chuyển" : "Sản phẩm"}</span>
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-2 py-2">
+                  <span className="text-xs font-bold">{isShipping ? "Hỗ trợ ship " : "Giảm "}{promotion.discountType === "percentage" ? pctText(promotion) : formatVnd(promotion.discountValue)}</span>
+                  <span className="text-[10px] text-slate-500">{promotion.minOrderThreshold ? `Đơn từ ${formatVnd(promotion.minOrderThreshold)}` : "Không có mức tối thiểu"}</span>
+                </span>
+                <span className={`my-auto mr-2 shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${promotion.claimRequired && !claims.claimedIds.has(promotion.id) ? isShipping ? "bg-[#087a69] text-white" : "bg-[#bf4e32] text-white" : isShipping ? "bg-[#d9f2e9] text-[#087a69]" : "bg-[#ffe6d8] text-[#a63e20]"}`}>{promotion.claimRequired ? claims.pendingId === promotion.id ? "Đang lưu…" : claims.claimedIds.has(promotion.id) ? "Đã lưu" : "Nhận" : "Chi tiết"}</span>
               </button>
             );
           })}
         </div>
-      </div>
+      </section>
 
+      <LoginSheet open={claims.loginOpen} onClose={claims.cancelLogin} onDone={claims.loginDone} />
+      {voucherOpen && <PdpVoucherSheet items={applicablePromotions} claimed={claims.claimedIds} pendingId={claims.pendingId}
+        onClose={() => setVoucherOpen(false)} onDetails={p => { setVoucherOpen(false); setSelectedPromo(p); }}
+        onClaim={p => { if (!user) setVoucherOpen(false); claims.claim(p.id); }} />}
       {/* Modal chi tiết điều kiện voucher */}
       {selectedPromo && (
         <div

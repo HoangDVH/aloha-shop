@@ -119,7 +119,7 @@ export function registerShopShippingRoutes(
         const buyer = await (await _getShopDb()).collection(SHOP_ACCOUNTS).findOne(shopAccountIdQuery(req.shopAuth!.userId));
         const priced = await applyCatalogPrices(await _getShopDb(), items, { account: buyer });
         if (!priced.ok) return res.status(400).json({ error: priced.error });
-        items = items.map((item, i) => ({ ...item, price: priced.details[i].price }));
+        items = items.map((item, i) => ({ ...item, price: priced.details[i].price, volumePricing: priced.details[i].volumePricing }));
         const province = String(body.province || "").trim();
         const district = String(body.district || "").trim();
         const ward = String(body.ward || "").trim();
@@ -188,7 +188,7 @@ export function registerShopShippingRoutes(
         // Cùng giá flash với lúc tạo đơn: voucher, ngưỡng hỗ trợ ship và miễn ship đều tính trên giá khách trả.
         const campaign = await quoteWithCampaign(
           shopDb,
-          items.map((i) => ({ ma: i.productCode, ten: i.productName, price: i.price, quantity: i.quantity })),
+          items.map((i, index) => ({ ma: i.productCode, ten: i.productName, price: i.price, quantity: i.quantity, volumePricing: priced.details[index].volumePricing })),
           { accountId: userId, account: buyer, phone: buyerPhone, email: buyerEmail }
         );
         const evalItems = campaign.items;

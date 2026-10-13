@@ -25,6 +25,9 @@ type Props = {
   tierDiscountPercent?: number;
   tierSavedAmount?: number;
   tierQty?: number;
+  totalPrice?: number;
+  totalPending?: boolean;
+  onPriceDetails?: () => void;
 };
 
 /** Thanh CTA cố định đáy màn hình (mobile) trên trang chi tiết SP. */
@@ -44,12 +47,23 @@ export function ProductStickyCta({
   tierDiscountPercent = 0,
   tierSavedAmount = 0,
   tierQty = 1,
+  totalPrice,
+  totalPending = false,
+  onPriceDetails,
 }: Props) {
   const count = useCart((s) => s.lines.reduce((n, l) => n + l.qty, 0));
   const barRef = useStickyBarHeight<HTMLDivElement>();
   const setZaloProduct = useZaloAskProduct((s) => s.setProduct);
 
   const [cartBumping, setCartBumping] = useState(false);
+  const [desktopVisible, setDesktopVisible] = useState(false);
+  useEffect(() => {
+    const target = document.getElementById("product-buy-actions");
+    if (!target || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(([entry]) => setDesktopVisible(!entry.isIntersecting && entry.boundingClientRect.bottom < 0));
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const handleBump = () => {
@@ -69,7 +83,7 @@ export function ProductStickyCta({
   return (
     <div
       ref={barRef}
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--aloha-line)] bg-white/95 px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(0,0,0,0.08)] backdrop-blur lg:hidden transform-gpu will-change-transform"
+      className={`fixed inset-x-0 bottom-0 z-40 border-t border-[var(--aloha-line)] bg-white/95 px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(0,0,0,0.08)] backdrop-blur ${desktopVisible ? "" : "lg:hidden"} transform-gpu will-change-transform`}
       style={{
         WebkitTransform: "translate3d(0, 0, 0)",
         transform: "translate3d(0, 0, 0)",
@@ -80,7 +94,7 @@ export function ProductStickyCta({
       <div className="mx-auto flex max-w-6xl items-center gap-2.5">
         <Link
           href="/gio-hang"
-          className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[var(--aloha-line)] bg-white text-[var(--aloha-ink)] transition hover:bg-[var(--aloha-cream)] active:scale-95 ${
+          className={`relative hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[var(--aloha-line)] bg-white text-[var(--aloha-ink)] transition hover:bg-[var(--aloha-cream)] active:scale-95 lg:flex ${
             cartBumping ? "aloha-cart-bump" : ""
           }`}
           aria-label={`Giỏ hàng${count ? `, ${count} sản phẩm` : ""}`}
@@ -94,27 +108,14 @@ export function ProductStickyCta({
             </span>
           ) : null}
         </Link>
-        <div className="min-w-0 flex-1">
+        <button type="button" onClick={onPriceDetails} className="min-w-0 flex-1 text-left" aria-label="Xem chi tiết tạm tính và chọn số lượng">
+          <p className="text-[10px] text-slate-500">Tạm tính · chưa gồm ship</p>
           <div className="flex items-baseline gap-1.5 truncate">
-            <p className="truncate text-[15px] font-black leading-tight text-[var(--aloha-price)]">
-              {pricePending ? "Đang cập nhật…" : price > 0 ? formatVnd(price) : "Liên hệ báo giá"}
+            <p className="truncate text-[15px] font-black leading-tight text-[#e65343]">
+              {pricePending || totalPending ? "Đang cập nhật…" : totalPrice != null ? formatVnd(totalPrice) : price > 0 ? formatVnd(price * tierQty) : "Liên hệ báo giá"}
             </p>
-            {tierDiscountPercent > 0 ? (
-              <span className="rounded-full bg-rose-100 px-1.5 py-0.2 text-[9px] font-bold text-rose-700">
-                -{tierDiscountPercent}%
-              </span>
-            ) : null}
           </div>
-          {needPick ? (
-            <p className="truncate text-[11px] leading-tight text-amber-700">Chọn thuộc tính</p>
-          ) : preOrder ? (
-            <p className="truncate text-[11px] leading-tight text-amber-700">Đặt trước — chờ Aloha xác nhận</p>
-          ) : tierDiscountPercent > 0 && tierSavedAmount > 0 ? (
-            <p className="truncate text-[10px] leading-tight text-rose-600 font-semibold">
-              Tiết kiệm {formatVnd(tierSavedAmount)} ({tierQty} sp)
-            </p>
-          ) : null}
-        </div>
+        </button>
         {/* gap rõ + không dính cạnh — tránh bị gộp thành 1 khối trên mobile */}
         <div className="flex shrink-0 items-center gap-2">
           <button
@@ -130,11 +131,7 @@ export function ProductStickyCta({
             disabled={buyDisabled}
             onClick={onBuyNow}
             className={`inline-flex min-h-11 items-center justify-center gap-1 rounded-xl px-3.5 text-xs font-bold text-white shadow-sm disabled:opacity-40 active:scale-95 transition ${
-              isCampaignSale
-                ? "bg-[#C8102E] hover:bg-[#a50d26]"
-                : tierDiscountPercent >= 10
-                  ? "bg-gradient-to-r from-[#E11D48] to-[#C8102E] hover:brightness-110 shadow-rose-500/25 ring-1 ring-rose-400/50"
-                  : "bg-[var(--aloha-green)] hover:bg-[var(--aloha-green-hover)]"
+              "bg-[var(--aloha-green)] hover:bg-[var(--aloha-green-hover)]"
             }`}
           >
             {isCampaignSale ? (

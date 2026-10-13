@@ -210,6 +210,7 @@ function CheckoutConfirm() {
   const campaign = promoQuote?.campaign;
   useCampaignCartNotices(campaign);
   const flashSavings = campaign?.flashSavings || 0;
+  const volumeSavings = campaign?.volumeSavings || 0;
   const anchorSavings = campaign?.anchorSavings || 0;
   // Có báo giá server thì dùng giá server (giá trong giỏ máy có thể cũ / bị sửa).
   const total = promoQuote ? promoQuote.subtotal + flashSavings : localTotal;
@@ -455,6 +456,7 @@ function CheckoutConfirm() {
             total={total}
             discount={discountAmount}
             flashDiscount={flashSavings}
+            volumeDiscount={volumeSavings}
             anchorDiscount={anchorSavings}
             appliedTitle={promoQuote?.applied?.title}
             voucherPromo={promoQuote?.applied}
@@ -511,8 +513,11 @@ function CheckoutConfirm() {
 
       {/* Ngoài khối animate — portal body để fixed không bị kéo theo cuộn */}
       <CheckoutStickyBar
-        total={total + anchorSavings}
-        discount={discountAmount + flashSavings + anchorSavings}
+        total={total + anchorSavings + volumeSavings}
+        discount={discountAmount + flashSavings + anchorSavings + volumeSavings}
+        volumeDiscount={volumeSavings}
+        flashDiscount={flashSavings}
+        productDiscount={anchorSavings}
         grandTotal={grandTotal}
         shippingFee={effectiveShippingFee}
         shippingDiscount={effectiveShippingDiscount}

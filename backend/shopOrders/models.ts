@@ -53,6 +53,7 @@ export type ShopOrderDetail = {
   availableQty?: number;
   pendingQty?: number;
   priceKind?: "web" | "si" | "si_missing";
+  volumePricing?: { basePrice: number; discountPercent: number; quantity: number };
   /** Dòng tính giá sale chiến dịch (giá thường lưu ở `flash.listPrice`). */
   flash?: import("../shopCampaigns/flash/flashTypes.js").FlashLineMeta;
   /** Dòng quà 0đ do server tạo. */

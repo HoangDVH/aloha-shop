@@ -18,6 +18,7 @@ import {
   type DealsFilterItem,
 } from "@/lib/campaign/dealsFilters";
 import { liveRowToProduct } from "./DealsProducts";
+import { placeDealPins } from "@/lib/campaign/dealProductOrder";
 
 /** Chiến dịch lớn: chỉ nạp giá tối đa ngần này mã để lọc theo mức giá. */
 const MAX_MAS = 400;
@@ -168,7 +169,7 @@ export function DealsProductTabs({
     return items.filter((x) => matchesDealsFilter(x.item, effective, activeSlotKey));
   }, [items, isFlashPage, effective, activeSlotKey]);
 
-  const products = useMemo(() => matched.map((x) => liveRowToProduct(x.row)), [matched]);
+  const products = useMemo(() => placeDealPins(matched.map((x) => liveRowToProduct(x.row))), [matched]);
 
   if (!list.length) return null;
 

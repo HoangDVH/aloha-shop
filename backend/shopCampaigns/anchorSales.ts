@@ -25,7 +25,8 @@ export function anchorSavingsOf(active: ActiveCampaign, details: ShopOrderDetail
     if (d.isGift || d.flash || !(d.price > 0)) continue;
     const p = promoRowFor(active, String(d.productCode || "").toUpperCase(), nowMs);
     const anchor = p && !(p.salePrice > 0) ? Math.round(Number(p.compareAtPrice) || 0) : 0;
-    if (anchor > d.price) sum += (anchor - d.price) * d.quantity;
+    const beforeVolume = d.volumePricing?.basePrice ?? d.price;
+    if (anchor > beforeVolume) sum += (anchor - beforeVolume) * d.quantity;
   }
   return sum;
 }

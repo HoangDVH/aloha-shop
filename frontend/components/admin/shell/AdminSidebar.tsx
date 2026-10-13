@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useId, useState } from "react";
 import {
   BarChart3,
   Briefcase,
@@ -28,12 +28,14 @@ import {
 } from "lucide-react";
 import { useAdminSession } from "@/components/admin/auth/useAdminSession";
 import { useAdminBadgeCounts } from "@/components/admin/shell/AdminOpsSync";
+import { WEBSITE_SECTIONS, websiteSection } from "@/components/admin/website/navigation";
+import { adminFetch } from "@/components/admin/api/adminFetch";
+import { QUOTE_COUNT_EVENT } from "@/components/admin/website/inquiries/QuoteRequestsAdmin";
 
 const PROMOTIONS_SUB = [
   { href: "/admin/uu-dai?tab=campaigns", tab: "campaigns", label: "Chiến dịch", Icon: CalendarHeart },
   { href: "/admin/uu-dai?tab=programs", tab: "programs", label: "Đợt phát hành voucher", Icon: Sparkles },
   { href: "/admin/uu-dai?tab=codes", tab: "codes", label: "Danh sách mã Voucher", Icon: Ticket },
-  { href: "/admin/uu-dai?tab=reports", tab: "reports", label: "Lịch sử & Đối soát", Icon: BarChart3 },
   { href: "/admin/uu-dai?tab=kiotviet", tab: "kiotviet", label: "Đồng bộ KiotViet", Icon: Store },
 ];
 
@@ -78,7 +80,7 @@ function linkClass(active: boolean, nested = false) {
     : `${base} text-slate-600 hover:!bg-[#F0F5EE] hover:!text-slate-900 [&_svg]:text-slate-400 group-hover:[&_svg]:!text-slate-700`;
 }
 
-export function AdminSidebar() {
+export function AdminSidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
   const pathname = normalizePath(usePathname() || "");
   const { user, logout } = useAdminSession();
   const badges = useAdminBadgeCounts(true);
@@ -97,7 +99,24 @@ export function AdminSidebar() {
   const [recruitmentOpen, setRecruitmentOpen] = useState(onRecruitment);
 
   const searchParams = useSearchParams();
-  const currentTab = searchParams?.get("tab") || "campaigns";
+  const requestedTab = searchParams?.get("tab");
+  const currentTab = PROMOTIONS_SUB.some(item => item.tab === requestedTab) ? requestedTab : "campaigns";
+  const onWebsite = pathname === "/admin/website";
+  const [websiteOpen, setWebsiteOpen] = useState(onWebsite);
+  const websiteMenuId = useId();
+  const [newQuotes, setNewQuotes] = useState(0);
+  const websiteTab = websiteSection(searchParams?.get("tab")).tab;
+  useEffect(() => { if (onWebsite) setWebsiteOpen(true); }, [onWebsite]);
+  useEffect(() => {
+    let active = true;
+    const refresh = async () => {
+      try { const data = await adminFetch<{ newCount: number }>("/api/shop/admin/quote-requests/counts"); if (active) setNewQuotes(data.newCount); } catch { /* retry on next refresh */ }
+    };
+    void refresh();
+    const timer = setInterval(refresh, 60_000);
+    window.addEventListener(QUOTE_COUNT_EVENT, refresh);
+    return () => { active = false; clearInterval(timer); window.removeEventListener(QUOTE_COUNT_EVENT, refresh); };
+  }, []);
 
   useEffect(() => {
     if (onCtv) setCtvOpen(true);
@@ -128,7 +147,7 @@ export function AdminSidebar() {
           ALOHA — THẾ GIỚI CHẬU CÂY
         </p>
       </div>
-      <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto p-2" onClick={event => { if ((event.target as HTMLElement).closest("a")) onNavigate?.(); }}>
         <Link
           href="/admin"
           className={linkClass(pathname === "/admin")}
@@ -213,14 +232,22 @@ export function AdminSidebar() {
           Đơn hàng web
         </Link>
 
-        <Link
-          href="/admin/website"
-          className={linkClass(pathname.startsWith("/admin/website"))}
-          style={pathname.startsWith("/admin/website") ? activeNavStyle : undefined}
-        >
-          <Globe className="h-4 w-4 shrink-0" />
-          Website bán hàng
-        </Link>
+        <div className="pt-0.5">
+          <button type="button" aria-expanded={websiteOpen} aria-controls={websiteMenuId} onClick={() => setWebsiteOpen(value => !value)}
+            className={`group flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${onWebsite ? "bg-[#EAF3E8] text-[#2D5A27] ring-1 ring-[#2D5A27]/20" : "text-slate-600 hover:bg-[#F0F5EE]"}`}>
+            <Globe className="h-4 w-4 shrink-0" /><span className="min-w-0 flex-1">Website bán hàng</span>
+            <ChevronDown className={`h-4 w-4 shrink-0 transition ${websiteOpen ? "rotate-0" : "-rotate-90"}`} />
+          </button>
+          {websiteOpen && <div id={websiteMenuId} className="ml-2 mt-0.5 space-y-0.5 border-l border-[#e8e2d6] pl-2">
+            {WEBSITE_SECTIONS.map(({ tab, label, Icon }) => {
+              const active = onWebsite && websiteTab === tab;
+              return <Link key={tab} href={`/admin/website?tab=${tab}`} aria-current={active ? "page" : undefined} className={linkClass(active, true)} style={active ? activeNavStyle : undefined}>
+                <Icon className="h-3.5 w-3.5 shrink-0" /><span className="min-w-0 flex-1 truncate">{label}</span>
+                {tab === "bao-gia" && newQuotes > 0 && <span className="rounded-full bg-orange-100 px-1.5 text-xs text-orange-800">{newQuotes > 99 ? "99+" : newQuotes}</span>}
+              </Link>;
+            })}
+          </div>}
+        </div>
         <div className="pt-0.5">
           <button
             type="button"

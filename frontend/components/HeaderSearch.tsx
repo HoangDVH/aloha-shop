@@ -83,6 +83,7 @@ export function HeaderSearch({ onSubmitExtra }: { onSubmitExtra?: () => void }) 
   const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const mobileInputRef = useRef<HTMLInputElement>(null);
+  const mobileOverlayRef = useRef<HTMLDivElement>(null);
   const reqSeq = useRef(0);
   const openRef = useRef(false);
   const composingRef = useRef(false);
@@ -253,6 +254,40 @@ export function HeaderSearch({ onSubmitExtra }: { onSubmitExtra?: () => void }) 
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
+  const closeMobileSearch = (popHistory = true) => {
+    mobileInputRef.current?.blur();
+    setMobileOverlayOpen(false);
+    if (popHistory && typeof window !== "undefined" && window.history.state?.alohaMobileSearch) {
+      window.history.back();
+    }
+  };
+
+  const openMobileSearch = () => {
+    setRecentSearches(getRecentSearches());
+    setMobileOverlayOpen(true);
+    if (typeof window !== "undefined") {
+      window.history.pushState({ alohaMobileSearch: true }, "");
+    }
+    if (mobileOverlayRef.current) {
+      mobileOverlayRef.current.classList.remove("invisible", "pointer-events-none", "opacity-0");
+      mobileOverlayRef.current.classList.add("visible", "pointer-events-auto", "opacity-100");
+    }
+    // Focus đồng bộ ngay trong user gesture event giúp mobile browser (iOS Safari & Android) bật bàn phím mượt mà
+    mobileInputRef.current?.focus();
+  };
+
+  // Đón sự kiện Back của điện thoại Android / swipe back iOS để đóng overlay thay vì thoát trang web
+  useEffect(() => {
+    if (!mobileOverlayOpen) return;
+    const onPopState = () => {
+      closeMobileSearch(false);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+    };
+  }, [mobileOverlayOpen]);
+
   const goSearchPage = (term: string) => {
     const t = term.trim();
     if (t) saveRecentSearch(t);
@@ -260,18 +295,20 @@ export function HeaderSearch({ onSubmitExtra }: { onSubmitExtra?: () => void }) 
       router.push(t ? `/tim?q=${encodeURIComponent(t)}` : "/tim");
     });
     setOpen(false);
-    setMobileOverlayOpen(false);
+    closeMobileSearch(false);
+    inputRef.current?.blur();
     onSubmitExtra?.();
   };
 
-  const onSubmit = (e: FormEvent) => {
-    e.preventDefault();
+  const onSubmit = (e?: FormEvent) => {
+    e?.preventDefault();
     if (composingRef.current) return;
     const term = readInput();
     applyQuery(term, false);
     if (active >= 0 && items[active]) {
       navigatingRef.current = true;
       if (term) saveRecentSearch(term);
+      closeMobileSearch();
       window.location.href = productHref(items[active]);
       return;
     }
@@ -379,13 +416,22 @@ export function HeaderSearch({ onSubmitExtra }: { onSubmitExtra?: () => void }) 
   ) : null;
 
   // Mobile Full-screen Overlay (Shopee / TikTok Shop Standard)
-  const mobileOverlay = mobileOverlayOpen ? (
-    <div className="fixed inset-0 z-[300] flex flex-col bg-white md:hidden animate-in fade-in duration-150">
+  const mobileOverlay = mounted ? (
+    <div
+      ref={mobileOverlayRef}
+      className={`fixed inset-0 z-[300] flex flex-col bg-white md:hidden transition-opacity duration-150 ${
+        mobileOverlayOpen ? "opacity-100 pointer-events-auto visible" : "opacity-0 pointer-events-none invisible"
+      }`}
+      aria-hidden={!mobileOverlayOpen}
+    >
       {/* Top Header Bar */}
-      <div className="flex items-center gap-2 border-b border-slate-200/80 bg-white px-3 py-2.5 shrink-0 shadow-2xs">
+      <div
+        className="flex items-center gap-2 border-b border-slate-200/80 bg-white px-3 py-2.5 shrink-0 shadow-2xs"
+        style={{ paddingTop: "max(0.625rem, env(safe-area-inset-top, 0px))" }}
+      >
         <button
           type="button"
-          onClick={() => setMobileOverlayOpen(false)}
+          onClick={() => closeMobileSearch(true)}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 transition active:scale-90"
           aria-label="Quay lại"
         >
@@ -395,7 +441,6 @@ export function HeaderSearch({ onSubmitExtra }: { onSubmitExtra?: () => void }) 
         <form onSubmit={onSubmit} className="relative flex flex-1 items-center">
           <input
             ref={mobileInputRef}
-            autoFocus
             type="text"
             defaultValue={q}
             onCompositionStart={() => {
@@ -412,12 +457,14 @@ export function HeaderSearch({ onSubmitExtra }: { onSubmitExtra?: () => void }) 
               applyQuery(e.currentTarget.value);
             }}
             placeholder="Tìm cây cảnh, chậu, giá thể…"
-            className="w-full rounded-xl border border-slate-300 bg-slate-50 py-2 pl-9 pr-9 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:border-emerald-600 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-600"
+            className="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 pl-9 pr-9 text-[16px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-emerald-600 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-600"
           />
           <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           {hasClear ? (
             <button
               type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onTouchStart={(e) => e.preventDefault()}
               onClick={() => {
                 if (mobileInputRef.current) mobileInputRef.current.value = "";
                 if (inputRef.current) inputRef.current.value = "";
@@ -436,7 +483,7 @@ export function HeaderSearch({ onSubmitExtra }: { onSubmitExtra?: () => void }) 
         <button
           type="button"
           onClick={onSubmit}
-          className="rounded-xl bg-[var(--aloha-green)] px-3.5 py-2 text-xs font-bold text-white shadow-2xs active:scale-95 transition"
+          className="rounded-xl bg-[var(--aloha-green)] px-3.5 py-2.5 text-xs font-bold text-white shadow-2xs active:scale-95 transition"
         >
           {loading ? <Loader2 size={15} className="animate-spin" /> : "Tìm"}
         </button>
@@ -532,7 +579,7 @@ export function HeaderSearch({ onSubmitExtra }: { onSubmitExtra?: () => void }) 
                     onNavigate={() => {
                       navigatingRef.current = true;
                       if (q.trim()) saveRecentSearch(q.trim());
-                      setMobileOverlayOpen(false);
+                      closeMobileSearch(false);
                     }}
                   />
                 ))}
@@ -556,7 +603,8 @@ export function HeaderSearch({ onSubmitExtra }: { onSubmitExtra?: () => void }) 
 
   return (
     <div ref={wrapRef} className={`relative w-full min-w-0 ${showPanel ? "z-[100]" : ""}`}>
-      <form onSubmit={onSubmit} className="flex w-full min-w-0 items-stretch" role="search">
+      {/* DESKTOP FORM (MD+) */}
+      <form onSubmit={onSubmit} className="hidden md:flex w-full min-w-0 items-stretch" role="search">
         <div className="relative flex w-full min-w-0 items-stretch overflow-hidden rounded-xl sm:rounded-2xl border border-[var(--aloha-line)] bg-white shadow-2xs focus-within:border-[var(--aloha-green)] focus-within:shadow-xs transition-all">
           <div className="relative min-w-0 flex-1">
             <Search
@@ -585,16 +633,7 @@ export function HeaderSearch({ onSubmitExtra }: { onSubmitExtra?: () => void }) 
                 applyQuery(e.currentTarget.value);
               }}
               onFocus={() => {
-                if (window.innerWidth < 768) {
-                  setMobileOverlayOpen(true);
-                  return;
-                }
                 setOpen(true);
-              }}
-              onClick={() => {
-                if (window.innerWidth < 768) {
-                  setMobileOverlayOpen(true);
-                }
               }}
               onKeyDown={(e) => {
                 if (isImeKey(e)) return;
@@ -660,6 +699,37 @@ export function HeaderSearch({ onSubmitExtra }: { onSubmitExtra?: () => void }) 
           </button>
         </div>
       </form>
+
+      {/* MOBILE TRIGGER (MD:HIDDEN) — Nút bấm kích hoạt mở overlay, không dùng <input> thật ở header để triệt tiêu lỗi giật bàn phím */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={openMobileSearch}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openMobileSearch();
+          }
+        }}
+        className="flex md:hidden w-full min-w-0 items-stretch text-left cursor-pointer select-none group"
+        aria-label="Mở tìm kiếm sản phẩm"
+      >
+        <div className="relative flex w-full min-w-0 items-stretch overflow-hidden rounded-xl border border-[var(--aloha-line)] bg-white shadow-2xs group-active:border-[var(--aloha-green)] transition-all">
+          <div className="relative flex min-w-0 flex-1 items-center py-2 pl-9 pr-2 text-sm text-slate-400">
+            <Search
+              size={18}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF]"
+              aria-hidden
+            />
+            <span className="truncate font-normal text-slate-400">
+              {q || "Tìm sản phẩm, mã SP…"}
+            </span>
+          </div>
+          <div className="inline-flex min-h-10 w-10 shrink-0 items-center justify-center bg-[var(--aloha-green)] text-white group-active:bg-[var(--aloha-green-hover)] transition-colors">
+            <Search size={18} aria-hidden />
+          </div>
+        </div>
+      </div>
 
       {mounted && panel ? createPortal(panel, document.body) : null}
       {mounted && mobileOverlay ? createPortal(mobileOverlay, document.body) : null}

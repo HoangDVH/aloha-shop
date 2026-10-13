@@ -40,11 +40,11 @@ async function withServerPrices(
     );
   if (!valid.length) return [];
   const all = await price(valid);
-  if (all.ok) return valid.map((it, i) => ({ ...it, price: all.details[i].price }));
+  if (all.ok) return valid.map((it, i) => ({ ...it, price: all.details[i].price, volumePricing: all.details[i].volumePricing }));
   const out: CartItemToEvaluate[] = [];
   for (const it of valid) {
     const one = await price([it]);
-    if (one.ok && one.details[0]) out.push({ ...it, price: one.details[0].price });
+    if (one.ok && one.details[0]) out.push({ ...it, price: one.details[0].price, volumePricing: one.details[0].volumePricing });
   }
   return out;
 }
@@ -121,6 +121,7 @@ export function registerShopPromotionsPublicRoutes(
           minOrderThreshold: p.minOrderThreshold,
           thresholdOperator: p.thresholdOperator || ">",
           targetCustomer: p.targetCustomer,
+          claimRequired: p.claimRequired === true,
           audienceEligible: (allowed.has(p.id) || claimable.has(p.id)) && !(p.targetCustomer === "retail" && wholesale && !allowsWholesaleShipping(p, account)) && !(p.targetCustomer === "wholesale" && !wholesale),
           scope: p.scope || "all",
           categoryIds: p.categoryIds,
@@ -245,6 +246,7 @@ export function registerShopPromotionsPublicRoutes(
           prices: Object.fromEntries(items.map((it) => [it.ma, it.price])),
           lines: campaign.lines,
           flashSavings: campaign.flashSavings,
+          volumeSavings: campaign.volumeSavings,
           anchorSavings: campaign.anchorSavings,
           campaignNotices: campaign.notices,
         });

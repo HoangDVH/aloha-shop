@@ -6,9 +6,18 @@ const ts = require('typescript');
 
 // Render the real PDP price section with account and quote fixtures.
 const source = fs.readFileSync('frontend/components/ProductDetailView.tsx', 'utf8');
-const start = source.indexOf('{!hasPromo');
-const end = source.indexOf('{!expectsSi ? (', start);
-const code = ts.transpileModule(`const tree = <>${source.slice(start, end)}</>;`, {
+const ast = ts.createSourceFile('ProductDetailView.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+const sections = [];
+function visit(node) {
+  if (ts.isJsxExpression(node) && node.expression) {
+    const expression = node.expression.getText(ast);
+    if (expression.startsWith('!hasPromo || expectsSi ?') || expression.startsWith('!expectsSi ? <ProductCampaignBox')) sections.push(node.getText(ast));
+  }
+  ts.forEachChild(node, visit);
+}
+visit(ast);
+assert.equal(sections.length, 2, 'Both actual price sections must be selected');
+const code = ts.transpileModule(`const tree = <>${sections.join('\n')}</>;`, {
   compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS },
 }).outputText;
 function render(extra = {}) {

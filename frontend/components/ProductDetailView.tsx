@@ -13,11 +13,13 @@ import {
   ProductVariantPicker,
   useProductVariants,
 } from "@/components/ProductVariantPicker";
+import { ProductDescription, plainDescription } from "@/components/pdp/ProductDescription";
 import { ProductGallery } from "@/components/pdp/ProductGallery";
 import { ProductPromotionBadges } from "@/components/pdp/ProductPromotionBadges";
 import { ProductStickyCta } from "@/components/pdp/ProductStickyCta";
 import { ProductCampaignBox } from "@/components/pdp/ProductCampaignBox";
 import { ProductTierPricing } from "@/components/pdp/ProductTierPricing";
+import { ProductPricingSummary, useProductPricing } from "@/components/pdp/ProductPricingSummary";
 import { calculateTierPrice } from "@/lib/volumePricing";
 import { useCampaignRequoteKey } from "@/lib/campaign/campaignQuote";
 import { useCampaignView } from "@/lib/campaign/useCampaignView";
@@ -37,82 +39,6 @@ import {
   setGuestCtvCode,
 } from "@/lib/ctv";
 import { canPurchaseZeroPrice } from "@/lib/testBuyer";
-
-function plainDescription(raw: string): string {
-  return String(raw || "")
-    .replace(/&lt;br\s*\/?&gt;/gi, "\n")
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/p>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
-/** Chiều cao preview mô tả (kiểu Shopee/Lazada) — ~8–9 dòng. */
-const DESC_COLLAPSE_PX = 220;
-
-function ProductDescription({ text }: { text: string }) {
-  const [expanded, setExpanded] = useState(false);
-  const [needsToggle, setNeedsToggle] = useState(false);
-  const bodyRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setExpanded(false);
-  }, [text]);
-
-  useEffect(() => {
-    const el = bodyRef.current;
-    if (!el) return;
-    const measure = () => {
-      setNeedsToggle(el.scrollHeight > DESC_COLLAPSE_PX + 8);
-    };
-    measure();
-    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
-    ro?.observe(el);
-    return () => ro?.disconnect();
-  }, [text]);
-
-  return (
-    <div className="rounded-2xl bg-white p-5 text-sm leading-relaxed text-slate-700 shadow-[0_2px_16px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
-      <h2 className="mb-2 text-sm font-bold text-[var(--aloha-ink)]">Mô tả sản phẩm</h2>
-      <div className="relative">
-        <div
-          ref={bodyRef}
-          className={`whitespace-pre-wrap transition-[max-height] duration-300 ease-out ${
-            expanded || !needsToggle ? "max-h-none" : "max-h-[220px] overflow-hidden"
-          }`}
-        >
-          {text}
-        </div>
-        {needsToggle && !expanded ? (
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/90 to-transparent"
-          />
-        ) : null}
-      </div>
-      {needsToggle ? (
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="mt-3 inline-flex w-full items-center justify-center gap-1 rounded-xl border border-[var(--aloha-line)] bg-[#f7f8f5] py-2.5 text-sm font-bold text-[var(--aloha-green)] transition hover:border-[var(--aloha-green)]/40 hover:bg-[var(--aloha-green-light)]"
-          aria-expanded={expanded}
-        >
-          {expanded ? "Thu gọn" : "Xem thêm"}
-          <ChevronRight
-            size={16}
-            className={`transition-transform ${expanded ? "-rotate-90" : "rotate-90"}`}
-            aria-hidden
-          />
-        </button>
-      ) : null}
-    </div>
-  );
-}
 
 export function ProductDetailView({
   product,
@@ -389,6 +315,7 @@ export function ProductDetailView({
   }, [expectsSi, liveGia, pricePending, qty]);
 
   const effectiveGia = tierInfo?.unitPrice ?? liveGia;
+  const productPricing = useProductPricing({ ma: activeProduct.ma, name: activeProduct.ten, qty, price: liveGia, enabled: !purchaseDisabled });
 
   const addCart = (buyNow = false) => {
     if (purchaseDisabled) {
@@ -522,6 +449,27 @@ export function ProductDetailView({
                   />
                 </div>
 
+
+                <p className="text-xs text-slate-400">
+                  Mã:{" "}
+                  <span className="font-medium text-slate-700">
+                    {activeProduct.ma}
+                  </span>
+                  {variantsLoading ? (
+                    <>
+                      {" · "}
+                      <span className="text-slate-400">Đang tải biến thể…</span>
+                    </>
+                  ) : null}
+                  {needPick ? (
+                    <>
+                      {" · "}
+                      <span className="font-semibold text-amber-700">
+                        Chọn thuộc tính / đơn vị
+                      </span>
+                    </>
+                  ) : null}
+                </p>
                 {/* Tài khoản sỉ luôn dùng giá sỉ và giá web thực tế, độc lập với chiến dịch khách lẻ. */}
                 {!hasPromo || expectsSi ? (
                   <div className="w-full">
@@ -580,13 +528,7 @@ export function ProductDetailView({
                   </p>
                 ) : null}
 
-                {!expectsSi ? (
-                  <ProductPromotionBadges
-                    product={activeProduct}
-                    livePrice={liveGia}
-                    isWholesale={false}
-                  />
-                ) : null}
+
 
                 {isCtvAccount ? (
                 <div className="space-y-1.5 pt-1">
@@ -674,26 +616,7 @@ export function ProductDetailView({
                 </div>
                 ) : null}
 
-                <p className="text-sm text-slate-500">
-                  Mã:{" "}
-                  <span className="font-medium text-slate-700">
-                    {activeProduct.ma}
-                  </span>
-                  {variantsLoading ? (
-                    <>
-                      {" · "}
-                      <span className="text-slate-400">Đang tải biến thể…</span>
-                    </>
-                  ) : null}
-                  {needPick ? (
-                    <>
-                      {" · "}
-                      <span className="font-semibold text-amber-700">
-                        Chọn thuộc tính / đơn vị
-                      </span>
-                    </>
-                  ) : null}
-                </p>
+
 
                 {variantAxes.length > 0 ? (
                   <ProductVariantPicker
@@ -704,8 +627,9 @@ export function ProductDetailView({
                 ) : null}
 
 
+
                 <div>
-                  <div className="mb-1.5 text-sm text-slate-500">Số lượng</div>
+                  <div className="flex flex-wrap items-center gap-4"><div className="text-sm font-semibold text-slate-800">Số lượng mua</div>
                   <div className="inline-flex items-center overflow-hidden rounded-lg border border-[#ddd]">
                     <button
                       type="button"
@@ -755,6 +679,7 @@ export function ProductDetailView({
                       +
                     </button>
                   </div>
+                  </div>
                   {stockMax(liveTon) === 0 ? (
                     <p className="mt-2 text-sm font-medium text-amber-800">
                       Sản phẩm đã hết hàng, cần đặt trước.
@@ -768,15 +693,21 @@ export function ProductDetailView({
                 </div>
               </div>
 
-              <div className="mt-3 hidden shrink-0 gap-3 border-t border-[var(--aloha-line)] pt-3 lg:mt-4 lg:flex lg:pt-4">
+                {!expectsSi ? (
+                  <ProductPromotionBadges
+                    product={activeProduct}
+                    livePrice={liveGia}
+                    isWholesale={false}
+                  />
+                ) : null}
+              {!purchaseDisabled && <div className="mt-4"><ProductPricingSummary pricing={productPricing} qty={qty} unit={activeProduct.dvt} /></div>}
+              <div id="product-buy-actions" className="mt-2 hidden shrink-0 gap-3 lg:flex">
                 <button
                   type="button"
                   disabled={purchaseDisabled}
                   onClick={() => addCart(false)}
                   className={`flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-40 active:scale-98 ${
-                    campaignBuyInBox
-                      ? "border-2 border-[#C8102E] bg-rose-50 text-[#C8102E] hover:bg-rose-100"
-                      : "bg-[var(--aloha-green-light)] text-[var(--aloha-green-mid)] hover:brightness-95"
+                    "border border-[var(--aloha-green)] bg-white text-[var(--aloha-green-mid)] hover:bg-[var(--aloha-green-light)]"
                   }`}
                 >
                   <ShoppingCart size={17} />
@@ -787,11 +718,7 @@ export function ProductDetailView({
                   disabled={purchaseDisabled}
                   onClick={() => addCart(true)}
                   className={`flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black text-white transition disabled:cursor-not-allowed disabled:opacity-40 active:scale-98 shadow-sm ${
-                    campaignBuyInBox
-                      ? "bg-gradient-to-r from-[#C8102E] to-[#E53935] hover:brightness-105 shadow-rose-500/25"
-                      : qty >= 10 && !expectsSi
-                        ? "bg-gradient-to-r from-[#E11D48] via-[#C8102E] to-[#E11D48] hover:brightness-110 shadow-rose-500/30 ring-2 ring-rose-400/40"
-                        : "bg-[var(--aloha-green)] hover:bg-[var(--aloha-green-hover)]"
+                    "bg-[var(--aloha-green)] hover:bg-[var(--aloha-green-hover)]"
                   }`}
                 >
                   {campaignBuyInBox ? (
@@ -838,6 +765,9 @@ export function ProductDetailView({
         tierDiscountPercent={tierInfo?.tier.discountPercent || 0}
         tierSavedAmount={tierInfo?.savedAmount || 0}
         tierQty={qty}
+        totalPrice={productPricing.quote?.finalTotal}
+        totalPending={!purchaseDisabled && (productPricing.loading || productPricing.stale || !productPricing.quote)}
+        onPriceDetails={() => setPurchaseSheetOpen(true)}
       />
       {purchaseSheetOpen && (
         <ProductPurchaseSheet
@@ -856,6 +786,7 @@ export function ProductDetailView({
           preOrder={isPreOrder}
         >
           <ProductVariantPicker axes={variantAxes} selected={variantSelected} onPick={pickVariant} sheet />
+          {!purchaseDisabled && <ProductPricingSummary pricing={productPricing} qty={qty} unit={activeProduct.dvt} />}
         </ProductPurchaseSheet>
       )}
     </div>

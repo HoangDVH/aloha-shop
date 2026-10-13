@@ -22,6 +22,7 @@ export type CampaignQuoteLineUI = {
 export type CampaignQuoteUI = {
   lines: CampaignQuoteLineUI[];
   flashSavings: number;
+  volumeSavings?: number;
   /** Giá trước KM − giá web: chỉ để hiện "Giảm giá sản phẩm", tiền hàng (`subtotal`) đã là giá web. */
   anchorSavings: number;
   notices: string[];

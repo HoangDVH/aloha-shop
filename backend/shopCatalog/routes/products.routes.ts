@@ -461,6 +461,8 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
           videos: 1,
           videoUrl: 1,
           giaWeb: 1, giaSi: 1, allowBackorder: 1,
+          webBadge: 1,
+          webPin: 1,
           giaBan: 1,
           giaChung: 1,
           basePrice: 1,

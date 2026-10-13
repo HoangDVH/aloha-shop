@@ -56,7 +56,9 @@ export function CheckoutLineItems({
           const max = stockMax(l.ton);
           const atMax = l.qty >= 10000 || (l.allowBackorder === false && max != null && l.qty >= max);
           const fl = flashLineFor(campaign, l.ma);
-          const lineTotal = fl ? fl.lineTotal : l.gia * l.qty;
+          const serverRows = (campaign?.lines || []).filter(row => row.ma === l.ma && !row.isGift);
+          const unitPrice = serverRows[0]?.price ?? l.gia;
+          const lineTotal = serverRows.length ? serverRows.reduce((sum, row) => sum + row.price * row.quantity, 0) : l.gia * l.qty;
           const editing = editingMa === l.ma;
           const hasLineNote = Boolean(l.lineNote?.trim());
 
@@ -109,7 +111,7 @@ export function CheckoutLineItems({
                     <div className="min-w-0 space-y-0.5">
                       <p className="text-xs tabular-nums text-slate-500">
                         <span className="font-medium text-slate-400">Đơn giá </span>
-                        <CartUnitPrice gia={l.gia} qty={l.qty} flash={fl} />
+                        <CartUnitPrice gia={unitPrice} qty={l.qty} flash={fl} />
                         {l.qty > 1 ? (
                           <span className="text-slate-400"> × {l.qty}</span>
                         ) : null}
@@ -192,7 +194,7 @@ export function CheckoutLineItems({
                   </div>
                 </div>
                 <div className="text-right text-sm leading-none text-[var(--aloha-ink)]">
-                  <CartUnitPrice gia={l.gia} qty={l.qty} flash={fl} />
+                  <CartUnitPrice gia={unitPrice} qty={l.qty} flash={fl} />
                 </div>
                 <div className="flex justify-center">
                   <div className="inline-flex h-8 items-center rounded-md bg-[#f3f4f6] px-0.5">

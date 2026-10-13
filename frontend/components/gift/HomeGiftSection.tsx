@@ -334,45 +334,39 @@ export function HomeGiftSection({ initialItems = [] }: { initialItems?: GiftCard
           ))}
         </div>
 
-        {/* Khối giải pháp quà doanh nghiệp (B2B) - Điểm chạm riêng cho khách hàng tổ chức/công ty */}
-        <div className="mt-8 sm:mt-12 rounded-2xl border border-stone-200/90 bg-white p-4 sm:p-6 shadow-2xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6">
-            {/* Cụm Icon + Nội dung đầy đủ */}
-            <div className="flex items-start gap-3.5 sm:gap-4 text-left">
-              <div className="flex h-11 w-11 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700 mt-0.5">
-                <Building2 className="h-5 w-5 sm:h-6 sm:w-6" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex flex-wrap items-center gap-2 mb-1">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-[#0E5242] border border-emerald-200/70">
-                    Quà Doanh Nghiệp (B2B)
-                  </span>
-                  <span className="hidden sm:inline-block text-[11px] text-stone-300">•</span>
-                  <span className="text-[11px] font-medium text-stone-500">
-                    In logo chậu • Chiết khấu sỉ • Hóa đơn VAT
-                  </span>
-                </div>
-                <h4 className="text-sm sm:text-base font-bold text-stone-900 leading-snug">
-                  Bạn cần đặt quà số lượng lớn cho công ty hoặc sự kiện?
-                </h4>
-                <p className="mt-1 text-xs sm:text-sm text-stone-500 leading-relaxed">
-                  Aloha hỗ trợ in ấn logo doanh nghiệp lên chậu, khắc tag gỗ theo tên và cung cấp giải pháp quà tặng xanh trọn gói.
-                </p>
-              </div>
+        {/* Khối giải pháp quà doanh nghiệp (B2B) - Banner ngang tinh gọn chuẩn Tiki / Shopee / TGDD */}
+        <Link
+          href="/qua-tang/doanh-nghiep"
+          className="mt-4 sm:mt-8 flex items-center justify-between gap-3 sm:gap-6 rounded-2xl border border-stone-200/90 bg-white px-3.5 py-3 sm:px-5 sm:py-3.5 shadow-2xs transition-all hover:border-[#0E5242]/30 hover:shadow-xs group cursor-pointer"
+        >
+          {/* Cụm trái: Icon toà nhà + Tiêu đề & Giá trị cốt lõi */}
+          <div className="flex items-center gap-3 sm:gap-3.5 min-w-0">
+            <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700 transition group-hover:scale-105">
+              <Building2 className="h-5 w-5 sm:h-5.5 sm:w-5.5" />
             </div>
-
-            {/* Nút Xem hồ sơ dự án B2B */}
-            <div className="sm:shrink-0 pt-0.5 sm:pt-0">
-              <Link
-                href="/qua-tang/doanh-nghiep"
-                className="inline-flex w-full sm:w-auto items-center justify-center gap-1.5 rounded-full bg-[#0E5242] px-4 py-2 sm:px-5 sm:py-2.5 text-xs font-bold text-white shadow-xs hover:bg-[#156e59] transition cursor-pointer"
-              >
-                <span>Xem giải pháp B2B</span>
-                <ArrowRight size={13} />
-              </Link>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="truncate text-xs sm:text-sm font-bold text-stone-900 group-hover:text-[#0E5242] transition-colors">
+                  Quà Doanh Nghiệp (B2B)
+                </span>
+                <span className="hidden sm:inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] sm:text-[11px] font-bold text-[#0E5242] border border-emerald-200/70 shrink-0">
+                  Dự án & Sự kiện
+                </span>
+              </div>
+              <p className="mt-0.5 truncate text-[11px] sm:text-xs text-stone-500 font-medium">
+                In logo chậu · Chiết khấu sỉ · Xuất hóa đơn VAT
+              </p>
             </div>
           </div>
-        </div>
+
+          {/* Cụm phải: Nút CTA nhỏ gọn hoặc icon mũi tên */}
+          <div className="shrink-0 flex items-center">
+            <span className="inline-flex items-center gap-1 sm:gap-1.5 rounded-full bg-[#0E5242] px-3 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-xs font-bold text-white shadow-2xs group-hover:bg-[#156e59] transition">
+              <span>Xem giải pháp</span>
+              <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
+            </span>
+          </div>
+        </Link>
       </div>
     </section>
   );
