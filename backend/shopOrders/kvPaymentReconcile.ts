@@ -6,6 +6,7 @@ import type { Db } from "mongodb";
 import { SHOP_ORDERS, ensureShopOrderIndexes } from "./models.js";
 import { markShopOrderPaid } from "./markPaid.js";
 import { getKvInvoice } from "../shopInvoices/kvInvoiceClient.js";
+import { syncBus } from "../syncBus.js";
 
 export type GetShopDb = () => Promise<Db>;
 export type GetMainDb = () => Promise<Db>;
@@ -28,37 +29,30 @@ export function kvPayReconcileThrottleMs(): number {
 }
 
 function invoiceReceivedAmount(inv: any): number {
-  const totalPayment = Math.round(
-    Number(inv?.TotalPayment ?? inv?.totalPayment ?? 0) || 0
-  );
-  const paidAmount = Math.round(
-    Number(inv?.PaidAmount ?? inv?.paidAmount ?? 0) || 0
-  );
-  const payments = Array.isArray(inv?.Payments)
-    ? inv.Payments
-    : Array.isArray(inv?.payments)
-      ? inv.payments
-      : [];
-  const sum = payments.reduce(
-    (s: number, p: any) =>
-      s + Math.round(Number(p?.Amount ?? p?.amount ?? 0) || 0),
-    0
-  );
-  // Chỉ tin số tiền đã thu — Status=1 (Hoàn thành) trên KV KHÔNG đồng nghĩa đã trả.
-  return Math.max(totalPayment, paidAmount, sum);
+  // Aggregate received amount from the API, not individual cancelled payment rows.
+  const amount = Number(inv?.TotalPayment ?? inv?.totalPayment ?? inv?.PaidAmount ?? inv?.paidAmount);
+  return Number.isFinite(amount) && amount >= 0 && Number.isSafeInteger(Math.round(amount)) ? Math.round(amount) : NaN;
+}
+
+async function recordVerificationPending(db: Db, order: any, reason: string) {
+  const at = new Date().toISOString();
+  await db.collection(SHOP_ORDERS).updateOne({ _id: order._id, paymentStatus: { $in: ["unpaid", "processing", "underpaid", "expired", "failed"] } }, {
+    $set: { "kvPaymentVerification.state": "pending", "kvPaymentVerification.reason": reason, "kvPaymentVerification.lastAttemptAt": at },
+    $inc: { "kvPaymentVerification.attempts": 1 },
+    $push: { kvPaymentVerificationHistory: { $each: [{ at, reason }], $slice: -20 } } as any,
+  });
+  syncBus.publish(["shop_orders"], "kv-payment-verification", { ids: [String(order.code)] });
 }
 
 let running = false;
 let timer: ReturnType<typeof setInterval> | null = null;
 
-/** Một đơn: lấy HĐ từ KV, đủ tiền → markPaid (không tin webhook body trừ khi API lỗi). */
+/** API-only verification: a lookup failure must never authorize a payment. */
 export async function reconcileShopOrderAgainstKv(opts: {
   shopDb: Db;
   mainDb: Db;
   order: any;
-  /** Khi GET KV lỗi — dùng số tiền từ webhook body (nếu có). */
-  fallbackReceived?: number;
-}): Promise<"paid" | "skip" | "fail"> {
+}, deps = { getInvoice: getKvInvoice, markPaid: markShopOrderPaid }): Promise<"paid" | "skip" | "fail"> {
   const order = opts.order;
   const code = String(order?.code || order?.id || "").trim();
   const invId = order?.kvInvoiceId;
@@ -71,47 +65,45 @@ export async function reconcileShopOrderAgainstKv(opts: {
   }
 
   const expected = Math.round(Number(order.totalPayment ?? order.total) || 0);
-  if (expected <= 0) return "skip";
+  if (!Number.isSafeInteger(expected) || expected <= 0) return "skip";
 
   let received = 0;
-  let fromApi = false;
+  const fail = async (reason: string) => { await recordVerificationPending(opts.shopDb, order, reason); return "fail" as const; };
   try {
-    const inv = await getKvInvoice(opts.mainDb, String(invId ?? invCode));
-    if (inv) {
-      received = invoiceReceivedAmount(inv);
-      fromApi = true;
-    }
+    const inv = await deps.getInvoice(opts.mainDb, String(invId ?? invCode));
+    if (!inv) return await fail("invoice_unavailable");
+    if ((invId != null && String(inv.id ?? inv.Id) !== String(invId)) ||
+      (invCode && String(inv.code ?? inv.Code) !== invCode) ||
+      (order.kvCustomerId != null && String(inv.customerId ?? inv.CustomerId) !== String(order.kvCustomerId))) return await fail("invoice_mismatch");
+    if (Number(inv.status ?? inv.Status) !== 1 || [4, 5, 6].includes(Number(inv.invoiceDelivery?.status ?? inv.InvoiceDelivery?.Status))) return await fail("invoice_not_completed");
+    received = invoiceReceivedAmount(inv);
+    if (!Number.isSafeInteger(received)) return await fail("invalid_received_amount");
   } catch (e: any) {
     console.warn("[kv-pay-reconcile] get invoice", code, e?.message || e);
-    const fb = Math.round(Number(opts.fallbackReceived) || 0);
-    if (fb > 0) {
-      received = fb;
-      console.warn("[kv-pay-reconcile] dùng số tiền webhook body", code, fb);
-    } else {
-      return "fail";
-    }
+    return await fail("api_unavailable");
   }
 
-  if (received < expected) return "skip";
+  if (received < expected) { await recordVerificationPending(opts.shopDb, order, "insufficient_received_amount"); return "skip"; }
 
-  const result = await markShopOrderPaid({
+  const result = await deps.markPaid({
     shopDb: opts.shopDb,
     mainDb: opts.mainDb,
     orderCode: code,
     source: "kiotqr",
     allowExpired: true,
-    confirmedBy: fromApi ? "kiotqr_reconcile" : "kiotqr_webhook_body",
+    confirmedBy: "kiotqr_reconcile",
+    kvPaymentProof: { invoiceId: String(invId ?? ""), invoiceCode: invCode, expected, received },
   });
   if (result.ok) {
     console.log("[kv-pay-reconcile] paid", code, {
       received,
       expected,
       hd: invCode,
-      fromApi,
     });
     return "paid";
   }
   console.warn("[kv-pay-reconcile] markPaid fail", code, result.error);
+  await recordVerificationPending(opts.shopDb, order, "order_changed_or_processing_failed");
   return "fail";
 }
 
@@ -135,11 +127,13 @@ export async function reconcileAwaitingKvPayments(
       .collection(SHOP_ORDERS)
       .find({
         method: "Transfer",
-        paymentStatus: { $in: ["unpaid", "processing", "underpaid", "expired"] },
-        kvInvoiceId: { $ne: null },
-        createdAt: { $gte: since },
+        paymentStatus: { $in: ["unpaid", "processing", "underpaid", "expired", "failed"] },
+        $and: [
+          { $or: [{ kvInvoiceId: { $ne: null } }, { kvInvoiceCode: { $type: "string", $ne: "" } }] },
+          { $or: [{ createdAt: { $gte: since } }, { "kvPaymentVerification.state": "pending" }] },
+        ],
       })
-      .sort({ createdAt: -1 })
+      .sort({ "kvPaymentVerification.lastAttemptAt": 1, createdAt: 1 })
       .limit(40)
       .toArray();
 
@@ -163,7 +157,6 @@ export async function reconcileByKvInvoiceRef(
   ref: {
     kvInvoiceId?: number | string | null;
     kvInvoiceCode?: string | null;
-    fallbackReceived?: number;
   }
 ): Promise<"paid" | "skip" | "fail" | "no_order"> {
   const shopDb = await getShopDb();
@@ -185,7 +178,6 @@ export async function reconcileByKvInvoiceRef(
     shopDb,
     mainDb,
     order,
-    fallbackReceived: ref.fallbackReceived,
   });
 }
 

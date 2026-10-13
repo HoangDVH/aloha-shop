@@ -30,7 +30,7 @@ export interface PromotionItem {
   categoryIds?: string[];
   productMas?: string[];
   excludedProductMas?: string[];
-  targetCustomer: "all" | "retail" | "wholesale" | "new_web";
+  targetCustomer: "all" | "retail" | "wholesale" | "new_web" | "returning_web";
   startDate?: string;
   endDate?: string;
   usageLimitTotal?: number;
@@ -47,6 +47,8 @@ export interface PromotionItem {
   combineWithShip?: boolean;
   excludeFlash?: boolean;
   claimRequired?: boolean;
+  allowWholesaleTinh?: boolean;
+  allowWholesaleHcm?: boolean;
   claimLimitTotal?: number | null;
   claimedCount?: number;
   claimStartDate?: string | null;
@@ -161,6 +163,8 @@ export function initialFormValues(editingItem?: PromotionItem | null) {
     combineWithShip: editingItem.combineWithShip !== false,
     excludeFlash: editingItem.excludeFlash === true,
     claimRequired: editingItem.claimRequired === true,
+    allowWholesaleTinh: editingItem.allowWholesaleTinh === true,
+    allowWholesaleHcm: editingItem.allowWholesaleHcm === true,
     claimLimitTotal: editingItem.claimLimitTotal || undefined,
     claimStartDate: editingItem.claimStartDate ? dayjs(editingItem.claimStartDate) : undefined,
     mysteryOn: !!editingItem.mystery?.tiers?.length,
@@ -267,12 +271,9 @@ export function buildPromotionPayload(
   const specificTarget =
     values.targetCustomer && values.targetCustomer !== "all" ? values.targetCustomer : "retail";
   const targetCustomer = customerMode === "all" ? "all" : specificTarget;
-  const mysteryOn = !isShipping && values.mysteryOn === true;
-  const mysteryTiers = mysteryOn ? validTiers(values.mysteryTiers) : [];
-  const mystery = mysteryOn ? { tiers: mysteryTiers } : editingItem?.mystery ? null : undefined;
-  const discountType = isShipping ? "fixed" : mystery ? "percentage" : values.discountType || "percentage";
+  const discountType = isShipping ? "fixed" : values.discountType || "percentage";
   const optionalNumber = (v: unknown) => (v ? Number(v) : null);
-  const claimRequired = values.claimRequired === true || !!mystery;
+  const claimRequired = values.claimRequired === true;
   return {
     name: values.name,
     title: values.name,
@@ -281,7 +282,7 @@ export function buildPromotionPayload(
     regionId: isShipping ? values.regionId : undefined,
     type: isShipping || values.isAutoApply ? "auto" : "code",
     discountType,
-    discountValue: mysteryTiers[0]?.percent ?? (Number(values.discountValue) || 0),
+    discountValue: Number(values.discountValue) || 0,
     maxDiscountVnd:
       discountType === "percentage" && values.maxDiscountVnd
         ? Number(values.maxDiscountVnd)
@@ -302,9 +303,11 @@ export function buildPromotionPayload(
     combineWithShip: isShipping ? undefined : values.combineWithShip !== false,
     excludeFlash: isShipping ? undefined : values.excludeFlash === true,
     claimRequired,
+    allowWholesaleTinh: values.allowWholesaleTinh === true && isShipping,
+    allowWholesaleHcm: values.allowWholesaleHcm === true && isShipping,
     claimLimitTotal: claimRequired ? Number(values.claimLimitTotal) || 0 : 0,
     claimStartDate: claimRequired && values.claimStartDate ? values.claimStartDate.toISOString() : null,
-    mystery,
+    mystery: null,
     revision: editingItem?.revision,
   };
 }

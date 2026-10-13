@@ -8,6 +8,7 @@ import { shopOrderLookupFilter } from "./findShopOrder.js";
 import { lookupKvCustomers, verifyCustomerRegion } from "../shopWholesale/kvCustomers.js";
 import { fetchKvAccessToken, loadKvCreds, kvApiBase } from "../services/kvApiClient.js";
 import { applyCatalogPrices } from "./orderRouteShared.js";
+import { checkWholesalePurchase } from "../shopWholesale/purchaseCheck.js";
 
 type GetDb = () => Promise<Db>;
 export function registerWholesaleSyncAdmin(app: Express, getDb: GetDb, getOps: GetDb) {
@@ -62,8 +63,11 @@ export function registerWholesaleSyncAdmin(app: Express, getDb: GetDb, getOps: G
         order.orderStatus !== "cho_xac_nhan" || !Number.isInteger(req.body.revision)) return fail(res);
       if (!order.policyAcceptedAt && (req.body.confirmedConsent !== true || String(req.body.reason || "").trim().length < 10)) return fail(res);
       const buyer = await db.collection(SHOP_ACCOUNTS).findOne(shopAccountIdQuery(order.shopAccountId));
-      const priced = await applyCatalogPrices(await getOps(), order.orderDetails, { account: buyer, allowInactive: true });
+      const priced = await applyCatalogPrices(db, order.orderDetails, { account: buyer, allowInactive: true });
       if (!priced.ok || priced.details.some((d, i) => d.price !== order.orderDetails[i].price)) return fail(res);
+      const eligibility = await checkWholesalePurchase(db, await getOps(), buyer, priced.details,
+        { deliveryMethod: order.deliveryMethod, province: order.province }, String(order.code));
+      if (!eligibility.canCheckout) return res.status(400).json({ error: eligibility.issues.map(i => i.message).join(" "), eligibility });
       // Expired holds/old consent need the existing proposal flow, not silent renewal.
       if (Date.now() - new Date(order.createdAt).getTime() > 24 * 3600000) return fail(res);
       const result = await db.collection(SHOP_ORDERS).updateOne({ _id: order._id, revision: req.body.revision,

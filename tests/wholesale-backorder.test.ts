@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isActiveWholesale, stockAllocation, normalizeWholesalePhone, wholesaleMinimum } from "../backend/shopWholesale/policy.js";
+import { isActiveWholesale, stockAllocation, normalizeWholesalePhone } from "../backend/shopWholesale/policy.js";
 import { resolveShopPrice, applyPriceBookOverlay } from "../backend/shopCatalog/priceOverlay.js";
 import { applyCatalogPrices } from "../backend/shopOrders/orderRouteShared.js";
 import { annotatePreOrderDetails, assertStockAvailable } from "../backend/shopOrders/stockApply.js";
@@ -63,10 +63,9 @@ for (const [qty, stock, available, pending] of [[10, 1, 1, 9], [5, 0, 0, 5], [1,
   });
 }
 for (const qty of [0, -1, 1.5, 10001, NaN, Infinity]) test(`BO-2: rejects invalid quantity ${qty}`, () => assert.throws(() => stockAllocation(qty, 1)));
-test("SI-C: minimum uses wholesale subtotal, inclusive threshold, HCM has no minimum", async () => {
+test("SI-C: catalog pricing is independent of purchase eligibility", async () => {
   const { db } = fixtureDb([{ ma: "P1", ten: "Chậu", giaSi: 50000, giaWeb: 100000 }]);
-  assert.equal(wholesaleMinimum("HCM"), 0);
-  assert.equal((await applyCatalogPrices(db, [line(39)], { account: si })).ok, false);
+  assert.equal((await applyCatalogPrices(db, [line(39)], { account: si })).ok, true);
   assert.equal((await applyCatalogPrices(db, [line(40)], { account: si })).ok, true);
   assert.equal((await applyCatalogPrices(db, [line(1)], { account: { ...si, siRegion: "HCM" } })).ok, true);
   const quote = await applyCatalogPrices(db, [line(39)], { account: si, quoteOnly: true });

@@ -6,6 +6,8 @@ import { Alert, App, Button, Input, Modal, Segmented, Table, Tag, Tooltip } from
 import { RefreshCw, Trash2 } from "lucide-react";
 import { siRequest } from "@/lib/siQueries";
 import { formatVnd } from "@/lib/api";
+import { WholesaleOrderCheck } from "./WholesaleOrderCheck";
+import { PaymentVerificationNotice } from "./PaymentVerificationNotice";
 
 type OrderRow = {
   code: string;
@@ -16,6 +18,7 @@ type OrderRow = {
   customerPhone?: string;
   total: number;
   paymentStatus: string;
+  kvPaymentVerification?: { state: string; reason: string; attempts: number };
   statusValue?: string;
   isTest?: boolean;
   priceMode?: string;
@@ -55,6 +58,7 @@ export function WebOrdersAdmin() {
   const [search, setSearch] = useState("");
   const [payment, setPayment] = useState("");
   const [target, setTarget] = useState<OrderRow | null>(null);
+  const [policyCode, setPolicyCode] = useState<string | null>(null);
   const [confirm, setConfirm] = useState("");
 
   const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
@@ -156,6 +160,7 @@ export function WebOrdersAdmin() {
             ),
           },
           { title: "Tổng tiền", align: "right", render: (_, r) => <span className="tabular-nums">{formatVnd(r.total)}</span> },
+          { title: "Điều kiện sỉ", render: (_, r) => r.priceMode === "si" ? <Button size="small" onClick={() => setPolicyCode(r.code)}>Kiểm tra</Button> : "—" },
           {
             title: "Trạng thái",
             render: (_, r) => {
@@ -163,6 +168,7 @@ export function WebOrdersAdmin() {
               return (
                 <div className="flex flex-wrap items-center gap-1">
                   <Tag color={p.color}>{p.label}</Tag>
+                  {["unpaid", "processing", "underpaid", "expired", "failed"].includes(r.paymentStatus) && r.kvPaymentVerification?.state === "pending" && <PaymentVerificationNotice code={r.code} reason={r.kvPaymentVerification.reason} attempts={r.kvPaymentVerification.attempts} />}
                   {r.priceMode === "si" ? <Tag color="purple">Sỉ</Tag> : null}
                   {r.isTest ? <Tag color="magenta">TEST</Tag> : null}
                 </div>
@@ -200,6 +206,9 @@ export function WebOrdersAdmin() {
         ]}
       />
 
+      <Modal title="Điều kiện mua sỉ" open={Boolean(policyCode)} onCancel={() => setPolicyCode(null)} footer={null} destroyOnHidden>
+        {policyCode && <WholesaleOrderCheck code={policyCode} />}
+      </Modal>
       <Modal
         open={!!target}
         title={`Huỷ đơn test ${target?.kvOrderCode || target?.code || ""}`}

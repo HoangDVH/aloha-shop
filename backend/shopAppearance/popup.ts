@@ -61,6 +61,7 @@ export function normalizePopup(raw: Partial<AppearancePopup> | null | undefined)
             ctaHref: String(it.ctaHref || "").trim(),
             ctaLabel: String(it.ctaLabel || "").trim(),
             title: String(it.title || "").trim(),
+            enabled: it.enabled !== false,
           }))
       : undefined,
     autoplaySeconds: Number.isFinite(Number(p.autoplaySeconds))
@@ -102,7 +103,11 @@ export function registerPopupStatsRoutes(
         return;
       }
       const popup = await getPublishedPopup();
-      if (!popup.enabled || !popup.imageUrl) {
+      const hasAnyBanner =
+        Boolean(popup.imageUrl?.trim()) ||
+        (Array.isArray(popup.items) &&
+          popup.items.some((it) => it.enabled !== false && Boolean(it.imageUrl?.trim())));
+      if (!popup.enabled || !hasAnyBanner) {
         res.json({ ok: true });
         return;
       }

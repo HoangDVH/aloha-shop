@@ -28,6 +28,7 @@ import { useCandidateClaim } from "@/components/checkout/useCandidateClaim";
 import { useManualCodeFallback } from "@/components/checkout/useManualCodeFallback";
 import { onShopCampaignChanged } from "@/lib/catalogSync";
 import { usePromotionQuote } from "@/lib/usePromotionQuote";
+import { useCheckoutError } from "@/lib/useCheckoutError";
 import { useCampaignCartNotices, useCampaignRequoteKey } from "@/lib/campaign/campaignQuote";
 import { PreOrderCodConfirmModal } from "@/components/checkout/BackorderConfirmModal";
 import {
@@ -109,10 +110,9 @@ function CheckoutConfirm() {
   const [delivery, setDelivery] = useState<Delivery>("giao_tan_noi");
   const [note, setNote] = useState("");
   const catalogState = usePriceSession();
-  const { isSi, quote: siQuote } = useCartQuote();
   const [policyModalOpen, setPolicyModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
+  const checkoutCartKey = selected.map(l => `${l.ma}:${l.qty}:${l.gia}`).join("|");
 
   const [promoModalOpen, setPromoModalOpen] = useState(false);
   const [promoCode, setPromoCode] = useState("");
@@ -128,6 +128,8 @@ function CheckoutConfirm() {
   useShopLoadingWhile(submitting);
 
   const [draft, setDraft] = useState<AddressDraft>(EMPTY_DRAFT);
+  const [error, setError] = useCheckoutError(JSON.stringify({ cart: checkoutCartKey, delivery, selectedAddrId, showNewForm,
+    draft, promoCode, promoAutoMode, userId: user?.id }));
 
   // Khôi phục form địa chỉ từ sessionStorage nếu khách bấm Mua thêm rồi quay lại
   useEffect(() => {
@@ -158,6 +160,8 @@ function CheckoutConfirm() {
   }, [draft]);
 
   const selectedAddr = addresses.find((a) => a.id === selectedAddrId);
+  const { isSi, quote: siQuote } = useCartQuote({ deliveryMethod: delivery,
+    province: !showNewForm && selectedAddr ? selectedAddr.province : draft.province || "" });
   // Cùng SĐT với đơn gửi lên: giới hạn suất sale mỗi khách tính theo SĐT người nhận.
   const receiverPhone =
     delivery === "giao_tan_noi" && !showNewForm && selectedAddr
@@ -220,6 +224,7 @@ function CheckoutConfirm() {
     quoteAddress,
     pickCarrier,
   } = useShippingQuote({
+    refreshKey: `${promoNonce}:${requoteKey}`,
     delivery,
     selected,
     selectedAddr,
@@ -385,7 +390,7 @@ function CheckoutConfirm() {
   });
 
   const orderBlockedReason = isSi && (!siQuote.data?.canCheckout || siQuote.isPending || siQuote.isError)
-    ? siQuote.error?.message || (siQuote.data?.remaining ? `Cần thêm ${formatVnd(siQuote.data.remaining)} tiền hàng để đủ điều kiện mua sỉ.` : "Đang kiểm tra giá và điều kiện mua sỉ. Sản phẩm thiếu giá cần được Aloha báo giá trước.")
+    ? siQuote.error?.message || siQuote.data?.issues?.map(i => i.message).join(" ") || "Đang kiểm tra giá và điều kiện mua sỉ. Sản phẩm thiếu giá cần được Aloha báo giá trước."
     : !catalogState.ready ? (catalogState.error || "Đang cập nhật giá giỏ hàng…") : selected.some(l => l.priceKind === "si_missing" || !(l.gia > 0)) ? "Có sản phẩm chưa có giá. Vui lòng liên hệ báo giá hoặc bỏ sản phẩm đó khỏi đơn." :
     selected.length === 0
       ? "Chưa chọn sản phẩm trong giỏ — quay lại giỏ hàng và tick sản phẩm."

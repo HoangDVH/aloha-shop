@@ -53,6 +53,7 @@ export type PopupBannerItem = {
   imageUrl: string;
   ctaHref?: string;
   ctaLabel?: string;
+  enabled?: boolean;
 };
 
 export type AppearancePopup = {

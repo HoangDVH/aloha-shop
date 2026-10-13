@@ -7,12 +7,6 @@ export function isActiveWholesale(account: any): boolean {
     account.roles.includes("si") && account.siStatus === "active";
 }
 
-export function wholesaleMinimum(region: unknown): number {
-  if (region !== "TINH") return 0;
-  const configured = Number(process.env.SHOP_SI_TINH_MIN_ORDER || 2000000);
-  return Number.isSafeInteger(configured) && configured > 0 ? configured : 2000000;
-}
-
 export function normalizeWholesalePhone(raw: unknown): string {
   const digits = String(raw || "").replace(/\D/g, "");
   return digits.startsWith("84") ? `0${digits.slice(2)}` : digits;

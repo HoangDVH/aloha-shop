@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { wholesaleApprovalBasis } from "./approvalSource.js";
 import { provisionWholesaleCustomer } from "./provision.js";
 import bcrypt from "bcryptjs";
 import type { Express, Request, Response } from "express";
@@ -12,7 +13,8 @@ import { shopRateLimitOrReject } from "../shopRateLimit.js";
 import { syncBus } from "../syncBus.js";
 import { addressSchema, applicationSchema, canonicalAddress } from "./schema.js";
 import { verifyCustomerRegion, lookupKvCustomers } from "./kvCustomers.js";
-import { SI_TERMS_VERSION, normalizeWholesalePhone, wholesaleMinimum } from "./policy.js";
+import { SI_TERMS_VERSION, normalizeWholesalePhone } from "./policy.js";
+import { loadPurchasePolicy } from "./purchasePolicy.js";
 import { accountOwnsPhone, decideWholesalePhoneLink, maskShopEmail, phoneOwnerFilter } from "./accountLink.js";
 import {
   getSiIdentitySession,
@@ -38,7 +40,7 @@ async function currentAccount(req: Request, db: Db) {
 
 async function identity(req: Request, db: Db) {
   const account = await currentAccount(req, db);
-  if (account?.zaloId && account.zaloVerifiedAt) return { owner: String(account._id), zaloId: String(account.zaloId), account };
+  if (account) return { owner: String(account._id), zaloId: account.zaloId && account.zaloVerifiedAt ? String(account.zaloId) : null, account };
   const secret = String(req.cookies?.[COOKIE] || "");
   const session = secret ? await getSiIdentitySession(hash(secret)) : null;
   if (!session) return null;
@@ -76,7 +78,7 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
       const who = await identity(req, db);
       res.json({ verified: Boolean(who), user: who?.account ? toPublicShopAccount(who.account) : null,
         zaloConfigured: Boolean(process.env.ZALO_APP_ID && process.env.ZALO_APP_SECRET && process.env.ZALO_REDIRECT_URI),
-        minOrder: wholesaleMinimum("TINH"), termsVersion: SI_TERMS_VERSION });
+        minOrder: (await loadPurchasePolicy(db)).tinhMinimum, termsVersion: SI_TERMS_VERSION });
     } catch (error) { sendError(res, error); }
   });
 
@@ -148,12 +150,12 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
     try {
       const db = await getDb(); await ensure(db);
       const who = await identity(req, db);
-      if (!who) return res.status(401).json({ error: "Vui lòng đăng nhập Zalo trước" });
+      if (!who) return res.status(401).json({ error: "Vui lòng đăng nhập trước khi đăng ký sỉ" });
       const input = addressSchema.parse(req.body);
 
-      // Nếu tài khoản đã có SĐT gắn với Zalo trước đó, khóa cố định SĐT này, không cho tra cứu số khác
+      // Giữ SĐT đã liên kết với tài khoản, không cho tra cứu số khác.
       if (who.account?.phoneNorm && normalizeWholesalePhone(who.account.phoneNorm) !== input.phone) {
-        return res.status(400).json({ error: "Số điện thoại tra cứu phải trùng khớp với số điện thoại đã liên kết của tài khoản Zalo này." });
+        return res.status(400).json({ error: "Số điện thoại tra cứu phải trùng khớp với số điện thoại đã liên kết của tài khoản này." });
       }
 
       let result = "lookup_unavailable"; let candidate: any = null; let retailer: string | null = null;
@@ -197,7 +199,7 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
     try {
       const db = await getDb(); await ensure(db);
       const who = await identity(req, db);
-      if (!who) return res.status(401).json({ error: "Vui lòng đăng nhập Zalo lại" });
+      if (!who) return res.status(401).json({ error: "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại" });
       const input = applicationSchema.parse(req.body);
       const lookup = await getSiLookup(input.lookupId);
       if (
@@ -242,7 +244,7 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
       }
       if (decision.action === "create") account = null;
 
-      const zaloOwner = await db.collection(SHOP_ACCOUNTS).findOne({ zaloId: who.zaloId });
+      const zaloOwner = who.zaloId ? await db.collection(SHOP_ACCOUNTS).findOne({ zaloId: who.zaloId }) : null;
       if (zaloOwner && (!account || String(zaloOwner._id) !== String(account._id))) {
         return res.status(409).json({
           error: "Zalo này đã gắn với tài khoản khác. Hãy đăng nhập đúng tài khoản đó rồi thử lại.",
@@ -252,10 +254,10 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
       const { password, email, lookupId, acceptedTerms, ...profile } = input;
       const now = new Date().toISOString();
       const patch = { fullName: input.fullName, phone: input.phone, phoneNorm: input.phone, siIdentity: true,
-        siStatus: "cho_duyet", siProfile: { ...profile, acceptedTermsAt: now, termsVersion: SI_TERMS_VERSION },
+        siStatus: "cho_duyet", siApplicationSource: "customer", siProfile: { ...profile, acceptedTermsAt: now, termsVersion: SI_TERMS_VERSION },
         siLookupId: lookupId, siLookupResult: lookup.result, siCandidate: lookup.candidate,
         siCandidateRetailer: lookup.retailer, siVerification: { status: "pending" },
-        zaloId: who.zaloId, zaloVerifiedAt: now, updatedAt: now };
+        ...(who.zaloId ? { zaloId: who.zaloId, zaloVerifiedAt: now } : {}), updatedAt: now };
       if (!account) {
         if (!email || !password) return res.status(400).json({ error: "Nhập email và mật khẩu để hoàn tất tài khoản" });
         const doc = { ...patch, email, passwordHash: await bcrypt.hash(password, 12), roles: ["customer", "si"],
@@ -326,7 +328,9 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
       const now = new Date().toISOString();
       const patch: Record<string, any> = { siStatus: to, updatedAt: now };
       if (to === "active") {
-        if (!account.siProfile?.acceptedTermsAt || account.siProfile.termsVersion !== SI_TERMS_VERSION) return res.status(409).json({ error: "Khách cần đồng ý điều khoản mua sỉ hiện hành trước khi duyệt." });
+        const approvalBasis = wholesaleApprovalBasis(account);
+        if (!approvalBasis) return res.status(409).json({ error: "Khách cần đồng ý điều khoản mua sỉ hiện hành trước khi duyệt." });
+        patch.siApprovalBasis = { source: approvalBasis, actorAdminId: req.auth!.userId, at: now, reason };
         // Recheck live before linking. Outage cannot turn a legacy customer into a new one.
         const found = await lookupKvCustomers(await getOpsDb(), account.phoneNorm);
         if (found.customers.length > 1) return res.status(409).json({ error: "Có nhiều KH KV cùng SĐT. Cần đối soát trước khi duyệt." });
@@ -344,7 +348,7 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
         Object.assign(patch, { siRegion: region, siVerification: { status: "verified", method: reason, verifiedBy: req.auth!.userId, verifiedAt: now }, siApprovedNotifyPending: true });
       }
       const audit = { id: crypto.randomUUID(), action: to, fromStatus: account.siStatus, toStatus: to,
-        reason, actorAdminId: req.auth!.userId, at: now };
+        reason, actorAdminId: req.auth!.userId, at: now, ...(to === "active" ? { approvalBasis: patch.siApprovalBasis } : {}) };
       const result = await db.collection(SHOP_ACCOUNTS).updateOne({ _id: account._id, applicationRevision: Number(req.body.revision), siStatus: account.siStatus }, {
         $set: patch, $inc: { applicationRevision: 1 }, $push: { siAudit: audit } as any,
       });

@@ -93,12 +93,15 @@ function checkCommonEligibility(
 
   // 3. Kiểm tra đối tượng khách hàng
   if (eligible) {
-    if (promo.targetCustomer === "retail" && buyer.isWholesale) {
+    if (promo.targetCustomer === "retail" && buyer.isWholesale && !(promo.benefitType === "shipping" && ((promo.allowWholesaleTinh && buyer.isWholesaleTinh) || (promo.allowWholesaleHcm && buyer.isWholesaleHcm)))) {
       eligible = false;
       ineligibleReason = "Chỉ áp dụng cho khách mua lẻ.";
     } else if (promo.targetCustomer === "wholesale" && !buyer.isWholesale) {
       eligible = false;
       ineligibleReason = "Chỉ áp dụng cho tài khoản sỉ.";
+    } else if (promo.targetCustomer === "returning_web" && buyer.hasSuccessfulWebPurchase !== true) {
+      eligible = false;
+      ineligibleReason = "Chỉ dành cho khách đã mua thành công trên website.";
     } else if (promo.targetCustomer === "new_web") {
       if (buyer.isNewWebBuyer === false) {
         eligible = false;

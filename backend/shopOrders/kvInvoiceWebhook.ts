@@ -14,78 +14,21 @@ import { reconcileDeliveryByKvInvoiceRef } from "./kvDeliveryReconcile.js";
 export type GetShopDb = () => Promise<Db>;
 export type GetMainDb = () => Promise<Db>;
 
-function safeEqualStr(a: string, b: string): boolean {
-  try {
-    const ba = Buffer.from(a);
-    const bb = Buffer.from(b);
-    return ba.length === bb.length && timingSafeEqual(ba, bb);
-  } catch {
-    return false;
-  }
-}
-
-function isShopProductionRuntime(): boolean {
-  return (
-    process.env.ALOHA_IS_VPS === "1" || process.env.NODE_ENV === "production"
-  );
-}
-
 export function verifyKvWebhookSignature(req: Request): boolean {
   const secret = String(process.env.KIOTVIET_WEBHOOK_SECRET || "").trim();
-  if (!secret) {
-    if (isShopProductionRuntime()) return false;
-    return true;
-  }
-  const sig = String(
-    req.headers["x-hub-signature"] ||
-      req.headers["x-kiotviet-signature"] ||
-      req.headers["x-hub-signature-256"] ||
-      req.headers["x-signature"] ||
-      ""
-  ).trim();
-  if (!sig) {
-    console.warn("[kv-webhook] missing signature header", req.path);
-    return false;
-  }
-  const rawBody: Buffer =
-    (req as any).rawBody || Buffer.from(JSON.stringify(req.body || {}));
-
-  const keys: Array<string | Buffer> = [secret];
+  const header = req.headers["x-hub-signature"];
+  const rawBody = (req as any).rawBody;
+  if (!secret || typeof header !== "string" || !Buffer.isBuffer(rawBody)) return false;
   try {
-    const decoded = Buffer.from(secret, "base64");
-    if (decoded.length >= 8) keys.push(decoded);
-  } catch {
-    /* ignore */
-  }
-
-  const candidates: string[] = [];
-  for (const key of keys) {
-    for (const algo of ["sha1", "sha256"] as const) {
-      const hex = createHmac(algo, key).update(rawBody).digest("hex");
-      const b64 = createHmac(algo, key).update(rawBody).digest("base64");
-      candidates.push(
-        hex,
-        b64,
-        `${algo}=${hex}`,
-        `${algo}=${b64}`,
-        hex.toUpperCase(),
-        `sha256=${hex}`,
-        `sha1=${hex}`
-      );
-    }
-  }
-  const ok = candidates.some(
-    (c) => safeEqualStr(sig, c) || safeEqualStr(sig.toLowerCase(), c.toLowerCase())
-  );
-  if (!ok) {
-    console.warn("[kv-webhook] invalid signature (vẫn đối soát qua API KV)", {
-      path: req.path,
-      sigLen: sig.length,
-      sigHead: sig.slice(0, 12),
-      bodyLen: rawBody.length,
-    });
-  }
-  return ok;
+    // KiotViet Retail registers Secret as base64-encoded key bytes.
+    const key = Buffer.from(secret, "base64");
+    if (key.length < 8 || key.toString("base64") !== secret) return false;
+    const sig = header.trim().replace(/^sha256=/, "");
+    const received = /^[a-fA-F0-9]{64}$/.test(sig) ? Buffer.from(sig, "hex") : Buffer.from(sig, "base64");
+    if (!/^[a-fA-F0-9]{64}$/.test(sig) && received.toString("base64") !== sig) return false;
+    const expected = createHmac("sha256", key).update(rawBody).digest();
+    return received.length === expected.length && timingSafeEqual(received, expected);
+  } catch { return false; }
 }
 
 export function flattenInvoiceNotifications(body: any): any[] {
@@ -105,23 +48,6 @@ export function flattenInvoiceNotifications(body: any): any[] {
   return out;
 }
 
-function invoiceReceivedAmount(inv: any): number {
-  const totalPayment = Math.round(
-    Number(inv?.TotalPayment ?? inv?.totalPayment ?? 0) || 0
-  );
-  const payments = Array.isArray(inv?.Payments)
-    ? inv.Payments
-    : Array.isArray(inv?.payments)
-      ? inv.payments
-      : [];
-  const sum = payments.reduce(
-    (s: number, p: any) =>
-      s + Math.round(Number(p?.Amount ?? p?.amount ?? 0) || 0),
-    0
-  );
-  return Math.max(totalPayment, sum);
-}
-
 export function registerKvInvoiceWebhookRoutes(
   app: Express,
   getShopDb: GetShopDb,
@@ -130,6 +56,7 @@ export function registerKvInvoiceWebhookRoutes(
   app.post("/api/kv-webhook/invoices", async (req: Request, res: Response) => {
     try {
       const sigOk = verifyKvWebhookSignature(req);
+      if (!sigOk) return res.status(401).json({ ok: false, error: "invalid_webhook_signature" });
       const invoices = flattenInvoiceNotifications(req.body || {});
       if (!invoices.length) {
         return res.status(200).json({
@@ -156,17 +83,15 @@ export function registerKvInvoiceWebhookRoutes(
           continue;
         }
 
-        const bodyReceived = invoiceReceivedAmount(inv);
         const r = await reconcileByKvInvoiceRef(getShopDb, getMainDb, {
           kvInvoiceId,
           kvInvoiceCode: kvInvoiceCode || null,
-          fallbackReceived: bodyReceived > 0 ? bodyReceived : undefined,
         });
         if (r === "paid") {
           marked++;
           notes.push(`paid:${kvInvoiceCode || kvInvoiceId}`);
         } else {
-          notes.push(`${r}:${kvInvoiceCode || kvInvoiceId}:body=${bodyReceived}`);
+          notes.push(`${r}:${kvInvoiceCode || kvInvoiceId}`);
         }
 
         try {
@@ -181,12 +106,13 @@ export function registerKvInvoiceWebhookRoutes(
       }
 
       console.log("[kv-webhook/invoices]", { marked, notes, sigOk });
-      return res.status(200).json({ ok: true, processed: marked, notes, sigOk });
+      const failed = notes.some(note => note.startsWith("fail:") || note.startsWith("delivery_err:"));
+      return res.status(failed ? 503 : 200).json({ ok: !failed, processed: marked, notes, sigOk });
     } catch (e: any) {
       console.error("[kv-webhook/invoices]", e);
-      return res.status(200).json({
+      return res.status(503).json({
         ok: false,
-        error: e?.message || "webhook_failed",
+        error: "webhook_failed",
       });
     }
   });

@@ -22,6 +22,7 @@ import {
 import { applyDrawnPercents, publicMystery } from "../mystery.js";
 import { claimByCode } from "./walletClaim.js";
 import { WALLET_MESSAGES, drawnPercentsFor, isClaimFail, savedPromotionIds } from "./walletService.js";
+import { allowsWholesaleShipping } from "../tinhShipping.js";
 
 export type BuyerPromotionInput = {
   now: Date;
@@ -77,7 +78,7 @@ export function noticeFor(p: PromotionDoc, reason: string, extra: Partial<Evalua
  */
 export function applyBuyerRules(
   promotions: PromotionDoc[],
-  ctx: { status: RetailStatus; campaignVoucherIds: Set<string>; saved: Set<string>; walletOn: boolean }
+  ctx: { status: RetailStatus; campaignVoucherIds: Set<string>; saved: Set<string>; walletOn: boolean; account?: any }
 ): { promotions: PromotionDoc[]; notices: EvaluatedCandidate[] } {
   const kept: PromotionDoc[] = [];
   const notices: EvaluatedCandidate[] = [];
@@ -86,7 +87,7 @@ export function applyBuyerRules(
     const needsWallet = ctx.walletOn && Boolean(p.claimRequired);
     const campaignOnly = ctx.campaignVoucherIds.has(p.id) || needsWallet;
     const visible = p.isPublic !== false;
-    if (campaignOnly && !allowed) {
+    if (campaignOnly && !allowed && !(allowsWholesaleShipping(p, ctx.account) && !ctx.status.locked)) {
       if (visible) {
         const reason = ctx.status.locked ? CAMPAIGN_ADMIN_MESSAGES.locked : CAMPAIGN_ERROR_MESSAGES.retail_only;
         notices.push(noticeFor(p, reason));
@@ -162,7 +163,7 @@ export async function loadBuyerPromotions(db: Db, input: BuyerPromotionInput): P
     if (claimNotice) extra.push(claimNotice);
     extra.push(...(await notStartedNotices(db, saved, input.now.toISOString())));
   }
-  const ruled = applyBuyerRules(all, { status, campaignVoucherIds, saved, walletOn });
+  const ruled = applyBuyerRules(all, { status, campaignVoucherIds, saved, walletOn, account });
   const seen = new Set(ruled.notices.map((n) => n.promotionId));
   const drawn = walletOn ? await drawnPercentsFor(db, input.accountId) : new Map<string, number>();
   return {

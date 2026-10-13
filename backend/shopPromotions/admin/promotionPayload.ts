@@ -5,7 +5,7 @@ export function newId(prefix = "pro"): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-const TARGET_CUSTOMERS = ["all", "wholesale", "new_web", "retail"];
+const TARGET_CUSTOMERS = ["all", "wholesale", "new_web", "returning_web", "retail"];
 
 type Body = Record<string, any>;
 type PayloadResult<T> = { ok: true; value: T } | { ok: false; status: number; error: string };
@@ -130,6 +130,7 @@ export function buildNewPromotion(
   actor: string,
   nowIso: string
 ): PayloadResult<PromotionDoc> {
+  if (b.mystery != null) return { ok: false, status: 400, error: "Túi mù đã ngừng sử dụng. Hãy nhập mức giảm cố định." };
   const name = String(b.name || "").trim();
   const title = String(b.title || name).trim();
   if (!name) return { ok: false, status: 400, error: "Vui lòng nhập tên chương trình" };
@@ -165,6 +166,8 @@ export function buildNewPromotion(
     productMas: upperMas(b.productMas),
     excludedProductMas: upperMas(b.excludedProductMas),
     targetCustomer: targetCustomerOf(b.targetCustomer),
+    allowWholesaleTinh: b.benefitType === "shipping" && b.allowWholesaleTinh === true,
+    allowWholesaleHcm: b.benefitType === "shipping" && b.allowWholesaleHcm === true,
     startDate: isoOrUndefined(b.startDate),
     endDate: isoOrUndefined(b.endDate),
     usageLimitTotal: b.usageLimitTotal ? Math.max(1, Number(b.usageLimitTotal)) : undefined,
@@ -227,6 +230,8 @@ function applyScopeFields(b: Body, set: Partial<PromotionDoc>): void {
   if (b.productMas !== undefined) set.productMas = upperMas(b.productMas);
   if (b.excludedProductMas !== undefined) set.excludedProductMas = upperMas(b.excludedProductMas);
   if (b.targetCustomer !== undefined) set.targetCustomer = targetCustomerOf(b.targetCustomer);
+  if (b.allowWholesaleTinh !== undefined) set.allowWholesaleTinh = b.allowWholesaleTinh === true;
+  if (b.allowWholesaleHcm !== undefined) set.allowWholesaleHcm = b.allowWholesaleHcm === true;
 }
 
 function applyLimitFields(b: Body, set: Partial<PromotionDoc>): void {
@@ -260,6 +265,7 @@ export function buildPromotionUpdate(
   actor: string,
   nowIso: string
 ): PayloadResult<Partial<PromotionDoc>> {
+  if (b.mystery != null) return { ok: false, status: 400, error: "Túi mù đã ngừng sử dụng. Hãy nhập mức giảm cố định." };
   const set: Partial<PromotionDoc> = {
     updatedAt: nowIso,
     updatedBy: actor,

@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import Link from "next/link";
 import { Sparkles, ArrowRight, Building2, ChevronRight, ChevronLeft } from "lucide-react";
-import { GiftCategoryNav } from "@/components/gift/GiftCategoryNav";
 import { GiftImage } from "@/components/gift/GiftImage";
 
 export interface GiftCardItem {
@@ -181,8 +180,6 @@ export function HomeGiftSection({ initialItems = [] }: { initialItems?: GiftCard
           </p>
         </div>
 
-        {/* Thanh Bộ Lọc Nhanh (Pills) chuyển trang trực tiếp */}
-        <GiftCategoryNav activeKey="all" className="mt-8" />
 
         {/* ========================================================================= */}
         {/* GIAO DIỆN MOBILE (< 640px): CAROUSEL TỐI ĐA 2 MỤC QUÀ TẶNG, TỰ ĐỘNG CHUYỂN */}
@@ -337,20 +334,29 @@ export function HomeGiftSection({ initialItems = [] }: { initialItems?: GiftCard
           ))}
         </div>
 
-        {/* Khối kích hoạt quà doanh nghiệp (Hiển thị trọn vẹn 100% chữ, tối ưu nhỏ gọn trên Mobile) */}
+        {/* Khối giải pháp quà doanh nghiệp (B2B) - Điểm chạm riêng cho khách hàng tổ chức/công ty */}
         <div className="mt-8 sm:mt-12 rounded-2xl border border-stone-200/90 bg-white p-4 sm:p-6 shadow-2xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6">
             {/* Cụm Icon + Nội dung đầy đủ */}
-            <div className="flex items-start gap-3 sm:gap-4 text-left">
-              <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700 mt-0.5">
+            <div className="flex items-start gap-3.5 sm:gap-4 text-left">
+              <div className="flex h-11 w-11 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700 mt-0.5">
                 <Building2 className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
               <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-[#0E5242] border border-emerald-200/70">
+                    Quà Doanh Nghiệp (B2B)
+                  </span>
+                  <span className="hidden sm:inline-block text-[11px] text-stone-300">•</span>
+                  <span className="text-[11px] font-medium text-stone-500">
+                    In logo chậu • Chiết khấu sỉ • Hóa đơn VAT
+                  </span>
+                </div>
                 <h4 className="text-sm sm:text-base font-bold text-stone-900 leading-snug">
                   Bạn cần đặt quà số lượng lớn cho công ty hoặc sự kiện?
                 </h4>
                 <p className="mt-1 text-xs sm:text-sm text-stone-500 leading-relaxed">
-                  Aloha hỗ trợ in logo doanh nghiệp lên chậu, khắc tag gỗ theo tên và xuất hóa đơn VAT đầy đủ.
+                  Aloha hỗ trợ in ấn logo doanh nghiệp lên chậu, khắc tag gỗ theo tên và cung cấp giải pháp quà tặng xanh trọn gói.
                 </p>
               </div>
             </div>
@@ -361,7 +367,7 @@ export function HomeGiftSection({ initialItems = [] }: { initialItems?: GiftCard
                 href="/qua-tang/doanh-nghiep"
                 className="inline-flex w-full sm:w-auto items-center justify-center gap-1.5 rounded-full bg-[#0E5242] px-4 py-2 sm:px-5 sm:py-2.5 text-xs font-bold text-white shadow-xs hover:bg-[#156e59] transition cursor-pointer"
               >
-                <span>Xem hồ sơ dự án B2B</span>
+                <span>Xem giải pháp B2B</span>
                 <ArrowRight size={13} />
               </Link>
             </div>

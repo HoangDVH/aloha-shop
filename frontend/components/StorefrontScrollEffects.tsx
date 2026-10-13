@@ -32,7 +32,12 @@ export function StorefrontScrollEffects() {
     mutations.observe(document.querySelector('.shop-storefront-with-tabbar') || document.body, { childList: true, subtree: true });
     const onMotion = () => { if (motion.matches) animations.forEach(animation => animation.cancel()); };
     motion.addEventListener("change", onMotion);
-    const onScroll = () => setShowTop(window.scrollY > Math.max(600, window.innerHeight));
+    const onScroll = () => {
+      setShowTop(window.scrollY > Math.max(600, window.innerHeight));
+      if (document.activeElement && (document.activeElement.tagName === "INPUT" || document.activeElement.tagName === "TEXTAREA")) {
+        (document.activeElement as HTMLElement).blur();
+      }
+    };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => {

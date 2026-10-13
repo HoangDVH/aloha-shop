@@ -108,7 +108,11 @@ export function ShopWelcomePopup() {
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         const p = data?.theme?.popup as AppearancePopup | undefined;
-        if (!cancelled && p?.enabled && String(p.imageUrl || "").trim()) setPopup(p);
+        const hasBanners =
+          Boolean(p?.imageUrl?.trim()) ||
+          (Array.isArray(p?.items) &&
+            p.items.some((it) => it.enabled !== false && Boolean(it.imageUrl?.trim())));
+        if (!cancelled && p?.enabled && hasBanners) setPopup(p);
       })
       .catch(() => {});
     return () => {
@@ -117,38 +121,43 @@ export function ShopWelcomePopup() {
   }, []);
 
   const audience = popup?.audience || "all";
-  const eligible = Boolean(
-    popup &&
-      (audience === "all" || !viewerLoading) &&
-      popupInSchedule(popup, Date.now()) &&
-      popupAudienceAllowed(audience, viewer) &&
-      popupPathAllowed(pathname, popup.pages)
-  );
 
   /** Danh sách banner cho Slider Carousel xoay vòng chuẩn Shopee */
   const slides = useMemo<PopupBannerItem[]>(() => {
-    if (!popup) return [];
-    if (Array.isArray(popup.items) && popup.items.length >= 2) {
-      return popup.items.filter((it) => Boolean(it.imageUrl?.trim()));
+    if (!popup || !popup.enabled) return [];
+    if (Array.isArray(popup.items) && popup.items.length > 0) {
+      return popup.items.filter((it) => it.enabled !== false && Boolean(it.imageUrl?.trim()));
     }
-    // Mặc định cung cấp 2 banner xoay vòng: 10/10 và 20/10
-    const banner1010: PopupBannerItem = {
+    // Mặc định cung cấp 2 banner xoay vòng: Banner 1 (chính) và Banner 2 (10/10)
+    const banner1: PopupBannerItem = {
+      id: "slide_1",
+      title: popup.title?.trim() || "Mừng ngày Phụ Nữ Việt Nam 20/10",
+      imageUrl: popup.imageUrl?.trim() || "/uploads/shop-appearance/popup_2010_v3.webp",
+      ctaHref: popup.ctaHref?.trim() || "/uu-dai?src=popup&focus=pro_1790589193561_6xl35k,pro_1790836003826_k9jcg2",
+      ctaLabel: popup.ctaLabel?.trim() || "Xem ưu đãi 20/10",
+      enabled: true,
+    };
+    const banner2: PopupBannerItem = {
       id: "slide_1010",
       title: "Siêu Sale 10.10 - Ngày Đôi Đại Tiệc Mua Sắm",
       imageUrl: "/banners/popup-1010.webp",
       ctaHref: "/uu-dai?src=popup&campaign=1010",
       ctaLabel: "Săn sale 10/10 ngay",
+      enabled: true,
     };
-    const banner2010: PopupBannerItem = {
-      id: "slide_2010",
-      title: popup.title?.trim() || "Mừng ngày Phụ Nữ Việt Nam 20/10",
-      imageUrl: popup.imageUrl?.trim() || "/uploads/shop-appearance/popup_2010_v3.webp",
-      ctaHref: popup.ctaHref?.trim() || "/uu-dai?src=popup&focus=pro_1790589193561_6xl35k,pro_1790836003826_k9jcg2",
-      ctaLabel: popup.ctaLabel?.trim() || "Xem ưu đãi 20/10",
-    };
-    return [banner1010, banner2010];
+    return [banner1, banner2];
   }, [popup]);
-  const activeSlide = slides[currentIndex] ?? slides[0];
+
+  const eligible = Boolean(
+    popup &&
+      slides.length > 0 &&
+      (audience === "all" || !viewerLoading) &&
+      popupInSchedule(popup, Date.now()) &&
+      popupAudienceAllowed(audience, viewer) &&
+      popupPathAllowed(pathname, popup.pages)
+  );
+  const safeIndex = slides.length > 0 ? currentIndex % slides.length : 0;
+  const activeSlide = slides[safeIndex] ?? slides[0];
 
   // Autoplay xoay vòng sau 2.5s (tự tạm dừng khi rê chuột hoặc chạm tay)
   useEffect(() => {
@@ -267,7 +276,7 @@ export function ShopWelcomePopup() {
     setIsPaused(false);
   };
 
-  if (!popup) return null;
+  if (!popup || slides.length === 0) return null;
 
   const currentSlide = slides[currentIndex] || slides[0];
   const badgeImg = currentSlide?.imageUrl || popup.imageUrl.trim();
@@ -338,7 +347,7 @@ export function ShopWelcomePopup() {
               {/* Dải trượt (Track) xoay vòng mượt mà */}
               <div
                 className="flex transition-transform duration-500 ease-out will-change-transform"
-                style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+                style={{ transform: `translateX(-${safeIndex * 100}%)` }}
               >
                 {slides.map((slide, idx) => (
                   <div key={slide.id || idx} className="min-w-full w-full shrink-0 relative">
@@ -372,7 +381,7 @@ export function ShopWelcomePopup() {
               {/* Tag đếm số slide (1/2) góc trên bên trái */}
               {slides.length > 1 && (
                 <div className="absolute top-3 left-3 z-20 flex items-center gap-1 rounded-full bg-black/45 px-2.5 py-0.5 text-[11px] font-bold text-white backdrop-blur-xs shadow-xs pointer-events-none select-none">
-                  <span>{currentIndex + 1}</span>
+                  <span>{safeIndex + 1}</span>
                   <span className="opacity-60">/</span>
                   <span>{slides.length}</span>
                 </div>
@@ -390,7 +399,7 @@ export function ShopWelcomePopup() {
                         setCurrentIndex(idx);
                       }}
                       className={`transition-all duration-300 rounded-full cursor-pointer ${
-                        currentIndex === idx
+                        safeIndex === idx
                           ? "w-6 h-2 bg-gradient-to-r from-rose-500 to-red-500 shadow-xs"
                           : "w-2 h-2 bg-white/60 hover:bg-white"
                       }`}

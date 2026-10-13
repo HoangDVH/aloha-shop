@@ -17,6 +17,8 @@ import { ProductGallery } from "@/components/pdp/ProductGallery";
 import { ProductPromotionBadges } from "@/components/pdp/ProductPromotionBadges";
 import { ProductStickyCta } from "@/components/pdp/ProductStickyCta";
 import { ProductCampaignBox } from "@/components/pdp/ProductCampaignBox";
+import { ProductTierPricing } from "@/components/pdp/ProductTierPricing";
+import { calculateTierPrice } from "@/lib/volumePricing";
 import { useCampaignRequoteKey } from "@/lib/campaign/campaignQuote";
 import { useCampaignView } from "@/lib/campaign/useCampaignView";
 import { mobilePurchaseAction } from "@/components/pdp/purchaseAction";
@@ -381,6 +383,13 @@ export function ProductDetailView({
 
   const mobileAction = mobilePurchaseAction({ needPick, variantsLoading, purchaseDisabled, quantityExceedsStock: activeProduct.allowBackorder === false && qty + cartQty > liveTon });
 
+  const tierInfo = useMemo(() => {
+    if (expectsSi || liveGia <= 0 || pricePending) return null;
+    return calculateTierPrice(liveGia, qty);
+  }, [expectsSi, liveGia, pricePending, qty]);
+
+  const effectiveGia = tierInfo?.unitPrice ?? liveGia;
+
   const addCart = (buyNow = false) => {
     if (purchaseDisabled) {
       if (needPick) toast.push("Chọn đủ thuộc tính / đơn vị trước khi mua");
@@ -389,7 +398,7 @@ export function ProductDetailView({
     }
     const codeFromLink = normalizeCtvCode(ctvFromLink);
     const ctvCode = isValidCtvCode(codeFromLink) ? codeFromLink : getGuestCtvCode();
-    const line = { ...activeProduct, gia: liveGia, ton: liveTon, priceKind: livePriceKind };
+    const line = { ...activeProduct, gia: effectiveGia, ton: liveTon, priceKind: livePriceKind };
     const r = add(line, qty, ctvCode);
 
     if (!r.ok) {
@@ -419,12 +428,15 @@ export function ProductDetailView({
       return;
     }
 
+    const saved = tierInfo?.savedAmount ?? 0;
     toast.push(
       r.preOrder || isPreOrder
         ? "Đã thêm đặt trước — giao khi shop có hàng"
         : r.capped
           ? `Đã thêm tối đa ${r.qty} ${activeProduct.dvt || ""} (hết tồn kho)`
-          : `Đã thêm “${activeProduct.ten}” vào giỏ`,
+          : saved > 0
+            ? `Đã thêm ${qty} “${activeProduct.ten}” vào giỏ — Áp dụng giá sỉ tiết kiệm ${formatVnd(saved)}!`
+            : `Đã thêm “${activeProduct.ten}” vào giỏ`,
       {
         href: "/gio-hang",
         hrefLabel: "Xem giỏ hàng",
@@ -512,7 +524,7 @@ export function ProductDetailView({
 
                 {/* Tài khoản sỉ luôn dùng giá sỉ và giá web thực tế, độc lập với chiến dịch khách lẻ. */}
                 {!hasPromo || expectsSi ? (
-                  <div className="flex flex-wrap items-center gap-3">
+                  <div className="w-full">
                     {expectsSi && !pricePending && livePriceKind === "si" ? (
                       <SiPriceBadge
                         price={liveGia}
@@ -520,22 +532,29 @@ export function ProductDetailView({
                         unit={activeProduct.dvt}
                         variant={user.siRegion === "HCM" || user.siRegion === "TINH" ? "wholesale-detail" : "detail"}
                       />
+                    ) : !pricePending && liveGia > 0 ? (
+                      <ProductTierPricing
+                        basePrice={liveGia}
+                        unit={activeProduct.dvt || "cái"}
+                        qty={qty}
+                        onSelectQty={(newQty) => {
+                          if (purchaseDisabled) return;
+                          if (activeProduct.allowBackorder !== false) {
+                            setQty(Math.min(10000, newQty));
+                          } else {
+                            setQty(Math.min(newQty, Math.max(1, liveTon)));
+                          }
+                        }}
+                        disabled={purchaseDisabled}
+                        maxQty={activeProduct.allowBackorder !== false ? 10000 : Math.max(1, liveTon)}
+                        liveWebPrice={liveWebPrice}
+                      />
                     ) : (
                       <div className="flex flex-wrap items-baseline gap-x-2.5 text-2xl font-bold text-[var(--aloha-price)] sm:text-[1.75rem]">
                         <span>{pricePending ? "Đang cập nhật…" : livePriceKind === "si_missing" ? "Liên hệ báo giá" : formatVnd(liveGia)}</span>
                         {activeProduct.dvt ? (
                           <span className="text-base font-semibold text-[var(--aloha-muted)] sm:text-lg">
                             / {activeProduct.dvt}
-                          </span>
-                        ) : null}
-                        {!pricePending && liveWebPrice && liveWebPrice > liveGia ? (
-                          <span className="text-sm font-normal text-slate-400 line-through sm:text-base">
-                            {formatVnd(liveWebPrice)}
-                          </span>
-                        ) : null}
-                        {!pricePending && liveWebPrice && liveWebPrice > liveGia ? (
-                          <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-semibold text-rose-600 ring-1 ring-rose-500/10">
-                            Tiết kiệm {formatVnd(liveWebPrice - liveGia)} (-{Math.round(((liveWebPrice - liveGia) / liveWebPrice) * 100)}%)
                           </span>
                         ) : null}
                       </div>
@@ -684,6 +703,7 @@ export function ProductDetailView({
                   />
                 ) : null}
 
+
                 <div>
                   <div className="mb-1.5 text-sm text-slate-500">Số lượng</div>
                   <div className="inline-flex items-center overflow-hidden rounded-lg border border-[#ddd]">
@@ -769,13 +789,20 @@ export function ProductDetailView({
                   className={`flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black text-white transition disabled:cursor-not-allowed disabled:opacity-40 active:scale-98 shadow-sm ${
                     campaignBuyInBox
                       ? "bg-gradient-to-r from-[#C8102E] to-[#E53935] hover:brightness-105 shadow-rose-500/25"
-                      : "bg-[var(--aloha-green)] hover:bg-[var(--aloha-green-hover)]"
+                      : qty >= 10 && !expectsSi
+                        ? "bg-gradient-to-r from-[#E11D48] via-[#C8102E] to-[#E11D48] hover:brightness-110 shadow-rose-500/30 ring-2 ring-rose-400/40"
+                        : "bg-[var(--aloha-green)] hover:bg-[var(--aloha-green-hover)]"
                   }`}
                 >
                   {campaignBuyInBox ? (
                     <>
                       <Zap size={16} className="fill-white" />
                       <span>{isCampaignSaleOpen ? "Mua Ngay Giờ Vàng" : isPreOrder ? "Đặt trước ngay" : "Mua ngay"}</span>
+                    </>
+                  ) : qty >= 10 && !expectsSi ? (
+                    <>
+                      <Zap size={16} className="fill-white animate-pulse" />
+                      <span>{isPreOrder ? `Đặt trước ${qty} ${activeProduct.dvt || "sản phẩm"} (Giảm 10%)` : `MUA NGAY ${qty} ${activeProduct.dvt?.toUpperCase() || "SẢN PHẨM"} (GIẢM 10%)`}</span>
                     </>
                   ) : (
                     <span>{isPreOrder ? "Đặt trước ngay" : "Mua ngay"}</span>
@@ -797,7 +824,7 @@ export function ProductDetailView({
       {desc ? <ProductDescription text={desc} /> : null}
 
       <ProductStickyCta
-        price={liveGia}
+        price={effectiveGia}
         pricePending={pricePending}
         needPick={needPick}
         preOrder={isPreOrder}
@@ -808,12 +835,15 @@ export function ProductDetailView({
         isCampaignSale={campaignBuyInBox}
         campaignBuyLabel={isCampaignSaleOpen ? "Mua Giờ Vàng" : isPreOrder ? "Đặt ngay" : "Mua ngay"}
         productName={activeProduct.ten} productImage={activeProduct.anh}
+        tierDiscountPercent={tierInfo?.tier.discountPercent || 0}
+        tierSavedAmount={tierInfo?.savedAmount || 0}
+        tierQty={qty}
       />
       {purchaseSheetOpen && (
         <ProductPurchaseSheet
           name={activeProduct.ten}
           image={gallery[0] || activeProduct.anh}
-          price={liveGia}
+          price={effectiveGia}
           pending={pricePending || variantsLoading}
           disabled={purchaseDisabled || (activeProduct.allowBackorder === false && qty + cartQty > liveTon)}
           status={variantsLoading ? "Đang tải biến thể…" : needPick ? "Vui lòng chọn đủ phân loại sản phẩm." : pricePending ? "Đang cập nhật giá…" : zeroPriceBlocked ? "Sản phẩm chưa mở bán." : activeProduct.allowBackorder === false && liveTon < 1 ? "Sản phẩm đã hết hàng." : activeProduct.allowBackorder === false && qty + cartQty > liveTon ? "Giỏ hàng đã có sản phẩm này. Số lượng vượt tồn kho hiện tại." : isPreOrder ? "Đặt trước — thời gian giao sẽ được Aloha xác nhận." : `Còn ${formatTonDisplay(liveTon)} ${activeProduct.dvt || "sản phẩm"}`}

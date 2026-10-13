@@ -14,7 +14,6 @@ import {
 import { Info } from "lucide-react";
 import { CollapsibleCard } from "./CollapsibleCard";
 import { ClaimSection } from "./ClaimSection";
-import { MysterySection } from "./MysterySection";
 import { AlohaDateRangePicker } from "../AlohaDateRangePicker";
 import {
   SHIPPING_REGION_OPTIONS,
@@ -325,21 +324,12 @@ function NotesAndOptions({ isShipping }: Props) {
 
 /** Tab "Thông tin" của form voucher. */
 export function InfoTab(props: Props) {
-  const mysteryOn = Form.useWatch("mysteryOn", { form: props.form, preserve: true }) === true && !props.isShipping;
   return (
     <div className="space-y-4">
       <BenefitTypeRow {...props} />
-      <NameCodeValueRow {...props} mysteryOn={mysteryOn} />
+      <NameCodeValueRow {...props} mysteryOn={false} />
       <ValiditySection {...props} />
       <ConditionSection {...props} />
-      {!props.isShipping ? (
-        <MysterySection
-          form={props.form}
-          editingItem={props.editingItem}
-          collapsed={!!props.collapsed.tuiMu}
-          onToggle={() => props.toggle("tuiMu")}
-        />
-      ) : null}
       <ClaimSection
         form={props.form}
         editingItem={props.editingItem}

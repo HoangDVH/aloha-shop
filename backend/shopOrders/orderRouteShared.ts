@@ -1,4 +1,4 @@
-import { isActiveWholesale, wholesaleMinimum } from "../shopWholesale/policy.js";
+import { isActiveWholesale } from "../shopWholesale/policy.js";
 import type { Response } from "express";
 import type { Db } from "mongodb";
 import type { ShopOrderDetail } from "./models.js";
@@ -156,9 +156,6 @@ export async function applyCatalogPrices(
   }
   if (isActiveWholesale(opts?.account)) {
     if (!["HCM", "TINH"].includes(String(opts?.account?.siRegion))) return { ok: false, error: "Tài khoản sỉ cần được xác nhận khu vực" };
-    const minimum = wholesaleMinimum(opts?.account?.siRegion);
-    const total = out.reduce((n, d) => n + d.price * d.quantity, 0);
-    if (total < minimum && !opts?.quoteOnly) return { ok: false, error: `Đơn sỉ tỉnh cần thêm ${(minimum-total).toLocaleString("vi-VN")}đ tiền hàng để đủ ${minimum.toLocaleString("vi-VN")}đ` };
   }
   return { ok: true, details: out };
 }

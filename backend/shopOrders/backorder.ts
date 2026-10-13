@@ -171,6 +171,8 @@ export async function createBackorderRequest(db: Db, input: {
     kvCustomerId: account?.kvCustomerId || null, kvPushStatus: account?.siStatus === "active" && !account.kvCustomerId ? "awaiting_customer_link" : "awaiting_confirmation",
     priceMode: account?.siStatus === "active" && account?.roles?.includes("si") ? "si" : "web",
     siRegion: account?.siRegion || null,
+    wholesaleEligibility: body.wholesaleEligibility || null,
+    shippingHandling: "shop_arranged",
     source: "shop_web", createdAt: now.toISOString(), updatedAt: now.toISOString(),
     purchaseDate: now.toISOString(), done: false,
   };

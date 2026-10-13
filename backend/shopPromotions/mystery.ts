@@ -144,7 +144,7 @@ export async function returnMysteryDraw(db: Db, promotionId: string, percent: nu
 /** Bản sao voucher theo khách: voucher túi mù dùng mức khách đã bốc (thiếu thì giữ mức thấp nhất). */
 export function applyDrawnPercents(promos: PromotionDoc[], drawn: Map<string, number>): PromotionDoc[] {
   return promos.map((p) => {
-    if (!isMystery(p)) return p;
+    if (!isMystery(p) && !p.preserveDrawnPercent) return p;
     const pct = drawn.get(p.id);
     return pct ? { ...p, discountValue: pct, drawnPercent: pct } : p;
   });

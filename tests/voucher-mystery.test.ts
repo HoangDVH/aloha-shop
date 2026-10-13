@@ -11,7 +11,7 @@ import {
   type MysteryConfig,
 } from "../backend/shopPromotions/mystery.js";
 import { evaluatePromotions } from "../backend/shopPromotions/evaluator.js";
-import { buildNewPromotion, buildPromotionUpdate } from "../backend/shopPromotions/admin/promotionPayload.js";
+
 import { drawnPercentsFor, insertWalletEntry } from "../backend/shopPromotions/wallet/walletService.js";
 import { promo } from "./helpers/walletFixtures.js";
 import { TEST_MONGO_SKIP, blockOutboundFetch, openTestDb, type TestDb } from "./helpers/testMongo.js";
@@ -135,53 +135,6 @@ test("MU07: khách chưa bóc / voucher thường không bị đổi giá trị"
   assert.equal(unopened.discountValue, 10);
   assert.equal(unopened.drawnPercent, undefined);
   assert.equal(plain.discountValue, 30_000);
-});
-
-test("MU08: tạo voucher túi mù — ép giảm %, mệnh giá = mức thấp nhất, bắt buộc lưu và trần VND", () => {
-  const now = "2026-10-01T00:00:00.000Z";
-  const r = buildNewPromotion(
-    { name: "Túi mù", discountType: "fixed", discountValue: 50_000, maxDiscountVnd: 200_000, mystery: { tiers: WEIGHTED6 } },
-    "admin",
-    now
-  );
-  assert.equal(r.ok, true);
-  if (!r.ok) return;
-  assert.equal(r.value.discountType, "percentage");
-  assert.equal(r.value.discountValue, 10);
-  assert.equal(r.value.claimRequired, true);
-  assert.equal(r.value.mystery?.tiers.length, 6);
-
-  const noCap = buildNewPromotion({ name: "x", discountValue: 10, mystery: { tiers: WEIGHTED6 } }, "admin", now);
-  assert.equal(noCap.ok, false);
-  const ship = buildNewPromotion(
-    { name: "x", benefitType: "shipping", discountValue: 10, maxDiscountVnd: 1, mystery: { tiers: WEIGHTED6 } },
-    "admin",
-    now
-  );
-  assert.equal(ship.ok, false);
-});
-
-test("MU09: đã có khách bóc → khoá bảng mức; gửi lại y bảng cũ không reset suất đã bốc", () => {
-  const now = "2026-10-01T00:00:00.000Z";
-  const existing = MYSTERY({ claimedCount: 3 });
-  existing.mystery!.tiers[0].drawn = 3;
-  const same = buildPromotionUpdate({ mystery: { tiers: WEIGHTED6 }, title: "Đổi tên" }, existing, "admin", now);
-  assert.equal(same.ok, true);
-  if (same.ok) assert.equal("mystery" in same.value, false, "bảng không đổi thì không ghi đè (giữ drawn)");
-
-  const changed = buildPromotionUpdate(
-    { mystery: { tiers: WEIGHTED6.map((t) => (t.percent === 15 ? { ...t, weight: 10 } : t)) } },
-    existing,
-    "admin",
-    now
-  );
-  assert.equal(changed.ok, false);
-  const off = buildPromotionUpdate({ mystery: null }, existing, "admin", now);
-  assert.equal(off.ok, false);
-
-  const fresh = buildPromotionUpdate({ mystery: { tiers: WEIGHTED6.slice(0, 3) } }, MYSTERY(), "admin", now);
-  assert.equal(fresh.ok, true);
-  if (fresh.ok) assert.equal(fresh.value.discountValue, 10);
 });
 
 // ── Tích hợp Mongo (cần TEST_MONGO_URI, DB aloha_shop_test_*) ──

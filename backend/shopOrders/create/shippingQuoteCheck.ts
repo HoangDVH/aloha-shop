@@ -18,6 +18,7 @@ export type ShippingQuoteResult =
   | StepFail;
 
 type QuoteInput = {
+  customerArranged?: boolean;
   body: any;
   deliveryMethod: string;
   orderDetails: ShopOrderDetail[];
@@ -46,7 +47,7 @@ export function checkShippingQuote(input: QuoteInput): ShippingQuoteResult {
     freeShipApplied: false,
   };
   // Phase COD: không bắt quote — phí ship = 0 (code quote vẫn giữ để bật lại)
-  if (deliveryMethod !== "giao_tan_noi" || !shopRequireShippingQuote()) return empty;
+  if (input.customerArranged || deliveryMethod !== "giao_tan_noi" || !shopRequireShippingQuote()) return empty;
   if (!quoteToken) {
     return fail(400, { error: "Thiếu báo giá phí ship — tải lại trang checkout" });
   }

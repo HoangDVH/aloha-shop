@@ -1,3 +1,4 @@
+import { hasSuccessfulWebPurchase } from "./returningBuyer.js";
 import type { Express, Request, Response } from "express";
 import type { Db } from "mongodb";
 import type { GetShopDb } from "../shopAuth/routes.js";
@@ -19,6 +20,7 @@ import { loadVoucherReturns, type VoucherReturn } from "./voucherHistory.js";
 import { loadBuyerPromotions, withBuyerNotices } from "./wallet/walletRules.js";
 import { applyCatalogPrices, parseOrderDetails } from "../shopOrders/orderRouteShared.js";
 import { quoteWithCampaign } from "../shopCampaigns/quoteCampaign.js";
+import { allowsWholesaleShipping, isWholesaleTinh, isWholesaleHcm } from "./tinhShipping.js";
 
 /**
  * Giá tính ưu đãi luôn lấy từ catalog (giá client gửi lên bị bỏ qua).
@@ -59,9 +61,24 @@ export function registerShopPromotionsPublicRoutes(
   // GET /api/shop/promotions/available — Lấy danh sách ưu đãi công khai
   app.get("/api/shop/promotions/available", async (req, res: Response) => {
     applyShopCors(req, res);
+    res.setHeader("Cache-Control", "private, no-store");
     try {
       const shopDb = await getShopDb();
       const nowIso = new Date().toISOString();
+      let account: any = null;
+      try {
+        const token = req.cookies?.[ACCESS_COOKIE] || (req.headers.authorization?.startsWith("Bearer ") ? req.headers.authorization.slice(7) : "");
+        if (token) {
+          const payload = verifyShopAccessToken(token);
+          const row = await shopDb.collection(SHOP_ACCOUNTS).findOne(shopAccountIdQuery(payload.sub));
+          if (row?.active !== false && Number(payload.iat || 0) >= Number(row?.authInvalidBefore || 0)) account = row;
+        }
+      } catch { /* Optional authentication. */ }
+      const buyerPromos = await loadBuyerPromotions(shopDb, { now: new Date(), account,
+        accountId: account?._id ? String(account._id) : undefined, phone: account?.phone, email: account?.email });
+      const allowed = new Set(buyerPromos.promotions.map(p => p.id));
+      const claimable = new Set(buyerPromos.notices.filter(p => p.needsClaim).map(p => p.promotionId));
+      const wholesale = Boolean(account?.roles?.includes("si") || account?.roles?.includes("wholesale"));
 
       const promotions = await shopDb
         .collection<PromotionDoc>(PROMOTIONS_COL)
@@ -104,6 +121,7 @@ export function registerShopPromotionsPublicRoutes(
           minOrderThreshold: p.minOrderThreshold,
           thresholdOperator: p.thresholdOperator || ">",
           targetCustomer: p.targetCustomer,
+          audienceEligible: (allowed.has(p.id) || claimable.has(p.id)) && !(p.targetCustomer === "retail" && wholesale && !allowsWholesaleShipping(p, account)) && !(p.targetCustomer === "wholesale" && !wholesale),
           scope: p.scope || "all",
           categoryIds: p.categoryIds,
           productMas: p.productMas,
@@ -197,8 +215,10 @@ export function registerShopPromotionsPublicRoutes(
             phone: buyerPhone,
             email: buyerEmail,
             userId: buyerUserId,
-            isNewWebBuyer,
+            isNewWebBuyer, hasSuccessfulWebPurchase: await hasSuccessfulWebPurchase(shopDb, {phone: buyerPhone, email: buyerEmail, userId: buyerUserId}),
             isWholesale,
+            isWholesaleTinh: isWholesaleTinh(userAccount),
+          isWholesaleHcm: isWholesaleHcm(userAccount),
           },
           customerKey: customerKeyFor(buyerUserId),
           promotions: buyerPromos.promotions,

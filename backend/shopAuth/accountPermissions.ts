@@ -4,7 +4,7 @@ import type { Db } from "mongodb";
 import { z } from "zod";
 import { requireAuth, requireActive, requireManager, type AuthRequest, type GetDb } from "../auth/middleware.js";
 import { SHOP_ACCOUNTS, shopAccountIdQuery, toPublicShopAccount, normalizeCtvCode, isValidCtvCode } from "./models.js";
-import { normalizeWholesalePhone, SI_TERMS_VERSION } from "../shopWholesale/policy.js";
+import { normalizeWholesalePhone } from "../shopWholesale/policy.js";
 import { syncBus } from "../syncBus.js";
 
 const status = z.enum(["active", "cho_duyet", "khoa", "tu_choi"]).nullable();
@@ -30,8 +30,7 @@ export async function updateAccountPermissions(db: Db, ref: string, input: z.inf
   if (wholesale && !hasSi) {
     const phone = normalizeWholesalePhone(String(account.phone || ""));
     if (!/^0[35789]\d{8}$/.test(phone)) return { status: 400, error: "Khách cần bổ sung số điện thoại hợp lệ trước khi gán loại khách sỉ." };
-    const hasTerms = account.siProfile?.acceptedTermsAt && account.siProfile?.termsVersion === SI_TERMS_VERSION;
-    Object.assign(patch, { siStatus: hasTerms ? "cho_duyet" : "tu_choi", siIdentity: true, phoneNorm: phone });
+    Object.assign(patch, { siStatus: "cho_duyet", siApplicationSource: "admin", siIdentity: true, phoneNorm: phone });
   } else if (!wholesale && hasSi) patch.siStatus = "khoa";
   const activatingCtv = input.ctv && (!hasCtv || (input.activateCtv && account.ctvStatus !== "active"));
   if (activatingCtv) {

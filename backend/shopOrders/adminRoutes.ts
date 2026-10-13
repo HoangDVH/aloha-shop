@@ -20,6 +20,8 @@ import {
   shopCodKvEnabled,
 } from "../shopInvoices/invoiceService.js";
 import { fullAddressForKv } from "./orderRouteShared.js";
+import { checkStoredWholesaleOrder } from "../shopWholesale/orderPurchaseCheck.js";
+import { registerKvPaymentAdminRoutes } from "./kvPaymentAdmin.js";
 import { notifyOrderStatus } from "./notifyOrderStatus.js";
 import { cancelShopOrderOnKiotViet } from "./kvOrderCancel.js";
 import { cancelShopInvoiceOnKiotViet } from "./kvPush.js";
@@ -41,6 +43,7 @@ export function registerShopOrdersAdminRoutes(
   getDb: GetDb,
   getShopDb: GetShopDb
 ) {
+  registerKvPaymentAdminRoutes(app, getDb, getShopDb);
   const gate = [requireAuth(getDb), requireActive, requireManager];
   let indexesReady = false;
   const ensureIdx = async (db: Db) => {
@@ -219,7 +222,8 @@ export function registerShopOrdersAdminRoutes(
       });
       if (!doc) return res.status(404).json({ error: "Không tìm thấy đơn" });
       const { _id, ...rest } = doc as Record<string, unknown>;
-      return res.json({ ok: true, data: rest });
+      const wholesaleEligibilityNow = await checkStoredWholesaleOrder(shopDb, await getDb(), doc);
+      return res.json({ ok: true, data: { ...rest, wholesaleEligibilityNow } });
     } catch (e: any) {
       return res.status(500).json({ error: e?.message || "Lỗi" });
     }
@@ -241,6 +245,7 @@ export function registerShopOrdersAdminRoutes(
         if (doc.deliveryMethod !== "giao_tan_noi") {
           return res.status(400).json({ error: "Đơn nhận tại cửa hàng — không tạo vận đơn" });
         }
+        if (doc.shippingHandling === "customer_arranged" || (!doc.shippingHandling && doc.priceMode === "si" && doc.siRegion === "HCM")) return res.status(400).json({ error: "Đơn này khách tự bố trí xe nhận hàng, không tạo vận đơn giao tự động." });
         if (doc.backorderStatus && doc.backorderStatus !== "ready") {
           return res.status(409).json({ error: "Đơn đặt trước cần hoàn tất xác nhận, thu tiền và chuẩn bị hàng trước khi tạo vận đơn." });
         }
@@ -568,6 +573,8 @@ export function registerShopOrdersAdminRoutes(
           ctvCode: it?.ctvCode ? String(it.ctvCode) : undefined,
         }));
         const code = String((doc as any).code || id);
+        const eligibility = await checkStoredWholesaleOrder(shopDb, mainDb, doc);
+        if (eligibility && !eligibility.canCheckout) return res.status(400).json({ error: eligibility.issues.map(i => i.message).join(" "), eligibility });
         const ctvCodes = Array.isArray((doc as any).ctvCodes)
           ? (doc as any).ctvCodes
           : [];

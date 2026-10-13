@@ -65,7 +65,7 @@ export function CheckoutSummaryAside({
     <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
       {delivery === "giao_tan_noi" ? (
         <div className="lg:hidden">
-          <SmartFreeshipBar currentAmount={goodsAfter} variant="compact" />
+          <SmartFreeshipBar currentAmount={goodsAfter} appliedDiscount={shippingDiscount} variant="compact" />
         </div>
       ) : null}
 
@@ -113,7 +113,7 @@ export function CheckoutSummaryAside({
           Chi tiết thanh toán
         </h2>
         {delivery === "giao_tan_noi" ? (
-          <SmartFreeshipBar currentAmount={goodsAfter} variant="compact" className="mb-3.5" />
+          <SmartFreeshipBar currentAmount={goodsAfter} appliedDiscount={shippingDiscount} variant="compact" className="mb-3.5" />
         ) : null}
         <div className="space-y-2.5 text-[15px] text-slate-500">
           <div className="flex items-center justify-between gap-3">

@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { siRequest } from "@/lib/siQueries";
 import { InviteWholesale } from "./InviteWholesale";
+import { PurchasePolicyPanel } from "./PurchasePolicyPanel";
 
 const schema = z.object({ region: z.string(), verified: z.boolean(), reason: z.string().trim().min(3, "Nhập lý do / phương thức xác minh").max(1000) });
 export type SiAccountRow = { id: string; fullName: string; phone: string; email: string; siStatus: string; siRegion?: string; revision: number; siProfile: Record<string, unknown>; candidate?: { code?: string; name?: string; address?: string }; syncStatus?: string; siLookupResult?: string; audit?: Array<{ id: string; action: string; reason: string; at: string }> };
@@ -25,6 +26,7 @@ export function SiAccountsPanel({ initialAccount, onClose }: { initialAccount?: 
   const patch=useMutation({mutationFn:({status:next,values}:{status:string;values:z.infer<typeof schema>})=>siRequest(`/api/shop/admin/si/${selected!.id}`,{...values,status:next,revision:selected!.revision},"PATCH"),onSuccess:()=>{void qc.invalidateQueries({queryKey:["admin","si"]});void qc.invalidateQueries({queryKey:["admin","directory"]});close();void message.success("Đã cập nhật hồ sơ");}});
   const act=(next:string)=>form.handleSubmit(values=>patch.mutate({status:next,values}))();
   return <div className="space-y-5">
+    {!initialAccount && <PurchasePolicyPanel />}
     {!initialAccount && <>
     <div className="flex flex-wrap items-center justify-between gap-4"><div><h1 className="text-2xl font-bold">Khách sỉ</h1><p className="mt-1 text-slate-500">Xét duyệt hồ sơ, xác minh thông tin và quản lý quyền mua sỉ.</p></div><InviteWholesale /></div>
     <div className="flex flex-wrap gap-3"><Select value={status} onChange={setStatus} className="min-w-44" options={[{value:"",label:"Tất cả"},...Object.entries(labels).map(([value,label])=>({value,label}))]}/><Input.Search value={search} onChange={e=>setSearch(e.target.value)} placeholder="Tìm tên hoặc SĐT trong danh sách" className="max-w-sm"/></div>

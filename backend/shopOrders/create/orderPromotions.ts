@@ -1,4 +1,6 @@
+import { hasSuccessfulWebPurchase } from "../../shopPromotions/returningBuyer.js";
 import type { StepFail } from "./stepResult.js";
+import { isWholesaleTinh, isWholesaleHcm } from "../../shopPromotions/tinhShipping.js";
 import type { Db } from "mongodb";
 import { qualifiesFreeShip } from "../../shopShipping/freeShip.js";
 import { checkIsNewWebBuyer } from "../../shopPromotions/customerEligibility.js";
@@ -34,6 +36,7 @@ export function splitLineDiscounts(details: ShopOrderDetail[], byMa: Record<stri
 }
 
 export type OrderPromotionInput = {
+  account?: any;
   body: any;
   accountId?: string;
   roles?: string[];
@@ -97,8 +100,10 @@ export async function evaluateOrderPromotions(
     phone: input.customerPhone,
     email: input.buyerEmail,
     userId: input.accountId,
-    isNewWebBuyer: isNewWeb,
+    isNewWebBuyer: isNewWeb, hasSuccessfulWebPurchase: await hasSuccessfulWebPurchase(shopDb, {phone: input.customerPhone, email: input.buyerEmail, userId: input.accountId}),
     isWholesale: Boolean(input.roles?.includes("si") || input.roles?.includes("wholesale")),
+    isWholesaleTinh: isWholesaleTinh(input.account),
+          isWholesaleHcm: isWholesaleHcm(input.account),
   };
   const customerKey = customerKeyFor(input.accountId);
   const evalGoods = (promotions: typeof activePromos) =>

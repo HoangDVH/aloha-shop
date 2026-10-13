@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { ThemeCssServer } from "@/components/ThemeCssServer";
@@ -6,6 +6,15 @@ import { OrgJsonLd } from "@/components/OrgJsonLd";
 import { fetchAppearance, fallbackAppearance } from "@/lib/appearance";
 import { SHOP_ORIGIN, absUrl } from "@/lib/seo";
 import { SHOP_BRAND, shopBrand, ensureBrandCapsInText } from "@/lib/brand";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+  interactiveWidget: "resizes-content",
+};
 
 export async function generateMetadata(): Promise<Metadata> {
   const app = await fetchAppearance().catch(() => fallbackAppearance());

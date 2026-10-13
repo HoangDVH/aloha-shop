@@ -11,7 +11,7 @@ export type PromotionBenefitType = "goods" | "shipping";
 export type DiscountType = "percentage" | "fixed";
 export type ThresholdOperator = ">" | ">=";
 export type PromotionScope = "all" | "category" | "product";
-export type TargetCustomer = "all" | "retail" | "wholesale" | "new_web";
+export type TargetCustomer = "all" | "retail" | "wholesale" | "new_web" | "returning_web";
 export type PromotionStatus = "draft" | "active" | "paused" | "archived";
 
 export interface PromotionDoc {
@@ -31,7 +31,9 @@ export interface PromotionDoc {
   categoryIds?: string[];
   productMas?: string[];
   excludedProductMas?: string[];
-  targetCustomer: TargetCustomer; // "all" | "retail" | "wholesale" | "new_web"
+  targetCustomer: TargetCustomer; // "all" | "retail" | "wholesale" | "new_web" | "returning_web"
+  allowWholesaleTinh?: boolean;
+  allowWholesaleHcm?: boolean;
   startDate?: string; // ISO string UTC
   endDate?: string; // ISO string UTC
   usageLimitTotal?: number; // Tổng lượt tối đa của toàn chương trình
@@ -51,6 +53,8 @@ export interface PromotionDoc {
   claimStartDate?: string | null; // Mở lưu từ (ISO UTC), có thể sớm hơn startDate
   /** Túi mù: % bốc ngẫu nhiên theo tỉ lệ khi lưu ví (bắt buộc claimRequired, discountValue = mức thấp nhất). */
   mystery?: MysteryConfig | null;
+  /** Preserve already-earned percentages after converting an old mystery voucher to fixed pricing. */
+  preserveDrawnPercent?: boolean;
   /** Chỉ có trên bản sao theo khách (không lưu DB): mức túi mù khách đã bốc. */
   drawnPercent?: number;
   priority: number; // Độ ưu tiên khi chọn ưu đãi tự động tốt nhất (số càng cao ưu tiên càng lớn)
@@ -119,7 +123,9 @@ export interface BuyerContext {
   email?: string;
   fullName?: string;
   isNewWebBuyer?: boolean;
+  hasSuccessfulWebPurchase?: boolean;
   isWholesale?: boolean;
+  isWholesaleTinh?: boolean; isWholesaleHcm?: boolean;
 }
 
 export interface EvaluatedCandidate {

@@ -80,10 +80,11 @@ function queueSync(getShopDb: GetDb, getMainDb: GetDb, kvOrderId: string) {
 }
 
 export function registerKvOrderWebhookRoutes(app: Express, getShopDb: GetDb, getMainDb: GetDb) {
-  // KV ngừng gửi nếu nhận 4xx hoặc quá 5s — luôn trả 200 ngay, xử lý nền.
+  // Chỉ enqueue sau khi xác thực; đối soát định kỳ bù khi webhook không hoạt động.
   app.post("/api/kv-webhook/orders", (req: Request, res: Response) => {
     try {
       const sigOk = verifyKvWebhookSignature(req);
+      if (!sigOk) return res.status(401).json({ ok: false, error: "invalid_webhook_signature" });
       const ids = kvOrderIdsFromWebhook(req.body || {});
       for (const id of ids) queueSync(getShopDb, getMainDb, id);
       return res.status(200).json({ ok: true, queued: ids.length, sigOk });

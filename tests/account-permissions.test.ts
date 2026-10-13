@@ -60,7 +60,8 @@ test("Mongo: assign/revoke existing account roles, preserve history, consent gat
     assert.equal((await updateAccountPermissions(fixture.db, "A", input(account, { ctv: true, ctvCode: "DIFFERENT" }), "admin")).status, 400);
     assert.equal((await updateAccountPermissions(fixture.db, "A", input(account, { customerType: "wholesale", ctv: true }), "admin")).status, 200);
     account = (await col.findOne({ _id: "A" as any }))!;
-    assert.deepEqual(account.roles, ["customer", "si", "ctv"]); assert.equal(account.siStatus, "tu_choi");
+    assert.deepEqual(account.roles, ["customer", "si", "ctv"]); assert.equal(account.siStatus, "cho_duyet");
+    assert.equal(account.siApplicationSource, "admin");
     assert.equal(isActiveWholesale(account), false); assert.equal(account.siProfile?.acceptedTermsAt, undefined);
     assert.equal(account.ctvStatus, "active"); assert.equal(account.ctvCode, "SHOPCTV");
     assert.equal((await updateAccountPermissions(fixture.db, "B", input(other, { customerType: "wholesale" }), "admin")).status, 400);

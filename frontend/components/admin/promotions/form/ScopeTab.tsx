@@ -59,6 +59,7 @@ function CustomerGroupSection({ form, customerMode, setCustomerMode, collapsed, 
                 disabled={customerMode !== "specific"}
                 options={[
                   { label: "⭐ Khách mua lần đầu trên Web (New Web)", value: "new_web" },
+                  { label: "Khách đã mua thành công trên website", value: "returning_web" },
                   { label: "👤 Khách mua lẻ (Retail)", value: "retail" },
                   { label: "💼 Khách đại lý / Sỉ (Wholesale)", value: "wholesale" },
                 ]}

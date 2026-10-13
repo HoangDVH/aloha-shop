@@ -8,6 +8,7 @@ import { InstantTextInput } from "@/components/admin/ui/InstantTextInput";
 import { ThuMuaListPagination } from "@/components/admin/ui/ThuMuaListPagination";
 import { ShopCategorySelect } from "@/components/ShopCategorySelect";
 import { websiteApi } from "../api";
+import { PurchaseGroupSelect } from "./PurchaseGroupSelect";
 import { WbBtn } from "../ui";
 import { AdminTableRowSkeleton } from "@/components/admin/ui/AdminSkeleton";
 import { WEB_BADGE_LABELS, WEB_BADGE_VALUES, type WebBadge } from "@/lib/webBadge";
@@ -493,6 +494,7 @@ export function ShopWebProductsAdmin() {
               <tr>
                 <th className="px-4 py-3 font-semibold">Tên hàng</th>
                 <th className="px-4 py-3 font-semibold">Nhóm hàng</th>
+                <th className="px-4 py-3 font-semibold">Điều kiện sỉ</th>
                 <th className="px-4 py-3 text-right font-semibold">Giá bán</th>
                 <th className="px-4 py-3 text-right font-semibold">Có sẵn</th>
                 <th className="px-3 py-3 text-center font-semibold" title="Số = vị trí trong nhãn đang gắn">
@@ -506,12 +508,12 @@ export function ShopWebProductsAdmin() {
               {loading && !rows.length ? (
                 <>
                   {Array.from({ length: 8 }, (_, i) => (
-                    <AdminTableRowSkeleton key={i} cols={7} />
+                    <AdminTableRowSkeleton key={i} cols={8} />
                   ))}
                 </>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-16 text-center text-[13px] text-gray-500">
+                  <td colSpan={8} className="px-4 py-16 text-center text-[13px] text-gray-500">
                     {badgeFilter === "ban_chay_sap_het" || badgeFilter === "dat_truoc" ? (
                       <div className="mx-auto max-w-md space-y-2">
                         <p className="font-medium text-gray-600">
@@ -563,6 +565,7 @@ export function ShopWebProductsAdmin() {
                     >
                       {row.nhom || "—"}
                     </td>
+                    <td className="px-4 py-3"><PurchaseGroupSelect ma={row.ma} /></td>
                     <td className="px-4 py-3 text-right text-[13px] font-medium tabular-nums text-gray-800">
                       {fmtVnd(row.gia)}
                     </td>

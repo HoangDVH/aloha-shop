@@ -48,6 +48,7 @@ function SubTabButton(props: {
 
 function targetCustomerLabel(t: PromotionItem["targetCustomer"]): string {
   if (t === "new_web") return "Khách mới web";
+  if (t === "returning_web") return "Khách đã mua trên website";
   if (t === "wholesale") return "Khách sỉ";
   if (t === "retail") return "Khách lẻ";
   return "Tất cả nhóm khách hàng";

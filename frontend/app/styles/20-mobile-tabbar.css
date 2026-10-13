@@ -20,6 +20,11 @@
   /* ??m ?�y nh? + safe-area ? tr�nh d�nh s�t m�p m�n h�nh */
   padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
   box-shadow: 0 -4px 18px rgba(41, 43, 39, 0.06);
+  -webkit-transform: translate3d(0, 0, 0);
+  transform: translate3d(0, 0, 0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  will-change: transform;
 }
 
 .shop-mobile-tab {

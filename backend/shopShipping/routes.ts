@@ -1,4 +1,6 @@
+import { hasSuccessfulWebPurchase } from "../shopPromotions/returningBuyer.js";
 import { applyCatalogPrices } from "../shopOrders/orderRouteShared.js";
+import { isWholesaleTinh, isWholesaleHcm } from "../shopPromotions/tinhShipping.js";
 import { SHOP_ACCOUNTS, shopAccountIdQuery } from "../shopAuth/models.js";
 import type { Express, Request, Response } from "express";
 import { applyShopCors } from "../shopCors.js";
@@ -196,6 +198,9 @@ export function registerShopShippingRoutes(
           userId,
           isNewWebBuyer: await checkIsNewWebBuyer(shopDb, { phone: buyerPhone, email: buyerEmail, userId }),
           isWholesale: Boolean(req.shopAuth?.roles?.includes("si") || req.shopAuth?.roles?.includes("wholesale")),
+          hasSuccessfulWebPurchase: await hasSuccessfulWebPurchase(shopDb, {phone: buyerPhone, email: buyerEmail, userId}),
+          isWholesaleTinh: isWholesaleTinh(buyer),
+          isWholesaleHcm: isWholesaleHcm(buyer),
         };
         const customerKey = customerKeyFor(userId);
         const selectedCode = String(body.promotionCode || "").trim().toUpperCase();

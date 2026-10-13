@@ -21,6 +21,8 @@ export function ClaimSection({ form, editingItem, isShipping, collapsed, onToggl
   const claimed = Number(editingItem?.claimedCount) || 0;
   return (
     <CollapsibleCard title="Cách nhận" collapsed={collapsed} onToggle={onToggle}>
+      {isShipping && <div className={ROW}><div><div className="font-medium text-slate-800">Mở thêm cho khách sỉ tỉnh đã duyệt</div><p className={HINT}>Áp dụng cùng điều kiện tiền hàng, địa chỉ và lưu mã.</p></div><Form.Item name="allowWholesaleTinh" valuePropName="checked" noStyle><Switch size="small" /></Form.Item></div>}
+      {isShipping && <div className={ROW}><div><div className="font-medium text-slate-800">Mở thêm cho khách sỉ HCM đã duyệt</div><p className={HINT}>Áp dụng khi giao hàng tận nơi, đúng điều kiện tiền hàng, địa chỉ và lưu mã.</p></div><Form.Item name="allowWholesaleHcm" valuePropName="checked" noStyle><Switch size="small" /></Form.Item></div>}
       <div className={ROW}>
         <div>
           <div className="font-medium text-slate-800">Khách phải bấm &quot;Lưu mã&quot; trước khi dùng</div>

@@ -48,5 +48,7 @@ body {
   color: var(--aloha-ink);
   background: var(--aloha-surface);
   font-family: var(--aloha-font, "Segoe UI", ui-sans-serif, system-ui, sans-serif);
-  overflow-x: clip;
+  /* Tránh overflow-x: clip trên body làm lệch/kẹt position: fixed trên iOS Safari */
+  overflow-x: hidden;
+  max-width: 100vw;
 }

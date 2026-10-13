@@ -1,4 +1,6 @@
 import { createBackorderRequest, serializeShopCheckout } from "./backorder.js";
+import { checkWholesalePurchase } from "../shopWholesale/purchaseCheck.js";
+import { isActiveWholesale } from "../shopWholesale/policy.js";
 import type { Express, Response } from "express";
 import type { Db } from "mongodb";
 import {
@@ -159,6 +161,12 @@ async function createShopOrder(
     });
   }
   orderDetails = await keepActiveCtvCodes(shopDb, priced.details);
+  body.wholesaleEligibility = undefined;
+  if (isActiveWholesale(user)) {
+    const eligibility = await checkWholesalePurchase(shopDb, mainDb, user, orderDetails, form);
+    if (!eligibility.canCheckout) return res.status(400).json({ code: "wholesale_policy", error: eligibility.issues.map(i => i.message).join(" "), eligibility });
+    body.wholesaleEligibility = eligibility;
+  }
 
   // Đánh dấu đặt trước theo tồn lúc submit (displayTon − hold)
   const annotated = await annotatePreOrderDetails(mainDb, orderDetails, shopDb);
@@ -194,6 +202,7 @@ async function createShopOrder(
 
   const subtotal = goodsSubtotal(orderDetails);
   const quote = checkShippingQuote({
+    customerArranged: false,
     body,
     deliveryMethod,
     orderDetails,
@@ -206,6 +215,7 @@ async function createShopOrder(
   if (isStepFail(quote)) return res.status(quote.status).json(quote.body);
 
   const promo = await evaluateOrderPromotions(shopDb, mainDb, {
+    account: user,
     body,
     accountId: req.shopAuth?.userId,
     roles: req.shopAuth?.roles,
@@ -295,6 +305,7 @@ async function createShopOrder(
     : undefined;
 
   const doc = buildOrderDoc({
+    wholesaleEligibility: body.wholesaleEligibility,
     code,
     accountId,
     user,

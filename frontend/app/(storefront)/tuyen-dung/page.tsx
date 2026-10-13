@@ -56,9 +56,9 @@ export default async function TuyenDungPage({ searchParams }: { searchParams: Pr
           <div className="pointer-events-none absolute -top-24 right-0 h-96 w-96 rounded-full bg-[#4CAF50]/15 blur-3xl" />
           <div className="pointer-events-none absolute bottom-0 left-10 h-72 w-72 rounded-full bg-[#81C784]/10 blur-2xl" />
 
-          <div className="relative mx-auto max-w-7xl px-4 pt-6 pb-16 sm:pt-8 sm:pb-24">
+          <div className="relative mx-auto max-w-7xl px-4 pt-4 pb-12 sm:pt-8 sm:pb-24">
             {/* Breadcrumb */}
-            <nav className="mb-6 flex items-center gap-1.5 text-sm text-white/70" aria-label="Đường dẫn">
+            <nav className="mb-3 sm:mb-6 flex items-center gap-1.5 text-xs sm:text-sm text-white/70" aria-label="Đường dẫn">
               <Link href="/" className="transition hover:text-white">
                 Trang chủ
               </Link>
@@ -66,15 +66,15 @@ export default async function TuyenDungPage({ searchParams }: { searchParams: Pr
               <span className="font-semibold text-white">Tuyển dụng</span>
             </nav>
 
-            {/* Bố cục 2 cột: Ảnh banner bên trái + Nội dung chữ bên phải */}
-            <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-12 lg:gap-10">
-              {/* Cột trái: Khung ảnh banner bo góc phong cách card với tỷ lệ chuẩn của banner */}
+            {/* Bố cục 2 cột: Ảnh banner bên trái + Nội dung chữ bên phải (Co giãn tỷ lệ chuẩn mobile) */}
+            <div className="grid grid-cols-1 items-center gap-4 sm:gap-6 lg:grid-cols-12 lg:gap-10">
+              {/* Cột trái: Khung ảnh banner bo góc phong cách card */}
               <div className="lg:col-span-6">
                 <div className="relative mx-auto w-full max-w-xl lg:max-w-none">
                   {/* Đường viền điểm nhấn góc trên bên trái */}
-                  <div className="pointer-events-none absolute -left-2.5 -top-2.5 z-10 h-16 w-16 rounded-tl-[1.8rem] border-l-4 border-t-4 border-[#81C784]/80 sm:h-20 sm:w-20 sm:rounded-tl-[2rem]" />
+                  <div className="pointer-events-none absolute -left-1.5 -top-1.5 sm:-left-2.5 sm:-top-2.5 z-10 h-10 w-10 sm:h-20 sm:w-20 rounded-tl-[1.2rem] sm:rounded-tl-[2rem] border-l-2 sm:border-l-4 border-t-2 sm:border-t-4 border-[#81C784]/80" />
 
-                  <div className="relative aspect-[1024/409] w-full overflow-hidden rounded-2xl shadow-2xl ring-4 ring-white/20 sm:rounded-[2rem]">
+                  <div className="relative aspect-[1024/409] w-full overflow-hidden rounded-xl sm:rounded-[2rem] shadow-xl sm:shadow-2xl ring-2 sm:ring-4 ring-white/20">
                     <Image
                       src="/images/recruitment-hero.png"
                       alt="Tuyển dụng nhân viên shop cây cảnh Aloha"
@@ -87,21 +87,21 @@ export default async function TuyenDungPage({ searchParams }: { searchParams: Pr
                 </div>
               </div>
 
-              {/* Cột phải: Tiêu đề + Khẩu hiệu */}
-              <div className="space-y-4 text-center lg:col-span-6 lg:text-left">
-                <h1 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl lg:leading-[1.18]">
-                  Khám phá công việc
-                  <span className="block text-[#ffe566]">phù hợp với bạn</span>
+              {/* Cột phải: Tiêu đề + Khẩu hiệu (Tối ưu chiều cao trên mobile) */}
+              <div className="space-y-2 sm:space-y-4 text-center lg:col-span-6 lg:text-left">
+                <h1 className="text-xl sm:text-3xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight lg:leading-[1.18]">
+                  Khám phá công việc{" "}
+                  <span className="inline sm:block text-[#ffe566]">phù hợp với bạn</span>
                 </h1>
-                <p className="mx-auto max-w-xl text-base leading-relaxed text-white/90 sm:text-lg lg:mx-0">
+                <p className="mx-auto max-w-xl text-xs sm:text-base leading-snug sm:leading-relaxed text-white/90 lg:mx-0">
                   Bạn đã sẵn sàng để phát triển sự nghiệp bền vững? Tham gia ngay cùng Aloha!
                 </p>
-                <div className="flex flex-wrap items-center justify-center gap-3 pt-2 lg:justify-start">
+                <div className="flex flex-wrap items-center justify-center gap-3 pt-1 sm:pt-2 lg:justify-start">
                   <ApplyButton
                     source="hero"
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[#ffe566] px-8 text-[15px] font-extrabold text-slate-900 shadow-lg transition hover:bg-[#ffd92e] hover:shadow-xl active:scale-95"
+                    className="inline-flex h-9 sm:h-12 items-center justify-center gap-1.5 sm:gap-2 rounded-full bg-[#ffe566] px-5 sm:px-8 text-xs sm:text-[15px] font-extrabold text-slate-900 shadow-md sm:shadow-lg transition hover:bg-[#ffd92e] hover:shadow-xl active:scale-95"
                   >
-                    <Send size={18} aria-hidden />
+                    <Send size={15} className="sm:w-[18px] sm:h-[18px]" aria-hidden />
                     Ứng tuyển ngay
                   </ApplyButton>
                 </div>
@@ -110,10 +110,10 @@ export default async function TuyenDungPage({ searchParams }: { searchParams: Pr
           </div>
         </section>
 
-        {/* Khung tìm kiếm nổi bo tròn bên dưới banner theo phong cách ảnh 1 */}
-        <div className="relative z-20 mx-auto -mt-8 max-w-7xl px-4 sm:-mt-12">
-          <div className="rounded-2xl bg-white p-3.5 shadow-xl ring-1 ring-slate-200/80 sm:rounded-3xl sm:p-5">
-            <form action="/tuyen-dung" method="get" role="search" className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        {/* Khung tìm kiếm nổi bo tròn bên dưới banner */}
+        <div className="relative z-20 mx-auto -mt-6 sm:-mt-12 max-w-7xl px-4">
+          <div className="rounded-xl sm:rounded-3xl bg-white p-2.5 sm:p-5 shadow-lg sm:shadow-xl ring-1 ring-slate-200/80">
+            <form action="/tuyen-dung" method="get" role="search" className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
               <label htmlFor="job-search" className="sr-only">
                 Tìm kiếm vị trí tuyển dụng
               </label>
@@ -123,14 +123,14 @@ export default async function TuyenDungPage({ searchParams }: { searchParams: Pr
                   name="q"
                   defaultValue={q}
                   maxLength={80}
-                  placeholder="Tìm kiếm..."
-                  className="h-12 w-full rounded-xl border border-slate-200/90 bg-[#F4F7F4] pl-5 pr-12 text-[15px] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[var(--aloha-green)] focus:bg-white focus:ring-4 focus:ring-[var(--aloha-green)]/15 sm:h-14 sm:rounded-2xl"
+                  placeholder="Tìm kiếm vị trí tuyển dụng..."
+                  className="h-10 sm:h-14 w-full rounded-lg sm:rounded-2xl border border-slate-200/90 bg-[#F4F7F4] pl-4 sm:pl-5 pr-10 sm:pr-12 text-sm sm:text-[15px] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[var(--aloha-green)] focus:bg-white focus:ring-4 focus:ring-[var(--aloha-green)]/15"
                 />
-                <Search size={20} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden />
+                <Search size={18} className="pointer-events-none absolute right-3.5 sm:right-4 top-1/2 -translate-y-1/2 text-slate-400 sm:w-5 sm:h-5" aria-hidden />
               </div>
               <button
                 type="submit"
-                className="inline-flex h-12 shrink-0 items-center justify-center rounded-xl bg-[var(--aloha-green)] px-8 text-[15px] font-bold text-white shadow-md transition hover:bg-[var(--aloha-green-dark)] active:scale-95 sm:h-14 sm:rounded-2xl"
+                className="inline-flex h-10 sm:h-14 shrink-0 items-center justify-center rounded-lg sm:rounded-2xl bg-[var(--aloha-green)] px-6 sm:px-8 text-xs sm:text-[15px] font-bold text-white shadow-sm sm:shadow-md transition hover:bg-[var(--aloha-green-dark)] active:scale-95"
               >
                 Tìm kiếm
               </button>

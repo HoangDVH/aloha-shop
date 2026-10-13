@@ -106,6 +106,7 @@ export type ShopOrder = {
   status: string;
   statusValue?: string;
   paymentStatus?: string;
+  kvPaymentVerification?: { state: string; reason: string; attempts: number };
   orderStatus?: string;
   paymentCode?: string;
   expiresAt?: string;

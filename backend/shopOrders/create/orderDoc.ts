@@ -3,6 +3,7 @@ import type { VerifiedQuote } from "./shippingQuoteCheck.js";
 import type { CampaignHolds } from "../../shopCampaigns/flash/flashTypes.js";
 
 export type OrderDocInput = {
+  wholesaleEligibility?: unknown;
   code: string;
   accountId: string;
   user: any;
@@ -132,6 +133,7 @@ export function buildOrderDoc(input: OrderDocInput): Record<string, unknown> {
     kvPushStatus: isSi ? "queued" : undefined,
     priceMode: isSi ? "si" : "web",
     siRegion: user?.siRegion || null,
+    wholesaleEligibility: input.wholesaleEligibility || null,
     addressId: input.addressId || null,
     customerName: input.customerName,
     customerPhone: input.customerPhone,
@@ -156,6 +158,7 @@ export function buildOrderDoc(input: OrderDocInput): Record<string, unknown> {
     freeShipApplied: input.freeShipApplied,
     totalWeightGram: ship ? input.totalWeightGram : 0,
     quoteToken: ship ? input.quoteToken : null,
+    shippingHandling: "shop_arranged",
     shipment: ship ? { status: "pending", carrier: input.shippingCarrier || null } : null,
     total: input.total,
     totalPayment: status.totalPayment,

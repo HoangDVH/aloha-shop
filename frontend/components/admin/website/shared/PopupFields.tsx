@@ -1,7 +1,8 @@
 "use client";
 
 import type { AppearanceTheme } from "../api";
-import type { PopupAudience, PopupPages } from "@/lib/appearanceTypes";
+import type { PopupAudience, PopupPages, PopupBannerItem } from "@/lib/appearanceTypes";
+import { Eye, EyeOff } from "lucide-react";
 import { ImageUploadField } from "../appearance/ImageUploadField";
 import { combineLocalToIso, splitLocalFromIso } from "../appearance/editorUtils";
 import { WbField, wbInput, wbSelect } from "../ui";
@@ -45,9 +46,63 @@ export function PopupFields({ popup, onChange, hideCampaignId }: Props) {
     !!popup.startAt && !!popup.endAt && Date.parse(popup.endAt) <= Date.parse(popup.startAt);
   const everyVisit = popup.everyVisit === true;
 
+  // Banner 1: mặc định theo popup.imageUrl/ctaHref nếu items[0] chưa khởi tạo
+  const banner1Img = popup.items?.[0]?.imageUrl ?? popup.imageUrl ?? "";
+  const banner1Href = popup.items?.[0]?.ctaHref ?? popup.ctaHref ?? "/uu-dai";
+  const isBanner1Enabled = popup.items?.[0]?.enabled !== false;
+
+  // Banner 2: mặc định theo items[1] hoặc banner 10/10 có sẵn
+  const banner2Img = popup.items?.[1]?.imageUrl ?? "/banners/popup-1010.webp";
+  const banner2Href = popup.items?.[1]?.ctaHref ?? "/uu-dai?src=popup&campaign=1010";
+  const isBanner2Enabled = popup.items?.[1]?.enabled !== false;
+
+  const updateBanner1 = (patch: Partial<PopupBannerItem>) => {
+    const nextItem0: PopupBannerItem = {
+      imageUrl: patch.imageUrl !== undefined ? patch.imageUrl : banner1Img,
+      ctaHref: patch.ctaHref !== undefined ? patch.ctaHref : banner1Href,
+      title: patch.title !== undefined ? patch.title : (popup.items?.[0]?.title || popup.title || "Ưu đãi"),
+      ctaLabel: patch.ctaLabel !== undefined ? patch.ctaLabel : (popup.items?.[0]?.ctaLabel || popup.ctaLabel || "Xem ngay"),
+      enabled: patch.enabled !== undefined ? patch.enabled : isBanner1Enabled,
+    };
+    const nextItem1: PopupBannerItem = {
+      imageUrl: banner2Img,
+      ctaHref: banner2Href,
+      title: popup.items?.[1]?.title || "Siêu Sale 10.10",
+      ctaLabel: popup.items?.[1]?.ctaLabel || "Săn sale ngay",
+      enabled: isBanner2Enabled,
+    };
+    onChange({
+      imageUrl: nextItem0.imageUrl,
+      ctaHref: nextItem0.ctaHref,
+      items: [nextItem0, nextItem1],
+    });
+  };
+
+  const updateBanner2 = (patch: Partial<PopupBannerItem>) => {
+    const nextItem0: PopupBannerItem = {
+      imageUrl: banner1Img,
+      ctaHref: banner1Href,
+      title: popup.items?.[0]?.title || popup.title || "Ưu đãi",
+      ctaLabel: popup.items?.[0]?.ctaLabel || popup.ctaLabel || "Xem ngay",
+      enabled: isBanner1Enabled,
+    };
+    const nextItem1: PopupBannerItem = {
+      imageUrl: patch.imageUrl !== undefined ? patch.imageUrl : banner2Img,
+      ctaHref: patch.ctaHref !== undefined ? patch.ctaHref : banner2Href,
+      title: patch.title !== undefined ? patch.title : (popup.items?.[1]?.title || "Siêu Sale 10.10"),
+      ctaLabel: patch.ctaLabel !== undefined ? patch.ctaLabel : (popup.items?.[1]?.ctaLabel || "Săn sale ngay"),
+      enabled: patch.enabled !== undefined ? patch.enabled : isBanner2Enabled,
+    };
+    onChange({
+      imageUrl: nextItem0.imageUrl,
+      ctaHref: nextItem0.ctaHref,
+      items: [nextItem0, nextItem1],
+    });
+  };
+
   return (
     <div className="space-y-3">
-      <label className="flex items-center gap-2 text-[13px] text-gray-800">
+      <label className="flex items-center gap-2 text-[13px] font-medium text-gray-800">
         <input
           type="checkbox"
           checked={!!popup.enabled}
@@ -55,77 +110,185 @@ export function PopupFields({ popup, onChange, hideCampaignId }: Props) {
         />
         Bật popup khuyến mãi trên web
       </label>
-      <WbField
-        label="Ảnh khuyến mãi (bắt buộc)"
-        hint="PNG/WebP nền trong suốt, rộng khoảng 1000–1200px, chữ và nút nằm sẵn trong ảnh. Không vẽ nút X — web tự thêm."
-      >
-        <ImageUploadField
-          kind="banner"
-          value={popup.imageUrl || ""}
-          onChange={(url) => onChange({ imageUrl: url })}
-          previewClassName="overflow-hidden rounded-lg border border-gray-200"
-        />
-      </WbField>
-      <WbField label="Link khi bấm ảnh" hint="VD: /uu-dai, /tim hoặc trang SP /sp/V1T">
-        <input
-          className={wbInput}
-          value={popup.ctaHref || ""}
-          onChange={(e) => onChange({ ctaHref: e.target.value })}
-          placeholder="/uu-dai"
-        />
-      </WbField>
-      {/* Cấu hình Banner thứ 2 cho Carousel Popup Shopee */}
-      <div className="rounded-xl border border-rose-200/80 bg-rose-50/50 p-3 space-y-2.5">
-        <div className="flex items-center justify-between">
-          <span className="text-[12px] font-bold text-rose-900">
-            Banner thứ 2 (Slider Carousel xoay vòng Shopee)
-          </span>
-          <span className="text-[11px] text-rose-600 font-medium">Tự động xoay sau 3.5s</span>
+
+      {/* Tóm tắt trạng thái hiển thị Popup */}
+      <div className="rounded-xl border border-blue-200/80 bg-blue-50/60 p-3 text-[12px] text-blue-950">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-semibold text-gray-700">Trạng thái hiển thị popup:</span>
+          {isBanner1Enabled && isBanner2Enabled ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800 border border-emerald-200">
+              🎠 Xoay vòng 2 banner (Shopee Carousel 3.5s)
+            </span>
+          ) : isBanner1Enabled && !isBanner2Enabled ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-bold text-blue-800 border border-blue-200">
+              🖼️ Hiện 1 popup tĩnh (Chỉ Banner 1)
+            </span>
+          ) : !isBanner1Enabled && isBanner2Enabled ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-0.5 text-[11px] font-bold text-rose-800 border border-rose-200">
+              🖼️ Hiện 1 popup tĩnh (Chỉ Banner 2)
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-[11px] font-bold text-red-800 border border-red-200">
+              🚫 Cả 2 banner đều đang ẩn (Popup sẽ không xuất hiện)
+            </span>
+          )}
         </div>
+        <p className="mt-1 text-[11px] text-gray-600">
+          Bạn có thể nhấn nút <strong>Ẩn/Hiện</strong> ở từng banner bên dưới để cấu hình hiển thị 1 banner đơn lẻ hoặc cả 2 banner xoay vòng.
+        </p>
+      </div>
+
+      {/* Cấu hình Banner 1 */}
+      <div
+        className={`rounded-xl border p-3 space-y-2.5 transition-all ${
+          isBanner1Enabled
+            ? "border-emerald-200/80 bg-emerald-50/40"
+            : "border-gray-200 bg-gray-50/70 opacity-80"
+        }`}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[13px] font-bold text-gray-900">
+              Banner 1 (Banner chính)
+            </span>
+            {isBanner1Enabled ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 border border-emerald-200">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Đang hiện
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-semibold text-gray-600 border border-gray-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-gray-400"></span>
+                Đã ẩn
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => updateBanner1({ enabled: !isBanner1Enabled })}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[12px] font-semibold transition-all shadow-xs cursor-pointer ${
+              isBanner1Enabled
+                ? "border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 active:scale-95"
+                : "border border-emerald-300 bg-emerald-50 text-emerald-900 hover:bg-emerald-100 active:scale-95"
+            }`}
+            title={isBanner1Enabled ? "Bấm để ẩn Banner 1 trên website" : "Bấm để hiện Banner 1 trên website"}
+          >
+            {isBanner1Enabled ? (
+              <>
+                <EyeOff className="h-3.5 w-3.5 text-amber-700" />
+                <span>Ẩn popup 1</span>
+              </>
+            ) : (
+              <>
+                <Eye className="h-3.5 w-3.5 text-emerald-700" />
+                <span>Hiện popup 1</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {!isBanner1Enabled && (
+          <p className="rounded-md border border-amber-200 bg-amber-50/90 px-2.5 py-1.5 text-[11px] text-amber-800">
+            ⚠️ <strong>Banner 1 đang bị ẩn</strong>: Khách vào website sẽ không nhìn thấy banner này.
+          </p>
+        )}
+
         <WbField
-          label="Ảnh banner 2 (VD: Banner Siêu Sale 10/10)"
+          label="Ảnh Banner 1"
+          hint="PNG/WebP, tỷ lệ vuông 1:1 hoặc chữ nhật. Chữ và nút nằm sẵn trong ảnh. Không vẽ nút X — web tự thêm."
+        >
+          <ImageUploadField
+            kind="banner"
+            value={banner1Img}
+            onChange={(url) => updateBanner1({ imageUrl: url })}
+            previewClassName="overflow-hidden rounded-lg border border-gray-200"
+          />
+        </WbField>
+        <WbField label="Link khi bấm Banner 1" hint="VD: /uu-dai, /tim hoặc trang SP /sp/V1T">
+          <input
+            className={wbInput}
+            value={banner1Href}
+            onChange={(e) => updateBanner1({ ctaHref: e.target.value })}
+            placeholder="/uu-dai"
+          />
+        </WbField>
+      </div>
+
+      {/* Cấu hình Banner 2 */}
+      <div
+        className={`rounded-xl border p-3 space-y-2.5 transition-all ${
+          isBanner2Enabled
+            ? "border-rose-200/80 bg-rose-50/50"
+            : "border-gray-200 bg-gray-50/70 opacity-80"
+        }`}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[13px] font-bold text-gray-900">
+              Banner 2 (Slider Carousel Shopee)
+            </span>
+            {isBanner2Enabled ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-semibold text-rose-800 border border-rose-200">
+                <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+                Đang hiện
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-semibold text-gray-600 border border-gray-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-gray-400"></span>
+                Đã ẩn
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => updateBanner2({ enabled: !isBanner2Enabled })}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[12px] font-semibold transition-all shadow-xs cursor-pointer ${
+              isBanner2Enabled
+                ? "border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 active:scale-95"
+                : "border border-rose-300 bg-rose-50 text-rose-900 hover:bg-rose-100 active:scale-95"
+            }`}
+            title={isBanner2Enabled ? "Bấm để ẩn Banner 2 trên website" : "Bấm để hiện Banner 2 trên website"}
+          >
+            {isBanner2Enabled ? (
+              <>
+                <EyeOff className="h-3.5 w-3.5 text-amber-700" />
+                <span>Ẩn popup 2</span>
+              </>
+            ) : (
+              <>
+                <Eye className="h-3.5 w-3.5 text-rose-700" />
+                <span>Hiện popup 2</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {isBanner2Enabled ? (
+          <p className="text-[11px] text-rose-700 font-medium">
+            Tự động xoay sau 3.5s cùng Banner 1 nếu cả 2 cùng được bật.
+          </p>
+        ) : (
+          <p className="rounded-md border border-amber-200 bg-amber-50/90 px-2.5 py-1.5 text-[11px] text-amber-800">
+            ⚠️ <strong>Banner 2 đang bị ẩn</strong>: Website sẽ hiển thị tĩnh Banner 1 (không có thanh trượt xoay vòng).
+          </p>
+        )}
+
+        <WbField
+          label="Ảnh Banner 2 (VD: Banner Siêu Sale 10/10)"
           hint="PNG/WebP, tỷ lệ vuông 1:1. Web đã chuẩn bị sẵn banner Siêu Sale 10/10."
         >
           <ImageUploadField
             kind="banner"
-            value={popup.items?.[1]?.imageUrl ?? "/banners/popup-1010.webp"}
-            onChange={(url) => {
-              const baseItem0 = popup.items?.[0] || {
-                imageUrl: popup.imageUrl,
-                ctaHref: popup.ctaHref,
-                title: popup.title,
-                ctaLabel: popup.ctaLabel,
-              };
-              const item1 = {
-                imageUrl: url,
-                ctaHref: popup.items?.[1]?.ctaHref || "/uu-dai?src=popup&campaign=1010",
-                title: popup.items?.[1]?.title || "Siêu Sale 10.10",
-                ctaLabel: popup.items?.[1]?.ctaLabel || "Săn sale ngay",
-              };
-              onChange({ items: [baseItem0, item1] });
-            }}
+            value={banner2Img}
+            onChange={(url) => updateBanner2({ imageUrl: url })}
             previewClassName="overflow-hidden rounded-lg border border-gray-200"
           />
         </WbField>
-        <WbField label="Link khi bấm banner 2" hint="VD: /uu-dai?src=popup&campaign=1010">
+        <WbField label="Link khi bấm Banner 2" hint="VD: /uu-dai?src=popup&campaign=1010">
           <input
             className={wbInput}
-            value={popup.items?.[1]?.ctaHref ?? "/uu-dai?src=popup&campaign=1010"}
-            onChange={(e) => {
-              const baseItem0 = popup.items?.[0] || {
-                imageUrl: popup.imageUrl,
-                ctaHref: popup.ctaHref,
-                title: popup.title,
-                ctaLabel: popup.ctaLabel,
-              };
-              const item1 = {
-                imageUrl: popup.items?.[1]?.imageUrl || "/banners/popup-1010.webp",
-                ctaHref: e.target.value,
-                title: popup.items?.[1]?.title || "Siêu Sale 10.10",
-                ctaLabel: popup.items?.[1]?.ctaLabel || "Săn sale ngay",
-              };
-              onChange({ items: [baseItem0, item1] });
-            }}
+            value={banner2Href}
+            onChange={(e) => updateBanner2({ ctaHref: e.target.value })}
             placeholder="/uu-dai?src=popup&campaign=1010"
           />
         </WbField>

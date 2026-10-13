@@ -6,6 +6,7 @@ import { formatVnd } from "@/lib/api";
 import { buildProductShareUrl } from "@/lib/ctv";
 import { SHOP_ORIGIN } from "@/lib/seo";
 import { useToast } from "@/components/Toast";
+import { productShareData } from "@/lib/productShareData";
 import {
   canShareFilesOnDevice,
   copyText,
@@ -141,24 +142,28 @@ function ProductShareSheet({ ma, name, path, price, images, videos, ctvCode, onC
     });
   };
 
-  const shareWithDevice = async () => {
-    void copyText(caption);
+  const shareWithDevice = async (target: "facebook" | "zalo") => {
     try {
-      if (readyFiles.length && navigator.canShare?.({ files: readyFiles })) {
-        await navigator.share({ files: readyFiles, title: name, text: caption });
-      } else {
-        await navigator.share({ title: name, text: priceLabel ? `${name} — ${priceLabel}` : name, url });
-      }
-      toast.push("Link SP đã được sao chép — dán vào tin nhắn nếu ứng dụng không tự kèm");
-      onClose();
+      const data = productShareData({ selectedCount: pickedItems.length, files: readyFiles, target,
+        title: name, caption, url, canShare: data => Boolean(navigator.canShare?.(data)) });
+      await navigator.share(data);
+      toast.push(pickedItems.length ? "Bấm «Sao chép nội dung & link» để dán vào bài viết hoặc tin nhắn." : "Đã đóng bảng chia sẻ link.");
     } catch (e) {
-      if ((e as { name?: string })?.name !== "AbortError") toast.push("Không mở được bảng chia sẻ, đã sao chép link SP");
+      if ((e as { name?: string })?.name === "AbortError") return;
+      const message = (e as Error).message;
+      toast.push(message === "media_incomplete" ? "Ảnh/video chưa tải đủ. Hãy thử tải lại các file lỗi." :
+        message === "media_unsupported" ? "Máy không chia sẻ được bộ file này. Thử chọn ít ảnh hơn, tách video hoặc lưu file để đăng trong ứng dụng." :
+          "Không chia sẻ được ảnh/video. Bạn có thể lưu file và chọn từ thư viện trong ứng dụng.");
     }
   };
 
   const shareTo = async (target: "zalo" | "facebook") => {
     if (deviceShare && typeof navigator.share === "function") {
-      await shareWithDevice();
+      await shareWithDevice(target);
+      return;
+    }
+    if (pickedItems.length) {
+      toast.push("Trình duyệt chưa hỗ trợ gửi file trực tiếp. Bấm «Lưu ảnh & video», chọn file trong Facebook/Zalo rồi sao chép và dán nội dung, link.");
       return;
     }
     if (target === "facebook") {
@@ -175,7 +180,7 @@ function ProductShareSheet({ ma, name, path, price, images, videos, ctvCode, onC
   };
 
   const copyLink = async () => {
-    toast.push((await copyText(url)) ? "Đã sao chép link sản phẩm" : "Không sao chép được link");
+    toast.push((await copyText(caption)) ? "Đã sao chép nội dung và link sản phẩm" : "Không sao chép được nội dung và link");
   };
 
   const saveMedia = async () => {
@@ -219,7 +224,7 @@ function ProductShareSheet({ ma, name, path, price, images, videos, ctvCode, onC
     },
     {
       key: "copy",
-      label: "Sao chép link",
+      label: "Sao chép nội dung & link",
       icon: <Link2 size={20} />,
       tone: "bg-slate-100 text-slate-700",
       onClick: () => void copyLink(),
@@ -322,9 +327,10 @@ function ProductShareSheet({ ma, name, path, price, images, videos, ctvCode, onC
               </ul>
               <p className="mt-1.5 text-xs leading-relaxed text-stone-500">
                 {deviceShare
-                  ? "Bấm Zalo hoặc Facebook rồi chọn ứng dụng trong bảng chia sẻ của máy — ảnh, video và link SP được gửi kèm."
-                  : "Trên máy tính, Zalo/Facebook hiện ảnh xem trước từ link. Muốn gửi kèm video, bấm «Lưu ảnh & video» rồi kéo file vào khung chat."}
+                  ? "Facebook nhận riêng ảnh/video đã chọn. Bấm «Sao chép nội dung & link» để dán vào bài viết. Ứng dụng nhận có thể không hỗ trợ một số bộ file; bạn có thể lưu file để đăng từ thư viện."
+                  : "Bấm «Lưu ảnh & video», chọn file trong Facebook/Zalo rồi dán nội dung và link. Bỏ chọn tất cả ảnh/video nếu chỉ muốn chia sẻ link."}
               </p>
+              {Object.values(loadState).includes("error") && <button type="button" onClick={() => setLoadState(s => Object.fromEntries(Object.entries(s).filter(([, state]) => state !== "error")))} className="mt-2 text-sm font-semibold text-rose-700 underline">Thử tải lại ảnh/video lỗi</button>}
             </div>
           ) : null}
         </div>

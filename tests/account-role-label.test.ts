@@ -6,6 +6,13 @@ test("retail customer is Khách lẻ", () => {
   assert.equal(shopAccountRoleLabel({ roles: ["customer"] }), "Khách lẻ");
 });
 
+test("assigned wholesale customers awaiting approval never display as retail", () => {
+  assert.equal(shopAccountRoleLabel({ roles: ["customer", "si"], siStatus: "tu_choi" }), "Khách sỉ (cần bổ sung hồ sơ)");
+  assert.equal(shopAccountRoleLabel({ roles: ["customer", "si"], siStatus: null }), "Khách sỉ (chưa duyệt quyền mua sỉ)");
+  assert.equal(shopAccountRoleLabel({ roles: ["customer", "si"], siStatus: "active" }), "Khách sỉ (chưa xác nhận vùng)");
+  assert.equal(shopAccountRoleLabel({ roles: ["customer", "si"], siStatus: "cho_duyet" }), "Khách sỉ (chờ duyệt)");
+});
+
 test("active wholesale HCM and province labels", () => {
   assert.equal(
     shopAccountRoleLabel({ roles: ["customer", "si"], siStatus: "active", siRegion: "HCM" }),

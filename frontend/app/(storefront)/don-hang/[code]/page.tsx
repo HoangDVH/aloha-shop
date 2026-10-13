@@ -195,6 +195,7 @@ export default function DonHangStatusPage() {
 
   return (
     <div className="relative mx-auto max-w-5xl animate-fade-up px-3 py-4 sm:px-4 lg:py-6">
+      {["unpaid", "processing", "underpaid", "expired", "failed"].includes(order.paymentStatus || "") && order.kvPaymentVerification?.state === "pending" && <p role="status" className="mb-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Đang chờ xác minh thanh toán. Hệ thống sẽ tự đối soát lại; nếu bạn đã chuyển khoản, vui lòng không thanh toán lần nữa.</p>}
       {isSuccessView ? (
         <OrderSuccessView
           order={order}

@@ -69,7 +69,7 @@ type Args = {
   user: ShopUserLike;
   replace: (href: string) => void;
   removeSelected: () => void;
-  setError: Dispatch<SetStateAction<string>>;
+  setError: (message: string) => void;
   setSubmitting: Dispatch<SetStateAction<boolean>>;
   /** Ref từ page nếu cần dùng chung với effect redirect; hook tự tạo nếu không truyền. */
   orderPlacedRef?: MutableRefObject<boolean>;

@@ -11,6 +11,7 @@ import { claimAllVouchers, claimVoucher } from "./walletClaim.js";
 import { isClaimFail, type WalletDoc } from "./walletService.js";
 import { customerKeyFor } from "../checkoutPromotions.js";
 import { latestRedemptions, loadVoucherReturns, type VoucherLatest } from "../voucherHistory.js";
+import { allowsWholesaleShipping } from "../tinhShipping.js";
 
 type GetDb = () => Promise<Db>;
 
@@ -88,7 +89,7 @@ async function walletHandler(getDb: GetDb, req: Request, res: Response) {
   const canUse = viewer.status.retail && !viewer.status.locked;
   const items = rows.map((r) => {
     const p = byId.get(r.promotionId) || null;
-    const state = walletItemState(r, p, canUse, nowIso);
+    const state = walletItemState(r, p, canUse || (!viewer.status.locked && allowsWholesaleShipping(p, viewer.account)), nowIso);
     const ret = r.status === "saved" ? returns.get(r.promotionId) : undefined;
     return {
       promotionId: r.promotionId,
@@ -105,7 +106,7 @@ async function walletHandler(getDb: GetDb, req: Request, res: Response) {
             description: p.description || "",
             benefitType: p.benefitType || "goods",
             discountType: p.discountType,
-            discountValue: (isMystery(p) && r.drawnPercent) || p.discountValue,
+            discountValue: ((isMystery(p) || p.preserveDrawnPercent) && r.drawnPercent) || p.discountValue,
             maxDiscountVnd: p.maxDiscountVnd,
             minOrderThreshold: p.minOrderThreshold,
             targetCustomer: p.targetCustomer,

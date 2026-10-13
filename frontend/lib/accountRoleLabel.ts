@@ -20,11 +20,15 @@ export function shopAccountRoleLabel(user: AccountRoleInput): string {
   if (roles.includes("si") && user.siStatus === "active") {
     if (user.siRegion === "HCM") labels.push("Khách sỉ HCM");
     else if (user.siRegion === "TINH") labels.push("Khách sỉ tỉnh");
-    else labels.push("Khách sỉ");
+    else labels.push("Khách sỉ (chưa xác nhận vùng)");
   } else if (roles.includes("si") && user.siStatus === "cho_duyet") {
     labels.push("Khách sỉ (chờ duyệt)");
   } else if (roles.includes("si") && user.siStatus === "khoa") {
     labels.push("Khách sỉ (tạm khóa)");
+  } else if (roles.includes("si") && user.siStatus === "tu_choi") {
+    labels.push("Khách sỉ (cần bổ sung hồ sơ)");
+  } else if (roles.includes("si")) {
+    labels.push("Khách sỉ (chưa duyệt quyền mua sỉ)");
   }
 
   return labels.length ? labels.join(" · ") : "Khách lẻ";

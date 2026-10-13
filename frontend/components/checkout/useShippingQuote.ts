@@ -20,6 +20,7 @@ type CartLineLike = {
 };
 
 type Args = {
+  refreshKey?: string | number;
   delivery: Delivery;
   selected: CartLineLike[];
   selectedAddr: ShopAddress | undefined;
@@ -36,6 +37,7 @@ type Args = {
 
 /** Báo giá phí ship + chọn hãng — logic giữ nguyên từ trang xác nhận đơn. */
 export function useShippingQuote({
+  refreshKey = "",
   delivery,
   selected,
   selectedAddr,
@@ -106,8 +108,9 @@ export function useShippingQuote({
         discountTotal,
         promotionCode,
         autoPromotion,
+        refreshKey,
       ].join("::"),
-    [quoteItemsKey, quoteAddress, discountTotal, promotionCode, autoPromotion]
+    [quoteItemsKey, quoteAddress, discountTotal, promotionCode, autoPromotion, refreshKey]
   );
 
   const shippingFee: number | null = useMemo(() => {

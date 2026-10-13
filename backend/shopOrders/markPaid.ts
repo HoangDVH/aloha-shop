@@ -58,6 +58,7 @@ export async function markShopOrderPaid(opts: {
   sepayTransactionId?: number | string;
   allowExpired?: boolean;
   confirmedBy?: string;
+  kvPaymentProof?: { invoiceId: string; invoiceCode: string; expected: number; received: number };
 }): Promise<MarkPaidResult> {
   const col = opts.shopDb.collection(SHOP_ORDERS);
   const code = String(opts.orderCode || "").trim();
@@ -70,6 +71,15 @@ export async function markShopOrderPaid(opts: {
   if (!existing) return { ok: false, error: "Không tìm thấy đơn", code: "not_found" };
 
   const { _id, ...restExisting } = existing as any;
+  if (opts.source === "kiotqr") {
+    const proof = opts.kvPaymentProof;
+    const expected = Math.round(Number(restExisting.totalPayment ?? restExisting.total));
+    if (!proof || (!proof.invoiceId && !proof.invoiceCode) || proof.expected !== expected || !Number.isSafeInteger(proof.received) || proof.received < expected ||
+      (proof.invoiceId && proof.invoiceId !== String(restExisting.kvInvoiceId ?? "")) ||
+      (proof.invoiceCode && proof.invoiceCode !== String(restExisting.kvInvoiceCode ?? ""))) {
+      return { ok: false, error: "Đơn hoặc hóa đơn đã thay đổi, cần đối soát lại", code: "kv_payment_verification_required" };
+    }
+  }
   if ((restExisting.backorderStatus && restExisting.backorderStatus !== "confirmed_paid") || restExisting.method === "Pending") {
     return { ok: false, error: "Đơn đặt trước phải xác nhận và đối soát tiền qua luồng đặt trước", code: "backorder_manual_review" };
   }
@@ -108,6 +118,10 @@ export async function markShopOrderPaid(opts: {
       _id: existing._id,
       paymentStatus: { $in: claimable },
     };
+    if (opts.source === "kiotqr") Object.assign(claimFilter, {
+      kvInvoiceId: existing.kvInvoiceId ?? null, kvInvoiceCode: existing.kvInvoiceCode ?? null,
+      totalPayment: existing.totalPayment ?? null, total: existing.total ?? null, revision: existing.revision ?? null,
+    });
     if (!opts.allowExpired && restExisting.paymentStatus === "unpaid") {
       claimFilter.$or = [{ expiresAt: { $gt: nowDate } }, { expiresAt: null }, { expiresAt: { $exists: false } }];
     }
@@ -134,6 +148,7 @@ export async function markShopOrderPaid(opts: {
         const { _id: __, ...r } = again as any;
         return { ok: true, alreadyPaid: true, order: r };
       }
+      if (opts.source === "kiotqr") return { ok: false, error: "Đơn đã thay đổi trong lúc đối soát", code: "kv_payment_order_changed" };
       if (again?.paymentStatus === "processing") {
         claimed = again as any;
       } else {
@@ -290,6 +305,7 @@ export async function markShopOrderPaid(opts: {
         paidAt,
         paidSource: opts.source,
         confirmedBy: opts.confirmedBy || opts.source,
+        ...(opts.kvPaymentProof ? { kvPaymentVerifiedAt: paidAt, kvPaymentEvidence: opts.kvPaymentProof } : {}),
         updatedAt: paidAt,
         ...(opts.sepayTransactionId != null
           ? { sepayTransactionId: opts.sepayTransactionId }
@@ -299,6 +315,7 @@ export async function markShopOrderPaid(opts: {
         paymentFailReason: "",
         paymentReview: "",
         paymentMismatch: "",
+        kvPaymentVerification: "",
       },
     }
   );

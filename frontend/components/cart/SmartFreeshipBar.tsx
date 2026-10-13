@@ -1,24 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { Truck, CheckCircle2, ChevronRight, Sparkles, Check } from "lucide-react";
 import { formatVnd } from "@/lib/api";
 import { formatCompactVnd } from "@/lib/voucherFormat";
-import { getAvailablePromotions, type AvailablePromotionUI } from "@/lib/promotions";
+import { getAvailablePromotions } from "@/lib/promotions";
 import { useCampaignView } from "@/lib/campaign/useCampaignView";
+import { useShopAuth } from "@/components/ShopAuthProvider";
+import { shippingProgressPromotions } from "@/lib/shippingProgress";
 
 export type FreeshipTier = {
   threshold: number;
   discount: number;
   label: string;
 };
-
-// Mốc mặc định theo chính sách của Aloha Shop khi chưa tải được từ database
-const DEFAULT_TIERS: FreeshipTier[] = [
-  { threshold: 1_000_000, discount: 30_000, label: "Giảm 30K ship" },
-  { threshold: 2_000_000, discount: 50_000, label: "Giảm 50K ship" },
-];
 
 /**
  * URL điều hướng mua thêm thông minh:
@@ -39,31 +36,23 @@ export function SmartFreeshipBar({
   className = "",
   variant = "default",
   moreHref,
+  appliedDiscount = 0,
 }: {
   currentAmount: number;
   className?: string;
   variant?: "default" | "compact";
   moreHref?: string;
+  appliedDiscount?: number;
 }) {
   const defaultMoreHref = useMoreShoppingHref();
   const targetHref = moreHref || defaultMoreHref;
-  const [promos, setPromos] = useState<AvailablePromotionUI[]>([]);
-
-  useEffect(() => {
-    let alive = true;
-    getAvailablePromotions()
-      .then((items) => {
-        if (!alive) return;
-        setPromos(items.filter((p) => p.benefitType === "shipping"));
-      })
-      .catch(() => undefined);
-    return () => {
-      alive = false;
-    };
-  }, []);
+  const { user, loading } = useShopAuth();
+  const availability = useQuery({ queryKey: ["shop", "shipping-progress", user?.id, user?.siStatus, user?.siRegion],
+    queryFn: getAvailablePromotions, enabled: !loading, refetchInterval: 15000 });
+  const promos = useMemo(() => shippingProgressPromotions(availability.data || []), [availability.data]);
 
   const tiers: FreeshipTier[] = useMemo(() => {
-    if (!promos.length) return DEFAULT_TIERS;
+    if (!promos.length) return [];
     const list = promos
       .filter((p) => p.minOrderThreshold && p.minOrderThreshold > 0)
       .map((p) => {
@@ -74,7 +63,7 @@ export function SmartFreeshipBar({
       })
       .sort((a, b) => a.threshold - b.threshold);
 
-    return list.length ? list : DEFAULT_TIERS;
+    return list;
   }, [promos]);
 
   // Tìm mốc kế tiếp cần đạt
@@ -118,12 +107,12 @@ export function SmartFreeshipBar({
                 <CheckCircle2 size={13} strokeWidth={2.5} aria-hidden />
               </span>
               <p className="text-xs font-bold text-emerald-900 leading-snug">
-                🎉 Đã đạt <span className="text-[#0D9488] uppercase">{currentTier?.label || "Miễn phí vận chuyển"}</span>
+                {appliedDiscount > 0 ? <>Đã giảm <span className="text-[#0D9488]">{formatVnd(appliedDiscount)} phí ship</span></> : <>Đạt mốc tiền hàng <span className="text-[#0D9488] uppercase">{currentTier?.label}</span></>}
               </p>
             </div>
             <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-100/90 px-2 py-0.5 text-[11px] font-bold text-emerald-800">
               <Sparkles size={11} className="text-amber-500 fill-amber-500" />
-              Đã nhận
+              {appliedDiscount > 0 ? "Đã áp dụng" : "Xem điều kiện"}
             </span>
           </div>
         ) : (
@@ -220,7 +209,7 @@ export function SmartFreeshipBar({
           <div className="min-w-0 flex-1">
             {isHighestReached ? (
               <p className="text-xs sm:text-[13.5px] font-bold text-emerald-900 leading-snug">
-                🎉 Tuyệt vời! Bạn đã đủ điều kiện{" "}
+                Đã đạt mốc tiền hàng cho{" "}
                 <span className="text-[#0D9488] uppercase">{currentTier?.label || "Miễn phí vận chuyển"}</span>
               </p>
             ) : currentTier ? (
@@ -253,7 +242,7 @@ export function SmartFreeshipBar({
         ) : (
           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100/90 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
             <Sparkles size={12} className="text-amber-500 fill-amber-500" />
-            Đã nhận
+            {appliedDiscount > 0 ? "Đã áp dụng" : "Xem điều kiện"}
           </span>
         )}
       </div>

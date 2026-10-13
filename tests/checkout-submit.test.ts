@@ -73,7 +73,8 @@ function checkoutFixture() {
   let refIndex = 0;
   const pass = { safeParse: () => ({ success: true }) };
   const adapters: Record<string, any> = {
-    react: { useRef: (value: any) => refs[refIndex++] ||= { current: value } },
+    react: { useRef: (value: any) => refs[refIndex++] ||= { current: value }, useEffect() {} },
+    "@/lib/funnelTracking": { funnelSession: () => ({}), trackFunnel() {} },
     "@tanstack/react-query": { useQueryClient: () => ({ invalidateQueries() {}, setQueryData() {} }),
       useMutation: ({ mutationFn }: any) => ({ mutateAsync: mutationFn }) },
     "@/lib/orders": { createAddress: () => { addressCalls++; return pending; },

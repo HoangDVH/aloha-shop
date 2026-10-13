@@ -7,7 +7,7 @@ import { Check, X } from "lucide-react";
 import { ReturnedBadge, type VoucherReturnInfo } from "@/components/voucher/ReturnedBadge";
 import { formatVnd } from "@/lib/api";
 import { pctText, sortVouchersGrouped, type MysteryInfo } from "@/lib/voucherFormat";
-import { getAvailablePromotions, DEFAULT_SHIP_TIERS, type AvailablePromotionUI } from "@/lib/promotions";
+import { getAvailablePromotions, type AvailablePromotionUI } from "@/lib/promotions";
 import { PromotionDetailModal } from "./PromotionDetailModal";
 import dayjs from "dayjs";
 
@@ -26,7 +26,7 @@ export interface EvaluatedCandidateUI {
   code?: string;
   isPublic?: boolean;
   scope?: "all" | "category" | "product";
-  targetCustomer?: "all" | "retail" | "wholesale" | "new_web";
+  targetCustomer?: "all" | "retail" | "wholesale" | "new_web" | "returning_web";
   endDate?: string;
   description?: string;
   /** Voucher phải lưu vào ví trước khi dùng. */
@@ -120,13 +120,12 @@ export function PromotionModal({
   useEffect(() => {
     if (!open) return;
     let alive = true;
+    setAvailableShipPromos([]);
     getAvailablePromotions()
       .then((items) => {
         if (!alive) return;
         const ships = items.filter((p) => p.benefitType === "shipping");
-        if (ships.length > 0) {
-          setAvailableShipPromos(ships);
-        }
+        setAvailableShipPromos(ships);
       })
       .catch(() => undefined);
     return () => {
@@ -157,7 +156,7 @@ export function PromotionModal({
 
   // Nguồn danh sách các voucher ship
   const baseShipPromos = useMemo(() => {
-    return availableShipPromos.length > 0 ? availableShipPromos : DEFAULT_SHIP_TIERS;
+    return availableShipPromos;
   }, [availableShipPromos]);
 
   // Đánh giá tất cả voucher ship theo điều kiện đơn hàng hoặc kết quả tính phí ship từ checkout
@@ -187,10 +186,10 @@ export function PromotionModal({
         (c) => c.promotionId === p.id && !c.eligible
       );
 
-      const finalEligible = isMatchedByCheckout ? true : (quoteNotice ? false : eligible);
+      const finalEligible = isMatchedByCheckout ? true : (quoteNotice || p.audienceEligible === false ? false : eligible);
       const finalReason = isMatchedByCheckout
         ? undefined
-        : (quoteNotice?.ineligibleReason || (!eligible && shortfall > 0 ? `Cần mua thêm ${formatVnd(shortfall)} để nhận ưu đãi.` : undefined));
+        : (quoteNotice?.ineligibleReason || (p.audienceEligible === false ? "Voucher chưa áp dụng cho tài khoản này." : !eligible && shortfall > 0 ? `Cần mua thêm ${formatVnd(shortfall)} để nhận ưu đãi.` : undefined));
 
       return {
         promotionId: p.id,

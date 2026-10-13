@@ -36,6 +36,8 @@ function mockPromotion(cfg: Partial<PromotionDoc>): PromotionDoc {
     productMas: cfg.productMas || [],
     excludedProductMas: cfg.excludedProductMas || [],
     targetCustomer: cfg.targetCustomer || "retail",
+    allowWholesaleTinh: cfg.allowWholesaleTinh === true,
+    allowWholesaleHcm: cfg.allowWholesaleHcm === true,
     startDate: cfg.startDate,
     endDate: cfg.endDate,
     usageLimitTotal: cfg.usageLimitTotal,
@@ -56,7 +58,7 @@ function previewShipping(
   mockPromo: PromotionDoc,
   cfg: Partial<PromotionDoc>,
   items: CartItemToEvaluate[],
-  buyer: { isNewWebBuyer: boolean; isWholesale: boolean; phone?: string },
+  buyer: { isNewWebBuyer: boolean; isWholesale: boolean; isWholesaleTinh?: boolean; isWholesaleHcm?: boolean; phone?: string },
   ship: Record<string, any>
 ) {
   mockPromo.benefitType = "shipping";
@@ -97,7 +99,9 @@ export function registerPromotionPreviewRoute(app: Express, gate: AdminGate, get
       const mockPromo = mockPromotion(cfg);
       const buyer = {
         isNewWebBuyer: b.buyer?.isNewWebBuyer !== false,
+        hasSuccessfulWebPurchase: b.buyer?.hasSuccessfulWebPurchase === true,
         isWholesale: Boolean(b.buyer?.isWholesale),
+        isWholesaleTinh: Boolean(b.buyer?.isWholesaleTinh), isWholesaleHcm: Boolean(b.buyer?.isWholesaleHcm),
         phone: b.buyer?.phone,
       };
       if (cfg.benefitType === "shipping") {

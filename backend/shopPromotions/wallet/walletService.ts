@@ -155,7 +155,7 @@ export async function insertWalletEntry(
       already: true,
       promotionId: promo.id,
       message: WALLET_MESSAGES.already,
-      ...(row?.drawnPercent ? { drawnPercent: row.drawnPercent } : {}),
+      ...(isMystery(promo) && row?.drawnPercent ? { drawnPercent: row.drawnPercent } : {}),
     };
   };
   const existing = await col.findOne({ _id }, { projection: { status: 1, drawnPercent: 1 } });

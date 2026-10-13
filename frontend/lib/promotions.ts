@@ -57,6 +57,7 @@ export async function requestPromotionQuote(
 }
 
 export interface AvailablePromotionUI {
+  audienceEligible?: boolean;
   id: string;
   title: string;
   description?: string;
@@ -67,7 +68,7 @@ export interface AvailablePromotionUI {
   maxDiscountVnd?: number;
   minOrderThreshold?: number;
   thresholdOperator?: ">" | ">=";
-  targetCustomer?: "all" | "retail" | "wholesale" | "new_web";
+  targetCustomer?: "all" | "retail" | "wholesale" | "new_web" | "returning_web";
   scope?: "all" | "category" | "product";
   categoryIds?: string[];
   productMas?: string[];

@@ -22,6 +22,9 @@ type Props = {
   /** Tên / ảnh SP đang xem để nút Zalo soạn sẵn câu hỏi tư vấn. */
   productName?: string;
   productImage?: string;
+  tierDiscountPercent?: number;
+  tierSavedAmount?: number;
+  tierQty?: number;
 };
 
 /** Thanh CTA cố định đáy màn hình (mobile) trên trang chi tiết SP. */
@@ -38,6 +41,9 @@ export function ProductStickyCta({
   campaignBuyLabel = "Mua Giờ Vàng",
   productName = "",
   productImage = "",
+  tierDiscountPercent = 0,
+  tierSavedAmount = 0,
+  tierQty = 1,
 }: Props) {
   const count = useCart((s) => s.lines.reduce((n, l) => n + l.qty, 0));
   const barRef = useStickyBarHeight<HTMLDivElement>();
@@ -61,7 +67,16 @@ export function ProductStickyCta({
   }, [productName, productImage, price, pricePending, setZaloProduct]);
 
   return (
-    <div ref={barRef} className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--aloha-line)] bg-white/95 px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(0,0,0,0.08)] backdrop-blur lg:hidden">
+    <div
+      ref={barRef}
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--aloha-line)] bg-white/95 px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(0,0,0,0.08)] backdrop-blur lg:hidden transform-gpu will-change-transform"
+      style={{
+        WebkitTransform: "translate3d(0, 0, 0)",
+        transform: "translate3d(0, 0, 0)",
+        WebkitBackfaceVisibility: "hidden",
+        backfaceVisibility: "hidden",
+      }}
+    >
       <div className="mx-auto flex max-w-6xl items-center gap-2.5">
         <Link
           href="/gio-hang"
@@ -80,13 +95,24 @@ export function ProductStickyCta({
           ) : null}
         </Link>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[15px] font-black leading-tight text-[var(--aloha-price)]">
-            {pricePending ? "Đang cập nhật…" : price > 0 ? formatVnd(price) : "Liên hệ báo giá"}
-          </p>
+          <div className="flex items-baseline gap-1.5 truncate">
+            <p className="truncate text-[15px] font-black leading-tight text-[var(--aloha-price)]">
+              {pricePending ? "Đang cập nhật…" : price > 0 ? formatVnd(price) : "Liên hệ báo giá"}
+            </p>
+            {tierDiscountPercent > 0 ? (
+              <span className="rounded-full bg-rose-100 px-1.5 py-0.2 text-[9px] font-bold text-rose-700">
+                -{tierDiscountPercent}%
+              </span>
+            ) : null}
+          </div>
           {needPick ? (
             <p className="truncate text-[11px] leading-tight text-amber-700">Chọn thuộc tính</p>
           ) : preOrder ? (
             <p className="truncate text-[11px] leading-tight text-amber-700">Đặt trước — chờ Aloha xác nhận</p>
+          ) : tierDiscountPercent > 0 && tierSavedAmount > 0 ? (
+            <p className="truncate text-[10px] leading-tight text-rose-600 font-semibold">
+              Tiết kiệm {formatVnd(tierSavedAmount)} ({tierQty} sp)
+            </p>
           ) : null}
         </div>
         {/* gap rõ + không dính cạnh — tránh bị gộp thành 1 khối trên mobile */}
@@ -106,13 +132,20 @@ export function ProductStickyCta({
             className={`inline-flex min-h-11 items-center justify-center gap-1 rounded-xl px-3.5 text-xs font-bold text-white shadow-sm disabled:opacity-40 active:scale-95 transition ${
               isCampaignSale
                 ? "bg-[#C8102E] hover:bg-[#a50d26]"
-                : "bg-[var(--aloha-green)] hover:bg-[var(--aloha-green-hover)]"
+                : tierDiscountPercent >= 10
+                  ? "bg-gradient-to-r from-[#E11D48] to-[#C8102E] hover:brightness-110 shadow-rose-500/25 ring-1 ring-rose-400/50"
+                  : "bg-[var(--aloha-green)] hover:bg-[var(--aloha-green-hover)]"
             }`}
           >
             {isCampaignSale ? (
               <>
                 <Zap size={13} className="fill-white" />
                 <span>{campaignBuyLabel}</span>
+              </>
+            ) : tierDiscountPercent >= 10 ? (
+              <>
+                <Zap size={13} className="fill-white" />
+                <span>Mua sỉ ngay</span>
               </>
             ) : preOrder ? (
               "Đặt ngay"

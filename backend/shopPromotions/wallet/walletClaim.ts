@@ -4,7 +4,9 @@ import { voucherWalletEnabled } from "../../shopCampaigns/flags.js";
 import { getCurrentCampaign } from "../../shopCampaigns/currentCampaign.js";
 import type { CampaignViewer } from "../../shopCampaigns/viewer.js";
 import { checkIsNewWebBuyer } from "../customerEligibility.js";
+import { hasSuccessfulWebPurchase } from "../returningBuyer.js";
 import { PROMOTIONS_COL, type PromotionDoc } from "../types.js";
+import { allowsWholesaleShipping, isWholesaleTinh, isWholesaleHcm } from "../tinhShipping.js";
 import {
   WALLET_MESSAGES,
   claimWindowError,
@@ -15,11 +17,11 @@ import {
 } from "./walletService.js";
 
 /** Chặn chung trước khi xét từng voucher: cờ, đăng nhập, khoá, khách lẻ. */
-export function viewerClaimError(viewer: CampaignViewer, promotionId = ""): ClaimResult | null {
+export function viewerClaimError(viewer: CampaignViewer, promotionId = "", promo?: PromotionDoc): ClaimResult | null {
   if (!voucherWalletEnabled()) return fail("wallet_disabled", 404, WALLET_MESSAGES.disabled, promotionId);
   if (!viewer.accountId) return fail("login_required", 401, WALLET_MESSAGES.login, promotionId);
   if (viewer.status.locked) return fail("account_locked", 403, WALLET_MESSAGES.locked, promotionId);
-  if (!viewer.status.retail) return fail("retail_only", 403, CAMPAIGN_ERROR_MESSAGES.retail_only, promotionId);
+  if (!viewer.status.retail && !allowsWholesaleShipping(promo, viewer.account)) return fail("retail_only", 403, CAMPAIGN_ERROR_MESSAGES.retail_only, promotionId);
   return null;
 }
 
@@ -31,6 +33,10 @@ function isClaimable(p: PromotionDoc | null | undefined): p is PromotionDoc {
 }
 
 async function newWebError(db: Db, promo: PromotionDoc, viewer: CampaignViewer): Promise<ClaimResult | null> {
+  if (promo.targetCustomer === "returning_web") {
+    return await hasSuccessfulWebPurchase(db, { phone: viewer.phone, email: viewer.email, userId: viewer.accountId || undefined }) ? null :
+      fail("not_eligible", 409, "Chỉ dành cho khách đã mua thành công trên website.", promo.id);
+  }
   if (promo.targetCustomer !== "new_web") return null;
   const isNew = await checkIsNewWebBuyer(db, {
     phone: viewer.phone,
@@ -47,6 +53,8 @@ async function claimOne(
   source: WalletSource,
   nowIso: string
 ): Promise<ClaimResult> {
+  const blocked = viewerClaimError(viewer, promo.id, promo);
+  if (blocked) return blocked;
   const windowErr = claimWindowError(promo, nowIso);
   if (windowErr) return windowErr;
   const newErr = await newWebError(db, promo, viewer);
@@ -69,7 +77,7 @@ export async function claimVoucher(
 ): Promise<ClaimResult> {
   const id = String(promotionId || "").trim();
   const blocked = viewerClaimError(viewer, id);
-  if (blocked) return blocked;
+  if (blocked && !(blocked.ok === false && blocked.code === "retail_only" && (isWholesaleTinh(viewer.account) || isWholesaleHcm(viewer.account)))) return blocked;
   const ids = await viewerCampaignVoucherIds(db, viewer, nowMs);
   const promo = ids.includes(id) ? await db.collection<PromotionDoc>(PROMOTIONS_COL).findOne({ id }) : null;
   if (!isClaimable(promo)) return fail("not_found", 404, WALLET_MESSAGES.notFound, id);
@@ -92,7 +100,7 @@ export async function claimAllVouchers(
   nowMs = Date.now()
 ): Promise<BatchSummary | ClaimResult> {
   const blocked = viewerClaimError(viewer);
-  if (blocked) return blocked;
+  if (blocked && !(blocked.ok === false && blocked.code === "retail_only" && (isWholesaleTinh(viewer.account) || isWholesaleHcm(viewer.account)))) return blocked;
   const ids = await viewerCampaignVoucherIds(db, viewer, nowMs);
   const promos = (await db.collection<PromotionDoc>(PROMOTIONS_COL).find({ id: { $in: ids } }).toArray()).filter(
     isClaimable
@@ -118,7 +126,7 @@ export async function claimByCode(
   promo: PromotionDoc,
   nowMs = Date.now()
 ): Promise<ClaimResult> {
-  const blocked = viewerClaimError(viewer, promo.id);
+  const blocked = viewerClaimError(viewer, promo.id, promo);
   if (blocked) return blocked;
   if (promo.status !== "active" || !promo.claimRequired || promo.targetCustomer === "wholesale") {
     return fail("not_found", 404, WALLET_MESSAGES.notFound, promo.id);
