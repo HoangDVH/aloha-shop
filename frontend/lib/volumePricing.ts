@@ -51,6 +51,7 @@ export function calculateTierPrice(
   originalSubtotal: number;
   discountedSubtotal: number;
   savedAmount: number;
+  unitSaving: number;
   nextTier: VolumePricingTier | null;
   itemsToNextTier: number;
 } {
@@ -60,6 +61,7 @@ export function calculateTierPrice(
   const originalSubtotal = basePrice * qty;
   const discountedSubtotal = unitPrice * qty;
   const savedAmount = Math.max(0, originalSubtotal - discountedSubtotal);
+  const unitSaving = Math.max(0, basePrice - unitPrice);
 
   const currentIndex = tiers.findIndex((t) => t.minQty === currentTier.minQty);
   const nextTier =
@@ -72,6 +74,7 @@ export function calculateTierPrice(
     originalSubtotal,
     discountedSubtotal,
     savedAmount,
+    unitSaving,
     nextTier,
     itemsToNextTier,
   };

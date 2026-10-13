@@ -34,7 +34,7 @@ export function ProductTierPricing({
 
   const {
     tier,
-    savedAmount,
+    unitSaving,
     itemsToNextTier,
   } = useMemo(
     () => calculateTierPrice(basePrice, qty, DEFAULT_VOLUME_TIERS),
@@ -119,9 +119,9 @@ export function ProductTierPricing({
         {qty >= 10 ? (
           <div className="flex w-full items-center justify-between text-emerald-700 font-semibold">
             <span>✓ Đang áp dụng giá sỉ <strong>giảm 10%</strong></span>
-            {savedAmount > 0 && (
+            {unitSaving > 0 && (
               <span className="font-extrabold text-rose-600">
-                Tiết kiệm {formatVnd(savedAmount)} ({qty} {cleanUnit})
+                Tiết kiệm {formatVnd(unitSaving)} / {cleanUnit}
               </span>
             )}
           </div>
