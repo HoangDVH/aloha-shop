@@ -40,6 +40,7 @@ export function ProductVideoLightbox({
   const wasOpen = useRef(false);
   const onIndexChangeRef = useRef(onIndexChange);
   onIndexChangeRef.current = onIndexChange;
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -146,6 +147,28 @@ export function ProductVideoLightbox({
     setIdx(((i % media.length) + media.length) % media.length);
   };
 
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) { touchStart.current = null; return; }
+    const t = e.touches[0];
+    touchStart.current = { x: t.clientX, y: t.clientY };
+  };
+
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const start = touchStart.current;
+    touchStart.current = null;
+    if (!start || media.length < 2 || !e.changedTouches.length || e.touches.length) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    if (Math.abs(dx) > 35 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+      if (dx < 0) {
+        goTo(safeIdx + 1);
+      } else {
+        goTo(safeIdx - 1);
+      }
+    }
+  };
+
   const navBtnClass = isImage
     ? "bg-white text-[var(--aloha-green)] shadow-md ring-1 ring-black/10 hover:bg-[var(--aloha-green-light)]"
     : "bg-white/15 text-white hover:bg-white/25";
@@ -174,15 +197,19 @@ export function ProductVideoLightbox({
 
       <div
         ref={stageRef}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={() => { touchStart.current = null; }}
         onClick={(e) => {
-          if (e.target === e.currentTarget || (e.target as HTMLElement).getAttribute("aria-hidden") === "true") {
+          const target = e.target as HTMLElement;
+          if (e.target === e.currentTarget || target.dataset.backdrop === "true") {
             onClose();
           }
         }}
         className="relative flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden px-2 py-2 sm:px-14 cursor-zoom-out"
       >
         {isImage ? (
-          <div className="absolute inset-0 bg-[#f5f5f5]" aria-hidden />
+          <div className="absolute inset-0 bg-[#f5f5f5]" data-backdrop="true" aria-hidden="true" />
         ) : showBlurBg ? (
           <>
             {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
@@ -194,9 +221,9 @@ export function ProductVideoLightbox({
               loop
               autoPlay
               preload="metadata"
-              aria-hidden
+              aria-hidden="true"
             />
-            <div className="pointer-events-none absolute inset-0 bg-black/35" aria-hidden />
+            <div className="pointer-events-none absolute inset-0 bg-black/35" data-backdrop="true" aria-hidden="true" />
           </>
         ) : poster ? (
           <>
@@ -205,28 +232,34 @@ export function ProductVideoLightbox({
               src={poster}
               alt=""
               className="pointer-events-none absolute inset-0 h-full w-full scale-110 object-cover opacity-30 blur-3xl"
-              aria-hidden
+              aria-hidden="true"
             />
-            <div className="pointer-events-none absolute inset-0 bg-black/40" aria-hidden />
+            <div className="pointer-events-none absolute inset-0 bg-black/40" data-backdrop="true" aria-hidden="true" />
           </>
         ) : (
-          <div className="absolute inset-0 bg-[#111]" aria-hidden />
+          <div className="absolute inset-0 bg-[#111]" data-backdrop="true" aria-hidden="true" />
         )}
 
         {canNav ? (
           <>
             <button
               type="button"
-              className={`absolute left-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full transition sm:left-3 sm:h-12 sm:w-12 ${navBtnClass}`}
-              onClick={() => goTo(safeIdx - 1)}
+              className={`absolute left-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full transition sm:left-3 sm:h-12 sm:w-12 cursor-pointer ${navBtnClass}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                goTo(safeIdx - 1);
+              }}
               aria-label="Ảnh trước"
             >
               <ChevronLeft size={26} strokeWidth={2.25} />
             </button>
             <button
               type="button"
-              className={`absolute right-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full transition sm:right-3 sm:h-12 sm:w-12 ${navBtnClass}`}
-              onClick={() => goTo(safeIdx + 1)}
+              className={`absolute right-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full transition sm:right-3 sm:h-12 sm:w-12 cursor-pointer ${navBtnClass}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                goTo(safeIdx + 1);
+              }}
               aria-label="Ảnh sau"
             >
               <ChevronRight size={26} strokeWidth={2.25} />
