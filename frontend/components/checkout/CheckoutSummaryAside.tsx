@@ -9,6 +9,7 @@ import type { Delivery } from "./checkoutTypes";
 type Props = {
   delivery: Delivery;
   total: number;
+  totalPending?: boolean;
   discount?: number;
   /** Giảm do giá flash so với giá thường (`total` là tiền hàng giá thường). */
   flashDiscount?: number;
@@ -39,6 +40,7 @@ type Props = {
 export function CheckoutSummaryAside({
   delivery,
   total,
+  totalPending = false,
   discount = 0,
   flashDiscount = 0,
   volumeDiscount = 0,
@@ -60,14 +62,16 @@ export function CheckoutSummaryAside({
   onPlaceOrder,
 }: Props) {
   const showShip = shopShowCheckoutShipping();
-  const goodsAfter = Math.max(0, total - flashDiscount);
+  const goodsBeforeVoucher = Math.max(0, total - flashDiscount);
+  const goodsAfter = Math.max(0, goodsBeforeVoucher - discount);
+  const amountText = (value: number) => totalPending ? "Đang cập nhật…" : formatVnd(value);
   const saved = anchorDiscount + volumeDiscount + flashDiscount + discount + (showShip ? shippingDiscount : 0);
 
   return (
     <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
-      {delivery === "giao_tan_noi" ? (
+      {!totalPending && delivery === "giao_tan_noi" ? (
         <div className="lg:hidden">
-          <SmartFreeshipBar currentAmount={goodsAfter} appliedDiscount={shippingDiscount} variant="compact" />
+          <SmartFreeshipBar currentAmount={goodsBeforeVoucher} appliedDiscount={shippingDiscount} variant="compact" />
         </div>
       ) : null}
 
@@ -76,14 +80,14 @@ export function CheckoutSummaryAside({
         onClick={onOpenPromotion}
         className="flex w-full items-center justify-between rounded-[var(--aloha-radius-lg)] bg-white px-4 py-3 shadow-[var(--aloha-shadow)] ring-1 ring-black/[0.04] transition hover:bg-slate-50 cursor-pointer text-left"
       >
-        {discount > 0 ? (
+        {totalPending ? <span className="text-sm text-slate-500">Đang cập nhật ưu đãi…</span> : discount > 0 ? (
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--aloha-green-light)] text-[var(--aloha-green)] shrink-0">
               <Ticket size={18} />
             </div>
             <div>
               <span className="text-sm font-bold text-[var(--aloha-ink)]">
-                Đã giảm {formatVnd(discount)}
+                Đã giảm {amountText(discount)}
               </span>
               {appliedTitle ? (
                 <span className="block text-[11px] text-[var(--aloha-green)] font-semibold truncate max-w-[200px]">
@@ -115,30 +119,30 @@ export function CheckoutSummaryAside({
           Chi tiết thanh toán
         </h2>
         {delivery === "giao_tan_noi" ? (
-          <SmartFreeshipBar currentAmount={goodsAfter} appliedDiscount={shippingDiscount} variant="compact" className="mb-3.5" />
+          <SmartFreeshipBar currentAmount={goodsBeforeVoucher} appliedDiscount={shippingDiscount} variant="compact" className="mb-3.5" />
         ) : null}
-        <div className="space-y-2.5 text-[15px] text-slate-500">
+        {totalPending ? <p role="status" className="py-3 text-sm text-slate-500">Đang cập nhật giá và ưu đãi…</p> : <div className="space-y-2.5 text-[15px] text-slate-500">
           <div className="flex items-center justify-between gap-3">
             <span>Tổng tiền hàng</span>
-            <span className="tabular-nums">{formatVnd(total + anchorDiscount + volumeDiscount)}</span>
+            <span className="tabular-nums">{amountText(total + anchorDiscount + volumeDiscount)}</span>
           </div>
           {anchorDiscount > 0 ? (
             <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold">
               <span>Giảm giá sản phẩm</span>
-              <span className="tabular-nums">-{formatVnd(anchorDiscount)}</span>
+              <span className="tabular-nums">-{amountText(anchorDiscount)}</span>
             </div>
           ) : null}
-          {volumeDiscount > 0 && <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold"><span>Giảm theo số lượng</span><span>-{formatVnd(volumeDiscount)}</span></div>}
+          {volumeDiscount > 0 && <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold"><span>Giảm theo số lượng</span><span>-{amountText(volumeDiscount)}</span></div>}
           {flashDiscount > 0 ? (
             <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold">
               <span>Giảm Flash Sale</span>
-              <span className="tabular-nums">-{formatVnd(flashDiscount)}</span>
+              <span className="tabular-nums">-{amountText(flashDiscount)}</span>
             </div>
           ) : null}
           {discount > 0 ? (
             <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold">
               <span>Voucher shop</span>
-              <span className="tabular-nums">-{formatVnd(discount)}</span>
+              <span className="tabular-nums">-{amountText(discount)}</span>
             </div>
           ) : null}
           {showShip ? (
@@ -159,7 +163,7 @@ export function CheckoutSummaryAside({
                   {freeShipApplied && shippingFee === 0 ? (
                     <span className="tabular-nums font-medium text-emerald-700">0đ (Miễn phí vận chuyển)</span>
                   ) : (
-                    <span className="tabular-nums font-medium text-slate-700">{formatVnd(shippingFee)}</span>
+                    <span className="tabular-nums font-medium text-slate-700">{amountText(shippingFee)}</span>
                   )}
                 </div>
                 {shippingDiscount > 0 ? (
@@ -167,7 +171,7 @@ export function CheckoutSummaryAside({
                     <span className="min-w-0 truncate" title={shippingPromotionTitle}>
                       {shippingPromotionTitle || "Hỗ trợ phí ship"}
                     </span>
-                    <span className="tabular-nums">-{formatVnd(shippingDiscount)}</span>
+                    <span className="tabular-nums">-{amountText(shippingDiscount)}</span>
                   </div>
                 ) : null}
               </>
@@ -186,30 +190,30 @@ export function CheckoutSummaryAside({
             <div className="flex items-center justify-between gap-3">
               <span>Tổng tiền thanh toán</span>
               <span className="text-base font-bold tabular-nums text-[var(--aloha-price)]">
-                {formatVnd(goodsAfter)}
+                {amountText(goodsAfter)}
               </span>
             </div>
           ) : shippingFee != null ? (
             <div className="flex items-center justify-between gap-3">
               <span>Tổng tạm tính</span>
               <span className="text-base font-bold tabular-nums text-[var(--aloha-price)]">
-                {formatVnd(grandTotal)}
+                {amountText(grandTotal)}
               </span>
             </div>
           ) : (
             <div className="flex items-center justify-between gap-3">
               <span className="text-xs font-semibold text-slate-700 leading-snug">Tiền hàng chưa gồm phí vận chuyển:</span>
               <span className="text-base font-bold tabular-nums text-[var(--aloha-price)]">
-                {formatVnd(goodsAfter)}
+                {amountText(goodsAfter)}
               </span>
             </div>
           )}
           {saved > 0 ? (
             <p className="rounded-lg bg-[var(--aloha-green-light)] px-3 py-1.5 text-center text-xs font-bold text-[var(--aloha-green-mid)]">
-              Bạn đã tiết kiệm {formatVnd(saved)}
+              Bạn đã tiết kiệm {amountText(saved)}
             </p>
           ) : null}
-        </div>
+        </div>}
 
         {error ? (
           <p className="mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs font-semibold text-red-700">

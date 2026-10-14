@@ -357,6 +357,7 @@ function CheckoutConfirm() {
   };
 
   const confirmPolicyAndPlace = () => {
+    if (promoLoading || promoStale || !promoQuote || (showShip && delivery === "giao_tan_noi" && shippingLoading)) return;
     void placeOrder({ policyAccepted: true });
   };
 
@@ -395,7 +396,7 @@ function CheckoutConfirm() {
     : !catalogState.ready ? (catalogState.error || "Đang cập nhật giá giỏ hàng…") : selected.some(l => l.priceKind === "si_missing" || !(l.gia > 0)) ? "Có sản phẩm chưa có giá. Vui lòng liên hệ báo giá hoặc bỏ sản phẩm đó khỏi đơn." :
     selected.length === 0
       ? "Chưa chọn sản phẩm trong giỏ — quay lại giỏ hàng và tick sản phẩm."
-      : promoStale
+      : promoLoading || promoStale || !promoQuote
         ? "Đang cập nhật ưu đãi và quà tặng, vui lòng chờ vài giây…"
       : receiverBlock
         ? receiverBlock
@@ -452,6 +453,7 @@ function CheckoutConfirm() {
           </div>
 
           <CheckoutSummaryAside
+            totalPending={promoLoading || promoStale || !promoQuote || (showShip && delivery === "giao_tan_noi" && shippingLoading)}
             delivery={delivery}
             total={total}
             discount={discountAmount}
@@ -494,6 +496,7 @@ function CheckoutConfirm() {
       </div>
 
       <PreOrderCodConfirmModal
+        totalPending={promoLoading || promoStale || !promoQuote || (showShip && delivery === "giao_tan_noi" && shippingLoading)}
         lines={selected.map((l) => ({
           ma: l.ma,
           ten: l.ten,
@@ -513,6 +516,7 @@ function CheckoutConfirm() {
 
       {/* Ngoài khối animate — portal body để fixed không bị kéo theo cuộn */}
       <CheckoutStickyBar
+        totalPending={promoLoading || promoStale || !promoQuote || (showShip && delivery === "giao_tan_noi" && shippingLoading)}
         total={total + anchorSavings + volumeSavings}
         discount={discountAmount + flashSavings + anchorSavings + volumeSavings}
         volumeDiscount={volumeSavings}

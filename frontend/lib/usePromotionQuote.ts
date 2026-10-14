@@ -29,6 +29,7 @@ export function usePromotionQuote(input: {
   const { user, loading: authLoading, authBusy } = useShopAuth();
   const buyerKey = JSON.stringify([user?.id || "guest", phone || "", email || ""]);
   const [quoteBuyerKey, setQuoteBuyerKey] = useState("");
+  const [quoteInputKey, setQuoteInputKey] = useState("");
   const [quote, setQuote] = useState<PromotionQuoteUI | null>(null);
   const [loading, setLoading] = useState(false);
   const [stale, setStale] = useState(false);
@@ -45,6 +46,7 @@ export function usePromotionQuote(input: {
     };
     return JSON.stringify(body);
   }, [lines, selectedCode, autoMode, phone, email]);
+  const inputKey = JSON.stringify([requestKey, refreshKey, buyerKey]);
 
   useEffect(() => {
     if (!requestKey || authLoading || authBusy) {
@@ -65,6 +67,7 @@ export function usePromotionQuote(input: {
         hasQuote.current = true;
         setQuote(r.quote);
         setQuoteBuyerKey(buyerKey);
+        setQuoteInputKey(inputKey);
         setStale(false);
         setLoading(false);
         return;
@@ -83,8 +86,10 @@ export function usePromotionQuote(input: {
       ctrl.abort();
       if (timer) clearTimeout(timer);
     };
-  }, [requestKey, refreshKey, buyerKey, authLoading, authBusy]);
+  }, [requestKey, refreshKey, buyerKey, inputKey, authLoading, authBusy]);
 
   const buyerMatches = quoteBuyerKey === buyerKey && !authLoading && !authBusy;
-  return { quote: buyerMatches ? quote : null, loading: loading || authLoading || authBusy, stale: buyerMatches && stale };
+  const inputChanged = Boolean(requestKey) && quoteInputKey !== inputKey;
+  return { quote: requestKey && buyerMatches ? quote : null, loading: loading || authLoading || authBusy || inputChanged,
+    stale: Boolean(requestKey) && buyerMatches && (stale || inputChanged) };
 }

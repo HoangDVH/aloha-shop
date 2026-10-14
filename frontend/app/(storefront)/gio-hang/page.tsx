@@ -95,7 +95,7 @@ export default function CartPage() {
   );
   const requoteKey = useCampaignRequoteKey();
 
-  const { quote: promoQuote, loading: promoLoading } = usePromotionQuote({
+  const { quote: promoQuote, loading: promoLoading, stale: promoStale } = usePromotionQuote({
     lines: selectedLines,
     selectedCode: promoCode,
     autoMode: promoAutoMode,
@@ -124,6 +124,7 @@ export default function CartPage() {
   const tamTinh = promoQuote ? promoQuote.subtotal + flashSavings : localTamTinh;
   const tongSauGiam = Math.max(0, tamTinh - flashSavings - discountAmount);
 
+  const totalPending = selectedLines.length > 0 && (promoLoading || promoStale || !promoQuote);
   const handleCheckout = () => {
     if (selectedQty <= 0) return;
     if (!user) {
@@ -154,7 +155,7 @@ export default function CartPage() {
       ) : null}
 
       {/* THANH TIẾN TRÌNH FREESHIP THÔNG MINH (CHO CẢ DESKTOP LẪN MOBILE) */}
-      {lines.length > 0 ? (
+      {lines.length > 0 && !totalPending ? (
         <SmartFreeshipBar currentAmount={promoQuote?.subtotal ?? tamTinh} showMoreShopping={false} />
       ) : null}
 
@@ -375,7 +376,7 @@ export default function CartPage() {
             onClick={() => setPromoModalOpen(true)}
             className="flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-[var(--aloha-line)] cursor-pointer hover:bg-slate-50 transition"
           >
-            {discountAmount > 0 ? (
+            {totalPending ? <span className="text-sm text-slate-500">Đang cập nhật ưu đãi…</span> : discountAmount > 0 ? (
               <div className="flex items-center gap-2">
                 <Ticket size={18} className="text-[var(--aloha-green)]" />
                 <div>
@@ -404,16 +405,16 @@ export default function CartPage() {
           <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-[var(--aloha-line)]">
             <div className="flex items-center justify-between text-sm text-slate-600">
               <span>Tạm tính</span>
-              <span>{formatVnd(tamTinh + anchorSavings + volumeSavings)}</span>
+              <span>{totalPending ? "Đang cập nhật…" : formatVnd(tamTinh + anchorSavings + volumeSavings)}</span>
             </div>
-            <SavingsRows flash={flashSavings} volume={volumeSavings} voucher={discountAmount} anchor={anchorSavings} voucherPromo={promoQuote?.applied} />
+            {!totalPending && <SavingsRows flash={flashSavings} volume={volumeSavings} voucher={discountAmount} anchor={anchorSavings} voucherPromo={promoQuote?.applied} />}
             <div className="my-3 border-t border-[var(--aloha-line)]" />
             <div className="flex items-center justify-between">
               <div>
                 <span className="font-bold text-[var(--aloha-ink)] block">Tạm tính tiền hàng</span>
                 <span className="text-[11px] text-slate-400">Chưa gồm phí vận chuyển</span>
               </div>
-              <span className="text-xl font-black text-[var(--aloha-price)]">{formatVnd(tongSauGiam)}</span>
+              <span className="text-xl font-black text-[var(--aloha-price)]">{totalPending ? "Đang cập nhật…" : formatVnd(tongSauGiam)}</span>
             </div>
             <button
               type="button"
@@ -448,11 +449,11 @@ export default function CartPage() {
             </label>
             <div className="min-w-0 flex-1 text-right">
               <p className="text-[11px] text-slate-500">
-                {discountAmount + flashSavings + anchorSavings + volumeSavings > 0
+                {totalPending ? "Đang cập nhật…" : discountAmount + flashSavings + anchorSavings + volumeSavings > 0
                   ? `Tiết kiệm ${formatVnd(discountAmount + flashSavings + anchorSavings + volumeSavings)}`
                   : `Tổng (${selectedQty})`}
               </p>
-              <p className="truncate text-base font-black text-[var(--aloha-price)]">{formatVnd(tongSauGiam)}</p>
+              <p className="truncate text-base font-black text-[var(--aloha-price)]">{totalPending ? "Đang cập nhật…" : formatVnd(tongSauGiam)}</p>
             </div>
             <button
               type="button"

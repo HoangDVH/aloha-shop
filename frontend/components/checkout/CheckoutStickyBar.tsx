@@ -7,6 +7,7 @@ import { formatVnd } from "@/lib/api";
 
 type Props = {
   total: number;
+  totalPending?: boolean;
   discount?: number;
   volumeDiscount?: number;
   flashDiscount?: number;
@@ -29,6 +30,7 @@ type Props = {
  */
 export function CheckoutStickyBar({
   total,
+  totalPending = false,
   discount = 0,
   volumeDiscount = 0,
   flashDiscount = 0,
@@ -46,6 +48,7 @@ export function CheckoutStickyBar({
   const [detailsOpen, setDetailsOpen] = useState(false);
   const detailId = useId();
   const amount = deliveryMethod === "nhan_cua_hang" || shippingFee == null ? Math.max(0, total - discount) : grandTotal;
+  const amountText = (value: number) => totalPending ? "Đang cập nhật…" : formatVnd(value);
   const voucherDiscount = Math.max(0, discount - volumeDiscount - flashDiscount - productDiscount);
   const totalLabel = deliveryMethod === "nhan_cua_hang" ? "Tổng thanh toán" : shippingFee == null ? "Tiền hàng (chưa gồm ship)" : "Tổng tạm tính";
   const stickyRef = useStickyBarHeight<HTMLDivElement>();
@@ -59,18 +62,18 @@ export function CheckoutStickyBar({
       style={{ position: "fixed" }}
     >
       <div className="mx-auto max-w-7xl space-y-2.5">
-        {detailsOpen ? <div id={detailId} className="max-h-[40dvh] space-y-1.5 overflow-y-auto text-[13px] text-slate-500">
+        {detailsOpen && totalPending ? <p role="status" className="text-sm text-slate-500">Đang cập nhật giá và ưu đãi…</p> : detailsOpen ? <div id={detailId} className="max-h-[40dvh] space-y-1.5 overflow-y-auto text-[13px] text-slate-500">
           <div className="flex items-center justify-between gap-3">
             <span>Tổng tiền hàng</span>
-            <span className="tabular-nums">{formatVnd(total)}</span>
+            <span className="tabular-nums">{amountText(total)}</span>
           </div>
-          {productDiscount > 0 && <div className="flex justify-between text-emerald-700"><span>Giảm giá sản phẩm</span><span>-{formatVnd(productDiscount)}</span></div>}
-          {volumeDiscount > 0 && <div className="flex justify-between text-emerald-700"><span>Giảm theo số lượng</span><span>-{formatVnd(volumeDiscount)}</span></div>}
-          {flashDiscount > 0 && <div className="flex justify-between text-emerald-700"><span>Giảm Flash Sale</span><span>-{formatVnd(flashDiscount)}</span></div>}
+          {productDiscount > 0 && <div className="flex justify-between text-emerald-700"><span>Giảm giá sản phẩm</span><span>-{amountText(productDiscount)}</span></div>}
+          {volumeDiscount > 0 && <div className="flex justify-between text-emerald-700"><span>Giảm theo số lượng</span><span>-{amountText(volumeDiscount)}</span></div>}
+          {flashDiscount > 0 && <div className="flex justify-between text-emerald-700"><span>Giảm Flash Sale</span><span>-{amountText(flashDiscount)}</span></div>}
           {voucherDiscount > 0 ? (
             <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold">
               <span>Voucher tiền hàng</span>
-              <span className="tabular-nums">-{formatVnd(voucherDiscount)}</span>
+              <span className="tabular-nums">-{amountText(voucherDiscount)}</span>
             </div>
           ) : null}
           {showShipping ? (
@@ -83,12 +86,12 @@ export function CheckoutStickyBar({
               <>
                 <div className="flex items-center justify-between gap-3">
                   <span>Phí vận chuyển tạm tính</span>
-                  <span className="tabular-nums font-medium text-slate-700">{formatVnd(shippingFee)}</span>
+                  <span className="tabular-nums font-medium text-slate-700">{amountText(shippingFee)}</span>
                 </div>
                 {shippingDiscount > 0 ? (
                   <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold">
                     <span>Hỗ trợ phí ship</span>
-                    <span className="tabular-nums">-{formatVnd(shippingDiscount)}</span>
+                    <span className="tabular-nums">-{amountText(shippingDiscount)}</span>
                   </div>
                 ) : null}
               </>
@@ -104,21 +107,21 @@ export function CheckoutStickyBar({
             <div className="flex items-center justify-between gap-3">
               <span>Tổng tiền thanh toán</span>
               <span className="text-[15px] font-bold tabular-nums text-[var(--aloha-price)]">
-                {formatVnd(Math.max(0, total - discount))}
+                {amountText(Math.max(0, total - discount))}
               </span>
             </div>
           ) : shippingFee != null ? (
             <div className="flex items-center justify-between gap-3">
               <span>Tổng tạm tính</span>
               <span className="text-[15px] font-bold tabular-nums text-[var(--aloha-price)]">
-                {formatVnd(grandTotal)}
+                {amountText(grandTotal)}
               </span>
             </div>
           ) : (
             <div className="flex items-center justify-between gap-3">
               <span className="text-xs font-semibold text-slate-700">Tiền hàng chưa gồm phí vận chuyển:</span>
               <span className="text-[15px] font-bold tabular-nums text-[var(--aloha-price)]">
-                {formatVnd(Math.max(0, total - discount))}
+                {amountText(Math.max(0, total - discount))}
               </span>
             </div>
           )}
@@ -132,7 +135,7 @@ export function CheckoutStickyBar({
         <div className="flex items-center gap-3">
           <button type="button" aria-expanded={detailsOpen} aria-controls={detailId} onClick={() => setDetailsOpen(v => !v)} className="min-h-11 min-w-0 flex-1 text-left">
             <span className="block text-[11px] text-slate-500">{totalLabel}</span>
-            <span className="block text-base font-bold text-[var(--aloha-price)]">{formatVnd(amount)}</span>
+            <span className="block text-base font-bold text-[var(--aloha-price)]">{amountText(amount)}</span>
             <span className="block text-[11px] text-[var(--aloha-green)]">{detailsOpen ? "Thu gọn" : "Xem chi tiết"}</span>
           </button>
         <button

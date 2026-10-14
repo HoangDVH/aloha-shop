@@ -33,6 +33,7 @@ function PolicyProductImage({ src }: { src?: string }) {
 export function PreOrderCodConfirmModal({
   open,
   total,
+  totalPending = false,
   lines = [],
   onAgree,
   onClose,
@@ -41,6 +42,7 @@ export function PreOrderCodConfirmModal({
 }: {
   open: boolean;
   total: number;
+  totalPending?: boolean;
   lines?: PolicyConfirmLine[];
   onAgree: () => void;
   onClose: () => void;
@@ -147,7 +149,7 @@ export function PreOrderCodConfirmModal({
               Tổng tiền ước tính
             </span>
             <span className="text-xl font-bold tracking-tight tabular-nums text-[var(--aloha-price)] sm:text-2xl">
-              {formatVnd(total)}
+              {totalPending ? "Đang cập nhật…" : formatVnd(total)}
             </span>
           </div>
             <button
@@ -160,7 +162,7 @@ export function PreOrderCodConfirmModal({
             </button>
             <button
               type="button"
-              disabled={submitting}
+              disabled={submitting || totalPending}
               onClick={onAgree}
               className="min-h-12 rounded-xl bg-[var(--aloha-green)] text-base font-semibold text-white shadow-sm transition hover:bg-[var(--aloha-green-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-800 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
             >

@@ -6,7 +6,7 @@ function plan(args) {
   const names = args.filter(a => a !== "--dry-run");
   if (!names.length || names.includes("--help")) return null;
   for (const name of names) if (!Object.hasOwn(groups, name)) throw new Error(`Unknown test group: ${name}`);
-  return [...new Set(names.flatMap(name => groups[name]))].map(name => `tests/${name}.test.ts`);
+  return [...new Set(names.flatMap(name => groups[name]))].map(name => `tests/${name.endsWith(".test.cjs") ? name : `${name}.test.ts`}`);
 }
 
 function main(args) {
