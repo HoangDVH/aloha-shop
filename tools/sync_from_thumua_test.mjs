@@ -3,6 +3,7 @@
  * Giữ nguyên các trường merchandising/SEO/CTV đặc thù của Shop.
  */
 import { MongoClient } from 'mongodb';
+import { identity, planProductSync } from './thumua-product-plan.mjs';
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017';
 const SRC_DB_NAME = 'thumua_test';
@@ -22,6 +23,10 @@ async function run() {
   try {
     const srcDb = client.db(SRC_DB_NAME);
     const destDb = client.db(DEST_DB_NAME);
+    // Preflight product identities before category updates or backups.
+    const srcProducts = await srcDb.collection('aloha_products').find({}).toArray();
+    const destProducts = await destDb.collection('aloha_products').find({}).toArray();
+    const productPlan = planProductSync(srcProducts, destProducts);
 
     // 1. Đồng bộ categories
     const srcCats = await srcDb.collection('categories').find({}).toArray();
@@ -56,9 +61,6 @@ async function run() {
     }
 
     // 3. Đồng bộ aloha_products
-    const srcProducts = await srcDb.collection('aloha_products').find({}).toArray();
-    const destProducts = await destDb.collection('aloha_products').find({}).toArray();
-    const destMap = new Map(destProducts.map(p => [String(p.ma).trim().toUpperCase(), p]));
 
     let insertCount = 0;
     let updateCount = 0;
@@ -69,16 +71,13 @@ async function run() {
       'ten', 'fullName', 'barcode', 'dvt', 'productType', 'type', 'loai',
       'giaWeb', 'giaBan', 'giaChung', 'giaTruocGiam', 'giaSi', 'giaVon',
       'categoryId', 'categoryName', 'ancestor', 'thuongHieu', 'viTri',
-      'trongLuong', 'allowsSale', 'description', 'images', 'anh', 'videos',
+      'trongLuong', 'allowsSale', 'description', 'images', 'anh',
       'attributes', 'hangThanhPhan', 'hasFormula', 'productFormulas', 'formulas',
       'updatedAt'
     ];
 
-    for (const sp of srcProducts) {
-      const ma = String(sp.ma).trim().toUpperCase();
-      if (!ma) continue;
-
-      const existing = destMap.get(ma);
+    for (const { sp, ma, existing } of productPlan) {
+      const stableId = identity(sp);
 
       if (!existing) {
         // Sản phẩm mới chưa có trên shop -> Chèn mới
@@ -97,7 +96,12 @@ async function run() {
         updateCount++;
         if (isApply) {
           const $set = {};
+          if (stableId && existing.ma !== ma) {
+            $set.ma = ma;
+            $set.kvCodeAliases = [...new Set([...(existing.kvCodeAliases || []), existing.ma].map(m => String(m).trim().toUpperCase()).filter(m => m !== ma))];
+          }
           for (const f of CATALOG_FIELDS) {
+            if (existing.ma !== ma && ["images", "anh", "description"].includes(f) && existing[f]?.length) continue;
             if (sp[f] !== undefined) {
               $set[f] = sp[f];
             }
@@ -130,4 +134,4 @@ async function run() {
   }
 }
 
-run().catch(console.error);
+run().catch(error => { console.error(error); process.exitCode = 1; });

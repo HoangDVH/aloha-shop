@@ -6,10 +6,11 @@ module.exports = {
   recovery: ["client-recovery", "client-errors", "client-error-store"],
   "checkout-ui": ["checkout-total-display.test.cjs", "promotion-quote-freshness.test.cjs", "purchase-sheet.test.cjs"],
   gallery: ["product-gallery.test.cjs", "product-lightbox.test.cjs"],
+  "catalog-sync": ["thumua-product-plan.test.cjs", "product-video-preserve", "kv-product-identity"],
   "voucher-scope": ["voucher-scope-consistency", "voucher-product-filter", "pdp-vouchers", "share-caption"],
   release: ["client-recovery", "client-errors", "client-error-store", "voucher-audience",
     "returning-voucher", "voucher-wallet", "voucher-price", "promotions-evaluator",
     "checkout-voucher-consistency", "share-caption", "public-share-preview", "product-share-data", "share-capabilities",
     "pdp-vouchers", "pdp-voucher-claim", "checkout-total-display.test.cjs", "promotion-quote-freshness.test.cjs", "purchase-sheet.test.cjs", "product-gallery.test.cjs", "product-lightbox.test.cjs",
-    "voucher-scope-consistency", "voucher-product-filter"],
+    "voucher-scope-consistency", "voucher-product-filter", "thumua-product-plan.test.cjs"],
 };
