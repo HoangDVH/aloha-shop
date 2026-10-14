@@ -14,10 +14,23 @@ const product = { ma: "P", ten: "Chậu A", gia: 500000, webPrice: 500000, price
   kind: "flash", salePrice: 450000, listPrice: 500000, slotOpen: true, endsAt: "2026-10-15T10:00:00Z", remaining: 5, perCustomerLimit: 2, gifts: [{ ma: "G", name: "Đĩa lót", qty: 1, left: 2 }],
 } } as ShopProduct;
 
-test("public share shows exact saving, factual details, gift and deadline; preserves referral URL", () => {
+test("public share shows exact saving and deadline; preserves referral URL without extra product details", () => {
   const caption = buildProductCaption(product, "https://example.com/sp/P?ctv=CTV01", now);
-  for (const text of ["450.000đ", "500.000đ", "50.000đ (10%)", "40 cm", "1 Đĩa lót", "15/10/2026", "?ctv=CTV01"]) assert.ok(caption.includes(text), text);
+  for (const text of ["450.000đ/cái", "500.000đ", "50.000đ (10%)", "Ưu đãi đến 17:00 15/10/2026", "?ctv=CTV01"]) assert.ok(caption.includes(text), text);
+  for (const text of ["40 cm", "Đĩa lót", "Tối đa", "Chậu cho ban công"]) assert.ok(!caption.includes(text), text);
   assert.ok(!caption.includes("<p>"));
+});
+
+test("product share matches the requested template and changes with the product", () => {
+  const p = { ...product, ma: "GSDL", ten: "GIỎ SEN ĐÁ LỚN", dvt: "cái", campaignPromo: { ...product.campaignPromo!, salePrice: 250000, listPrice: 344000, endsAt: "2026-10-20T16:59:00Z" } } as ShopProduct;
+  const offers: any[] = [
+    { title: "Giảm 10% đặt trước 20/10", benefitType: "goods", maxDiscountVnd: 200000, endDate: "2026-10-20T16:59:00Z", description: "Mô tả dài" },
+    { title: "Ưu đãi khách mới 5%", benefitType: "goods", targetCustomer: "new_web", maxDiscountVnd: 300000, claimRequired: true },
+  ];
+  assert.equal(buildProductCaption(p, "https://alohathegioichaucay.com/sp/GSDL", now, offers),
+    "GIỎ SEN ĐÁ LỚN\n\nGiá ưu đãi: 250.000đ/cái\nGiá trước giảm: 344.000đ — tiết kiệm 94.000đ (27%)\nƯu đãi đến 23:59 20/10/2026\nXem mẫu và đặt hàng tại ALOHA: https://alohathegioichaucay.com/sp/GSDL\n\nƯu đãi thanh toán theo điều kiện chương trình:\n• Giảm 10% đặt trước 20/10 — giảm tối đa 200.000đ\n• Ưu đãi khách mới 5% — dành cho khách mua lần đầu trên web, giảm tối đa 300.000đ, cần lưu voucher");
+  const other = buildProductCaption({ ...p, ten: "CHẬU KHÁC", dvt: "bộ", webPrice: 120000, campaignPromo: null }, "https://example.com/sp/OTHER", now);
+  assert.equal(other, "CHẬU KHÁC\n\nGiá: 120.000đ/bộ\nXem mẫu và đặt hàng tại ALOHA: https://example.com/sp/OTHER");
 });
 
 test("expired, teaser, closed slot and sold-out sale cannot advertise a discounted price", () => {

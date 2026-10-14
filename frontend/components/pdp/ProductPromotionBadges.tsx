@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Ticket, Truck, Info, X, Check, Calendar, ArrowRight } from "lucide-react";
+import { Ticket, Truck, X, ArrowRight } from "lucide-react";
 import { getAvailablePromotions, type AvailablePromotionUI } from "@/lib/promotions";
 import type { ShopProduct } from "@/lib/api";
 import { formatVnd } from "@/lib/api";
-import { formatVoucherBadge, pctText, formatCompactVnd } from "@/lib/voucherFormat";
+import { formatVoucherBadge, pctText } from "@/lib/voucherFormat";
 import { useVoucherClaims } from "@/lib/campaign/useVoucherClaims";
 import { LoginSheet } from "@/components/campaign/LoginSheet";
 import { useToast } from "@/components/Toast";
 import { useShopAuth } from "@/components/ShopAuthProvider";
 import { PdpVoucherSheet } from "./PdpVoucherSheet";
 import { useCampaignView } from "@/lib/campaign/useCampaignView";
-import { voucherMatchesBuyer } from "@/lib/voucherAudience";
+import { pdpApplicableVouchers, pdpDefaultVouchers } from "@/lib/pdpVouchers";
 
 interface ProductPromotionBadgesProps {
   product: ShopProduct;
@@ -33,7 +33,6 @@ function shipBadgeLabel(p: AvailablePromotionUI): string {
 }
 export function ProductPromotionBadges({
   product,
-  livePrice,
   isWholesale = false,
 }: ProductPromotionBadgesProps) {
   const [promotions, setPromotions] = useState<AvailablePromotionUI[]>([]);
@@ -70,81 +69,18 @@ export function ProductPromotionBadges({
     };
   }, [user?.id, user?.siStatus, user?.siRegion, viewer?.newBuyer]);
 
-  const applicablePromotions = useMemo(() => {
-    return promotions.filter((p) => {
-      if (!voucherMatchesBuyer(p.targetCustomer, viewer)) return false;
-      // Bỏ qua voucher sỉ nếu đang xem giá lẻ
-      if (p.targetCustomer === "wholesale" && !isWholesale) return false;
-      if (p.targetCustomer === "retail" && isWholesale) return false;
+  const applicablePromotions = useMemo(() =>
+    pdpApplicableVouchers(promotions, product, viewer, isWholesale),
+    [promotions, product, isWholesale, viewer]);
 
-      // Kiểm tra scope
-      if (p.scope === "category" && p.categoryIds?.length) {
-        const catIdStr = product.categoryId ? String(product.categoryId) : "";
-        const catSlug = product.categorySlug || "";
-        const matchCat = p.categoryIds.some(
-          (c) => c === catIdStr || c === catSlug || (product.nhom && c === product.nhom)
-        );
-        if (!matchCat) return false;
-      }
+  const applicableBadges = useMemo<FormattedBadge[]>(() =>
+    pdpDefaultVouchers(applicablePromotions, viewer).map(promotion => ({
+      promotion,
+      ...formatBadgeText(promotion),
+      ...(promotion.benefitType === "shipping" ? { label: shipBadgeLabel(promotion) } : {}),
+    })), [applicablePromotions, viewer]);
 
-      if (p.scope === "product" && p.productMas?.length) {
-        const prodMa = String(product.ma || "").trim().toUpperCase();
-        const matchProd = p.productMas.some((m) => String(m).trim().toUpperCase() === prodMa);
-        if (!matchProd) return false;
-      }
-
-      return true;
-    });
-
-  }, [promotions, product, isWholesale, viewer]);
-
-  const applicableBadges = useMemo<FormattedBadge[]>(() => {
-    if (!promotions.length) return [];
-
-    // Lọc theo đối tượng và phạm vi áp dụng của SP
-    const matched = applicablePromotions;
-
-    // Chia nhóm: Voucher giảm tiền hàng & Voucher vận chuyển (KHÔNG CÓ TÍCH XU)
-    const goodsPromos = matched.filter((p) => p.benefitType !== "shipping");
-    const shipPromos = matched.filter((p) => p.benefitType === "shipping");
-
-    const badges: FormattedBadge[] = [];
-
-    // Chọn tối đa 1-2 voucher giảm tiền hàng tốt nhất
-    if (goodsPromos.length > 0) {
-      // Voucher khách mới luôn đứng đầu, sau đó ưu tiên mức giảm cao nhất
-      const sortedGoods = [...goodsPromos].sort((a, b) => {
-        const newA = a.targetCustomer === "new_web" ? 1 : 0;
-        const newB = b.targetCustomer === "new_web" ? 1 : 0;
-        if (newA !== newB) return newB - newA;
-        const valA = a.discountType === "fixed" ? a.discountValue : (a.maxDiscountVnd || a.discountValue * 1000);
-        const valB = b.discountType === "fixed" ? b.discountValue : (b.maxDiscountVnd || b.discountValue * 1000);
-        return valB - valA;
-      });
-      badges.push({
-        promotion: sortedGoods[0],
-        ...formatBadgeText(sortedGoods[0]),
-      });
-      if (sortedGoods.length > 1 && shipPromos.length === 0) {
-        badges.push({
-          promotion: sortedGoods[1],
-          ...formatBadgeText(sortedGoods[1]),
-        });
-      }
-    }
-
-    // Voucher hỗ trợ ship dễ đạt nhất (đơn tối thiểu thấp nhất), ghi đủ số tiền
-    if (shipPromos.length > 0) {
-      const ship = [...shipPromos].sort(
-        (a, b) => (a.minOrderThreshold || 0) - (b.minOrderThreshold || 0)
-      )[0];
-      badges.push({ promotion: ship, label: shipBadgeLabel(ship), type: "shipping" });
-    }
-
-    return badges;
-  }, [applicablePromotions]);
-
-  if (!loaded || applicableBadges.length === 0) {
+  if (!loaded || applicablePromotions.length === 0) {
     return null;
   }
 
@@ -160,7 +96,7 @@ export function ProductPromotionBadges({
               <button
                 key={promotion.id}
                 type="button"
-                onClick={() => promotion.claimRequired ? claims.claim(promotion.id) : setSelectedPromo(promotion)}
+                onClick={() => promotion.claimRequired && !claims.claimedIds.has(promotion.id) ? claims.claim(promotion.id) : setSelectedPromo(promotion)}
                 disabled={Boolean(claims.pendingId)}
                 title={`${promotion.title}${promotion.minOrderThreshold ? ` · Đơn từ ${formatVnd(promotion.minOrderThreshold)}` : ""} · ${promotion.claimRequired ? "Bấm để lưu voucher" : "Bấm xem điều kiện"}`}
                 className={`flex min-h-14 w-[250px] sm:w-[270px] shrink-0 items-stretch overflow-hidden rounded-lg border text-left transition disabled:opacity-50 ${isShipping ? "border-[#bce9df] bg-[#f0fbf8] text-[#087a69] hover:bg-[#e4f7f1]" : "border-[#f4cfc2] bg-[#fff5ef] text-[#b5482d] hover:bg-[#ffede2]"}`}
@@ -170,7 +106,7 @@ export function ProductPromotionBadges({
                   <span className="w-full text-center text-[9px] font-medium leading-tight">{isShipping ? "Vận chuyển" : "Sản phẩm"}</span>
                 </span>
                 <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-2 py-2">
-                  <span className="text-xs font-bold">{isShipping ? "Hỗ trợ ship " : "Giảm "}{promotion.discountType === "percentage" ? pctText(promotion) : formatVnd(promotion.discountValue)}</span>
+                  <span className="text-xs font-bold">{label}</span>
                   <span className="text-[10px] text-slate-500">{promotion.minOrderThreshold ? `Đơn từ ${formatVnd(promotion.minOrderThreshold)}` : "Không có mức tối thiểu"}</span>
                 </span>
                 <span className={`my-auto mr-2 shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${promotion.claimRequired && !claims.claimedIds.has(promotion.id) ? isShipping ? "bg-[#087a69] text-white" : "bg-[#bf4e32] text-white" : isShipping ? "bg-[#d9f2e9] text-[#087a69]" : "bg-[#ffe6d8] text-[#a63e20]"}`}>{promotion.claimRequired ? claims.pendingId === promotion.id ? "Đang lưu…" : claims.claimedIds.has(promotion.id) ? "Đã lưu" : "Nhận" : "Chi tiết"}</span>

@@ -48,6 +48,18 @@ const BIG_ORDER_PROMO: PromotionDoc = {
   updatedAt: new Date().toISOString(),
 };
 
+test("checkout compares actual savings for 20/10 and customer vouchers, not their caps", () => {
+  const customer = { ...BASE_PROMO, discountValue: 5, maxDiscountVnd: 300000 };
+  const campaign = { ...BASE_PROMO, id: "20/10", targetCustomer: "retail" as const, discountValue: 10, maxDiscountVnd: 200000 };
+  const input = { items: [{ ma: "GSDL", price: 250000, quantity: 1 }], buyer: { isWholesale: false, isNewWebBuyer: true }, promotions: [customer, campaign] };
+  const best = evaluatePromotions(input);
+  assert.equal(best.applied?.promotionId, "20/10");
+  assert.equal(best.discountTotal, 25000);
+  const underThreshold = evaluatePromotions({ ...input, promotions: [customer, { ...campaign, minOrderThreshold: 1000000 }] });
+  assert.equal(underThreshold.applied?.promotionId, customer.id);
+  assert.equal(underThreshold.discountTotal, 12500);
+});
+
 test("PM-01: Ngưỡng đơn '>' (trên) 1.000.000đ: 999.999đ & 1.000.000đ không đạt, 1.000.001đ đạt", () => {
   const p = { ...BIG_ORDER_PROMO, minOrderThreshold: 1_000_000, thresholdOperator: ">" as const };
 

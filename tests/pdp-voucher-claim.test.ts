@@ -3,9 +3,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
+import { pdpApplicableVouchers, pdpDefaultVouchers } from "../frontend/lib/pdpVouchers.js";
 test("PDP voucher badge claims the exact voucher; automatic promotions open details instead", () => {
-  for (const claimRequired of [true, false]) {
-    const voucher = { id: "V5", targetCustomer: "new_web", scope: "all", discountType: "percentage", discountValue: 5, claimRequired };
+  for (const [claimRequired, saved] of [[true, false], [true, true], [false, false]]) {
+    const voucher = { id: "V5", targetCustomer: "new_web", scope: "all", discountType: "percentage", discountValue: 5, claimRequired, audienceEligible: true };
     let index = 0; const claimed: string[] = [], selected: any[] = [];
     const exports: any = {};
     const jsx = (type: any, props: any) => ({ type, props });
@@ -22,19 +23,21 @@ test("PDP voucher badge claims the exact voucher; automatic promotions open deta
       if (name === "@/lib/api") return { formatVnd: String };
       if (name === "@/lib/voucherFormat") return { pctText: () => "5%", formatCompactVnd: String, formatVoucherBadge: () => ({ label: "5%", type: "goods" }) };
       if (name === "@/lib/campaign/useVoucherClaims") return { useVoucherClaims: () => ({
-        claim: (id: string) => claimed.push(id), claimedIds: new Set(), pendingId: null,
+        claim: (id: string) => claimed.push(id), claimedIds: new Set(saved ? ["V5"] : []), pendingId: null,
       }) };
       if (name === "@/components/campaign/LoginSheet") return { LoginSheet: "login" };
       if (name === "./PdpVoucherSheet") return { PdpVoucherSheet: "voucher-sheet" };
       if (name === "@/components/Toast") return { useToast: () => ({ push() {} }) };
       if (name === "@/components/ShopAuthProvider") return { useShopAuth: () => ({ user: null }) };
+      if (name === "@/lib/campaign/useCampaignView") return { useCampaignView: () => ({ viewer: { newBuyer: true } }) };
+      if (name === "@/lib/pdpVouchers") return { pdpApplicableVouchers, pdpDefaultVouchers };
       throw new Error(name);
     } });
     function nodes(n: any): any[] { return !n || typeof n !== "object" ? [] : [n, ...[n.props?.children].flat(5).flatMap(nodes)]; }
     const tree = exports.ProductPromotionBadges({ product: { ma: "P" } });
     const button = nodes(tree).find(n => n.type === "button" && n.props.title);
     button.props.onClick();
-    assert.deepEqual(claimed, claimRequired ? ["V5"] : []);
-    assert.deepEqual(selected, claimRequired ? [] : [voucher]);
+    assert.deepEqual(claimed, claimRequired && !saved ? ["V5"] : []);
+    assert.deepEqual(selected, claimRequired && !saved ? [] : [voucher]);
   }
 });
