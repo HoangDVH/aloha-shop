@@ -1,6 +1,7 @@
 import type { ShopProduct } from "./api";
 import type { AvailablePromotionUI } from "./promotions";
 import { productMatchesVoucher } from "./productVoucherScope";
+import type { PublicSharePreview } from "../../shared/publicSharePreview";
 
 const money = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}đ`;
 export const sharePlainText = (s: string) => s.replace(/<[^>]*>/g, " ").replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/\s+/g, " ").trim();
@@ -38,19 +39,29 @@ export function shareVoucherLines(product: ShopProduct, offers: AvailablePromoti
     });
 }
 
-export function buildProductCaption(product: ShopProduct, url: string, now = Date.now(), offers: AvailablePromotionUI[] = []) {
+export function buildProductCaption(product: ShopProduct, url: string, now = Date.now(), preview?: PublicSharePreview) {
   const price = publicSharePrice(product, now);
-  const promo = product.campaignPromo;
-  const lines = [productPriceText(product, now, product.dvt || "cái")];
-  if (price.active && promo && price.saving) {
-    const parts = new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", year: "numeric", hourCycle: "h23" }).formatToParts(new Date(promo.endsAt));
-    const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(p => p.type === type)?.value;
-    lines.push(`Ưu đãi đến ${part("hour")}:${part("minute")} ${part("day")}/${part("month")}/${part("year")}`);
-  }
-  lines.push(`Xem mẫu và đặt hàng tại ALOHA: ${url}`);
-  const voucherLines = shareVoucherLines(product, offers, now);
-  return [sharePlainText(product.ten), lines.join("\n"),
-    voucherLines.length ? `Ưu đãi thanh toán theo điều kiện chương trình:\n${voucherLines.join("\n")}` : ""].filter(Boolean).join("\n\n");
+  const valid = preview?.ma.toUpperCase() === product.ma.toUpperCase() && Date.parse(preview.expiresAt) > now
+    && Number.isFinite(preview.price) && preview.price > 0 && Number.isFinite(preview.finalPrice)
+    && preview.finalPrice >= 0 && preview.finalPrice <= preview.price && Number.isFinite(preview.reference) && preview.reference >= preview.price;
+  const offer = valid ? preview : undefined;
+  const final = offer?.finalPrice ?? price.price;
+  const reference = offer?.reference ?? (price.reference || price.price);
+  const percent = final < reference ? Math.round((reference - final) / reference * 100) : 0;
+  const program = offer?.campaignName ? `ưu đãi ${sharePlainText(offer.campaignName)} ` : "";
+  const unit = sharePlainText(product.dvt || "cái");
+  const voucher = offer?.voucher;
+  const audience = voucher?.targetCustomer === "new_web" ? ", dành cho khách mua lần đầu trên web"
+    : voucher?.targetCustomer === "returning_web" ? ", dành cho khách đã mua thành công trên web" : "";
+  return [
+    `${sharePlainText(product.ten)}${percent > 0 ? ` — ${program}GIẢM ĐẾN ${percent}%!` : ""}`,
+    !price.price && !offer ? "Liên hệ ALOHA để được báo giá" : final < reference
+      ? `Giá ${money(reference)} chỉ còn ${money(final)}/${unit}` : `Giá ${money(final)}/${unit}`,
+    voucher ? `Khi áp dụng voucher “${sharePlainText(voucher.title)}” đặt hàng TẠI WEB${audience}${voucher.claimRequired ? ", cần lưu voucher" : ""}.` : "",
+    "Chưa gồm phí vận chuyển.",
+    `Xem chi tiết & đặt mua tại: ${url}`,
+    final < reference ? "Mua ngay để nhận mức giá ưu đãi tốt nhất!" : "Mua ngay tại ALOHA!",
+  ].filter(Boolean).join("\n");
 }
 
 export function buildArticleCaption(title: string, excerpt: string, url: string, products: Array<{ product: ShopProduct; url: string }> = [], now = Date.now()) {

@@ -8,8 +8,8 @@ import { SHOP_ORIGIN } from "@/lib/seo";
 import { useToast } from "@/components/Toast";
 import { productShareData } from "@/lib/productShareData";
 import { buildProductCaption, publicSharePrice, shareCaptionWithLink } from "@/lib/shareCaption";
-import { fetchPublicShareOffers, fetchPublicShareProduct } from "@/lib/publicShareProduct";
-import type { AvailablePromotionUI } from "@/lib/promotions";
+import { fetchPublicSharePreview, fetchPublicShareProduct } from "@/lib/publicShareProduct";
+import type { PublicSharePreview } from "../../../shared/publicSharePreview";
 import type { ShopProduct } from "@/lib/api";
 import { ShareCaptionEditor } from "@/components/ShareCaptionEditor";
 import { useHydrated } from "@/lib/useHydratedQuery";
@@ -95,7 +95,7 @@ function ProductShareSheet({ ma, name, path, images, videos, ctvCode, onClose }:
   const [captionLoading, setCaptionLoading] = useState(true);
   const [captionError, setCaptionError] = useState(false);
   const [editedCaption, setEditedCaption] = useState<string | null>(null);
-  const [offers, setOffers] = useState<AvailablePromotionUI[]>([]);
+  const [preview, setPreview] = useState<PublicSharePreview>();
 
   const media = useMemo<ShareMediaItem[]>(() => {
     const vids = [...new Set(videos.filter(isShareableVideoUrl))].map((src) => ({ src, kind: "video" as const }));
@@ -109,7 +109,7 @@ function ProductShareSheet({ ma, name, path, images, videos, ctvCode, onClose }:
   const url = publicShareUrl(buildProductShareUrl(path, ctvCode, ma));
   const publicPrice = publicProduct ? publicSharePrice(publicProduct).price : 0;
   const priceLabel = publicPrice > 0 ? formatVnd(publicPrice) : "";
-  const defaultCaption = publicProduct ? buildProductCaption(publicProduct, url, Date.now(), offers) : `${name}\n\nXem mẫu và giá tại ALOHA: ${url}`;
+  const defaultCaption = publicProduct ? buildProductCaption(publicProduct, url, Date.now(), preview) : `${name}\n\nXem mẫu và giá tại ALOHA: ${url}`;
   const caption = editedCaption ?? defaultCaption;
   const fileBase = `aloha-${ma}`.replace(/[^\w-]+/g, "-");
 
@@ -119,13 +119,18 @@ function ProductShareSheet({ ma, name, path, images, videos, ctvCode, onClose }:
     setCaptionError(false);
     setPublicProduct(null);
     setEditedCaption(null);
-    setOffers([]);
-    fetchPublicShareOffers(ctrl.signal).then(items => { if (!ctrl.signal.aborted) setOffers(items); }).catch(() => {});
-    fetchPublicShareProduct(ma, ctrl.signal)
-      .then(setPublicProduct)
-      .catch(() => { if (!ctrl.signal.aborted) setCaptionError(true); })
-      .finally(() => { if (!ctrl.signal.aborted) setCaptionLoading(false); });
-    return () => ctrl.abort();
+    setPreview(undefined);
+    const load = async () => {
+      const [product, offer] = await Promise.allSettled([fetchPublicShareProduct(ma, ctrl.signal), fetchPublicSharePreview(ma, ctrl.signal)]);
+      if (ctrl.signal.aborted) return;
+      if (product.status === "fulfilled") { setPublicProduct(product.value); setCaptionError(false); }
+      else setCaptionError(true);
+      setPreview(offer.status === "fulfilled" ? offer.value : undefined);
+      setCaptionLoading(false);
+    };
+    void load();
+    const refresh = window.setInterval(() => { void load(); }, 45_000);
+    return () => { ctrl.abort(); window.clearInterval(refresh); };
   }, [ma]);
 
   useEffect(() => {

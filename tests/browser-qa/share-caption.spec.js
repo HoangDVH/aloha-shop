@@ -19,18 +19,21 @@ test('product share previews public sale price, edits caption and preserves refe
   } };
   await page.route(`**/api/shop/products/${encodeURIComponent(product.ma)}`, route => route.fulfill({ json: { item: fixture } }));
   await page.route('**/api/shop/promotions/available', route => route.fulfill({ json: { ok: true, items: [] } }));
+  await page.route('**/api/shop/promotions/quote', route => route.fulfill({ json: { ok: true, preview: {
+    ma: product.ma, price: 450000, reference: 500000, finalPrice: 450000, expiresAt: new Date(Date.now() + 60000).toISOString(),
+  } } }));
   await page.goto(product.path, { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: 'Chia sẻ', exact: true }).first().click();
   const dialog = page.getByRole('dialog', { name: 'Chia sẻ sản phẩm' });
   const caption = dialog.getByRole('textbox', { name: 'Nội dung chia sẻ' });
   await expect(caption).toHaveValue(/450.000đ/, { timeout: 25000 });
-  await expect(caption).toHaveValue(/50.000đ \(10%\)/);
+  await expect(caption).toHaveValue(/GIẢM ĐẾN 10%/);
   await caption.fill('Nội dung đã chỉnh sửa');
   await dialog.getByRole('button', { name: 'Sao chép nội dung & link', exact: true }).click();
   await expect.poll(() => page.evaluate(() => window.__shareCopied)).toContain('Nội dung đã chỉnh sửa');
   await expect.poll(() => page.evaluate(() => window.__shareCopied)).toContain(`/sp/${product.ma}`);
   await dialog.getByRole('button', { name: 'Khôi phục nội dung' }).click();
-  await expect(caption).toHaveValue(/Giá ưu đãi/);
+  await expect(caption).toHaveValue(/chỉ còn 450.000đ/);
   await dialog.getByRole('button', { name: 'Đóng chia sẻ' }).click();
   await page.evaluate(ma => window.dispatchEvent(new CustomEvent('aloha-product-share', { detail: { ma, ctvCode: 'CTVQA01' } })), product.ma);
   await expect(dialog.getByRole('textbox', { name: 'Nội dung chia sẻ' })).toHaveValue(/ctv=CTVQA01/, { timeout: 25000 });

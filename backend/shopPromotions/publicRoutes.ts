@@ -20,6 +20,11 @@ import { applyCatalogPrices, parseOrderDetails } from "../shopOrders/orderRouteS
 import { quoteWithCampaign } from "../shopCampaigns/quoteCampaign.js";
 import { allowsWholesaleShipping, isWholesaleTinh, isWholesaleHcm } from "./tinhShipping.js";
 import { voucherMatchesBuyer } from "../../shared/voucherAudience.js";
+import { z } from "zod";
+import { loadActivePromotions } from "./checkoutPromotions.js";
+import { getCurrentCampaign } from "../shopCampaigns/currentCampaign.js";
+import { campaignEnabled, voucherWalletEnabled } from "../shopCampaigns/flags.js";
+import { buildPublicSharePreview } from "./publicSharePreview.js";
 
 /**
  * Giá tính ưu đãi luôn lấy từ catalog (giá client gửi lên bị bỏ qua).
@@ -149,6 +154,19 @@ export function registerShopPromotionsPublicRoutes(
         }
         const shopDb = await getShopDb();
         const body = req.body || {};
+        if (body.sharePreview === true) {
+          res.setHeader("Cache-Control", "private, no-store");
+          const parsed = z.object({ items: z.array(z.object({ ma: z.string().trim().min(1).max(100) })).length(1) }).safeParse(body);
+          if (!parsed.success) return res.status(400).json({ ok: false, error: "Invalid share product" });
+          const now = new Date();
+          const items = await withServerPrices(shopDb, [{ ma: parsed.data.items[0].ma.toUpperCase(), price: 0, quantity: 1 }], null);
+          if (!items.length) return res.status(404).json({ ok: false, error: "Product unavailable" });
+          const [campaign, promotions, state] = await Promise.all([
+            quoteWithCampaign(shopDb, items, {}), loadActivePromotions(shopDb, now),
+            campaignEnabled() ? getCurrentCampaign(shopDb, now.getTime(), { isTestBuyer: false }) : Promise.resolve({ active: null }),
+          ]);
+          return res.json({ ok: true, preview: buildPublicSharePreview(campaign, promotions, state.active, voucherWalletEnabled(), now) });
+        }
         const itemsRaw = Array.isArray(body.items) ? body.items : [];
         const selectedCode = String(body.selectedCode || "").trim().toUpperCase();
         const autoMode = body.autoMode !== false;
