@@ -82,6 +82,8 @@ export interface AvailablePromotionUI {
 export async function getAvailablePromotions(): Promise<AvailablePromotionUI[]> {
   try {
     const res = await fetch("/api/shop/promotions/available", {
+      credentials: "include",
+      cache: "no-store",
       headers: { Accept: "application/json" },
     });
     if (!res.ok) return [];

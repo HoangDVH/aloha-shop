@@ -1,4 +1,5 @@
 "use client";
+import { voucherMatchesBuyer } from "@/lib/voucherAudience";
 
 import Link from "next/link";
 import { Check, Gift, Sparkles, TicketPercent, Tag, Truck, Zap } from "lucide-react";
@@ -214,7 +215,7 @@ export function VoucherVault({
   const justClaimed = claims.claimedVoucherId
     ? vouchers.find((v) => v.id === claims.claimedVoucherId) ?? null
     : null;
-  const visible = vouchers.filter((v) => viewer?.newBuyer !== false || v.targetCustomer !== "new_web");
+  const visible = vouchers.filter((v) => voucherMatchesBuyer(v.targetCustomer, viewer));
   const list = orderVouchers(visible, variant, lastHours, focusIds);
   if (!list.length) return null;
   const nowMs = Date.now() + offsetMs;

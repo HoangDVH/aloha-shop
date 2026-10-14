@@ -12,12 +12,13 @@ import { verifyPreviewToken } from "../preview.js";
 import { readCampaignViewer, type CampaignViewer } from "../viewer.js";
 import { CAMPAIGN_ERROR_MESSAGES } from "../messages.js";
 import { productGifts } from "../types.js";
-import { checkIsNewWebBuyer } from "../../shopPromotions/customerEligibility.js";
+import { hasSuccessfulWebPurchase } from "../../shopPromotions/returningBuyer.js";
+import { voucherMatchesBuyer } from "../../../shared/voucherAudience.js";
 
 type GetDb = () => Promise<Db>;
 
 /** Voucher chiến dịch dạng công khai; bỏ voucher sỉ (chiến dịch chỉ cho khách lẻ). */
-async function publicVouchers(db: Db, ids: string[], nowIso: string) {
+async function publicVouchers(db: Db, ids: string[], nowIso: string, newBuyer: boolean) {
   if (!ids.length) return [];
   const rows = await db
     .collection<PromotionDoc>(PROMOTIONS_COL)
@@ -25,7 +26,7 @@ async function publicVouchers(db: Db, ids: string[], nowIso: string) {
     .toArray();
   const order = new Map(ids.map((id, i) => [id, i]));
   return rows
-    .filter((p) => !p.endDate || p.endDate >= nowIso)
+    .filter((p) => (!p.endDate || p.endDate >= nowIso) && voucherMatchesBuyer(p.targetCustomer, { newBuyer }))
     .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
     .map((p) => ({
       id: p.id,
@@ -69,18 +70,10 @@ function publicCampaign(a: ActiveCampaign) {
   };
 }
 
-const NEW_BUYER_TTL_MS = 60_000;
-const newBuyerCache = new Map<string, { at: number; value: boolean }>();
-
 /** Khách mới mua lần đầu (khách chưa đăng nhập xem như mới). Cache ngắn theo tài khoản. */
 async function isNewBuyer(db: Db, v: CampaignViewer): Promise<boolean> {
   if (!v.accountId) return true;
-  const hit = newBuyerCache.get(v.accountId);
-  if (hit && Date.now() - hit.at < NEW_BUYER_TTL_MS) return hit.value;
-  const value = await checkIsNewWebBuyer(db, { phone: v.phone, email: v.email, userId: v.accountId });
-  if (newBuyerCache.size > 5000) newBuyerCache.clear();
-  newBuyerCache.set(v.accountId, { at: Date.now(), value });
-  return value;
+  return !await hasSuccessfulWebPurchase(db, { phone: v.phone, email: v.email, userId: v.accountId });
 }
 
 function viewerView(v: CampaignViewer, newBuyer: boolean) {
@@ -99,20 +92,22 @@ function viewerView(v: CampaignViewer, newBuyer: boolean) {
 async function currentHandler(getDb: GetDb, req: Request, res: Response) {
   const serverNow = Date.now();
   res.setHeader("Cache-Control", "no-store");
-  if (!campaignEnabled()) return res.json({ ok: true, serverNow, campaign: null, state: "none", upcoming: null });
   const db = await getDb();
   const viewer = await readCampaignViewer(db, req);
-  const state = await getCurrentCampaign(db, serverNow, { isTestBuyer: viewer.status.isTestBuyer });
+  const state = campaignEnabled()
+    ? await getCurrentCampaign(db, serverNow, { isTestBuyer: viewer.status.isTestBuyer })
+    : { active: null, upcoming: null, pausedId: null };
   const nowIso = new Date(serverNow).toISOString();
   const active = state.active;
+  const newBuyer = await isNewBuyer(db, viewer);
   res.json({
     ok: true,
     serverNow,
     state: active ? active.phase : state.pausedId ? "paused" : "none",
     campaign: active ? publicCampaign(active) : null,
-    vouchers: active ? await publicVouchers(db, active.content.voucherIds, nowIso) : [],
+    vouchers: active ? await publicVouchers(db, active.content.voucherIds, nowIso, newBuyer) : [],
     upcoming: state.upcoming ? publicCampaign(state.upcoming) : null,
-    viewer: viewerView(viewer, await isNewBuyer(db, viewer)),
+    viewer: viewerView(viewer, newBuyer),
   });
 }
 
@@ -133,15 +128,16 @@ async function previewHandler(getDb: GetDb, req: Request, res: Response) {
   const at = Date.parse(String(req.query.at || "")) || Date.now();
   const active: ActiveCampaign = { id: doc._id, content: v.value, phase: getPhase(v.value.info, at), publishedAt: null };
   const viewer = await readCampaignViewer(db, req);
+  const newBuyer = await isNewBuyer(db, viewer);
   res.json({
     ok: true,
     serverNow: at,
     preview: true,
     state: active.phase,
     campaign: publicCampaign(active),
-    vouchers: await publicVouchers(db, v.value.voucherIds, new Date(at).toISOString()),
+    vouchers: await publicVouchers(db, v.value.voucherIds, new Date(at).toISOString(), newBuyer),
     upcoming: null,
-    viewer: viewerView(viewer, !viewer.accountId),
+    viewer: viewerView(viewer, newBuyer),
   });
 }
 

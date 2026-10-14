@@ -1,9 +1,7 @@
-import { hasSuccessfulWebPurchase } from "../../shopPromotions/returningBuyer.js";
 import type { StepFail } from "./stepResult.js";
 import { isWholesaleTinh, isWholesaleHcm } from "../../shopPromotions/tinhShipping.js";
 import type { Db } from "mongodb";
 import { qualifiesFreeShip } from "../../shopShipping/freeShip.js";
-import { checkIsNewWebBuyer } from "../../shopPromotions/customerEligibility.js";
 import {
   customerKeyFor,
   evaluateGoodsPromotions,
@@ -74,11 +72,6 @@ export async function evaluateOrderPromotions(
   const now = new Date();
   const requestedCode = String(body.promotionCode || "").trim().toUpperCase();
   const autoMode = body.autoPromotion !== false;
-  const isNewWeb = await checkIsNewWebBuyer(shopDb, {
-    phone: input.customerPhone,
-    email: input.buyerEmail,
-    userId: input.accountId,
-  });
   const buyerPromos = await loadBuyerPromotions(shopDb, {
     now,
     accountId: input.accountId,
@@ -100,7 +93,7 @@ export async function evaluateOrderPromotions(
     phone: input.customerPhone,
     email: input.buyerEmail,
     userId: input.accountId,
-    isNewWebBuyer: isNewWeb, hasSuccessfulWebPurchase: await hasSuccessfulWebPurchase(shopDb, {phone: input.customerPhone, email: input.buyerEmail, userId: input.accountId}),
+    ...buyerPromos.buyerContext,
     isWholesale: Boolean(input.roles?.includes("si") || input.roles?.includes("wholesale")),
     isWholesaleTinh: isWholesaleTinh(input.account),
           isWholesaleHcm: isWholesaleHcm(input.account),

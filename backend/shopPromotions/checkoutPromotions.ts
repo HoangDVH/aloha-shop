@@ -72,7 +72,7 @@ export async function evaluateGoodsPromotions(
       : Promise.resolve([] as PromotionCodeDoc[]),
     loadCustomerUsage(shopDb, args.customerKey, limited.map((p) => p.id)),
   ]);
-  return evaluatePromotions({
+  const quote = evaluatePromotions({
     items: args.items,
     buyer: args.buyer,
     promotions: args.promotions,
@@ -82,6 +82,11 @@ export async function evaluateGoodsPromotions(
     customerUsage,
     now: args.now,
   });
+  return {
+    ...quote,
+    buyerAudience: typeof args.buyer.hasSuccessfulWebPurchase === "boolean"
+      ? { newBuyer: !args.buyer.hasSuccessfulWebPurchase } : undefined,
+  };
 }
 
 async function loadCustomerUsage(

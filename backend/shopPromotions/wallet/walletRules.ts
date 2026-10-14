@@ -23,6 +23,8 @@ import { applyDrawnPercents, publicMystery } from "../mystery.js";
 import { claimByCode } from "./walletClaim.js";
 import { WALLET_MESSAGES, drawnPercentsFor, isClaimFail, savedPromotionIds } from "./walletService.js";
 import { allowsWholesaleShipping } from "../tinhShipping.js";
+import { voucherMatchesBuyer } from "../../../shared/voucherAudience.js";
+import { resolveVoucherBuyer } from "../voucherBuyer.js";
 
 export type BuyerPromotionInput = {
   now: Date;
@@ -34,6 +36,7 @@ export type BuyerPromotionInput = {
 };
 
 export type BuyerPromotions = {
+  buyerContext?: Awaited<ReturnType<typeof resolveVoucherBuyer>>;
   promotions: PromotionDoc[];
   /** Voucher bị loại kèm lý do, để hiện trong modal chọn voucher. */
   notices: EvaluatedCandidate[];
@@ -78,12 +81,13 @@ export function noticeFor(p: PromotionDoc, reason: string, extra: Partial<Evalua
  */
 export function applyBuyerRules(
   promotions: PromotionDoc[],
-  ctx: { status: RetailStatus; campaignVoucherIds: Set<string>; saved: Set<string>; walletOn: boolean; account?: any }
+  ctx: { status: RetailStatus; campaignVoucherIds: Set<string>; saved: Set<string>; walletOn: boolean; account?: any; newBuyer?: boolean }
 ): { promotions: PromotionDoc[]; notices: EvaluatedCandidate[] } {
   const kept: PromotionDoc[] = [];
   const notices: EvaluatedCandidate[] = [];
   const allowed = ctx.status.retail && !ctx.status.locked;
   for (const p of promotions) {
+    if (!voucherMatchesBuyer(p.targetCustomer, ctx)) continue;
     const needsWallet = ctx.walletOn && Boolean(p.claimRequired);
     const campaignOnly = ctx.campaignVoucherIds.has(p.id) || needsWallet;
     const visible = p.isPublic !== false;
@@ -149,6 +153,7 @@ export async function loadBuyerPromotions(db: Db, input: BuyerPromotionInput): P
   const phone = String(input.phone || account?.phone || "");
   const email = String(input.email || account?.email || "");
   const code = String(input.selectedCode || "").trim().toUpperCase();
+  const buyerContext = await resolveVoucherBuyer(db, { userId: input.accountId, phone, email });
   const [all, status, campaignVoucherIds, saved, codeDoc] = await Promise.all([
     loadActivePromotions(db, input.now),
     resolveRetailStatus(db, { account, phone, email }),
@@ -163,12 +168,13 @@ export async function loadBuyerPromotions(db: Db, input: BuyerPromotionInput): P
     if (claimNotice) extra.push(claimNotice);
     extra.push(...(await notStartedNotices(db, saved, input.now.toISOString())));
   }
-  const ruled = applyBuyerRules(all, { status, campaignVoucherIds, saved, walletOn, account });
+  const ruled = applyBuyerRules(all, { status, campaignVoucherIds, saved, walletOn, account, newBuyer: buyerContext.newBuyer });
   const seen = new Set(ruled.notices.map((n) => n.promotionId));
   const drawn = walletOn ? await drawnPercentsFor(db, input.accountId) : new Map<string, number>();
   return {
+    buyerContext,
     promotions: applyDrawnPercents(ruled.promotions, drawn),
-    notices: [...ruled.notices, ...extra.filter((n) => !seen.has(n.promotionId))],
+    notices: [...ruled.notices, ...extra.filter((n) => !seen.has(n.promotionId) && voucherMatchesBuyer(n.targetCustomer, buyerContext))],
     status,
     codePromotionId: codeDoc?.promotionId,
   };

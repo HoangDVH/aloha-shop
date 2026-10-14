@@ -28,6 +28,7 @@ const matched = () =>
 function rules(promotions: PromotionDoc[], opts: Partial<Parameters<typeof applyBuyerRules>[1]> = {}) {
   return applyBuyerRules(promotions, {
     status: RETAIL,
+    newBuyer: true,
     campaignVoucherIds: new Set(["V30K", "VSHIP_LUU"]),
     saved: none,
     walletOn: true,
@@ -39,6 +40,7 @@ function goods(promotions: PromotionDoc[], lines: Array<[string, number, number]
   return evaluatePromotions({
     items: lines.map(([ma, price, quantity]) => ({ ma, price, quantity })),
     promotions,
+    buyer: { isNewWebBuyer: true, hasSuccessfulWebPurchase: false },
     selectedCode,
     now: NOW,
   });

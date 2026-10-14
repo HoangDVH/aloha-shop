@@ -4,13 +4,14 @@ import { useMemo } from "react";
 import { useCurrentCampaign } from "./campaignQueries";
 import { isRunningPhase, isSellingPhase } from "./campaignApi";
 import { sortVouchersGrouped } from "@/lib/voucherFormat";
+import { voucherMatchesBuyer } from "@/lib/voucherAudience";
 
 /** Dữ liệu chiến dịch dạng tiện dùng cho các khối giao diện. */
 export function useCampaignView() {
   const q = useCurrentCampaign();
   const data = q.data;
   const campaign = data?.campaign && isRunningPhase(data.campaign.phase) ? data.campaign : null;
-  const vouchers = useMemo(() => sortVouchersGrouped(data?.vouchers || []), [data?.vouchers]);
+  const vouchers = useMemo(() => sortVouchersGrouped((data?.vouchers || []).filter(v => voucherMatchesBuyer(v.targetCustomer, data?.viewer))), [data?.vouchers, data?.viewer]);
   return {
     loading: q.isLoading,
     data,

@@ -1,4 +1,3 @@
-import { hasSuccessfulWebPurchase } from "../shopPromotions/returningBuyer.js";
 import { applyCatalogPrices } from "../shopOrders/orderRouteShared.js";
 import { isWholesaleTinh, isWholesaleHcm } from "../shopPromotions/tinhShipping.js";
 import { SHOP_ACCOUNTS, shopAccountIdQuery } from "../shopAuth/models.js";
@@ -14,7 +13,6 @@ import {
 import { getShippingQuote } from "./quoteService.js";
 import { hashQuoteItems, signQuoteToken, type ShippingCarrier } from "./quoteToken.js";
 import { shopRateLimitOrReject } from "../shopRateLimit.js";
-import { checkIsNewWebBuyer } from "../shopPromotions/customerEligibility.js";
 import {
   customerKeyFor,
   evaluateGoodsPromotions,
@@ -196,9 +194,7 @@ export function registerShopShippingRoutes(
           phone: buyerPhone,
           email: buyerEmail,
           userId,
-          isNewWebBuyer: await checkIsNewWebBuyer(shopDb, { phone: buyerPhone, email: buyerEmail, userId }),
           isWholesale: Boolean(req.shopAuth?.roles?.includes("si") || req.shopAuth?.roles?.includes("wholesale")),
-          hasSuccessfulWebPurchase: await hasSuccessfulWebPurchase(shopDb, {phone: buyerPhone, email: buyerEmail, userId}),
           isWholesaleTinh: isWholesaleTinh(buyer),
           isWholesaleHcm: isWholesaleHcm(buyer),
         };
@@ -213,6 +209,7 @@ export function registerShopShippingRoutes(
           selectedCode,
         });
         const promotions = buyerPromos.promotions;
+        Object.assign(buyerCtx, buyerPromos.buyerContext);
         const evalGoods = (list: typeof promotions) =>
           evaluateGoodsPromotions(shopDb, {
             items: evalItems,

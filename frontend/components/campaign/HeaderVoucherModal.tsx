@@ -1,4 +1,5 @@
 "use client";
+import { voucherMatchesBuyer } from "@/lib/voucherAudience";
 
 import { useEffect, useState, useMemo } from "react";
 import { createPortal } from "react-dom";
@@ -109,7 +110,7 @@ export function HeaderVoucherModal({
   const visibleVouchers = useMemo(() => {
     const drawn = JSON.parse(drawnKey) as Record<string, number>;
     const list = vouchers
-      .filter((v) => viewer?.newBuyer !== false || v.targetCustomer !== "new_web")
+      .filter((v) => voucherMatchesBuyer(v.targetCustomer, viewer))
       .map((v) => withDrawn(v, drawn));
     return sortVouchersGrouped(list);
   }, [vouchers, viewer, drawnKey]);

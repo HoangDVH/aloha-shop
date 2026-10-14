@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PromotionQuoteUI } from "@/components/checkout/PromotionModal";
+import { useShopAuth } from "@/components/ShopAuthProvider";
 import { requestPromotionQuote, type PromotionQuoteRequest } from "./promotions";
 
 const DEBOUNCE_MS = 300;
@@ -25,6 +26,9 @@ export function usePromotionQuote(input: {
   refreshKey: string | number;
 }): { quote: PromotionQuoteUI | null; loading: boolean; stale: boolean } {
   const { lines, selectedCode, autoMode, phone, email, refreshKey } = input;
+  const { user, loading: authLoading, authBusy } = useShopAuth();
+  const buyerKey = JSON.stringify([user?.id || "guest", phone || "", email || ""]);
+  const [quoteBuyerKey, setQuoteBuyerKey] = useState("");
   const [quote, setQuote] = useState<PromotionQuoteUI | null>(null);
   const [loading, setLoading] = useState(false);
   const [stale, setStale] = useState(false);
@@ -43,7 +47,7 @@ export function usePromotionQuote(input: {
   }, [lines, selectedCode, autoMode, phone, email]);
 
   useEffect(() => {
-    if (!requestKey) {
+    if (!requestKey || authLoading || authBusy) {
       hasQuote.current = false;
       setQuote(null);
       setStale(false);
@@ -60,6 +64,7 @@ export function usePromotionQuote(input: {
       if (r.ok) {
         hasQuote.current = true;
         setQuote(r.quote);
+        setQuoteBuyerKey(buyerKey);
         setStale(false);
         setLoading(false);
         return;
@@ -78,7 +83,8 @@ export function usePromotionQuote(input: {
       ctrl.abort();
       if (timer) clearTimeout(timer);
     };
-  }, [requestKey, refreshKey]);
+  }, [requestKey, refreshKey, buyerKey, authLoading, authBusy]);
 
-  return { quote, loading, stale };
+  const buyerMatches = quoteBuyerKey === buyerKey && !authLoading && !authBusy;
+  return { quote: buyerMatches ? quote : null, loading: loading || authLoading || authBusy, stale: buyerMatches && stale };
 }

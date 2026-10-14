@@ -1,4 +1,5 @@
 "use client";
+import { voucherMatchesBuyer } from "@/lib/voucherAudience";
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -624,7 +625,7 @@ export function DealsVoucherStrip({
     ? vouchers.find((v) => v.id === claims.claimedVoucherId) ?? null
     : null;
   const justSaved = useJustSaved(claims.claimedIds);
-  const visible = vouchers.filter((v) => viewer?.newBuyer !== false || v.targetCustomer !== "new_web");
+  const visible = vouchers.filter((v) => voucherMatchesBuyer(v.targetCustomer, viewer));
   const row = useRowScroll(visible.length);
   if (!visible.length) return null;
   const nowMs = Date.now() + offsetMs;

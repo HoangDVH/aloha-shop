@@ -156,6 +156,7 @@ export interface EvaluatedCandidate {
 }
 
 export interface PromotionQuoteResult {
+  buyerAudience?: { newBuyer: boolean };
   applied?: {
     promotionId: string;
     title: string;

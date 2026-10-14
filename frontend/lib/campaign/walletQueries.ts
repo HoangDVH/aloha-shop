@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useShopAuth } from "@/components/ShopAuthProvider";
 import { CURRENT_CAMPAIGN_KEY } from "./campaignQueries";
 import { useHydratedQuery } from "../useHydratedQuery";
 import {
@@ -16,13 +17,15 @@ export const WALLET_KEY = ["shop", "vouchers", "wallet"] as const;
 
 /** Ví của khách; tải lại khi quay lại tab để tab khác thấy "Đã lưu". */
 export function useWallet(enabled = true) {
-  return useHydratedQuery(useQuery({
+  const { loading, authBusy } = useShopAuth();
+  const query = useHydratedQuery(useQuery({
     queryKey: WALLET_KEY,
     queryFn: fetchWallet,
-    enabled,
+    enabled: enabled && !loading && !authBusy,
     staleTime: 15_000,
     refetchOnWindowFocus: true,
   }));
+  return { ...query, data: loading || authBusy ? undefined : query.data };
 }
 
 function patchClaimed(qc: ReturnType<typeof useQueryClient>, add: string[], remove: string[] = []) {

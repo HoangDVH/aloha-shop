@@ -4,6 +4,7 @@ import { useEffect, useSyncExternalStore } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { onShopCampaignChanged } from "@/lib/catalogSync";
 import { fetchCurrentCampaign } from "./campaignApi";
+import { useShopAuth } from "@/components/ShopAuthProvider";
 
 export const CURRENT_CAMPAIGN_KEY = ["shop", "campaign", "current"] as const;
 const subscribeHydration = () => () => {};
@@ -21,8 +22,10 @@ export function useCurrentCampaign() {
   // All campaign consumers share the same initial SSR/client snapshot, even with a warm query cache.
   const hydrated = useSyncExternalStore(subscribeHydration, clientHydrated, serverHydrated);
   const qc = useQueryClient();
+  const { user, loading: authLoading, authBusy } = useShopAuth();
   const query = useQuery({
-    queryKey: CURRENT_CAMPAIGN_KEY,
+    queryKey: [...CURRENT_CAMPAIGN_KEY, user?.id || "guest"],
+    enabled: hydrated && !authLoading && !authBusy,
     queryFn: fetchCurrentCampaign,
     staleTime: 30_000,
     refetchInterval: 40_000,
@@ -39,5 +42,5 @@ export function useCurrentCampaign() {
     [qc]
   );
 
-  return { ...query, data: hydrated ? query.data : undefined, isLoading: !hydrated || query.isLoading };
+  return { ...query, data: hydrated && !authLoading && !authBusy ? query.data : undefined, isLoading: !hydrated || authLoading || authBusy || query.isLoading };
 }

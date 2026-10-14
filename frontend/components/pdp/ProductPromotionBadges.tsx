@@ -11,6 +11,8 @@ import { LoginSheet } from "@/components/campaign/LoginSheet";
 import { useToast } from "@/components/Toast";
 import { useShopAuth } from "@/components/ShopAuthProvider";
 import { PdpVoucherSheet } from "./PdpVoucherSheet";
+import { useCampaignView } from "@/lib/campaign/useCampaignView";
+import { voucherMatchesBuyer } from "@/lib/voucherAudience";
 
 interface ProductPromotionBadgesProps {
   product: ShopProduct;
@@ -41,6 +43,7 @@ export function ProductPromotionBadges({
   const claims = useVoucherClaims();
   const toast = useToast();
   const { user } = useShopAuth();
+  const { viewer } = useCampaignView();
   useEffect(() => {
     if (!claims.claimedVoucherId) return;
     toast.push("Đã lưu voucher vào ví. Mã sẽ được kiểm tra và áp dụng khi thanh toán.");
@@ -49,6 +52,9 @@ export function ProductPromotionBadges({
 
   useEffect(() => {
     let active = true;
+    setPromotions([]);
+    setSelectedPromo(null);
+    setLoaded(false);
     getAvailablePromotions()
       .then((items) => {
         if (active) {
@@ -62,10 +68,11 @@ export function ProductPromotionBadges({
     return () => {
       active = false;
     };
-  }, [user?.id, user?.siStatus, user?.siRegion]);
+  }, [user?.id, user?.siStatus, user?.siRegion, viewer?.newBuyer]);
 
   const applicablePromotions = useMemo(() => {
     return promotions.filter((p) => {
+      if (!voucherMatchesBuyer(p.targetCustomer, viewer)) return false;
       // Bỏ qua voucher sỉ nếu đang xem giá lẻ
       if (p.targetCustomer === "wholesale" && !isWholesale) return false;
       if (p.targetCustomer === "retail" && isWholesale) return false;
@@ -89,7 +96,7 @@ export function ProductPromotionBadges({
       return true;
     });
 
-  }, [promotions, product, isWholesale]);
+  }, [promotions, product, isWholesale, viewer]);
 
   const applicableBadges = useMemo<FormattedBadge[]>(() => {
     if (!promotions.length) return [];

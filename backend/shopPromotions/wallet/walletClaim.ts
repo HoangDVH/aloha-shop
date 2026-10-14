@@ -1,3 +1,5 @@
+import { resolveVoucherBuyer } from "../voucherBuyer.js";
+import { voucherMatchesBuyer } from "../../../shared/voucherAudience.js";
 import type { Db } from "mongodb";
 import { CAMPAIGN_ERROR_MESSAGES } from "../../shopCampaigns/messages.js";
 import { voucherWalletEnabled } from "../../shopCampaigns/flags.js";
@@ -107,7 +109,8 @@ export async function claimAllVouchers(
   );
   const nowIso = new Date(nowMs).toISOString();
   const results: ClaimResult[] = [];
-  for (const p of promos) results.push(await claimOne(db, p, viewer, "batch", nowIso));
+  const audience = await resolveVoucherBuyer(db, { userId: viewer.accountId || undefined, phone: String(viewer.account?.phone || ""), email: String(viewer.account?.email || "") });
+  for (const p of promos.filter((p) => voucherMatchesBuyer(p.targetCustomer, audience))) results.push(await claimOne(db, p, viewer, "batch", nowIso));
   const saved = results.filter((r) => r.ok).length;
   const skipped = results.length - saved;
   const message = skipped

@@ -103,7 +103,7 @@ function checkCommonEligibility(
       eligible = false;
       ineligibleReason = "Chỉ dành cho khách đã mua thành công trên website.";
     } else if (promo.targetCustomer === "new_web") {
-      if (buyer.isNewWebBuyer === false) {
+      if (buyer.isNewWebBuyer !== true || buyer.hasSuccessfulWebPurchase === true) {
         eligible = false;
         ineligibleReason = "Chỉ áp dụng cho khách mua lần đầu trên website.";
       }

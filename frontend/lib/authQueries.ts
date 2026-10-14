@@ -47,6 +47,8 @@ export function useShopLoginMutation() {
   return useMutation({
     mutationFn: (input: LoginInput) => shopLogin(input.email, input.password),
     onSuccess: (data) => {
+      qc.removeQueries({ queryKey: ["shop", "campaign", "current"] });
+      qc.removeQueries({ queryKey: ["shop", "vouchers", "wallet"] });
       qc.setQueryData(shopMeQueryKey, data.user);
       // Xóa cache các query riêng tư của phiên trước tránh rò rỉ dữ liệu
       qc.removeQueries({ queryKey: ["ctv-portal"] });
@@ -83,6 +85,8 @@ export function useShopRegisterMutation() {
       });
     },
     onSuccess: (data) => {
+      qc.removeQueries({ queryKey: ["shop", "campaign", "current"] });
+      qc.removeQueries({ queryKey: ["shop", "vouchers", "wallet"] });
       qc.setQueryData(shopMeQueryKey, data.user);
     },
   });
@@ -93,6 +97,8 @@ export function useShopLogoutMutation() {
   return useMutation({
     mutationFn: () => shopLogout(),
     onMutate: () => {
+      qc.removeQueries({ queryKey: ["shop", "campaign", "current"] });
+      qc.removeQueries({ queryKey: ["shop", "vouchers", "wallet"] });
       qc.setQueryData(shopMeQueryKey, null);
       qc.removeQueries({ queryKey: ["ctv-portal"] });
       qc.removeQueries({ queryKey: ["shop", "orders"] });
@@ -101,6 +107,8 @@ export function useShopLogoutMutation() {
       qc.removeQueries({ queryKey: ["shop", "cart", "quote"] });
     },
     onSettled: () => {
+      qc.removeQueries({ queryKey: ["shop", "campaign", "current"] });
+      qc.removeQueries({ queryKey: ["shop", "vouchers", "wallet"] });
       qc.setQueryData(shopMeQueryKey, null);
       qc.removeQueries({ queryKey: ["ctv-portal"] });
       qc.removeQueries({ queryKey: ["shop", "orders"] });
@@ -124,6 +132,8 @@ export function useShopUpdateMeMutation() {
       ctvCode?: string;
     } & CtvApplicationPayload) => shopUpdateMe(body),
     onSuccess: (data) => {
+      qc.removeQueries({ queryKey: ["shop", "campaign", "current"] });
+      qc.removeQueries({ queryKey: ["shop", "vouchers", "wallet"] });
       qc.setQueryData(shopMeQueryKey, data.user);
     },
   });

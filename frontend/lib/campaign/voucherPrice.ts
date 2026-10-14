@@ -1,9 +1,10 @@
 import type { CampaignVoucherUI, CampaignViewerUI } from "./campaignApi";
+import { voucherMatchesBuyer } from "../voucherAudience";
 
 function viewerMayUse(v: CampaignVoucherUI, viewer: CampaignViewerUI | null): boolean {
   if (viewer && !viewer.canUse) return false;
   if (v.targetCustomer === "wholesale") return false;
-  if (v.targetCustomer === "new_web" && viewer?.newBuyer === false) return false;
+  if (!voucherMatchesBuyer(v.targetCustomer, viewer)) return false;
   return true;
 }
 

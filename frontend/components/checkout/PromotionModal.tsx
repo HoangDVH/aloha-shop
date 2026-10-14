@@ -10,6 +10,8 @@ import { pctText, sortVouchersGrouped, type MysteryInfo } from "@/lib/voucherFor
 import { getAvailablePromotions, type AvailablePromotionUI } from "@/lib/promotions";
 import { PromotionDetailModal } from "./PromotionDetailModal";
 import dayjs from "dayjs";
+import { useCampaignView } from "@/lib/campaign/useCampaignView";
+import { voucherMatchesBuyer } from "@/lib/voucherAudience";
 
 export interface EvaluatedCandidateUI {
   promotionId: string;
@@ -40,6 +42,7 @@ export interface EvaluatedCandidateUI {
 }
 
 export interface PromotionQuoteUI {
+  buyerAudience?: { newBuyer: boolean };
   applied?: {
     promotionId: string;
     title: string;
@@ -105,6 +108,8 @@ export function PromotionModal({
   shippingPromotionId,
   shippingFee,
 }: Props) {
+  const { viewer: campaignViewer } = useCampaignView();
+  const voucherViewer = loading ? null : quote?.buyerAudience ?? campaignViewer;
   const [mounted, setMounted] = useState(false);
   const [inputCode, setInputCode] = useState(selectedCode || "");
   const [submittingCode, setSubmittingCode] = useState(false);
@@ -152,12 +157,12 @@ export function PromotionModal({
 
   const applied = quote?.applied;
   const subtotal = quote?.subtotal || 0;
-  const quoteCandidates = quote?.candidates ?? NO_CANDIDATES;
+  const quoteCandidates = useMemo(() => (quote?.candidates ?? NO_CANDIDATES).filter((p) => voucherMatchesBuyer(p.targetCustomer, voucherViewer)), [quote?.candidates, voucherViewer]);
 
   // Nguồn danh sách các voucher ship
   const baseShipPromos = useMemo(() => {
-    return availableShipPromos;
-  }, [availableShipPromos]);
+    return availableShipPromos.filter((p) => voucherMatchesBuyer(p.targetCustomer, voucherViewer));
+  }, [availableShipPromos, voucherViewer]);
 
   // Đánh giá tất cả voucher ship theo điều kiện đơn hàng hoặc kết quả tính phí ship từ checkout
   const shipCandidates: EvaluatedCandidateUI[] = useMemo(() => {
@@ -168,8 +173,7 @@ export function PromotionModal({
         shippingDiscount != null &&
         shippingDiscount > 0 &&
         (p.id === shippingPromotionId ||
-          p.title === shippingPromotionTitle ||
-          p.discountValue === shippingDiscount);
+          p.title === shippingPromotionTitle);
 
       const meetsThreshold =
         minOrder <= 0
@@ -213,12 +217,11 @@ export function PromotionModal({
     });
 
     // Nếu checkout đã áp dụng mã ship nhưng chưa có trong danh sách
-    if (shippingDiscount != null && shippingDiscount > 0 && shippingPromotionTitle) {
+    if (!loading && shippingDiscount != null && shippingDiscount > 0 && shippingPromotionTitle) {
       const alreadyHas = evaluated.some(
         (v) =>
           v.promotionId === shippingPromotionId ||
-          v.title === shippingPromotionTitle ||
-          v.discountValue === shippingDiscount
+          v.title === shippingPromotionTitle
       );
       if (!alreadyHas) {
         evaluated.push({
@@ -243,7 +246,7 @@ export function PromotionModal({
     const deduped: EvaluatedCandidateUI[] = [];
     for (const cand of evaluated) {
       const existing = deduped.find(
-        (d) => d.discountValue === cand.discountValue || d.title === cand.title
+        (d) => d.promotionId === cand.promotionId
       );
       if (!existing) {
         deduped.push(cand);
@@ -256,6 +259,7 @@ export function PromotionModal({
     return deduped;
   }, [
     baseShipPromos,
+    loading,
     subtotal,
     shippingDiscount,
     shippingPromotionId,
@@ -290,8 +294,7 @@ export function PromotionModal({
       const matched = eligibleShips.find(
         (v) =>
           v.promotionId === shippingPromotionId ||
-          v.title === shippingPromotionTitle ||
-          v.discountValue === shippingDiscount
+          v.title === shippingPromotionTitle
       );
       if (matched) return matched;
     }

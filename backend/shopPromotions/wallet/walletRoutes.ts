@@ -12,6 +12,8 @@ import { isClaimFail, type WalletDoc } from "./walletService.js";
 import { customerKeyFor } from "../checkoutPromotions.js";
 import { latestRedemptions, loadVoucherReturns, type VoucherLatest } from "../voucherHistory.js";
 import { allowsWholesaleShipping } from "../tinhShipping.js";
+import { resolveVoucherBuyer } from "../voucherBuyer.js";
+import { voucherMatchesBuyer } from "../../../shared/voucherAudience.js";
 
 type GetDb = () => Promise<Db>;
 
@@ -87,7 +89,9 @@ async function walletHandler(getDb: GetDb, req: Request, res: Response) {
   const byId = new Map(promos.map((p) => [p.id, p]));
   const nowIso = new Date().toISOString();
   const canUse = viewer.status.retail && !viewer.status.locked;
-  const items = rows.map((r) => {
+  const audience = await resolveVoucherBuyer(db, { userId: viewer.accountId, phone: viewer.phone, email: viewer.email });
+  const visible = (id: string) => voucherMatchesBuyer(byId.get(id)?.targetCustomer, audience);
+  const items = rows.filter(r => visible(r.promotionId)).map((r) => {
     const p = byId.get(r.promotionId) || null;
     const state = walletItemState(r, p, canUse || (!viewer.status.locked && allowsWholesaleShipping(p, viewer.account)), nowIso);
     const ret = r.status === "saved" ? returns.get(r.promotionId) : undefined;
@@ -125,10 +129,10 @@ async function walletHandler(getDb: GetDb, req: Request, res: Response) {
     loggedIn: true,
     items,
     counts,
-    claimedIds: saved.map((r) => r.promotionId),
-    drawn: Object.fromEntries(saved.filter((r) => r.drawnPercent).map((r) => [r.promotionId, r.drawnPercent])),
+    claimedIds: saved.filter(r => visible(r.promotionId)).map((r) => r.promotionId),
+    drawn: Object.fromEntries(saved.filter((r) => r.drawnPercent && visible(r.promotionId)).map((r) => [r.promotionId, r.drawnPercent])),
     unopened: saved
-      .filter((r) => r.status === "saved" && !r.drawnPercent && isMystery(byId.get(r.promotionId)))
+      .filter((r) => visible(r.promotionId) && r.status === "saved" && !r.drawnPercent && isMystery(byId.get(r.promotionId)))
       .map((r) => r.promotionId),
   });
 }

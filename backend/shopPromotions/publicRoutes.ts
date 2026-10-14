@@ -1,4 +1,3 @@
-import { hasSuccessfulWebPurchase } from "./returningBuyer.js";
 import type { Express, Request, Response } from "express";
 import type { Db } from "mongodb";
 import type { GetShopDb } from "../shopAuth/routes.js";
@@ -12,7 +11,6 @@ import {
 } from "./types.js";
 import { isShippingPromotion } from "./evaluator.js";
 import { publicMystery } from "./mystery.js";
-import { checkIsNewWebBuyer } from "./customerEligibility.js";
 import { customerKeyFor, evaluateGoodsPromotions, shipVoucherEnabled } from "./checkoutPromotions.js";
 import { shopRateLimitOrReject } from "../shopRateLimit.js";
 import { requestPromotionReview } from "./reviewService.js";
@@ -21,6 +19,7 @@ import { loadBuyerPromotions, withBuyerNotices } from "./wallet/walletRules.js";
 import { applyCatalogPrices, parseOrderDetails } from "../shopOrders/orderRouteShared.js";
 import { quoteWithCampaign } from "../shopCampaigns/quoteCampaign.js";
 import { allowsWholesaleShipping, isWholesaleTinh, isWholesaleHcm } from "./tinhShipping.js";
+import { voucherMatchesBuyer } from "../../shared/voucherAudience.js";
 
 /**
  * Giá tính ưu đãi luôn lấy từ catalog (giá client gửi lên bị bỏ qua).
@@ -109,7 +108,8 @@ export function registerShopPromotionsPublicRoutes(
 
       res.json({
         ok: true,
-        items: visible.map((p) => ({
+        viewer: { newBuyer: buyerPromos.buyerContext?.newBuyer },
+        items: visible.filter(p => voucherMatchesBuyer(p.targetCustomer, buyerPromos.buyerContext)).map((p) => ({
           id: p.id,
           title: p.title,
           description: p.description || "",
@@ -188,11 +188,6 @@ export function registerShopPromotionsPublicRoutes(
         );
 
         // Kiểm tra điều kiện khách mới mua lần đầu trên web
-        const isNewWebBuyer = await checkIsNewWebBuyer(shopDb, {
-          phone: buyerPhone,
-          email: buyerEmail,
-          userId: buyerUserId,
-        });
 
         const now = new Date();
         const items = await withServerPrices(shopDb, clientItems, userAccount);
@@ -216,7 +211,7 @@ export function registerShopPromotionsPublicRoutes(
             phone: buyerPhone,
             email: buyerEmail,
             userId: buyerUserId,
-            isNewWebBuyer, hasSuccessfulWebPurchase: await hasSuccessfulWebPurchase(shopDb, {phone: buyerPhone, email: buyerEmail, userId: buyerUserId}),
+            ...buyerPromos.buyerContext,
             isWholesale,
             isWholesaleTinh: isWholesaleTinh(userAccount),
           isWholesaleHcm: isWholesaleHcm(userAccount),
