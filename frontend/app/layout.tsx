@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
+import { ClientErrorMonitor } from "@/components/ClientErrorMonitor";
 import { ThemeCssServer } from "@/components/ThemeCssServer";
 import { OrgJsonLd } from "@/components/OrgJsonLd";
 import { fetchAppearance, fallbackAppearance } from "@/lib/appearance";
@@ -84,6 +85,7 @@ export default async function RootLayout({
         />
       </head>
       <body className="min-h-screen antialiased">
+        <ClientErrorMonitor />
         <ThemeCssServer />
         <OrgJsonLd theme={app.theme} />
         <Providers>{children}</Providers>

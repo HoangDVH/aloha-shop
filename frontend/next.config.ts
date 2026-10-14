@@ -8,6 +8,7 @@ const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:3001").r
 const API_INTERNAL = (process.env.SHOP_API_INTERNAL || "http://127.0.0.1:3001").replace(/\/$/, "");
 
 const nextConfig: NextConfig = {
+  deploymentId: process.env.NEXT_PUBLIC_RELEASE_ID || undefined,
   /** Chỉ `next dev --turbopack` (local); build production dùng webpack nên bỏ qua. */
   ...(process.env.TURBOPACK ? { turbopack: { root: process.cwd() } } : {}),
   images: {

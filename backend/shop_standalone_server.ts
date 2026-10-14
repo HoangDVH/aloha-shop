@@ -16,6 +16,7 @@ import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
 import { measurePublicRequests } from './cache/requestMetrics.js';
+import { registerClientErrors } from './clientErrors.js';
 
 dotenv.config();
 
@@ -192,6 +193,7 @@ app.use((req, res, next) => {
   }
   next();
 });
+registerClientErrors(app, getDb, getOpsDb);
 app.use(shopSessionRenewal(getDb));
 
 const uploadsDir = path.join(process.cwd(), 'uploads');
