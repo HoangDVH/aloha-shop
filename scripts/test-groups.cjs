@@ -5,8 +5,9 @@ module.exports = {
     "voucher-wallet", "voucher-price", "promotions-evaluator", "checkout-voucher-consistency", "ship-voucher"],
   recovery: ["client-recovery", "client-errors", "client-error-store"],
   "checkout-ui": ["checkout-total-display.test.cjs", "promotion-quote-freshness.test.cjs", "purchase-sheet.test.cjs"],
+  gallery: ["product-gallery.test.cjs"],
   release: ["client-recovery", "client-errors", "client-error-store", "voucher-audience",
     "returning-voucher", "voucher-wallet", "voucher-price", "promotions-evaluator",
     "checkout-voucher-consistency", "share-caption", "product-share-data", "share-capabilities",
-    "pdp-vouchers", "pdp-voucher-claim", "checkout-total-display.test.cjs", "promotion-quote-freshness.test.cjs", "purchase-sheet.test.cjs"],
+    "pdp-vouchers", "pdp-voucher-claim", "checkout-total-display.test.cjs", "promotion-quote-freshness.test.cjs", "purchase-sheet.test.cjs", "product-gallery.test.cjs"],
 };

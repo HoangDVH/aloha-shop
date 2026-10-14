@@ -28,8 +28,8 @@ type MediaItem =
   | { kind: "image"; src: string };
 
 /**
- * Gallery PDP — không dùng Embla (tránh lệch/tràn ngang mobile).
- * Vuốt trái/phải đổi ảnh; thumb + lightbox giữ như cũ.
+ * Native horizontal scrolling follows the finger and snaps to each media slide.
+ * Keep image elements mounted; thumbnails and lightbox share the active index.
  */
 export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
   const media = useMemo<MediaItem[]>(() => {
@@ -48,9 +48,13 @@ export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
   const poster = images[0] || "";
   const [idx, setIdx] = useState(0);
   const [mediaLightbox, setMediaLightbox] = useState(false);
-  const touchX = useRef<number | null>(null);
-  const lightboxOpenRef = useRef(false);
-  lightboxOpenRef.current = mediaLightbox;
+  const viewport = useRef<HTMLDivElement>(null);
+  const thumbViewport = useRef<HTMLDivElement>(null);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const dragged = useRef(false);
+  const activeIndex = useRef(0);
+  activeIndex.current = idx;
+  const scrollFrame = useRef<number | null>(null);
   const thumbRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const current = media[idx] ?? null;
@@ -58,14 +62,17 @@ export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
   useEffect(() => {
     setIdx(0);
     setMediaLightbox(false);
+    viewport.current?.scrollTo({ left: 0, behavior: "instant" });
   }, [resetKey]);
 
   useEffect(() => {
-    thumbRefs.current[idx]?.scrollIntoView({
-      behavior: "smooth",
-      inline: "nearest",
-      block: "nearest",
-    });
+    const strip = thumbViewport.current;
+    const thumb = thumbRefs.current[idx];
+    if (!strip || !thumb) return;
+    const bounds = strip.getBoundingClientRect();
+    const target = thumb.getBoundingClientRect();
+    if (target.left < bounds.left) strip.scrollBy({ left: target.left - bounds.left, behavior: "smooth" });
+    else if (target.right > bounds.right) strip.scrollBy({ left: target.right - bounds.right, behavior: "smooth" });
   }, [idx]);
 
   useEffect(() => {
@@ -73,17 +80,22 @@ export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
       if (idx !== 0) setIdx(0);
       return;
     }
-    if (idx >= media.length) setIdx(media.length - 1);
+    if (idx >= media.length) {
+      setIdx(media.length - 1);
+      viewport.current?.scrollTo({ left: (media.length - 1) * viewport.current.clientWidth, behavior: "instant" });
+    }
   }, [idx, media.length]);
 
   const goTo = (i: number) => {
     if (media.length === 0) return;
     const next = ((i % media.length) + media.length) % media.length;
     setIdx(next);
+    viewport.current?.scrollTo({ left: next * viewport.current.clientWidth, behavior: "smooth" });
   };
 
   const onLightboxIndex = useCallback((i: number) => {
     setIdx(i);
+    viewport.current?.scrollTo({ left: i * viewport.current.clientWidth, behavior: "instant" });
   }, []);
 
   const openMediaLightbox = (atIndex?: number) => {
@@ -93,47 +105,60 @@ export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
     setMediaLightbox(true);
   };
 
-  const onTouchStart = (e: React.TouchEvent) => {
-    if (lightboxOpenRef.current) return;
-    touchX.current = e.changedTouches[0]?.clientX ?? null;
-  };
+  useEffect(() => {
+    const element = viewport.current;
+    if (!element) return;
+    const observer = new ResizeObserver(() => element.scrollTo({ left: activeIndex.current * element.clientWidth, behavior: "instant" }));
+    observer.observe(element);
+    return () => { observer.disconnect(); if (scrollFrame.current != null) cancelAnimationFrame(scrollFrame.current); };
+  }, []);
 
-  const onTouchEnd = (e: React.TouchEvent) => {
-    if (lightboxOpenRef.current) {
-      touchX.current = null;
-      return;
-    }
-    const start = touchX.current;
-    touchX.current = null;
-    if (start == null || media.length < 2) return;
-    const end = e.changedTouches[0]?.clientX ?? start;
-    const dx = end - start;
-    if (Math.abs(dx) < 48) return;
-    if (dx < 0) goTo(idx + 1);
-    else goTo(idx - 1);
+  useEffect(() => {
+    viewport.current?.querySelectorAll<HTMLVideoElement>("video[data-slide]").forEach(video => {
+      if (Number(video.dataset.slide) === idx && !mediaLightbox) void video.play().catch(() => {});
+      else video.pause();
+    });
+  }, [idx, mediaLightbox, media]);
+
+  const onScroll = () => {
+    if (scrollFrame.current != null) return;
+    scrollFrame.current = requestAnimationFrame(() => {
+      scrollFrame.current = null;
+      const element = viewport.current;
+      if (!element?.clientWidth || !media.length) return;
+      const next = Math.max(0, Math.min(media.length - 1, Math.round(element.scrollLeft / element.clientWidth)));
+      setIdx(previous => previous === next ? previous : next);
+    });
   };
 
   return (
     <div className="flex w-full min-w-0 max-w-full flex-col gap-0 sm:gap-1.5 p-0 sm:p-4 lg:p-3 xl:p-4">
       <div
         className="relative aspect-square w-full max-w-full sm:max-w-[min(400px,calc(100vh-250px))] lg:max-w-[min(440px,calc(100vh-250px))] xl:max-w-[min(460px,calc(100vh-240px))] mx-auto min-w-0 overflow-hidden rounded-none sm:rounded-xl bg-stone-100 sm:bg-[var(--aloha-cream)] shadow-none sm:shadow-2xs select-none"
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
       >
-        {current ? (
-          current.kind === "video" ? (
-            <div className="absolute inset-0 overflow-hidden bg-black/5 sm:bg-[var(--aloha-cream)]">
+        <div ref={viewport} onScroll={onScroll}
+          className="flex h-full w-full overflow-x-auto snap-x snap-mandatory overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          style={{ WebkitOverflowScrolling: "touch" }}
+          onTouchStart={event => { const t = event.touches[0]; touchStart.current = t ? { x: t.clientX, y: t.clientY } : null; dragged.current = false; }}
+          onTouchMove={event => { const t = event.touches[0]; const start = touchStart.current; if (t && start && Math.hypot(t.clientX - start.x, t.clientY - start.y) > 8) dragged.current = true; }}
+          onClickCapture={event => { if (dragged.current) { event.preventDefault(); event.stopPropagation(); dragged.current = false; } }}>
+        {media.length ? media.map((current, slideIndex) => (
+          <div key={`${current.kind}-${current.src}`} className="relative h-full w-full shrink-0 snap-center snap-always overflow-hidden">
+          {current.kind === "video" ? (
+            <div onClick={() => openMediaLightbox(slideIndex)} className="absolute inset-0 overflow-hidden bg-black/5 sm:bg-[var(--aloha-cream)]">
               {current.file ? (
                 <video
                   key={current.src}
                   src={current.src}
                   className="absolute inset-0 h-full w-full cursor-pointer object-cover sm:object-contain"
-                  autoPlay
+                  data-slide={slideIndex}
+                  autoPlay={slideIndex === idx && !mediaLightbox}
+                  preload="metadata"
                   muted
                   loop
                   playsInline
                   poster={poster || undefined}
-                  onClick={() => openMediaLightbox(idx)}
+                  onClick={() => openMediaLightbox(slideIndex)}
                 />
               ) : (
                 <>
@@ -147,7 +172,7 @@ export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
                   ) : (
                     <div className="absolute inset-0 bg-stone-900 sm:bg-[var(--aloha-green-light)]" />
                   )}
-                  <iframe
+                  {slideIndex === idx && !mediaLightbox && <iframe
                     key={current.src}
                     src={
                       /youtube\.com|youtu\.be|youtube-nocookie/i.test(current.src)
@@ -160,16 +185,16 @@ export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
                         : current.src
                     }
                     title={alt}
-                    className="absolute inset-0 h-full w-full border-0"
+                    className="pointer-events-none absolute inset-0 h-full w-full border-0 sm:pointer-events-auto"
                     allow="autoplay; encrypted-media; picture-in-picture"
                     allowFullScreen
-                  />
+                  />}
                 </>
               )}
               {/* Nút phóng to video: mobile góc trái dưới, desktop giữ nguyên góc phải dưới chuẩn cũ */}
               <button
                 type="button"
-                onClick={() => openMediaLightbox(idx)}
+                onClick={() => openMediaLightbox(slideIndex)}
                 className="absolute bottom-3 left-3 z-[2] inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white shadow-sm backdrop-blur-xs hover:bg-black/60 transition sm:bottom-2 sm:right-2 sm:left-auto sm:min-h-11 sm:min-w-11 sm:bg-white/95 sm:text-slate-500 sm:ring-1 sm:ring-black/5 sm:hover:bg-white"
                 aria-label="Xem video phóng to"
               >
@@ -183,15 +208,19 @@ export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
               src={current.src}
               alt={alt}
               className="absolute inset-0 h-full w-full cursor-zoom-in object-cover sm:object-contain"
-              onClick={() => openMediaLightbox(idx)}
+              onClick={() => openMediaLightbox(slideIndex)}
+              loading={slideIndex <= idx + 1 ? "eager" : "lazy"}
+              decoding="async"
               draggable={false}
             />
-          )
-        ) : (
+          )}
+          </div>
+        )) : (
           <div className="flex h-full min-h-[240px] items-center justify-center text-slate-400">
             Chưa có ảnh
           </div>
         )}
+        </div>
 
         {/* Nút phóng to ảnh: mobile góc trái dưới, desktop giữ nguyên góc phải dưới chuẩn cũ */}
         {current?.kind === "image" ? (
@@ -223,7 +252,7 @@ export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
           ) : null}
 
           {/* Dãy thumbnail: mobile kiểu Shopee cuộn ngang, desktop giữ nguyên kích thước & màu viền xanh gốc */}
-          <div className="w-full min-w-0 max-w-full overflow-x-auto scrollbar-none overscroll-x-contain py-2 px-3 sm:py-0 sm:px-1">
+          <div ref={thumbViewport} className="w-full min-w-0 max-w-full overflow-x-auto scrollbar-none overscroll-x-contain py-2 px-3 sm:py-0 sm:px-1">
             <div className="flex w-max min-w-full items-center gap-2 sm:justify-center sm:gap-2">
               {media.map((item, i) => (
                 <button
