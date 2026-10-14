@@ -7,6 +7,11 @@ import { buildProductShareUrl } from "@/lib/ctv";
 import { SHOP_ORIGIN } from "@/lib/seo";
 import { useToast } from "@/components/Toast";
 import { productShareData } from "@/lib/productShareData";
+import { buildProductCaption, publicSharePrice, shareCaptionWithLink } from "@/lib/shareCaption";
+import { fetchPublicShareOffers, fetchPublicShareProduct } from "@/lib/publicShareProduct";
+import type { AvailablePromotionUI } from "@/lib/promotions";
+import type { ShopProduct } from "@/lib/api";
+import { ShareCaptionEditor } from "@/components/ShareCaptionEditor";
 import {
   canShareFilesOnDevice,
   copyText,
@@ -45,23 +50,34 @@ type ShareProps = {
 /** Nút «Chia sẻ» trang SP kiểu Shopee: Zalo / Facebook kèm ảnh + video của SP. */
 export function ProductShareButton(props: ShareProps) {
   const [open, setOpen] = useState(false);
+  const [shareCtv, setShareCtv] = useState(props.ctvCode);
+  useEffect(() => {
+    const handle = (event: Event) => {
+      const detail = (event as CustomEvent<{ ma: string; ctvCode?: string }>).detail;
+      if (detail?.ma !== props.ma) return;
+      setShareCtv(detail.ctvCode || props.ctvCode);
+      setOpen(true);
+    };
+    window.addEventListener("aloha-product-share", handle);
+    return () => window.removeEventListener("aloha-product-share", handle);
+  }, [props.ma, props.ctvCode]);
   return (
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => { setShareCtv(props.ctvCode); setOpen(true); }}
         aria-haspopup="dialog"
         className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs font-bold text-slate-600 ring-1 ring-slate-200 transition hover:bg-slate-50 active:scale-95"
       >
         <Share2 size={15} aria-hidden />
         Chia sẻ
       </button>
-      {open ? <ProductShareSheet {...props} onClose={() => setOpen(false)} /> : null}
+      {open ? <ProductShareSheet {...props} ctvCode={shareCtv} onClose={() => setOpen(false)} /> : null}
     </>
   );
 }
 
-function ProductShareSheet({ ma, name, path, price, images, videos, ctvCode, onClose }: ShareProps & { onClose: () => void }) {
+function ProductShareSheet({ ma, name, path, images, videos, ctvCode, onClose }: ShareProps & { onClose: () => void }) {
   const toast = useToast();
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -71,6 +87,11 @@ function ProductShareSheet({ ma, name, path, price, images, videos, ctvCode, onC
   const [loadState, setLoadState] = useState<Record<string, LoadState>>({});
   const [deviceShare, setDeviceShare] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [publicProduct, setPublicProduct] = useState<ShopProduct | null>(null);
+  const [captionLoading, setCaptionLoading] = useState(true);
+  const [captionError, setCaptionError] = useState(false);
+  const [editedCaption, setEditedCaption] = useState<string | null>(null);
+  const [offers, setOffers] = useState<AvailablePromotionUI[]>([]);
 
   const media = useMemo<ShareMediaItem[]>(() => {
     const vids = [...new Set(videos.filter(isShareableVideoUrl))].map((src) => ({ src, kind: "video" as const }));
@@ -82,9 +103,26 @@ function ProductShareSheet({ ma, name, path, price, images, videos, ctvCode, onC
   const pickedItems = media.filter((m) => picked.includes(m.src));
   const poster = images[0] || "";
   const url = publicShareUrl(buildProductShareUrl(path, ctvCode, ma));
-  const priceLabel = price > 0 ? formatVnd(price) : "";
-  const caption = [name, priceLabel ? `Giá: ${priceLabel}` : "", `Xem tại ALOHA: ${url}`].filter(Boolean).join("\n");
+  const publicPrice = publicProduct ? publicSharePrice(publicProduct).price : 0;
+  const priceLabel = publicPrice > 0 ? formatVnd(publicPrice) : "";
+  const defaultCaption = publicProduct ? buildProductCaption(publicProduct, url, Date.now(), offers) : `${name}\n\nXem mẫu và giá tại ALOHA: ${url}`;
+  const caption = editedCaption ?? defaultCaption;
   const fileBase = `aloha-${ma}`.replace(/[^\w-]+/g, "-");
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    setCaptionLoading(true);
+    setCaptionError(false);
+    setPublicProduct(null);
+    setEditedCaption(null);
+    setOffers([]);
+    fetchPublicShareOffers(ctrl.signal).then(items => { if (!ctrl.signal.aborted) setOffers(items); }).catch(() => {});
+    fetchPublicShareProduct(ma, ctrl.signal)
+      .then(setPublicProduct)
+      .catch(() => { if (!ctrl.signal.aborted) setCaptionError(true); })
+      .finally(() => { if (!ctrl.signal.aborted) setCaptionLoading(false); });
+    return () => ctrl.abort();
+  }, [ma]);
 
   useEffect(() => {
     const el = dialog.current;
@@ -145,7 +183,7 @@ function ProductShareSheet({ ma, name, path, price, images, videos, ctvCode, onC
   const shareWithDevice = async (target: "facebook" | "zalo") => {
     try {
       const data = productShareData({ selectedCount: pickedItems.length, files: readyFiles, target,
-        title: name, caption, url, canShare: data => Boolean(navigator.canShare?.(data)) });
+        title: name, caption: shareCaptionWithLink(caption, url), url, canShare: data => Boolean(navigator.canShare?.(data)) });
       await navigator.share(data);
       toast.push(pickedItems.length ? "Bấm «Sao chép nội dung & link» để dán vào bài viết hoặc tin nhắn." : "Đã đóng bảng chia sẻ link.");
     } catch (e) {
@@ -174,13 +212,13 @@ function ProductShareSheet({ ma, name, path, price, images, videos, ctvCode, onC
       );
       return;
     }
-    await copyText(caption);
+    if (!await copyText(shareCaptionWithLink(caption, url))) { toast.push("Không sao chép được nội dung. Hãy chọn nội dung để sao chép."); return; }
     window.open("https://chat.zalo.me/", "_blank", "noopener,noreferrer");
     toast.push("Đã sao chép link SP — dán (Ctrl+V) vào khung chat Zalo");
   };
 
   const copyLink = async () => {
-    toast.push((await copyText(caption)) ? "Đã sao chép nội dung và link sản phẩm" : "Không sao chép được nội dung và link");
+    toast.push((await copyText(shareCaptionWithLink(caption, url))) ? "Đã sao chép nội dung và link sản phẩm" : "Không sao chép được nội dung và link");
   };
 
   const saveMedia = async () => {
@@ -270,6 +308,9 @@ function ProductShareSheet({ ma, name, path, price, images, videos, ctvCode, onC
             </div>
           </div>
 
+          <ShareCaptionEditor value={caption} onChange={setEditedCaption} onReset={() => setEditedCaption(null)} loading={captionLoading} />
+          {captionError ? <p role="status" className="mt-2 text-xs text-amber-700">Chưa tải được giá hiện tại. Nội dung chia sẻ chỉ giữ tên và link để khách xem giá trên shop.</p> : null}
+
           {media.length ? (
             <div className="mt-4">
               <div className="flex items-baseline justify-between">
@@ -341,7 +382,7 @@ function ProductShareSheet({ ma, name, path, price, images, videos, ctvCode, onC
           </p>
           <div className="mt-1 grid grid-cols-4 gap-1">
             {actions.map((a) => {
-              const disabled = (a.wait && busy) || (a.key === "save" && downloading);
+              const disabled = (a.key !== "save" && captionLoading) || (a.wait && busy) || (a.key === "save" && downloading);
               return (
                 <button
                   key={a.key}

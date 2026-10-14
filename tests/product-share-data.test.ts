@@ -27,6 +27,6 @@ test("incomplete or unsupported selected files never silently degrade to link sh
   assert.throws(() => productShareData({ ...input, canShare: () => false }), /media_unsupported/);
 });
 test("link sharing requires explicitly deselecting media; Zalo retains accompanying caption", () => {
-  assert.deepEqual(productShareData({ ...input, selectedCount: 0, files: [] }), { title: input.title, url: input.url });
+  assert.deepEqual(productShareData({ ...input, selectedCount: 0, files: [] }), { title: input.title, text: input.caption });
   assert.deepEqual(productShareData({ ...input, target: "zalo" }), { files, title: input.title, text: input.caption });
 });

@@ -15,6 +15,7 @@ import { fetchAppearance, fallbackAppearance } from "@/lib/appearance";
 import { NOINDEX_FOLLOW, SHOP_ORIGIN, plainText, productOgImage } from "@/lib/seo";
 import { resolveProductSeo } from "@/lib/seoTemplates";
 import { buildBreadcrumbJsonLd } from "@/lib/seoSchema";
+import { productPriceText, publicSharePrice } from "@/lib/shareCaption";
 
 export const revalidate = 30;
 
@@ -51,7 +52,8 @@ export async function generateMetadata({
       };
     }
 
-    const price = formatVnd(item.gia);
+    const sharePrice = publicSharePrice(item);
+    const price = formatVnd(sharePrice.price);
     const stock =
       item.ton > 0
         ? `Còn khoảng ${Math.max(0, Math.floor(Number(item.ton) || 0))} ${item.dvt || ""}`.trim()
@@ -81,6 +83,8 @@ export async function generateMetadata({
 
     const og = productOgImage(item);
     const image = og.url;
+    const shareTitle = `${item.ten} | ${sharePrice.saving ? "Giá ưu đãi " : ""}${sharePrice.price ? price : "Liên hệ báo giá"}`;
+    const shareDescription = `${productPriceText(item).replace(/\n/g, ". ")}. ${descPlain.slice(0, 140) || stock}. Xem và đặt hàng tại ALOHA.`;
 
     return {
       title: resolved.title,
@@ -91,20 +95,20 @@ export async function generateMetadata({
         siteName,
         locale: "vi_VN",
         url: pageUrl.split("?")[0],
-        title: resolved.title,
-        description: resolved.description,
+        title: shareTitle,
+        description: shareDescription,
         images: [{ url: image, width: og.width, height: og.height, alt: item.ten }],
       },
       twitter: {
         card: "summary_large_image",
-        title: resolved.title,
-        description: resolved.description,
+        title: shareTitle,
+        description: shareDescription,
         images: [image],
       },
       other: {
-        "product:price:amount": String(Math.round(Number(item.gia) || 0)),
+        "product:price:amount": String(Math.round(sharePrice.price)),
         "product:price:currency": "VND",
-        "og:price:amount": String(Math.round(Number(item.gia) || 0)),
+        "og:price:amount": String(Math.round(sharePrice.price)),
         "og:price:currency": "VND",
       },
     };

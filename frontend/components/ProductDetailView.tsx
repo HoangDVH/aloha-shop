@@ -570,38 +570,7 @@ export function ProductDetailView({
                         );
                         return;
                       }
-                      const url = buildProductShareUrl(
-                        activeProduct.path,
-                        codeSaved,
-                        activeProduct.ma
-                      );
-                      const shareTitle = `${activeProduct.ten} | ${formatVnd(liveGia)}`;
-                      const shareText = `${activeProduct.ten} — ${formatVnd(liveGia)} · ALOHA THẾ GIỚI CHẬU CÂY`;
-                      (async () => {
-                        try {
-                          if (typeof navigator.share === "function") {
-                            await navigator.share({ title: shareTitle, text: shareText, url });
-                            toast.push("Đã mở chia sẻ (đã gắn mã CTV)");
-                            return;
-                          }
-                        } catch (e) {
-                          // User hủy share → vẫn copy
-                          if ((e as { name?: string })?.name === "AbortError") return;
-                        }
-                        try {
-                          await navigator.clipboard.writeText(url);
-                        } catch {
-                          const ta = document.createElement("textarea");
-                          ta.value = url;
-                          ta.style.position = "fixed";
-                          ta.style.left = "-9999px";
-                          document.body.appendChild(ta);
-                          ta.select();
-                          document.execCommand("copy");
-                          document.body.removeChild(ta);
-                        }
-                        toast.push(`Đã copy link · CTV ${codeSaved}`);
-                      })();
+                      window.dispatchEvent(new CustomEvent("aloha-product-share", { detail: { ma: activeProduct.ma, ctvCode: codeSaved } }));
                     }}
                     className="h-9 rounded-lg bg-[var(--aloha-green-light)] px-3 text-xs font-bold text-[var(--aloha-green-mid)] hover:bg-[var(--aloha-green)]/15"
                   >

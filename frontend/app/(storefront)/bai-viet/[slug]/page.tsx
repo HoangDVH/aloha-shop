@@ -1,4 +1,5 @@
 import { ArticleVideoPlayer } from "@/components/ArticleVideoPlayer";
+import { ArticleShareButton } from "@/components/ArticleShareButton";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
@@ -10,6 +11,7 @@ import { bodyHtmlForDisplay } from "@/lib/articleBodyHtml";
 import { ArticleGrid } from "@/components/ArticleCard";
 import { ArticleImageZoom } from "@/components/ArticleImageZoom";
 import { ProductGrid } from "@/components/ProductCard";
+import { productPriceText, publicSharePrice } from "@/lib/shareCaption";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +37,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     if (!item) return { title: "Bài viết" };
     const title = item.title;
     const description = item.excerpt || title;
+    const discountedProduct = data.products?.find(p => publicSharePrice(p).saving > 0);
+    const shareDescription = discountedProduct
+      ? `${description.slice(0, 180)}. Sản phẩm liên quan: ${discountedProduct.ten} — ${productPriceText(discountedProduct).replace(/\n/g, ". ")}`
+      : description;
     const url = `${SHOP_ORIGIN}/bai-viet/${item.slug}`;
     return {
       title,
@@ -43,7 +49,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       openGraph: {
         type: "article",
         title,
-        description,
+        description: shareDescription,
         url,
         images: item.coverUrl ? [{ url: item.coverUrl }] : undefined,
       },
@@ -91,7 +97,6 @@ export default async function BaiVietDetailPage({ params }: Props) {
   const products = data.products || [];
   const related = data.related || [];
   const shareUrl = `${SHOP_ORIGIN}/bai-viet/${item.slug}`;
-  const fbShare = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
 
   let cats: { category: string; count: number }[] = [];
   try {
@@ -165,14 +170,7 @@ export default async function BaiVietDetailPage({ params }: Props) {
               <time dateTime={item.publishedAt}>{formatDate(item.publishedAt)}</time>
             ) : null}
             <span aria-hidden>•</span>
-            <a
-              href={fbShare}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-semibold text-[var(--aloha-green)] hover:underline"
-            >
-              Chia sẻ Facebook
-            </a>
+            <ArticleShareButton title={item.title} excerpt={item.excerpt || ""} url={shareUrl} productMas={products.map(p => p.ma)} />
           </div>
         </header>
 

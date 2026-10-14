@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "node:path";
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:3001").replace(
   /\/$/,
@@ -10,7 +11,7 @@ const API_INTERNAL = (process.env.SHOP_API_INTERNAL || "http://127.0.0.1:3001").
 const nextConfig: NextConfig = {
   deploymentId: process.env.NEXT_PUBLIC_RELEASE_ID || undefined,
   /** Chỉ `next dev --turbopack` (local); build production dùng webpack nên bỏ qua. */
-  ...(process.env.TURBOPACK ? { turbopack: { root: process.cwd() } } : {}),
+  ...(process.env.TURBOPACK ? { turbopack: { root: path.resolve(__dirname, "..") } } : {}),
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "**" },

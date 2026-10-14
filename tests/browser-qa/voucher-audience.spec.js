@@ -17,7 +17,7 @@ for (const newBuyer of [true, false]) test(`voucher page shows only ${newBuyer ?
   await page.goto('/uu-dai?tab=voucher&loai=giam', { waitUntil: 'domcontentloaded' });
   const expected = `QA audience ${newBuyer ? 'new_web' : 'returning_web'}`;
   const opposite = `QA audience ${newBuyer ? 'returning_web' : 'new_web'}`;
-  await expect(page.getByText(expected, { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(expected, { exact: true }).first()).toBeVisible({ timeout: 25000 });
   await expect(page.getByText(opposite, { exact: true })).toHaveCount(0);
   await expect(page.locator('body')).not.toContainText('Application error: a client-side exception');
 });

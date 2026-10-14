@@ -25,7 +25,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm ci --prefix frontend --no-audit --no-fund
       - run: npm run typecheck:api && npm run typecheck:web
-      - run: node node_modules/tsx/dist/cli.mjs --test tests/client-recovery.test.ts tests/client-errors.test.ts tests/client-error-store.test.ts tests/voucher-audience.test.ts tests/returning-voucher.test.ts tests/voucher-wallet.test.ts tests/voucher-price.test.ts tests/promotions-evaluator.test.ts tests/checkout-voucher-consistency.test.ts
+      - run: node node_modules/tsx/dist/cli.mjs --test tests/client-recovery.test.ts tests/client-errors.test.ts tests/client-error-store.test.ts tests/voucher-audience.test.ts tests/returning-voucher.test.ts tests/voucher-wallet.test.ts tests/voucher-price.test.ts tests/promotions-evaluator.test.ts tests/checkout-voucher-consistency.test.ts tests/share-caption.test.ts tests/product-share-data.test.ts tests/share-capabilities.test.ts
       - run: python3 tests/release-nginx.test.py && python3 tests/release-rollback.test.py
       - run: bash -n scripts/deploy-production.sh
   deploy:

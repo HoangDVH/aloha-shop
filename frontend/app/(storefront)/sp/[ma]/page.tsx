@@ -5,6 +5,7 @@ import { getProductByMa } from "@/lib/shopProductServer";
 import { ShareRedirect } from "@/components/ShareRedirect";
 import { ProductJsonLd } from "@/components/ProductJsonLd";
 import { SHOP_ORIGIN, plainText, productOgImage } from "@/lib/seo";
+import { productPriceText, publicSharePrice } from "@/lib/shareCaption";
 
 export const revalidate = 30;
 
@@ -33,18 +34,17 @@ export async function generateMetadata({
     const { item } = await getProductByMa(ma);
     if (!item) return { title: "Sản phẩm" };
 
-    const price = formatVnd(item.gia);
+    const sharePrice = publicSharePrice(item);
+    const price = formatVnd(sharePrice.price);
     const stock =
       item.ton > 0
         ? `Còn khoảng ${Math.max(0, Math.floor(Number(item.ton) || 0))} ${item.dvt || ""}`.trim()
         : "Đặt trước — giao khi có hàng";
     const descPlain = plainText(item.description || "");
-    const description =
-      descPlain.slice(0, 140) ||
-      `${item.ten} — Giá ${price}. ${stock}. Mua tại ALOHA THẾ GIỚI CHẬU CÂY.`;
+    const description = `${productPriceText(item).replace(/\n/g, ". ")}. ${descPlain.slice(0, 140) || stock}. Mua tại ALOHA THẾ GIỚI CHẬU CÂY.`;
     const og = productOgImage(item);
     const image = og.url;
-    const title = `${item.ten} | ${price}`;
+    const title = `${item.ten} | ${sharePrice.saving ? "Giá ưu đãi " : ""}${sharePrice.price ? price : "Liên hệ báo giá"}`;
 
     return {
       title: item.ten,
@@ -76,7 +76,7 @@ export async function generateMetadata({
         images: [image],
       },
       other: {
-        "product:price:amount": String(Math.round(Number(item.gia) || 0)),
+        "product:price:amount": String(Math.round(sharePrice.price)),
         "product:price:currency": "VND",
         "og:image:type": "image/jpeg",
       },
