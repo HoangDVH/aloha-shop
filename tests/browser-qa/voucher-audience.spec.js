@@ -11,7 +11,9 @@ for (const newBuyer of [true, false]) test(`voucher page shows only ${newBuyer ?
   await page.route('**/api/shop/auth/me', route => route.fulfill({ json: { ok: true, user: { id: 'qa-audience', email: 'qa@example.invalid', fullName: 'QA', roles: ['customer'] } } }));
   await page.route('**/api/shop/vouchers/wallet', route => route.fulfill({ json: { ok: true, enabled: true, items: [], claimedIds: [] } }));
   for (const path of ['client-errors', 'visits', 'appearance/popup-event', 'campaigns/track']) await page.route(`**/api/shop/${path}`, route => route.fulfill({ status: 204 }));
-  await page.addLocatorHandler(page.getByRole('button', { name: 'Đóng popup', exact: true }), button => button.click());
+  const appearance = await (await page.request.get('/api/shop/appearance')).json();
+  if (appearance.theme?.popup) appearance.theme.popup.enabled = false;
+  await page.route('**/api/shop/appearance', route => route.fulfill({ json: appearance }));
   await page.goto('/uu-dai?tab=voucher&loai=giam', { waitUntil: 'domcontentloaded' });
   const expected = `QA audience ${newBuyer ? 'new_web' : 'returning_web'}`;
   const opposite = `QA audience ${newBuyer ? 'returning_web' : 'new_web'}`;
