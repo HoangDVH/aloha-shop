@@ -1,5 +1,11 @@
 const { test, expect } = require('@playwright/test');
 
+async function diagnosticScreenshot(target, info, file, options = {}) {
+  // Screenshots are diagnostics; external font loading must not fail functional checks.
+  try { await target.screenshot({ path: info.outputPath(file), timeout: 5000, ...options }); }
+  catch (error) { await info.attach('screenshot-note', { body: Buffer.from(error.message), contentType: 'text/plain' }); }
+}
+
 test.beforeEach(async ({ page }) => {
   // Read-only production checks: simulated errors and analytics never reach the server.
   await page.route('**/api/shop/client-errors', route => route.fulfill({ status: 204 }));
@@ -24,7 +30,7 @@ for (const path of ['/', '/tim', '/gio-hang', '/dang-nhap']) test(`public page $
       return reported.some(report => report.message === 'QA ready ' + path);
     }).toBe(true);
   expect(runtimeErrors).toEqual([]);
-  await page.screenshot({ path: info.outputPath('public-mobile-or-desktop.png'), fullPage: true });
+  await diagnosticScreenshot(page, info, 'public-mobile-or-desktop.png', { fullPage: true });
 });
 
 test('chunk failure reloads once and the next failure cannot reload-loop', async ({ page }) => {
@@ -94,7 +100,7 @@ test('admin warning and disk information render using isolated API fixtures', as
   await expect(panel).toContainText('85%');
   await panel.getByText('QA simulated error', { exact: false }).click();
   await expect(panel).toContainText('qa-release');
-  await panel.screenshot({ path: info.outputPath('site-health-alert.png') });
+  await diagnosticScreenshot(panel, info, 'site-health-alert.png');
 });
 
 test('real monitoring API remains private', async ({ request }) => {
