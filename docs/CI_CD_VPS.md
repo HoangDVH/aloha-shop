@@ -36,6 +36,16 @@ của MongoDB. Nếu VPS/website tắt thì cần hệ thống giám sát bên n
 Workflow chạy typecheck và regression test trước deploy. Runner và release đều
 dùng commit SHA của workflow, tránh kiểm tra một commit nhưng deploy commit khác.
 
+Sau deploy, job **Verify browsers after deployment** chạy Playwright trên Chromium
+và WebKit với cấu hình iPhone 13. Bộ test kiểm tra 4 trang công khai, reload một
+lần khi lỗi chunk, màn hình phục hồi khi file JS trả 404, cảnh báo quản trị bằng
+API fixture và việc API giám sát từ chối người chưa đăng nhập. Báo cáo, ảnh chụp
+và trace lỗi được giữ ở artifact GitHub 7 ngày. Test không đăng nhập tài khoản
+thật; báo cáo lỗi giả và lượt truy cập test được chặn tại trình duyệt, không ghi
+vào dữ liệu khách hàng. WebKit emulation không thay thế kiểm tra iPhone vật lý.
+Job browser chạy sau chuyển bản; nếu thất bại CI báo lỗi nhưng chưa tự rollback
+dựa trên browser test. Rollback tự động hiện áp dụng cho các kiểm tra deploy HTTP.
+
 Kiểm tra sau deploy: trang chủ, `/tim`, trang sản phẩm, giỏ hàng, đăng nhập;
 giữ tab cũ qua một lần deploy và xác nhận file JS cũ vẫn trả 200. Kiểm tra cache
 HTML `private, no-store`, JS `immutable`, và log `[client-error]`.

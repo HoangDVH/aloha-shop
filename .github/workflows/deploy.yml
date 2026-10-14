@@ -55,3 +55,25 @@ jobs:
               git show "$deploy_ref:scripts/$file" > "$runner/$file"
             done
             DEPLOY_REF="$deploy_ref" bash "$runner/deploy-production.sh"
+
+  browser-smoke:
+    name: Verify browsers after deployment
+    runs-on: ubuntu-latest
+    needs: deploy
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix tests/browser-qa --no-audit --no-fund
+      - run: node tests/browser-qa/node_modules/playwright/cli.js install --with-deps chromium webkit
+      - run: npm test --prefix tests/browser-qa
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-smoke-results
+          path: |
+            tests/browser-qa/playwright-report/
+            tests/browser-qa/test-results/
+          retention-days: 7
