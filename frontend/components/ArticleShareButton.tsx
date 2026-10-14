@@ -11,10 +11,12 @@ import { copyText } from "@/lib/shareMedia";
 import { buildProductShareUrl, isValidCtvCode, normalizeCtvCode } from "@/lib/ctv";
 import { SHOP_ORIGIN } from "@/lib/seo";
 import type { ShopProduct } from "@/lib/api";
+import { useHydrated } from "@/lib/useHydratedQuery";
 
 export function ArticleShareButton(props: { title: string; excerpt: string; url: string; productMas: string[] }) {
+  const hydrated = useHydrated();
   const [open, setOpen] = useState(false);
-  return <><button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" className="inline-flex items-center gap-1.5 font-semibold text-[var(--aloha-green)] hover:underline"><Share2 size={14} />Chia sẻ</button>
+  return <><button type="button" disabled={!hydrated} aria-busy={!hydrated} onClick={() => setOpen(true)} aria-haspopup="dialog" className="inline-flex items-center gap-1.5 font-semibold text-[var(--aloha-green)] hover:underline"><Share2 size={14} />Chia sẻ</button>
     {open ? <ArticleShareDialog {...props} onClose={() => setOpen(false)} /> : null}</>;
 }
 

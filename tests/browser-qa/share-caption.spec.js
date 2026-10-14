@@ -53,3 +53,23 @@ test('article share previews summary and supports edited content with its articl
   await dialog.getByRole('button', { name: 'Đóng chia sẻ' }).click();
   await expect(dialog).not.toBeVisible();
 });
+
+for (const kind of ['product', 'article']) test(`${kind} share waits for JavaScript initialization on a slow connection`, async ({ page }) => {
+  const endpoint = kind === 'product' ? '/api/shop/products?limit=10' : '/api/shop/articles?limit=1';
+  const item = (await (await page.request.get(endpoint)).json()).items[0];
+  const path = kind === 'product' ? item.path : `/bai-viet/${item.slug}`;
+  const waiting = [];
+  let blocked = true;
+  await page.route('**/_next/static/chunks/**', route => {
+    if (blocked && new URL(route.request().url()).pathname.endsWith('.js')) waiting.push(route);
+    else return route.continue();
+  });
+  await page.goto(path, { waitUntil: 'commit' });
+  const button = page.getByRole('button', { name: 'Chia sẻ', exact: true }).first();
+  await expect(button).toBeDisabled({ timeout: 25000 });
+  blocked = false;
+  await Promise.all(waiting.map(route => route.continue()));
+  await expect(button).toBeEnabled({ timeout: 25000 });
+  await button.click();
+  await expect(page.getByRole('dialog', { name: kind === 'product' ? 'Chia sẻ sản phẩm' : 'Chia sẻ bài viết' })).toBeVisible({ timeout: 25000 });
+});
