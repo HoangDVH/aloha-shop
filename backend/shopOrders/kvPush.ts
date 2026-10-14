@@ -9,6 +9,7 @@ import {
   type KvCreds,
 } from "../services/kvApiClient.js";
 import type { ShopOrderDetail } from "./models.js";
+import { resolveKvDeliveryRegion } from "./kvDeliveryAddress.js";
 
 async function fetchJson(
   url: string,
@@ -188,6 +189,7 @@ export async function resolveShopKvShipProductCode(
 }
 
 export type PushShopOrderKvInput = {
+  deliveryAddress?: import("./kvDeliveryAddress.js").KvDeliveryAddress;
   customerId?: number | null;
   customerName: string;
   customerPhone: string;
@@ -248,6 +250,7 @@ export async function pushShopOrderToKiotViet(
   const receiver = input.customerName || "Khách web";
   const phone = input.customerPhone || "";
   const shipAddr = input.address || "Nhận tại cửa hàng ALOHA";
+  const deliveryRegion = await resolveKvDeliveryRegion(creds, token, input.deliveryAddress);
 
   const payload: Record<string, unknown> = {
     ...(input.customerId ? { customerId: input.customerId } : {}),
@@ -264,6 +267,7 @@ export async function pushShopOrderToKiotViet(
     totalPayment: Math.max(0, Math.round(Number(input.totalPayment) || 0)),
     // KV bật giao hàng → bắt buộc orderDelivery ("THU PHÍ SHIP")
     orderDelivery: {
+      ...deliveryRegion,
       receiver,
       contactNumber: phone || "0000000000",
       address: shipAddr,
@@ -354,6 +358,7 @@ export async function pushShopInvoiceToKiotViet(
     (d) => String(d.productName || "") === "Phí vận chuyển"
   );
   const surchargeId = Number(process.env.SHOP_KV_SURCHARGE_ID || 0);
+  const deliveryRegion = await resolveKvDeliveryRegion(creds, token, input.deliveryAddress);
 
   const payload: Record<string, unknown> = {
     ...(input.customerId ? { customerId: input.customerId } : {}),
@@ -412,6 +417,10 @@ export async function pushShopInvoiceToKiotViet(
   if (input.customerId && !payload.invoiceDelivery) {
     payload.invoiceDelivery = { receiver, contactNumber: phone || undefined, address: input.address || "Nhận tại cửa hàng ALOHA" };
   }
+  if (input.deliveryAddress) payload.invoiceDelivery = {
+    ...((payload.invoiceDelivery || {}) as Record<string, unknown>), receiver, contactNumber: phone || undefined,
+    address: input.address, ...deliveryRegion,
+  };
 
   const api = kvApiBase();
   const json = await fetchJson(`${api}/invoices`, {

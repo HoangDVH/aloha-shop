@@ -1,4 +1,5 @@
 import type { StepFail } from "./stepResult.js";
+import { kvDeliveryAddressForOrder } from "../kvDeliveryAddress.js";
 import type { Db, ObjectId } from "mongodb";
 import { SHOP_ORDERS, type ShopOrderDetail } from "../models.js";
 import {
@@ -106,7 +107,7 @@ async function pushCodOrReviewOrder(ctx: KvPushContext, code: string): Promise<K
       customerName: ctx.customerName,
       customerId: ctx.user?.kvCustomerId ? Number(ctx.user.kvCustomerId) : undefined,
       customerPhone: ctx.customerPhone,
-      address: kvAddress(ctx),
+      address: kvAddress(ctx), deliveryAddress: kvDeliveryAddressForOrder(ctx.address),
       orderDetails: ctx.orderDetails,
       description: reviewFirst
         ? ctx.reviewKvDescription
@@ -165,7 +166,7 @@ async function pushAwaitingInvoice(ctx: KvPushContext, code: string): Promise<Kv
       mainDb: ctx.mainDb,
       customerName: ctx.customerName,
       customerPhone: ctx.customerPhone,
-      address: kvAddress(ctx),
+      address: kvAddress(ctx), deliveryAddress: kvDeliveryAddressForOrder(ctx.address),
       orderDetails: ctx.orderDetails,
       description:
         `${ctx.paymentCode} | Web ${code} | ${ctx.ctvNote} | ${ctx.kvPreOrderHint ? ctx.kvPreOrderHint + " | " : ""}${ctx.customerNote || "Shop CK"}`.slice(

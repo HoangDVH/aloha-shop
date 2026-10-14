@@ -2,6 +2,7 @@
  * Lõi giao thành công — dùng chung admin mark-delivered + webhook/poll KV.
  */
 import type { Db } from "mongodb";
+import { kvDeliveryAddressForOrder } from "./kvDeliveryAddress.js";
 import { SHOP_ORDERS, type ShopOrderDetail } from "./models.js";
 import { holdCommissionsForOrder } from "./commission.js";
 import { ensureCommissionIndexes } from "./commissionModels.js";
@@ -145,7 +146,7 @@ export async function completeShopOrderDelivered(
           customerId: existing.kvCustomerId ? Number(existing.kvCustomerId) : undefined,
         customerName: String((existing as any).customerName || ""),
           customerPhone: String((existing as any).customerPhone || ""),
-          address: addr,
+          address: addr, deliveryAddress: kvDeliveryAddressForOrder(existing),
           orderDetails: details,
           description: `Web ${code} | COD | giao`.slice(0, 500),
           totalPayment: total,
@@ -159,7 +160,7 @@ export async function completeShopOrderDelivered(
         customerId: existing.kvCustomerId ? Number(existing.kvCustomerId) : undefined,
         customerName: String((existing as any).customerName || ""),
         customerPhone: String((existing as any).customerPhone || ""),
-        address: addr,
+        address: addr, deliveryAddress: kvDeliveryAddressForOrder(existing),
         orderDetails: details,
         description: `Web ${code} | COD thu khi giao | ${kvOrderCode || ""}`.slice(
           0,

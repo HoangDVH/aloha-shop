@@ -33,6 +33,7 @@ export type EnsurePaidInvoiceInput = {
   customerId?: number | null;
   customerPhone: string;
   address: string;
+  deliveryAddress?: import("../shopOrders/kvDeliveryAddress.js").KvDeliveryAddress;
   orderDetails: ShopOrderDetail[];
   description: string;
   totalPayment: number;
@@ -61,6 +62,7 @@ export type EnsureAwaitingInvoiceInput = {
   customerId?: number | null;
   customerPhone: string;
   address: string;
+  deliveryAddress?: import("../shopOrders/kvDeliveryAddress.js").KvDeliveryAddress;
   orderDetails: ShopOrderDetail[];
   description: string;
   totalPayment: number;
@@ -76,6 +78,7 @@ export async function ensureAwaitingInvoice(
     customerId: opts.customerId,
     customerPhone: opts.customerPhone,
     address: opts.address,
+    deliveryAddress: opts.deliveryAddress,
     orderDetails: opts.orderDetails,
     usingCod: false,
     method: "Transfer",
@@ -143,6 +146,7 @@ export async function ensurePaidInvoice(
     customerId: opts.customerId,
     customerPhone: opts.customerPhone,
     address: opts.address,
+    deliveryAddress: opts.deliveryAddress,
     orderDetails: opts.orderDetails,
     usingCod: false,
     method: "Transfer",
@@ -172,6 +176,7 @@ export type EnsureCodKvOrderInput = {
   customerId?: number | null;
   customerPhone: string;
   address: string;
+  deliveryAddress?: import("../shopOrders/kvDeliveryAddress.js").KvDeliveryAddress;
   orderDetails: ShopOrderDetail[];
   description: string;
   totalPayment: number;
@@ -196,6 +201,7 @@ export async function ensureReviewKvOrder(
     customerId: opts.customerId,
     customerPhone: opts.customerPhone,
     address: opts.address,
+    deliveryAddress: opts.deliveryAddress,
     orderDetails: opts.orderDetails,
     usingCod: false,
     method: "Cash",
@@ -219,6 +225,7 @@ export async function ensureCodKvOrder(
     customerId: opts.customerId,
     customerPhone: opts.customerPhone,
     address: opts.address,
+    deliveryAddress: opts.deliveryAddress,
     orderDetails: opts.orderDetails,
     usingCod: true,
     method: "Cash",
@@ -240,6 +247,7 @@ export type EnsureCodDeliveredInvoiceInput = {
   customerId?: number | null;
   customerPhone: string;
   address: string;
+  deliveryAddress?: import("../shopOrders/kvDeliveryAddress.js").KvDeliveryAddress;
   orderDetails: ShopOrderDetail[];
   description: string;
   totalPayment: number;
@@ -268,6 +276,7 @@ export async function ensureCodDeliveredInvoice(
     customerId: opts.customerId,
     customerPhone: opts.customerPhone,
     address: opts.address,
+    deliveryAddress: opts.deliveryAddress,
     orderDetails: opts.orderDetails,
     usingCod: true as const,
     method: "Cash" as const,

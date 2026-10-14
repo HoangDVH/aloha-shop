@@ -1,4 +1,5 @@
 import type { Express, Response } from "express";
+import { kvDeliveryAddressForOrder } from "./kvDeliveryAddress.js";
 import type { Db } from "mongodb";
 import {
   requireAuth,
@@ -585,7 +586,7 @@ export function registerShopOrdersAdminRoutes(
             customerId: doc.kvCustomerId ? Number(doc.kvCustomerId) : undefined,
             customerName: String((doc as any).customerName || ""),
             customerPhone: String((doc as any).customerPhone || ""),
-            address: fullAddressForKv(doc as any),
+            address: fullAddressForKv(doc as any), deliveryAddress: kvDeliveryAddressForOrder(doc),
             orderDetails: details,
             description:
               `Web ${code} | COD | ${ctvNote} | retry`.slice(0, 500),

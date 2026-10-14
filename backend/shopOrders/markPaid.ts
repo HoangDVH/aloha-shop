@@ -2,6 +2,7 @@
  * Claim unpaid → processing → Hóa đơn KV → trừ kho atomic → paid + SSE.
  */
 import type { Db } from "mongodb";
+import { kvDeliveryAddressForOrder } from "./kvDeliveryAddress.js";
 import { syncBus } from "../syncBus.js";
 import { SHOP_ORDERS, type ShopOrderDetail } from "./models.js";
 import { applyShopOrderStockDeduct } from "./stockApply.js";
@@ -215,7 +216,7 @@ export async function markShopOrderPaid(opts: {
         customerId: claimed.kvCustomerId ? Number(claimed.kvCustomerId) : undefined,
       customerName: String(claimed.customerName || "Khách web"),
         customerPhone: String(claimed.customerPhone || ""),
-        address: fullAddressOf(claimed),
+        address: fullAddressOf(claimed), deliveryAddress: kvDeliveryAddressForOrder(claimed),
         orderDetails: details,
         description: `${paymentCode ? paymentCode + " | " : ""}Web ${claimed.code} | ${description}`.slice(
           0,

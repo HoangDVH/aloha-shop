@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import { kvDeliveryAddressForOrder } from "./kvDeliveryAddress.js";
 import type { Db } from "mongodb";
 import {
   requireShopAuth,
@@ -124,7 +125,7 @@ export function registerShopOrderCustomerActionRoutes(
               customerId: existing.kvCustomerId ? Number(existing.kvCustomerId) : undefined,
               customerName: String((existing as any).customerName || "Khách web"),
               customerPhone: String((existing as any).customerPhone || ""),
-              address: fullAddressForKv(existing as any),
+              address: fullAddressForKv(existing as any), deliveryAddress: kvDeliveryAddressForOrder(existing),
               orderDetails: details,
               description:
                 `${paymentCode} | Web ${String((existing as any).code || id)} | gia hạn`.slice(

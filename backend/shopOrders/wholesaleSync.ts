@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { kvDeliveryAddressForOrder } from "./kvDeliveryAddress.js";
 import type { Db } from "mongodb";
 import { SHOP_ORDERS } from "./models.js";
 import { SHOP_ACCOUNTS, shopAccountIdQuery } from "../shopAuth/models.js";
@@ -83,7 +84,7 @@ export async function syncWholesaleOrder(db: Db, ops: Db, id: unknown, deps = {
     started = true;
     const result = await deps.send({ mainDb: ops, customerName: order.customerName,
       customerId: Number(account!.kvCustomerId), customerPhone: order.customerPhone,
-      address: fullAddressForKv({ deliveryMethod: order.deliveryMethod, shippingAddress: order.shippingAddress, ward: order.ward, district: order.district, province: order.province }), orderDetails: order.orderDetails,
+      address: fullAddressForKv({ deliveryMethod: order.deliveryMethod, shippingAddress: order.shippingAddress, ward: order.ward, district: order.district, province: order.province }), deliveryAddress: kvDeliveryAddressForOrder(order), orderDetails: order.orderDetails,
       description: `ALOHA:${String(order._id)} | Web ${order.code} | Cho xac nhan anh va thanh toan`.slice(0, 500),
       totalPayment: 0, shippingFee: Number(order.shippingFee) || 0 });
     if (!result.kvOrderCode || String(result.kvOrderCode) === String(result.kvOrderId)) throw new Error("missing_official_code");

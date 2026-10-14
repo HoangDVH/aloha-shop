@@ -12,6 +12,7 @@ vm.runInNewContext(source, { exports: exportsForTest, process, Date, Math, setIn
   if (name === './models.js') return { SHOP_ORDERS: 'orders' };
   if (name.includes('shopAuth/models')) return { SHOP_ACCOUNTS: 'accounts', shopAccountIdQuery: id => ({ _id: id }) };
   if (name === './orderRouteShared.js') return { fullAddressForKv: () => 'address' };
+  if (name === './kvDeliveryAddress.js') return { kvDeliveryAddressForOrder: () => undefined };
   if (name.includes('syncBus')) return { syncBus: { publish() {} } };
   return {};
 } });
