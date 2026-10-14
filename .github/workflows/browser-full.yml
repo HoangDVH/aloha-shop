@@ -1,0 +1,49 @@
+name: Full browser regression
+
+on:
+  schedule:
+    - cron: '0 20 * * *' # 03:00 Asia/Ho_Chi_Minh
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: browser-full
+  cancel-in-progress: true
+
+jobs:
+  browser:
+    name: Full browser checks (${{ matrix.project }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - project: chromium
+            browser: chromium
+            install-options: --only-shell
+          - project: webkit-mobile
+            browser: webkit
+            install-options: ''
+    env:
+      QA_REPORT: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/browser-qa/package-lock.json
+      - run: npm ci --prefix tests/browser-qa --no-audit --no-fund
+      - run: node tests/browser-qa/node_modules/playwright/cli.js install --with-deps ${{ matrix.install-options }} ${{ matrix.browser }}
+      - run: npm run test:full --prefix tests/browser-qa -- --project=${{ matrix.project }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-full-${{ matrix.project }}
+          path: |
+            tests/browser-qa/playwright-report/
+            tests/browser-qa/test-results/
+          retention-days: 3

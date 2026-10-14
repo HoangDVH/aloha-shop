@@ -9,10 +9,18 @@ concurrency:
   group: deploy-production
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   checks:
-    name: Validate release
+    name: Validate release (${{ matrix.check }})
     runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        check: [api, web]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -23,11 +31,17 @@ jobs:
             package-lock.json
             frontend/package-lock.json
       - run: npm ci --no-audit --no-fund
-      - run: npm ci --prefix frontend --no-audit --no-fund
-      - run: npm run typecheck:api && npm run typecheck:web
-      - run: node node_modules/tsx/dist/cli.mjs --test tests/client-recovery.test.ts tests/client-errors.test.ts tests/client-error-store.test.ts tests/voucher-audience.test.ts tests/returning-voucher.test.ts tests/voucher-wallet.test.ts tests/voucher-price.test.ts tests/promotions-evaluator.test.ts tests/checkout-voucher-consistency.test.ts tests/share-caption.test.ts tests/product-share-data.test.ts tests/share-capabilities.test.ts
-      - run: python3 tests/release-nginx.test.py && python3 tests/release-rollback.test.py
-      - run: bash -n scripts/deploy-production.sh
+      - if: matrix.check == 'web'
+        run: npm ci --prefix frontend --no-audit --no-fund
+      - run: npm run typecheck:${{ matrix.check }}
+      - if: matrix.check == 'api'
+        run: node --test tests/fast-checks.test.cjs
+      - if: matrix.check == 'api'
+        run: npm run test:release
+      - if: matrix.check == 'api'
+        run: python3 tests/release-nginx.test.py && python3 tests/release-rollback.test.py
+      - if: matrix.check == 'api'
+        run: bash -n scripts/deploy-production.sh
   deploy:
     name: Deploy to VPS
     runs-on: ubuntu-latest
@@ -57,23 +71,37 @@ jobs:
             DEPLOY_REF="$deploy_ref" bash "$runner/deploy-production.sh"
 
   browser-smoke:
-    name: Verify browsers after deployment
+    name: Quick browser checks (${{ matrix.project }})
     runs-on: ubuntu-latest
     needs: deploy
-    timeout-minutes: 15
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - project: chromium
+            browser: chromium
+            install-options: --only-shell
+          - project: webkit-mobile
+            browser: webkit
+            install-options: ''
+    env:
+      QA_REPORT: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: tests/browser-qa/package-lock.json
       - run: npm ci --prefix tests/browser-qa --no-audit --no-fund
-      - run: node tests/browser-qa/node_modules/playwright/cli.js install --with-deps chromium webkit
-      - run: npm test --prefix tests/browser-qa
+      - run: node tests/browser-qa/node_modules/playwright/cli.js install --with-deps ${{ matrix.install-options }} ${{ matrix.browser }}
+      - run: npm run test:smoke --prefix tests/browser-qa -- --project=${{ matrix.project }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: browser-smoke-results
+          name: browser-smoke-${{ matrix.project }}
           path: |
             tests/browser-qa/playwright-report/
             tests/browser-qa/test-results/
-          retention-days: 7
+          retention-days: 3

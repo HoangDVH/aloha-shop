@@ -1,6 +1,11 @@
 {
   "name": "aloha-browser-qa",
   "private": true,
-  "scripts": { "test": "playwright test" },
+  "scripts": {
+    "test": "npm run test:smoke -- --project=chromium",
+    "test:smoke": "playwright test --config=playwright.config.js --grep @smoke --max-failures=2 --global-timeout=180000",
+    "test:full": "playwright test --config=playwright.config.js --global-timeout=480000",
+    "test:failed": "playwright test --config=playwright.config.js --last-failed --max-failures=1 --global-timeout=120000"
+  },
   "devDependencies": { "@playwright/test": "1.64.0" }
 }

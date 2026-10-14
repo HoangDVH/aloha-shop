@@ -33,18 +33,54 @@ Cảnh báo từ 5 báo cáo trong 15 phút; dung lượng cảnh báo từ 80%,
 90%. Báo cáo MongoDB có index thời gian và TTL 7 ngày, được xóa theo chu kỳ TTL
 của MongoDB. Nếu VPS/website tắt thì cần hệ thống giám sát bên ngoài để nhận cảnh báo.
 
-Workflow chạy typecheck và regression test trước deploy. Runner và release đều
+Workflow chạy typecheck API và frontend ở hai job song song, cùng regression test trước deploy. Runner và release đều
 dùng commit SHA của workflow, tránh kiểm tra một commit nhưng deploy commit khác.
 
-Sau deploy, job **Verify browsers after deployment** chạy Playwright trên Chromium
-và WebKit với cấu hình iPhone 13. Bộ test kiểm tra 4 trang công khai, reload một
-lần khi lỗi chunk, màn hình phục hồi khi file JS trả 404, cảnh báo quản trị bằng
-API fixture và việc API giám sát từ chối người chưa đăng nhập. Báo cáo, ảnh chụp
-và trace lỗi được giữ ở artifact GitHub 7 ngày. Test không đăng nhập tài khoản
+Sau deploy, **Quick browser checks** chạy riêng Chromium và WebKit ở hai job song song.
+Mỗi trình duyệt chỉ chạy 5 ca `@smoke`: 4 trang công khai và API giám sát riêng tư.
+Thời gian chạy test giới hạn 3 phút (không gồm cài đặt); dừng sau 2 ca lỗi.
+Workflow **Full browser regression** chạy toàn bộ test trình duyệt lúc 03:00 giờ Việt Nam
+hằng ngày, hoặc qua Run workflow khi thay đổi lớn. Bộ này giữ kiểm tra lỗi chunk,
+cảnh báo quản trị, nhóm khách voucher và chia sẻ; giới hạn test 8 phút mỗi trình duyệt.
+Báo cáo và trace lỗi được giữ ở artifact GitHub 3 ngày. Chỉ cài trình duyệt của job;
+Chromium dùng `--only-shell`. Cache npm được dùng cho cả hai workflow; không cache
+bộ trình duyệt lớn trên GitHub. Test không đăng nhập tài khoản
 thật; báo cáo lỗi giả và lượt truy cập test được chặn tại trình duyệt, không ghi
 vào dữ liệu khách hàng. WebKit emulation không thay thế kiểm tra iPhone vật lý.
 Job browser chạy sau chuyển bản; nếu thất bại CI báo lỗi nhưng chưa tự rollback
 dựa trên browser test. Rollback tự động hiện áp dụng cho các kiểm tra deploy HTTP.
+
+## Kiểm tra nhanh tại máy
+
+Chọn nhóm liên quan; không mặc định chạy `npm test` toàn repo:
+
+```powershell
+npm run test:quick -- sharing
+npm run test:quick -- vouchers
+npm run test:quick -- recovery
+npm run test:quick -- sharing vouchers --dry-run
+```
+
+Lệnh không đối số chỉ in hướng dẫn, không chạy test. Các nhóm được khử trùng lặp;
+không tải trình duyệt, không tự retry. Mỗi file test Node giới hạn 30 giây.
+`npm run test:release` dành cho CI, giữ các regression bắt buộc và thêm test PDP voucher.
+Chạy `npm run typecheck:api` hoặc `npm run typecheck:web` theo phần code đã đổi.
+Kết quả đã đạt không cần chạy lại nếu không có thay đổi liên quan.
+
+Nếu cần kiểm tra trình duyệt và máy đã có Playwright:
+
+```powershell
+npm test --prefix tests/browser-qa
+npm run test:failed --prefix tests/browser-qa -- --project=chromium
+```
+
+Lệnh mặc định chỉ chạy Chromium smoke; full suite dùng `test:full` khi được yêu cầu.
+Sau hai lần cùng một ca lỗi, đọc trace để xác định nguyên nhân trước khi chạy lại.
+Không dùng `--repeat-each` hoặc lặp full suite cho sửa đổi thông thường.
+Ảnh chụp bổ sung chỉ bật bằng `QA_DIAGNOSTIC_SCREENSHOTS=1`; báo cáo HTML local
+chỉ bật bằng `QA_REPORT=1`. Trace và ảnh ca lỗi vẫn được giữ để điều tra.
+Không xóa cache/browser cũ tự động. Lịch CI kiểm tra website đang triển khai, không
+khẳng định source mới nhất trên `main` đã được triển khai; có thể khác phiên bản nếu deploy lỗi.
 
 Kiểm tra sau deploy: trang chủ, `/tim`, trang sản phẩm, giỏ hàng, đăng nhập;
 giữ tab cũ qua một lần deploy và xác nhận file JS cũ vẫn trả 200. Kiểm tra cache

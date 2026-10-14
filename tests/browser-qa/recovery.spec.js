@@ -1,6 +1,7 @@
 const { test, expect } = require('@playwright/test');
 
 async function diagnosticScreenshot(target, info, file, options = {}) {
+  if (process.env.QA_DIAGNOSTIC_SCREENSHOTS !== '1') return;
   // Screenshots are diagnostics; external font loading must not fail functional checks.
   try { await target.screenshot({ path: info.outputPath(file), timeout: 5000, ...options }); }
   catch (error) { await info.attach('screenshot-note', { body: Buffer.from(error.message), contentType: 'text/plain' }); }
@@ -16,7 +17,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-for (const path of ['/', '/tim', '/gio-hang', '/dang-nhap']) test(`public page ${path} renders without the default exception screen`, async ({ page }, info) => {
+for (const path of ['/', '/tim', '/gio-hang', '/dang-nhap']) test(`@smoke public page ${path} renders without the default exception screen`, async ({ page }, info) => {
   const runtimeErrors = [];
   const reported = [];
   await page.route('**/api/shop/client-errors', async route => { reported.push(route.request().postDataJSON()); await route.fulfill({ status: 204 }); });
@@ -110,7 +111,7 @@ test('admin warning and disk information render using isolated API fixtures', as
   await diagnosticScreenshot(panel, info, 'site-health-alert.png');
 });
 
-test('real monitoring API remains private', async ({ request }) => {
+test('@smoke real monitoring API remains private', async ({ request }) => {
   const response = await request.get('/api/shop/admin/site-health');
   expect(response.status()).toBe(401);
 });

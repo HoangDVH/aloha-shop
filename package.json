@@ -14,6 +14,8 @@
     "typecheck:web": "npm run lint --prefix frontend",
     "typecheck": "npm run typecheck:api && npm run typecheck:web",
     "test": "tsx --test tests/*.test.ts",
+    "test:quick": "node scripts/test-quick.cjs",
+    "test:release": "node scripts/test-quick.cjs release",
     "check:lines": "node scripts/check-max-lines.cjs"
   },
   "dependencies": {

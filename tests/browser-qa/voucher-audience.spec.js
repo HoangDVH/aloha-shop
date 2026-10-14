@@ -1,12 +1,7 @@
 const { test, expect } = require('@playwright/test');
+const { campaignFixture } = require('./campaign-fixture.cjs');
 for (const newBuyer of [true, false]) test(`voucher page shows only ${newBuyer ? 'new' : 'returning'} customer vouchers`, async ({ page }) => {
-  const response = await page.request.get('/api/shop/campaigns/current');
-  const fixture = await response.json();
-  expect(fixture.campaign).toBeTruthy();
-  fixture.viewer = { loggedIn: true, newBuyer, retail: true, locked: false, canUse: true, lockReason: null, lockMessage: null };
-  fixture.campaign.phase = 'live';
-  fixture.campaign.phaseEndsAt = new Date(Date.now() + 86400000).toISOString();
-  fixture.vouchers = ['new_web', 'returning_web'].map((targetCustomer, i) => ({ id: `qa-${targetCustomer}`, title: `QA audience ${targetCustomer}`, description: '', type: 'auto', benefitType: 'goods', discountType: 'fixed', discountValue: 30000 + i * 10000, minOrderThreshold: 0, targetCustomer, claimRequired: false, claimLimitTotal: null, claimedCount: 0, claimStartDate: null }));
+  const fixture = campaignFixture(newBuyer);
   await page.route('**/api/shop/campaigns/current', route => route.fulfill({ json: fixture }));
   await page.route('**/api/shop/auth/me', route => route.fulfill({ json: { ok: true, user: { id: 'qa-audience', email: 'qa@example.invalid', fullName: 'QA', roles: ['customer'] } } }));
   await page.route('**/api/shop/vouchers/wallet', route => route.fulfill({ json: { ok: true, enabled: true, items: [], claimedIds: [] } }));
