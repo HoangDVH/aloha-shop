@@ -11,7 +11,7 @@ const sections = [];
 function visit(node) {
   if (ts.isJsxExpression(node) && node.expression) {
     const expression = node.expression.getText(ast);
-    if (expression.startsWith('!hasPromo || expectsSi ?') || expression.startsWith('!expectsSi ? <ProductCampaignBox')) sections.push(node.getText(ast));
+    if (expression.startsWith('!hasPromo || expectsSi ?') || (expression.startsWith('!expectsSi ?') && expression.includes('<ProductCampaignBox'))) sections.push(node.getText(ast));
   }
   ts.forEachChild(node, visit);
 }
@@ -28,7 +28,7 @@ function render(extra = {}) {
     livePriceKind: 'si', liveGia: 220000, liveWebPrice: 300000,
     livePromo: { listPrice: 398000, salePrice: 199000 }, liveTon: 0,
     activeProduct: { ma: 'CBDVDP', dvt: 'CÁI' }, user: { siRegion: 'HCM' },
-    SiPriceBadge: 'si-price', ProductCampaignBox: 'campaign-price',
+    SiPriceBadge: 'si-price', ProductCampaignBox: 'campaign-price', ProductMobilePromoExtras: 'mobile-extras',
     formatVnd: String, purchaseDisabled: false, isPreOrder: true, addCart() {},
     ...extra,
   };

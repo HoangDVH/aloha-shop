@@ -78,9 +78,9 @@ export function DealsOverview({
 
       <DealsVoucherStrip vouchers={vouchers} viewer={viewer} offsetMs={offsetMs} focusIds={focusIds} />
 
-      <DealsBestSellers campaign={campaign} />
-
       <DealsProductTabs campaign={campaign} offsetMs={offsetMs} initialSlot={searchParams.get("slot")} />
+
+      <DealsBestSellers campaign={campaign} />
 
       <LazyMount minHeight={260}>
         <section id="the-le" className="scroll-mt-24 space-y-3">

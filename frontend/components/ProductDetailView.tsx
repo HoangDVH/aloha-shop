@@ -17,14 +17,17 @@ import { ProductDescription, plainDescription } from "@/components/pdp/ProductDe
 import { ProductGallery } from "@/components/pdp/ProductGallery";
 import { ProductPromotionBadges } from "@/components/pdp/ProductPromotionBadges";
 import { ProductStickyCta } from "@/components/pdp/ProductStickyCta";
-import { ProductCampaignBox } from "@/components/pdp/ProductCampaignBox";
+import { ProductCampaignBox, ProductMobilePromoExtras } from "@/components/pdp/ProductCampaignBox";
+import { ProductMobileTikTokPriceBanner } from "@/components/pdp/ProductMobileTikTokPriceBanner";
 import { ProductTierPricing } from "@/components/pdp/ProductTierPricing";
 import { ProductPricingSummary, useProductPricing } from "@/components/pdp/ProductPricingSummary";
 import { calculateTierPrice } from "@/lib/volumePricing";
 import { useCampaignRequoteKey } from "@/lib/campaign/campaignQuote";
 import { useCampaignView } from "@/lib/campaign/useCampaignView";
 import { mobilePurchaseAction } from "@/components/pdp/purchaseAction";
+import { ProductQuantityPicker } from "@/components/pdp/ProductQuantityPicker";
 import { ProductPurchaseSheet } from "@/components/pdp/ProductPurchaseSheet";
+import { usePdpVoucherBadges } from "@/lib/usePdpVoucherBadges";
 import { ProductShareButton } from "@/components/pdp/ProductShareSheet";
 import { ProductAttachedItems, selectBuyNowLines } from "@/components/pdp/ProductAttachedItems";
 import { isPromoSelling, promoAnchorPrice } from "@/components/campaign/CardPromo";
@@ -39,12 +42,7 @@ import {
   setGuestCtvCode,
 } from "@/lib/ctv";
 import { canPurchaseZeroPrice } from "@/lib/testBuyer";
-
-export function ProductDetailView({
-  product,
-}: {
-  product: ShopProduct;
-}) {
+export function ProductDetailView({ product }: { product: ShopProduct }) {
   const router = useShopRouter();
   const { user } = useShopAuth();
   const add = useCart((s) => s.add);
@@ -59,7 +57,6 @@ export function ProductDetailView({
     gallery: variantGallery,
   } = useProductVariants(product);
   const selectedModel = selection.model;
-
   const activeProduct = useMemo((): ShopProduct => {
     if (!selectedModel) return product;
     const galleryAnh = variantGallery[0] || selectedModel.anh || product.anh;
@@ -86,7 +83,6 @@ export function ProductDetailView({
       attributes: selectedModel.attributes,
     };
   }, [product, selectedModel, variantGallery]);
-
   const gallery = useMemo(() => {
     if (variantGallery.length) return variantGallery;
     const imgs = activeProduct.images?.length
@@ -114,7 +110,8 @@ export function ProductDetailView({
   const [livePriceKind, setLivePriceKind] = useState(product.priceKind);
   const [livePromo, setLivePromo] = useState(product.campaignPromo ?? null);
   const campaignKey = useCampaignRequoteKey();
-  const campaignViewer = useCampaignView().viewer;
+  const campaignView = useCampaignView();
+  const campaignViewer = campaignView.viewer;
   const [ctvRate, setCtvRate] = useState<number | null>(null);
   const variantsLoading = selection.loading;
   const needPick =
@@ -122,6 +119,7 @@ export function ProductDetailView({
   const isPreOrder =
     !needPick && !variantsLoading && isPreOrderTon(liveTon, qty + cartQty);
   const expectsSi = user?.siStatus === "active" && user.roles.includes("si");
+  const activeVoucherBadges = usePdpVoucherBadges(activeProduct, campaignViewer, expectsSi, campaignKey);
   const pricePending = Boolean(expectsSi) !== (livePriceKind === "si" || livePriceKind === "si_missing");
   const zeroPriceBlocked =
     livePriceKind === "si_missing" || (!(Number(liveGia) > 0) && !canPurchaseZeroPrice(user?.email));
@@ -393,10 +391,10 @@ export function ProductDetailView({
   const campaignBuyInBox = isCampaignSaleOpen || isCampaignDealOpen;
 
   return (
-    <div className="shop-pb-sticky mx-auto w-full min-w-0 max-w-7xl space-y-2 overflow-x-clip px-4 py-2 sm:py-3">
+    <div className="shop-pb-sticky mx-auto w-full min-w-0 max-w-7xl space-y-2 overflow-x-clip px-0 sm:px-4 py-0 sm:py-3">
       {/* Chiều rộng khung = navbar (max-w-7xl) */}
-      <div className="flex min-w-0 max-w-full flex-col gap-2">
-        <nav className="flex min-w-0 shrink-0 flex-wrap items-center gap-1 px-1 text-xs text-slate-500">
+      <div className="flex min-w-0 max-w-full flex-col gap-0 sm:gap-2">
+        <nav className="hidden sm:flex min-w-0 shrink-0 flex-wrap items-center gap-1 px-4 sm:px-1 text-xs text-slate-500 pt-2 sm:pt-0">
           {crumbs.map((c, i) => (
             <span key={c.href + i} className="inline-flex max-w-full items-center gap-1">
               {i > 0 ? (
@@ -419,7 +417,7 @@ export function ProductDetailView({
         </nav>
 
         {/* Khung chi tiết — hiển thị toàn bộ thông tin tự nhiên, không thanh cuộn bên trong */}
-        <div className="flex min-w-0 max-w-full flex-col rounded-2xl bg-white shadow-[0_2px_16px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
+        <div className="flex min-w-0 max-w-full flex-col rounded-none sm:rounded-2xl bg-white shadow-none sm:shadow-[0_2px_16px_rgba(0,0,0,0.06)] ring-0 sm:ring-1 sm:ring-black/[0.04]">
           <div className="grid min-w-0 max-w-full gap-0 lg:grid-cols-2">
             {/* Cột ảnh - sticky trên desktop theo chuẩn Shopee/Lazada */}
             <div className="min-w-0 max-w-full lg:sticky lg:top-20 lg:self-start">
@@ -432,7 +430,21 @@ export function ProductDetailView({
             </div>
 
             {/* Cột thông tin — thông tin hiển thị tự nhiên, không bị cuộn */}
-            <div className="flex min-w-0 flex-col border-t border-[#eee] p-3 sm:p-4 lg:border-l lg:border-t-0 lg:p-6">
+            <div className="flex min-w-0 flex-col border-t border-[#eee] p-4 sm:p-5 lg:border-l lg:border-t-0 lg:p-6">
+              {/* Mobile TikTok Shop Price Banner (Dành riêng cho sản phẩm ưu đãi trên mobile) */}
+              {hasPromo && !expectsSi && livePromo ? (
+                <div className="lg:hidden -mx-4 -mt-4 mb-3.5 sm:-mx-5 sm:-mt-5">
+                  <ProductMobileTikTokPriceBanner
+                    promo={livePromo}
+                    regularPrice={liveGia}
+                    webPrice={liveWebPrice}
+                    dvt={activeProduct.dvt}
+                    ton={liveTon}
+                    allowBackorder={activeProduct.allowBackorder}
+                  />
+                </div>
+              ) : null}
+
               <div className="space-y-3.5">
                 <div className="flex items-start gap-2">
                   <h1 className="min-w-0 flex-1 text-xl font-extrabold leading-tight tracking-tight text-[var(--aloha-ink)] sm:text-2xl sm:uppercase">
@@ -448,7 +460,6 @@ export function ProductDetailView({
                     ctvCode={loggedInCtvCode}
                   />
                 </div>
-
 
                 <p className="text-xs text-slate-400">
                   Mã:{" "}
@@ -510,25 +521,37 @@ export function ProductDetailView({
                   </div>
                 ) : null}
 
-                {!expectsSi ? <ProductCampaignBox
-                  ma={activeProduct.ma}
-                  promo={livePromo}
-                  dvt={activeProduct.dvt}
-                  regularPrice={liveGia}
-                  webPrice={liveWebPrice}
-                  ton={liveTon}
-                  allowBackorder={activeProduct.allowBackorder}
-                  onBuyNow={() => addCart(true)}
-                  onAddCart={() => addCart(false)}
-                  purchaseDisabled={purchaseDisabled}
-                  isPreOrder={isPreOrder}
-                /> : hasPromo ? (
+                {!expectsSi ? (
+                  <>
+                    {/* Desktop: Giữ nguyên ProductCampaignBox 100% không đổi */}
+                    <div className="hidden lg:block">
+                      <ProductCampaignBox
+                        ma={activeProduct.ma}
+                        promo={livePromo}
+                        dvt={activeProduct.dvt}
+                        regularPrice={liveGia}
+                        webPrice={liveWebPrice}
+                        ton={liveTon}
+                        allowBackorder={activeProduct.allowBackorder}
+                        onBuyNow={() => addCart(true)}
+                        onAddCart={() => addCart(false)}
+                        purchaseDisabled={purchaseDisabled}
+                        isPreOrder={isPreOrder}
+                      />
+                    </div>
+                    {/* Mobile: Chỉ hiện các thông tin phụ (quà tặng, giới hạn mua) vì thanh giá TikTok Shop đã hiện ở đầu */}
+                    <div className="lg:hidden">
+                      <ProductMobilePromoExtras
+                        promo={livePromo}
+                        regularPrice={liveGia}
+                      />
+                    </div>
+                  </>
+                ) : hasPromo ? (
                   <p className="text-xs text-slate-500">
                     Ưu đãi chiến dịch dành cho khách lẻ. Tài khoản của bạn áp dụng giá sỉ.
                   </p>
                 ) : null}
-
-
 
                 {isCtvAccount ? (
                 <div className="space-y-1.5 pt-1">
@@ -585,70 +608,19 @@ export function ProductDetailView({
                 </div>
                 ) : null}
 
-
-
                 {variantAxes.length > 0 ? (
-                  <ProductVariantPicker
-                    axes={variantAxes}
-                    selected={variantSelected}
-                    onPick={pickVariant}
-                  />
+                  <div className="hidden lg:block">
+                    <ProductVariantPicker
+                      axes={variantAxes}
+                      selected={variantSelected}
+                      onPick={pickVariant}
+                    />
+                  </div>
                 ) : null}
 
-
-
                 <div>
-                  <div className="flex flex-wrap items-center gap-4"><div className="text-sm font-semibold text-slate-800">Số lượng mua</div>
-                  <div className="inline-flex items-center overflow-hidden rounded-lg border border-[#ddd]">
-                    <button
-                      type="button"
-                      className="h-11 w-11 text-lg text-slate-600 hover:bg-[#f5f5f5] disabled:opacity-40"
-                      disabled={purchaseDisabled || qty <= 1}
-                      onClick={() => setQty((q) => Math.max(1, q - 1))}
-                    >
-                      −
-                    </button>
-                    <input
-                      type="number"
-                      min={1}
-                      max={
-                        purchaseDisabled || activeProduct.allowBackorder !== false
-                          ? 10000
-                          : Math.max(1, liveTon)
-                      }
-                      value={qty}
-                      onChange={(e) => {
-                        const n = Math.max(1, Number(e.target.value) || 1);
-                        if (purchaseDisabled) {
-                          setQty(1);
-                          return;
-                        }
-                        if (activeProduct.allowBackorder !== false) {
-                          setQty(Math.min(10000, Math.floor(n)));
-                          return;
-                        }
-                        setQty(Math.min(n, Math.max(1, liveTon)));
-                      }}
-                      className="h-11 w-14 border-x border-[#ddd] bg-white text-center text-sm font-semibold tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                    />
-                    <button
-                      type="button"
-                      className="h-11 w-11 text-lg text-slate-600 hover:bg-[#f5f5f5] disabled:opacity-40"
-                      disabled={
-                        purchaseDisabled || qty >= 10000 || (activeProduct.allowBackorder === false && qty >= liveTon)
-                      }
-                      onClick={() =>
-                        setQty((q) =>
-                          activeProduct.allowBackorder !== false
-                            ? Math.min(10000, q + 1)
-                            : Math.min(Math.max(1, liveTon), q + 1)
-                        )
-                      }
-                    >
-                      +
-                    </button>
-                  </div>
-                  </div>
+                  <ProductQuantityPicker purchaseDisabled={purchaseDisabled} qty={qty} setQty={setQty}
+                    allowBackorder={activeProduct.allowBackorder} liveTon={liveTon} />
                   {stockMax(liveTon) === 0 ? (
                     <p className="mt-2 text-sm font-medium text-amber-800">
                       Sản phẩm đã hết hàng, cần đặt trước.
@@ -710,14 +682,16 @@ export function ProductDetailView({
         </div>
       </div>
 
-      <ProductAttachedItems
-        mainProduct={activeProduct}
-        attachedProducts={product.attachedProducts}
-        mainQty={qty}
-        mainLivePrice={liveGia}
-        mainLiveTon={liveTon}
-      />
-      {desc ? <ProductDescription text={desc} /> : null}
+      <div className="px-4 sm:px-0 space-y-2">
+        <ProductAttachedItems
+          mainProduct={activeProduct}
+          attachedProducts={product.attachedProducts}
+          mainQty={qty}
+          mainLivePrice={liveGia}
+          mainLiveTon={liveTon}
+        />
+        {desc ? <ProductDescription text={desc} /> : null}
+      </div>
 
       <ProductStickyCta
         price={effectiveGia}
@@ -725,9 +699,25 @@ export function ProductDetailView({
         needPick={needPick}
         preOrder={isPreOrder}
         purchaseDisabled={purchaseDisabled}
-        onAddCart={() => addCart(false)}
+        onAddCart={() => {
+          if (variantAxes.length > 0 && needPick) {
+            setPurchaseSheetOpen(true);
+          } else {
+            addCart(false);
+          }
+        }}
         buyDisabled={mobileAction === "blocked"}
-        onBuyNow={() => { if (mobileAction === "choose") setPurchaseSheetOpen(true); else if (mobileAction === "buy") addCart(true); }}
+        onBuyNow={() => {
+          if (hasPromo && !expectsSi) {
+            setPurchaseSheetOpen(true);
+          } else if (variantAxes.length > 0) {
+            setPurchaseSheetOpen(true);
+          } else if (mobileAction === "choose") {
+            setPurchaseSheetOpen(true);
+          } else if (mobileAction === "buy") {
+            addCart(true);
+          }
+        }}
         isCampaignSale={campaignBuyInBox}
         campaignBuyLabel={isCampaignSaleOpen ? "Mua Giờ Vàng" : isPreOrder ? "Đặt ngay" : "Mua ngay"}
         productName={activeProduct.ten} productImage={activeProduct.anh}
@@ -738,26 +728,73 @@ export function ProductDetailView({
         totalPending={!purchaseDisabled && (productPricing.loading || productPricing.stale || !productPricing.quote)}
         onPriceDetails={() => setPurchaseSheetOpen(true)}
       />
-      {purchaseSheetOpen && (
-        <ProductPurchaseSheet
-          name={activeProduct.ten}
-          image={gallery[0] || activeProduct.anh}
-          price={effectiveGia}
-          pending={pricePending || variantsLoading}
-          disabled={purchaseDisabled || (activeProduct.allowBackorder === false && qty + cartQty > liveTon)}
-          status={variantsLoading ? "Đang tải biến thể…" : needPick ? "Vui lòng chọn đủ phân loại sản phẩm." : pricePending ? "Đang cập nhật giá…" : zeroPriceBlocked ? "Sản phẩm chưa mở bán." : activeProduct.allowBackorder === false && liveTon < 1 ? "Sản phẩm đã hết hàng." : activeProduct.allowBackorder === false && qty + cartQty > liveTon ? "Giỏ hàng đã có sản phẩm này. Số lượng vượt tồn kho hiện tại." : isPreOrder ? "Đặt trước — thời gian giao sẽ được Aloha xác nhận." : `Còn ${formatTonDisplay(liveTon)} ${activeProduct.dvt || "sản phẩm"}`}
-          selection={Object.values(variantSelected).filter(Boolean).join(" · ") || `Mã: ${activeProduct.ma}`}
-          qty={qty}
-          maxQty={activeProduct.allowBackorder === false ? Math.max(1, Math.min(10000, Math.floor(liveTon - cartQty))) : 10000}
-          onQty={setQty}
-          onClose={() => setPurchaseSheetOpen(false)}
-          onBuy={() => { setPurchaseSheetOpen(false); addCart(true); }}
-          preOrder={isPreOrder}
-        >
-          <ProductVariantPicker axes={variantAxes} selected={variantSelected} onPick={pickVariant} sheet />
-          {!purchaseDisabled && <ProductPricingSummary pricing={productPricing} qty={qty} unit={activeProduct.dvt} />}
-        </ProductPurchaseSheet>
-      )}
+      {purchaseSheetOpen && (() => {
+        const promoStrike =
+          (livePromo?.compareAtPrice && livePromo.compareAtPrice > effectiveGia
+            ? livePromo.compareAtPrice
+            : promoAnchorPrice(livePromo, effectiveGia)) || 0;
+        const sheetOriginal =
+          promoStrike > effectiveGia
+            ? promoStrike
+            : liveWebPrice && liveWebPrice > effectiveGia
+              ? liveWebPrice
+              : undefined;
+        const sheetDiscount =
+          sheetOriginal && sheetOriginal > effectiveGia
+            ? Math.round((1 - effectiveGia / sheetOriginal) * 100)
+            : (tierInfo?.tier.discountPercent ??
+              (livePromo?.salePrice && livePromo.listPrice > livePromo.salePrice
+                ? Math.round((1 - livePromo.salePrice / livePromo.listPrice) * 100)
+                : 0));
+
+        return (
+          <ProductPurchaseSheet
+            name={activeProduct.ten}
+            image={gallery[0] || activeProduct.anh}
+            price={effectiveGia}
+            originalPrice={sheetOriginal}
+            discountPercent={sheetDiscount}
+            voucherBadges={activeVoucherBadges}
+            campaignSale={
+              hasPromo && !expectsSi && livePromo
+                ? {
+                    isSale: true,
+                    title: "Flash Sale",
+                    endsAt: livePromo.endsAt,
+                    offsetMs: campaignView.offsetMs,
+                  }
+                : campaignBuyInBox
+                  ? {
+                      isSale: true,
+                      title: isCampaignSaleOpen ? "Flash Sale" : "Ưu Đãi",
+                      subtitle: isCampaignSaleOpen ? "Đang diễn ra" : undefined,
+                      endsAt: livePromo?.endsAt,
+                      offsetMs: campaignView.offsetMs,
+                    }
+                  : undefined
+            }
+            pending={pricePending || variantsLoading}
+            disabled={purchaseDisabled || (activeProduct.allowBackorder === false && qty + cartQty > liveTon)}
+            status={variantsLoading ? "Đang tải biến thể…" : needPick ? "Vui lòng chọn đủ phân loại sản phẩm." : pricePending ? "Đang cập nhật giá…" : zeroPriceBlocked ? "Sản phẩm chưa mở bán." : activeProduct.allowBackorder === false && liveTon < 1 ? "Sản phẩm đã hết hàng." : activeProduct.allowBackorder === false && qty + cartQty > liveTon ? "Giỏ hàng đã có sản phẩm này. Số lượng vượt tồn kho hiện tại." : isPreOrder ? "Đặt trước — thời gian giao sẽ được Aloha xác nhận." : `Còn ${formatTonDisplay(liveTon)} ${activeProduct.dvt || "sản phẩm"}`}
+            selection={Object.values(variantSelected).filter(Boolean).join(" · ") || `Mã: ${activeProduct.ma}`}
+            qty={qty}
+            maxQty={activeProduct.allowBackorder === false ? Math.max(1, Math.min(10000, Math.floor(liveTon - cartQty))) : 10000}
+            onQty={setQty}
+            onClose={() => setPurchaseSheetOpen(false)}
+            onBuy={() => { setPurchaseSheetOpen(false); addCart(true); }}
+            preOrder={isPreOrder}
+            summary={!purchaseDisabled ? <ProductPricingSummary pricing={productPricing} qty={qty} unit={activeProduct.dvt} /> : undefined}
+          >
+            <ProductVariantPicker
+              axes={variantAxes}
+              selected={variantSelected}
+              onPick={pickVariant}
+              sheet
+              fallbackImage={activeProduct.anh || gallery[0]}
+            />
+          </ProductPurchaseSheet>
+        );
+      })()}
     </div>
   );
 }

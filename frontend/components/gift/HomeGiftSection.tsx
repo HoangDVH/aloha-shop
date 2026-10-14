@@ -353,7 +353,7 @@ export function HomeGiftSection({ initialItems = [] }: { initialItems?: GiftCard
                   Dự án & Sự kiện
                 </span>
               </div>
-              <p className="mt-0.5 truncate text-[11px] sm:text-xs text-stone-500 font-medium">
+              <p className="mt-0.5 text-[11px] sm:text-xs text-stone-500 font-medium leading-snug">
                 In logo chậu · Chiết khấu sỉ · Xuất hóa đơn VAT
               </p>
             </div>
@@ -361,8 +361,9 @@ export function HomeGiftSection({ initialItems = [] }: { initialItems?: GiftCard
 
           {/* Cụm phải: Nút CTA nhỏ gọn hoặc icon mũi tên */}
           <div className="shrink-0 flex items-center">
-            <span className="inline-flex items-center gap-1 sm:gap-1.5 rounded-full bg-[#0E5242] px-3 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-xs font-bold text-white shadow-2xs group-hover:bg-[#156e59] transition">
-              <span>Xem giải pháp</span>
+            <span className="inline-flex items-center gap-1 sm:gap-1.5 rounded-full bg-[#0E5242] px-2.5 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-xs font-bold text-white shadow-2xs group-hover:bg-[#156e59] transition">
+              <span className="sm:hidden">Xem</span>
+              <span className="hidden sm:inline">Xem giải pháp</span>
               <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
             </span>
           </div>

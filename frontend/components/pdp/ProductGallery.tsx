@@ -51,6 +51,7 @@ export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
   const touchX = useRef<number | null>(null);
   const lightboxOpenRef = useRef(false);
   lightboxOpenRef.current = mediaLightbox;
+  const thumbRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const current = media[idx] ?? null;
 
@@ -58,6 +59,14 @@ export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
     setIdx(0);
     setMediaLightbox(false);
   }, [resetKey]);
+
+  useEffect(() => {
+    thumbRefs.current[idx]?.scrollIntoView({
+      behavior: "smooth",
+      inline: "nearest",
+      block: "nearest",
+    });
+  }, [idx]);
 
   useEffect(() => {
     if (media.length === 0) {
@@ -105,20 +114,20 @@ export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
   };
 
   return (
-    <div className="flex w-full min-w-0 max-w-full flex-col gap-1.5 p-3 sm:p-4 lg:p-3 xl:p-4">
+    <div className="flex w-full min-w-0 max-w-full flex-col gap-0 sm:gap-1.5 p-0 sm:p-4 lg:p-3 xl:p-4">
       <div
-        className="relative aspect-square w-full max-w-[330px] sm:max-w-[350px] lg:max-w-[360px] xl:max-w-[380px] mx-auto min-w-0 overflow-hidden rounded-xl bg-[var(--aloha-cream)] shadow-2xs"
+        className="relative aspect-square w-full max-w-full sm:max-w-[min(400px,calc(100vh-250px))] lg:max-w-[min(440px,calc(100vh-250px))] xl:max-w-[min(460px,calc(100vh-240px))] mx-auto min-w-0 overflow-hidden rounded-none sm:rounded-xl bg-stone-100 sm:bg-[var(--aloha-cream)] shadow-none sm:shadow-2xs select-none"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
         {current ? (
           current.kind === "video" ? (
-            <div className="absolute inset-0 overflow-hidden bg-[var(--aloha-cream)]">
+            <div className="absolute inset-0 overflow-hidden bg-black/5 sm:bg-[var(--aloha-cream)]">
               {current.file ? (
                 <video
                   key={current.src}
                   src={current.src}
-                  className="absolute inset-0 h-full w-full cursor-pointer object-contain"
+                  className="absolute inset-0 h-full w-full cursor-pointer object-cover sm:object-contain"
                   autoPlay
                   muted
                   loop
@@ -133,10 +142,10 @@ export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
                     <img
                       src={poster}
                       alt=""
-                      className="absolute inset-0 h-full w-full object-contain"
+                      className="absolute inset-0 h-full w-full object-cover sm:object-contain"
                     />
                   ) : (
-                    <div className="absolute inset-0 bg-[var(--aloha-green-light)]" />
+                    <div className="absolute inset-0 bg-stone-900 sm:bg-[var(--aloha-green-light)]" />
                   )}
                   <iframe
                     key={current.src}
@@ -157,10 +166,11 @@ export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
                   />
                 </>
               )}
+              {/* Nút phóng to video: mobile góc trái dưới, desktop giữ nguyên góc phải dưới chuẩn cũ */}
               <button
                 type="button"
                 onClick={() => openMediaLightbox(idx)}
-                className="absolute bottom-2 right-2 z-[3] inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-white/95 text-slate-500 shadow-sm ring-1 ring-black/5"
+                className="absolute bottom-3 left-3 z-[2] inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white shadow-sm backdrop-blur-xs hover:bg-black/60 transition sm:bottom-2 sm:right-2 sm:left-auto sm:min-h-11 sm:min-w-11 sm:bg-white/95 sm:text-slate-500 sm:ring-1 sm:ring-black/5 sm:hover:bg-white"
                 aria-label="Xem video phóng to"
               >
                 <Maximize2 size={16} />
@@ -172,7 +182,7 @@ export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
               key={current.src}
               src={current.src}
               alt={alt}
-              className="absolute inset-0 h-full w-full cursor-zoom-in object-contain"
+              className="absolute inset-0 h-full w-full cursor-zoom-in object-cover sm:object-contain"
               onClick={() => openMediaLightbox(idx)}
               draggable={false}
             />
@@ -183,36 +193,50 @@ export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
           </div>
         )}
 
+        {/* Nút phóng to ảnh: mobile góc trái dưới, desktop giữ nguyên góc phải dưới chuẩn cũ */}
         {current?.kind === "image" ? (
           <button
             type="button"
             onClick={() => openMediaLightbox()}
-            className="absolute bottom-2 right-2 z-[3] inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-white/95 text-slate-500 shadow-sm ring-1 ring-black/5"
+            className="absolute bottom-3 left-3 z-[2] inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white shadow-sm backdrop-blur-xs hover:bg-black/60 transition sm:bottom-2 sm:right-2 sm:left-auto sm:min-h-11 sm:min-w-11 sm:bg-white/95 sm:text-slate-500 sm:ring-1 sm:ring-black/5 sm:hover:bg-white"
             aria-label="Phóng to ảnh"
           >
             <Maximize2 size={16} />
           </button>
         ) : null}
+
+        {/* Badge số thứ tự ảnh góc phải dưới trên mobile chuẩn TikTok Shop (ví dụ 1/6) */}
+        {media.length > 1 && (
+          <div className="absolute bottom-3 right-3 z-[2] rounded-full bg-black/60 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-white backdrop-blur-xs shadow-xs pointer-events-none sm:hidden">
+            {idx + 1}/{media.length}
+          </div>
+        )}
       </div>
 
       {media.length > 0 ? (
         <div className="flex min-w-0 max-w-full flex-col gap-1">
+          {/* Dòng số thứ tự đếm ảnh trên desktop chuẩn cũ */}
           {media.length > 1 ? (
-            <p className="text-center text-[11px] leading-tight tabular-nums text-slate-400">
+            <p className="hidden sm:block text-center text-[11px] leading-tight tabular-nums text-slate-400">
               {idx + 1}/{media.length}
             </p>
           ) : null}
-          <div className="w-full min-w-0 max-w-full overflow-x-auto overscroll-x-contain pb-1">
-            <div className="flex w-max min-w-full justify-center gap-1.5 px-1 sm:gap-2">
+
+          {/* Dãy thumbnail: mobile kiểu Shopee cuộn ngang, desktop giữ nguyên kích thước & màu viền xanh gốc */}
+          <div className="w-full min-w-0 max-w-full overflow-x-auto scrollbar-none overscroll-x-contain py-2 px-3 sm:py-0 sm:px-1">
+            <div className="flex w-max min-w-full items-center gap-2 sm:justify-center sm:gap-2">
               {media.map((item, i) => (
                 <button
                   key={`thumb-${item.kind}-${item.src}-${i}`}
+                  ref={(el) => {
+                    thumbRefs.current[i] = el;
+                  }}
                   type="button"
                   onClick={() => goTo(i)}
-                  className={`relative aspect-square h-12 w-12 shrink-0 overflow-hidden rounded-lg border-2 bg-[var(--aloha-cream)] transition sm:h-13 sm:w-13 lg:h-14 lg:w-14 ${
+                  className={`relative aspect-square h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 bg-stone-100 transition-all sm:h-12 sm:w-12 lg:h-13 lg:w-13 sm:bg-[var(--aloha-cream)] ${
                     i === idx
-                      ? "border-[var(--aloha-green)]"
-                      : "border-transparent hover:border-[var(--aloha-line)]"
+                      ? "border-[#ff2442] ring-1 ring-[#ff2442] shadow-xs opacity-100 sm:border-[var(--aloha-green)] sm:ring-0 sm:shadow-none"
+                      : "border-stone-200/80 opacity-65 hover:opacity-100 hover:border-stone-300 sm:border-transparent sm:opacity-100 sm:hover:border-[var(--aloha-line)]"
                   }`}
                   aria-label={
                     item.kind === "video" ? `Video ${i + 1}` : `Ảnh ${i + 1}`

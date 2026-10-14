@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check } from "lucide-react";
+import { Check, Maximize2 } from "lucide-react";
 import {
   fetchProductVariants,
   type ShopProduct,
@@ -326,33 +326,122 @@ export function ProductVariantPicker({
   selected,
   onPick,
   sheet = false,
+  fallbackImage,
 }: {
   axes: ShopVariantAxis[];
   selected: Record<string, string>;
   onPick: (axisName: string, value: string) => void;
   sheet?: boolean;
+  fallbackImage?: string;
 }) {
   if (!axes.length) return null;
   if (sheet) return (
-    <div className="space-y-6">
-      {axes.map(ax => {
-        const withImages = ax.kind === "attr" && ax.values.some(v => v.image);
-        return <fieldset key={ax.name}>
-          <legend className="mb-3 text-base font-semibold text-stone-900">{ax.name} ({ax.values.length})</legend>
-          <div className={withImages ? "grid grid-cols-3 gap-2" : "flex flex-wrap gap-2"}>
-            {ax.values.map(v => {
-              const active = norm(selected[ax.name] || "") === norm(v.value);
-              return <button key={v.value} type="button" aria-pressed={active} disabled={!v.available && !active} onClick={() => onPick(ax.name, v.value)}
-                className={`min-w-0 overflow-hidden rounded-xl border text-sm transition disabled:opacity-35 ${active ? "border-[#e91e50] bg-[#fff5f7] text-[#c91543] ring-1 ring-[#e91e50]" : "border-stone-200 bg-white text-stone-800"} ${withImages ? "flex flex-col" : "min-h-11 min-w-16 px-4 py-2"}`}>
-                {withImages && <div className="aspect-square w-full bg-stone-50">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  {v.image && <img src={v.image} alt="" loading="lazy" className="h-full w-full object-contain" />}
-                </div>}
-                <span className={withImages ? "w-full break-words px-2 py-2.5 text-center" : ""}>{v.value}{v.outOfStock && <span className="mt-1 block text-[11px] text-amber-700">Đặt trước</span>}</span>
-              </button>;
-            })}
-          </div>
-        </fieldset>;
+    <div className="space-y-4">
+      {axes.map((ax, axIdx) => {
+        const hasSpecificImages = ax.kind === "attr" && ax.values.some((v) => Boolean(v.image));
+        const withImages = hasSpecificImages || (axIdx === 0 && ax.kind === "attr" && Boolean(fallbackImage));
+        // Nếu biến thể nhiều hơn 1 dòng (lớn hơn 3 với thẻ ảnh, hoặc lớn hơn 4 với text): lướt ngang trên cùng hàng
+        const isMultiRow = withImages ? ax.values.length > 3 : ax.values.length > 4;
+
+        return (
+          <fieldset key={ax.name} className="border-0 p-0 m-0">
+            <div className="mb-2 flex items-center justify-between">
+              <legend className="text-sm sm:text-base font-bold text-stone-900">
+                {ax.name} ({ax.values.length})
+              </legend>
+              {isMultiRow && (
+                <span className="text-[11px] font-medium text-stone-400">
+                  Vuốt ngang →
+                </span>
+              )}
+            </div>
+            <div
+              className={
+                isMultiRow
+                  ? "flex w-full overflow-x-auto gap-2.5 pb-2 pt-0.5 scrollbar-none snap-x snap-mandatory overscroll-x-contain [&::-webkit-scrollbar]:hidden"
+                  : withImages
+                    ? "flex flex-wrap gap-2.5"
+                    : "flex flex-wrap gap-2"
+              }
+              style={
+                isMultiRow
+                  ? { WebkitOverflowScrolling: "touch", scrollbarWidth: "none", msOverflowStyle: "none" }
+                  : undefined
+              }
+            >
+              {ax.values.map((v) => {
+                const active = norm(selected[ax.name] || "") === norm(v.value);
+                const disabled = !v.available && !active;
+                const imgUrl = v.image || (withImages ? fallbackImage : undefined);
+
+                return (
+                  <button
+                    key={v.value}
+                    type="button"
+                    aria-pressed={active}
+                    disabled={disabled}
+                    onClick={() => onPick(ax.name, v.value)}
+                    className={`group relative overflow-hidden transition-all text-left ${
+                      withImages
+                        ? "w-[104px] min-w-[104px] max-w-[104px] shrink-0 snap-start flex flex-col rounded-xl border-2"
+                        : isMultiRow
+                          ? "shrink-0 snap-start inline-flex items-center justify-center min-h-10 rounded-lg border-2 px-3.5 py-2 text-xs font-semibold"
+                          : "inline-flex items-center justify-center min-h-10 rounded-lg border-2 px-3.5 py-2 text-xs font-semibold"
+                    } ${
+                      active
+                        ? "border-[#ff2442] bg-[#fff5f6] text-[#ff2442] shadow-xs"
+                        : disabled
+                          ? "border-dashed border-stone-200 bg-stone-50/50 text-stone-400 opacity-45 cursor-not-allowed"
+                          : "border-stone-200/90 bg-white text-stone-800 hover:border-stone-300 active:scale-[0.98]"
+                    }`}
+                  >
+                    {withImages && (
+                      <div className="relative aspect-square w-full overflow-hidden rounded-t-[10px] bg-stone-100 flex items-center justify-center">
+                        {/* Zoom icon in top-left like TikTok Shop */}
+                        <div className="absolute left-1.5 top-1.5 z-10 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur-xs">
+                          <Maximize2 size={10} strokeWidth={2.5} />
+                        </div>
+                        {imgUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={imgUrl}
+                            alt={v.value}
+                            loading="lazy"
+                            className="h-full w-full object-cover object-center transition-transform duration-200 group-hover:scale-105"
+                          />
+                        ) : (
+                          <span className="text-[10px] font-bold text-stone-300">
+                            ALOHA
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    <div
+                      className={
+                        withImages
+                          ? "flex min-h-[44px] w-full flex-col items-center justify-center px-1.5 py-1.5 text-center"
+                          : ""
+                      }
+                    >
+                      <span
+                        className={`break-words text-xs leading-snug ${
+                          withImages ? "line-clamp-2" : ""
+                        } ${active ? "font-bold text-[#ff2442]" : "font-medium text-stone-800"}`}
+                      >
+                        {v.value}
+                      </span>
+                      {v.outOfStock && (
+                        <span className="mt-0.5 block text-[10px] font-semibold text-amber-700">
+                          Đặt trước
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+        );
       })}
     </div>
   );

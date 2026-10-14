@@ -15,6 +15,7 @@ function fixture(overrides = {}) {
     if (name === "react") return { useEffect() {}, useId: () => "purchase", useRef: value => ({ current: value }), useState: value => [value, () => {}] };
     if (name === "lucide-react") return { Minus: "minus", Plus: "plus", X: "x" };
     if (name === "@/lib/api") return { formatVnd: value => String(value) };
+    if (name === "@/components/campaign/CountdownText") return { CountdownText: "countdown" };
     throw new Error(name);
   }});
   const props = { name: "Plant", price: 85000, qty: 1, maxQty: 3, disabled: false, pending: false, status: "", selection: "", preOrder: false,
@@ -49,4 +50,16 @@ test("cancel closes without purchasing", () => {
   const f = fixture();
   f.nodes.find(n => n.type === "dialog").props.onCancel();
   assert.deepEqual(f.calls, ["close"]);
+});
+
+test("purchase sheet never invents vouchers while loading or when none match", () => {
+  for (const voucherBadges of [undefined, []]) {
+    const f = fixture({ voucherBadges });
+    const text = JSON.stringify(f.nodes);
+    assert.ok(!text.includes("Hỗ trợ ship"));
+    assert.ok(!text.includes("Giảm 10%"));
+  }
+  const text = JSON.stringify(fixture({ voucherBadges: [{ label: "Giảm 5% cho khách mới", type: "goods" }] }).nodes);
+  assert.ok(text.includes("Giảm 5% cho khách mới"));
+  assert.ok(!text.includes("Hỗ trợ ship"));
 });

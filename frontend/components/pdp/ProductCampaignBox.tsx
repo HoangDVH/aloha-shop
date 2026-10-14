@@ -23,7 +23,7 @@ type Props = {
   isPreOrder?: boolean;
 };
 
-function vnWhen(iso: string | null): string {
+export function vnWhen(iso: string | null): string {
   if (!iso) return "";
   const d = new Date(Date.parse(iso) + 7 * 3600_000);
   const hh = String(d.getUTCHours()).padStart(2, "0");
@@ -32,7 +32,7 @@ function vnWhen(iso: string | null): string {
 }
 
 /** Quà tặng đi kèm chiến dịch: kiểu badge gọn gàng chuẩn sàn TMĐT */
-function GiftList({ promo }: { promo: CampaignPromoUI }) {
+export function GiftList({ promo }: { promo: CampaignPromoUI }) {
   const gifts = promo.gifts ?? [];
   if (gifts.length < 2) {
     if (!promo.giftLabel) return null;
@@ -56,6 +56,61 @@ function GiftList({ promo }: { promo: CampaignPromoUI }) {
         ))}
       </ul>
       <p className="mt-1 text-[11px] text-amber-800/80">Số lượng quà có hạn, quà nào hết sẽ ngừng tặng quà đó.</p>
+    </div>
+  );
+}
+
+/** Thông tin phụ (quà tặng, giới hạn mua, mở bán) trên mobile khi thanh giá TikTok Shop đã hiển thị ở trên */
+export function ProductMobilePromoExtras({
+  promo,
+  regularPrice,
+}: {
+  promo: CampaignPromoUI | null | undefined;
+  regularPrice?: number;
+}) {
+  const view = useCampaignView();
+  if (!promo) return null;
+  const selling = isPromoSelling(promo);
+  const hasSale = promo.salePrice != null && promo.salePrice < (promo.listPrice || regularPrice || Infinity);
+  const opensAt = promo.opensAt || (promo.kind === "teaser" ? promo.endsAt : null);
+  const upcomingSale = !selling && hasSale;
+  const viewer = view.viewer;
+  const locked = Boolean(viewer && viewer.loggedIn && !viewer.canUse);
+  const lockText = viewer?.lockReason === "account_locked" ? "Tài khoản bị khoá" : "Dành cho khách lẻ";
+
+  const hasExtras =
+    Boolean(promo.giftLabel) ||
+    Boolean(promo.gifts && promo.gifts.length > 0) ||
+    upcomingSale ||
+    (selling && promo.perCustomerLimit > 0) ||
+    locked;
+
+  if (!hasExtras) return null;
+
+  return (
+    <div className="space-y-2.5">
+      {upcomingSale ? (
+        <p className="inline-flex flex-wrap items-center gap-1.5 rounded-lg border border-amber-300/80 bg-amber-100/90 px-2.5 py-1 text-xs font-bold text-amber-950">
+          <Zap size={13} aria-hidden className="fill-amber-600 text-amber-600" />
+          Giá Flash Sale {formatVnd(promo.salePrice as number)}
+          {opensAt ? ` · mở bán ${vnWhen(opensAt)}` : ""}
+          <span className="font-medium text-amber-800">(đặt bây giờ tính giá thường)</span>
+        </p>
+      ) : null}
+
+      <GiftList promo={promo} />
+
+      {selling && promo.perCustomerLimit > 0 ? (
+        <p className="text-[11px] text-slate-500 font-medium">
+          * Mỗi khách hàng được mua tối đa {promo.perCustomerLimit} sản phẩm với giá ưu đãi này.
+        </p>
+      ) : null}
+
+      {locked ? (
+        <div className="flex items-center gap-1.5 rounded-xl bg-slate-100 border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600">
+          <Lock size={14} aria-hidden /> {lockText}
+        </div>
+      ) : null}
     </div>
   );
 }
