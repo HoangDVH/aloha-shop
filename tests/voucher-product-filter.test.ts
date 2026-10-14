@@ -43,3 +43,12 @@ test("Voucher toàn shop: không lọc; voucher không còn chạy: không SP n�
   assert.equal(gone.title, "");
   assert.deepEqual(gone.filter, { ma: { $in: [] } });
 });
+
+test("Use-now listing rejects expired, future and invalid scopes and exposes flash exclusion", async () => {
+  const now = Date.parse("2026-10-14T10:00:00Z");
+  for (const over of [{ endDate: "2026-10-13T00:00:00Z" }, { startDate: "2026-10-15T00:00:00Z" }, { scope: "unknown" }]) {
+    const result = await voucherProductFilter(fakeDb({ title: "20/10", scope: "all", ...over }).db, "20", now);
+    assert.deepEqual(result.filter, { ma: { $in: [] } });
+  }
+  assert.equal((await voucherProductFilter(fakeDb({ title: "20/10", scope: "all", excludeFlash: true }).db, "20", now)).excludeFlash, true);
+});

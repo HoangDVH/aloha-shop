@@ -39,6 +39,8 @@ export type ShopAddress = {
 
 export type ShopOrderDetail = {
   productCode: string;
+  /** Catalog category assigned by the server, never accepted from the checkout payload. */
+  categoryId?: string;
   productName: string;
   quantity: number;
   price: number;

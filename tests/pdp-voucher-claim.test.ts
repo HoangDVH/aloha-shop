@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
-import { pdpApplicableVouchers, pdpDefaultVouchers } from "../frontend/lib/pdpVouchers.js";
+import { pdpApplicableVouchers, pdpDefaultVouchers, pdpVoucherSheetEntries } from "../frontend/lib/pdpVouchers.js";
 test("PDP voucher badge claims the exact voucher; automatic promotions open details instead", () => {
   for (const [claimRequired, saved] of [[true, false], [true, true], [false, false]]) {
     const voucher = { id: "V5", targetCustomer: "new_web", scope: "all", discountType: "percentage", discountValue: 5, claimRequired, audienceEligible: true };
@@ -30,7 +30,7 @@ test("PDP voucher badge claims the exact voucher; automatic promotions open deta
       if (name === "@/components/Toast") return { useToast: () => ({ push() {} }) };
       if (name === "@/components/ShopAuthProvider") return { useShopAuth: () => ({ user: null }) };
       if (name === "@/lib/campaign/useCampaignView") return { useCampaignView: () => ({ viewer: { newBuyer: true } }) };
-      if (name === "@/lib/pdpVouchers") return { pdpApplicableVouchers, pdpDefaultVouchers };
+      if (name === "@/lib/pdpVouchers") return { pdpApplicableVouchers, pdpDefaultVouchers, pdpVoucherSheetEntries };
       throw new Error(name);
     } });
     function nodes(n: any): any[] { return !n || typeof n !== "object" ? [] : [n, ...[n.props?.children].flat(5).flatMap(nodes)]; }

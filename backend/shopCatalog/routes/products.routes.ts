@@ -65,6 +65,8 @@ import {
   withCampaignPromos,
 } from "../../shopCampaigns/catalogPromos.js";
 import type { CatalogDealInfo } from "../catalog/publicProduct.js";
+import type { CampaignPromo } from "../../shopCampaigns/types.js";
+import { voucherFlashActive } from "../../../shared/voucherScope.js";
 import { parseVoucherQuery, voucherProductFilter } from "../../shopPromotions/voucherProductFilter.js";
 
 export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
@@ -114,12 +116,27 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
         sort === "giam_gia" ? await campaignDealInfo(await ctx.catalogDb(), req) : new Map<string, CatalogDealInfo>();
       const voucherId = parseVoucherQuery(req.query.voucher);
       const voucher = voucherId ? await voucherProductFilter(await ctx.catalogDb(), voucherId) : null;
+      // Exclude current flash slides before pagination, so counts and every page stay correct.
+      if (voucher?.excludeFlash && currentPriceMode() !== "si") {
+        const db = await ctx.catalogDb();
+        const codes = await campaignDealMas(db, req);
+        if (codes.length) {
+          const docs = await db.collection(COL).find({ ma: { $in: codes }, deletedAt: null }).toArray();
+          const { items } = await mapDocsToPublicWithPriceBooks(db, docs);
+          const priced = await withCampaignPromos(db, req, items);
+          const excluded = priced.items.filter(item => {
+            const p = (item as typeof item & { campaignPromo?: CampaignPromo }).campaignPromo;
+            return voucherFlashActive(p);
+          }).map(item => item.ma);
+          if (excluded.length) voucher.filter = { $and: [voucher.filter, { ma: { $nin: excluded } }] };
+        }
+      }
       const gift = parseGiftQuery(req.query.gift);
       if (req.query.gift != null && !gift) {
         return res.status(400).json({ ok: false, error: "Invalid gift filter" });
       }
       const giftCodes = gift ? await loadGiftFilterCodes(await ctx.catalogDb(), gift) : [];
-      const cacheKey = `shop:products:v42:order=${wholesaleHome ? "wholesale" : "default"}:gift=${gift || ""}:${JSON.stringify(giftCodes)}|${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}${dealMasCacheSuffix(dealMas)}|v=${voucherId}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|maxTon=${maxTon}|${sort}${dealInfoCacheSuffix(deals)}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
+      const cacheKey = `shop:products:v43:order=${wholesaleHome ? "wholesale" : "default"}:gift=${gift || ""}:${JSON.stringify(giftCodes)}|${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}${dealMasCacheSuffix(dealMas)}|v=${voucherId}:${JSON.stringify(voucher?.filter || {})}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|maxTon=${maxTon}|${sort}${dealInfoCacheSuffix(deals)}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
       const pinScope = resolvePinBadgeScope({ sort, badge, maxTon });
 
       const { body, cache } = await cachedJson(cacheKey, async () => {

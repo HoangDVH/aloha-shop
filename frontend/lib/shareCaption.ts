@@ -1,5 +1,6 @@
 import type { ShopProduct } from "./api";
 import type { AvailablePromotionUI } from "./promotions";
+import { productMatchesVoucher } from "./productVoucherScope";
 
 const money = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}đ`;
 export const sharePlainText = (s: string) => s.replace(/<[^>]*>/g, " ").replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/\s+/g, " ").trim();
@@ -28,8 +29,7 @@ export function productPriceText(product: Parameters<typeof publicSharePrice>[0]
 export function shareVoucherLines(product: ShopProduct, offers: AvailablePromotionUI[], now = Date.now()) {
   return offers.filter(p => p.benefitType !== "shipping" && p.targetCustomer !== "wholesale" && p.targetCustomer !== "returning_web"
     && (!p.startDate || Date.parse(p.startDate) <= now) && (!p.endDate || Date.parse(p.endDate) > now)
-    && (!p.scope || p.scope === "all" || p.scope === "product" && p.productMas?.includes(product.ma)
-      || p.scope === "category" && p.categoryIds?.includes(String(product.categoryId))))
+    && productMatchesVoucher(product, p, now))
     .slice(0, 2).map(p => {
       const conditions = [p.targetCustomer === "new_web" ? "dành cho khách mua lần đầu trên web" : "",
         p.minOrderThreshold ? `đơn ${p.thresholdOperator === ">" ? "trên" : "từ"} ${money(p.minOrderThreshold)}` : "",

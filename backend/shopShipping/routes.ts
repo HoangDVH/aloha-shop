@@ -186,7 +186,8 @@ export function registerShopShippingRoutes(
         // Cùng giá flash với lúc tạo đơn: voucher, ngưỡng hỗ trợ ship và miễn ship đều tính trên giá khách trả.
         const campaign = await quoteWithCampaign(
           shopDb,
-          items.map((i, index) => ({ ma: i.productCode, ten: i.productName, price: i.price, quantity: i.quantity, volumePricing: priced.details[index].volumePricing })),
+          items.map((i, index) => ({ ma: i.productCode, ten: i.productName, price: i.price, quantity: i.quantity,
+            categoryId: priced.details[index].categoryId, volumePricing: priced.details[index].volumePricing })),
           { accountId: userId, account: buyer, phone: buyerPhone, email: buyerEmail }
         );
         const evalItems = campaign.items;

@@ -20,6 +20,7 @@ export function toVariantModel(
   const p = toPublic(doc);
   return {
     ma: p.ma,
+    categoryId: p.categoryId,
     ten: p.ten,
     dvt: p.dvt,
     gia: p.gia,

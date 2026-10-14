@@ -107,6 +107,7 @@ export async function applyCatalogPrices(
       priceBooks: 1,
       isActive: 1,
       mergedInto: 1,
+      categoryId: 1,
     })
     .toArray();
   const byMa = new Map<string, any>();
@@ -151,6 +152,7 @@ export async function applyCatalogPrices(
           ? `${baseName} (${variant})`
           : baseName,
       price: tier?.unitPrice ?? gia,
+      categoryId: doc.categoryId == null ? undefined : String(doc.categoryId).trim() || undefined,
       volumePricing: tier && tier.savedAmount > 0 ? { basePrice: gia, discountPercent: tier.tier.discountPercent, quantity: quantities.get(d.productCode)! } : undefined,
       priceKind,
       discount: 0,

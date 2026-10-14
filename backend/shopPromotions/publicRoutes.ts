@@ -25,7 +25,7 @@ import { voucherMatchesBuyer } from "../../shared/voucherAudience.js";
  * Giá tính ưu đãi luôn lấy từ catalog (giá client gửi lên bị bỏ qua).
  * Sản phẩm không còn trong catalog bị loại khỏi báo giá thay vì làm hỏng cả giỏ.
  */
-async function withServerPrices(
+export async function withServerPrices(
   shopDb: Db,
   items: CartItemToEvaluate[],
   account: Record<string, unknown> | null
@@ -39,11 +39,11 @@ async function withServerPrices(
     );
   if (!valid.length) return [];
   const all = await price(valid);
-  if (all.ok) return valid.map((it, i) => ({ ...it, price: all.details[i].price, volumePricing: all.details[i].volumePricing }));
+  if (all.ok) return valid.map((it, i) => ({ ...it, ma: all.details[i].productCode, price: all.details[i].price, categoryId: all.details[i].categoryId, volumePricing: all.details[i].volumePricing }));
   const out: CartItemToEvaluate[] = [];
   for (const it of valid) {
     const one = await price([it]);
-    if (one.ok && one.details[0]) out.push({ ...it, price: one.details[0].price, volumePricing: one.details[0].volumePricing });
+    if (one.ok && one.details[0]) out.push({ ...it, ma: one.details[0].productCode, price: one.details[0].price, categoryId: one.details[0].categoryId, volumePricing: one.details[0].volumePricing });
   }
   return out;
 }
@@ -126,6 +126,8 @@ export function registerShopPromotionsPublicRoutes(
           scope: p.scope || "all",
           categoryIds: p.categoryIds,
           productMas: p.productMas,
+          excludedProductMas: p.excludedProductMas,
+          excludeFlash: p.excludeFlash === true,
           startDate: p.startDate,
           endDate: p.endDate,
           ...(p.mystery ? { mystery: publicMystery(p) } : {}),

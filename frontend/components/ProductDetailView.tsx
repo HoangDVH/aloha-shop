@@ -63,6 +63,7 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
     return {
       ...product,
       ma: selectedModel.ma,
+      categoryId: selectedModel.categoryId,
       ten: selectedModel.ten || product.ten,
       dvt: selectedModel.dvt || product.dvt,
       gia: selectedModel.gia,
@@ -117,7 +118,8 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
   const isPreOrder =
     !needPick && !variantsLoading && isPreOrderTon(liveTon, qty + cartQty);
   const expectsSi = user?.siStatus === "active" && user.roles.includes("si");
-  const activeVoucherBadges = usePdpVoucherBadges(activeProduct, campaignViewer, expectsSi, campaignKey);
+  const voucherProduct = useMemo(() => ({ ...activeProduct, campaignPromo: livePromo }), [activeProduct, livePromo]);
+  const activeVoucherBadges = usePdpVoucherBadges(voucherProduct, campaignViewer, expectsSi, campaignKey);
   const pricePending = Boolean(expectsSi) !== (livePriceKind === "si" || livePriceKind === "si_missing");
   const zeroPriceBlocked =
     livePriceKind === "si_missing" || (!(Number(liveGia) > 0) && !canPurchaseZeroPrice(user?.email));
@@ -127,7 +129,6 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
     () => plainDescription(product.description || ""),
     [product.description]
   );
-
   // Ghi nhớ URL SP để checkout prefetch → Back nhanh hơn
   useEffect(() => {
     try {
@@ -139,7 +140,6 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
       /* ignore */
     }
   }, [product.ma, product.path]);
-
   useEffect(() => {
     setLiveGia(activeProduct.gia);
     setLiveWebPrice(activeProduct.webPrice);
@@ -634,7 +634,7 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
 
                 {!expectsSi ? (
                   <ProductPromotionBadges
-                    product={activeProduct}
+                    product={voucherProduct}
                     livePrice={liveGia}
                     isWholesale={false}
                   />

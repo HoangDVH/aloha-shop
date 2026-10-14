@@ -11,15 +11,19 @@ import { loadBuyerPromotions } from "../../shopPromotions/wallet/walletRules.js"
 import { resolveGoodsShipCombo } from "../../shopPromotions/combineShip.js";
 import type { ShopOrderDetail } from "../models.js";
 import type { ShippingQuoteResult } from "./shippingQuoteCheck.js";
+import { isItemInScope } from "../../shopPromotions/evaluator.js";
+import type { PromotionDoc } from "../../shopPromotions/types.js";
 
 type QuoteOk = Extract<ShippingQuoteResult, { ok: true }>;
 
 /** Giảm theo mã → từng dòng; mã có dòng flash + dòng giá thường chia theo tiền dòng, quà luôn 0. */
-export function splitLineDiscounts(details: ShopOrderDetail[], byMa: Record<string, number>): void {
+export function splitLineDiscounts(details: ShopOrderDetail[], byMa: Record<string, number>, promotion?: PromotionDoc): void {
   const groups = new Map<string, ShopOrderDetail[]>();
   for (const d of details) {
     d.discount = 0;
     if (d.isGift) continue;
+    if (promotion && !isItemInScope({ ma: d.productCode, categoryId: d.categoryId,
+      price: d.price, quantity: d.quantity, flash: Boolean(d.flash) }, promotion)) continue;
     groups.set(d.productCode, [...(groups.get(d.productCode) || []), d]);
   }
   for (const [ma, lines] of groups) {
@@ -31,6 +35,19 @@ export function splitLineDiscounts(details: ShopOrderDetail[], byMa: Record<stri
       left -= share;
     });
   }
+}
+
+export function orderVoucherItems(orderDetails: ShopOrderDetail[]) {
+  return orderDetails
+    .filter((d) => !d.isGift)
+    .map((d) => ({
+      ma: d.productCode,
+      categoryId: d.categoryId,
+      ten: d.productName,
+      price: d.price,
+      quantity: d.quantity,
+      flash: Boolean(d.flash),
+    }));
 }
 
 export type OrderPromotionInput = {
@@ -80,15 +97,7 @@ export async function evaluateOrderPromotions(
     selectedCode: requestedCode,
   });
   const activePromos = buyerPromos.promotions;
-  const evalItems = orderDetails
-    .filter((d) => !d.isGift)
-    .map((d) => ({
-      ma: d.productCode,
-      ten: d.productName,
-      price: d.price,
-      quantity: d.quantity,
-      flash: Boolean(d.flash),
-    }));
+  const evalItems = orderVoucherItems(orderDetails);
   const buyer = {
     phone: input.customerPhone,
     email: input.buyerEmail,
@@ -136,7 +145,8 @@ export async function evaluateOrderPromotions(
   const shipPromoEval = combo.ship;
   const discount = promoQuote.discountTotal || 0;
   const appliedPromotion = promoQuote.applied;
-  splitLineDiscounts(orderDetails, promoQuote.lineDiscounts);
+  splitLineDiscounts(orderDetails, promoQuote.lineDiscounts,
+    activePromos.find(p => p.id === promoQuote.applied?.promotionId));
 
   // Miễn ship xét trên tiền hàng sau giảm, cùng cơ sở với báo giá (mục 24.7.2)
   if (verified && verified.fee != null) {

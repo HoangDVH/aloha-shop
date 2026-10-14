@@ -74,6 +74,8 @@ export interface AvailablePromotionUI {
   scope?: "all" | "category" | "product";
   categoryIds?: string[];
   productMas?: string[];
+  excludedProductMas?: string[];
+  excludeFlash?: boolean;
   startDate?: string;
   endDate?: string;
   mystery?: MysteryInfo;

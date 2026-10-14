@@ -58,6 +58,7 @@ export type ShopProduct = {
 };
 
 export type ShopVariantModel = {
+  categoryId?: number;
   ma: string;
   ten: string;
   dvt: string;

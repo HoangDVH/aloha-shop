@@ -4,7 +4,7 @@ import { PROMOTIONS_COL, type PromotionDoc } from "./types.js";
 const ID_RX = /^[\w-]{1,80}$/;
 const NO_PRODUCTS = { ma: { $in: [] as string[] } };
 
-export type VoucherProductScope = { title: string; filter: Record<string, unknown> };
+export type VoucherProductScope = { title: string; filter: Record<string, unknown>; excludeFlash?: boolean };
 
 export function parseVoucherQuery(raw: unknown): string {
   const id = String(raw ?? "").trim();
@@ -19,14 +19,16 @@ const upperMas = (list: string[] | undefined) =>
  * theo nhóm (đúng `categoryId`, không lấy nhóm con) hoặc tất cả, trừ SP loại trừ.
  * Voucher không còn chạy → không SP nào.
  */
-export async function voucherProductFilter(db: Db, id: string): Promise<VoucherProductScope> {
+export async function voucherProductFilter(db: Db, id: string, now = Date.now()): Promise<VoucherProductScope> {
   const p = await db
     .collection<PromotionDoc>(PROMOTIONS_COL)
     .findOne(
       { id, status: "active" },
-      { projection: { title: 1, scope: 1, productMas: 1, categoryIds: 1, excludedProductMas: 1 } }
+      { projection: { title: 1, scope: 1, productMas: 1, categoryIds: 1, excludedProductMas: 1, excludeFlash: 1, startDate: 1, endDate: 1 } }
     );
   if (!p) return { title: "", filter: NO_PRODUCTS };
+  if ((p.startDate && Date.parse(p.startDate) > now) || (p.endDate && Date.parse(p.endDate) < now)
+    || !["all", "product", "category"].includes(p.scope)) return { title: p.title || "", filter: NO_PRODUCTS };
   const and: Record<string, unknown>[] = [];
   const excluded = upperMas(p.excludedProductMas);
   if (excluded.length) and.push({ ma: { $nin: excluded } });
@@ -37,5 +39,5 @@ export async function voucherProductFilter(db: Db, id: string): Promise<VoucherP
     const nums = ids.map(Number).filter((n) => Number.isFinite(n));
     and.push({ categoryId: { $in: [...ids, ...nums] } });
   }
-  return { title: p.title || "", filter: and.length ? { $and: and } : {} };
+  return { title: p.title || "", filter: and.length ? { $and: and } : {}, ...(p.excludeFlash ? { excludeFlash: true } : {}) };
 }

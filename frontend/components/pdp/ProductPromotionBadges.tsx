@@ -12,7 +12,7 @@ import { useToast } from "@/components/Toast";
 import { useShopAuth } from "@/components/ShopAuthProvider";
 import { PdpVoucherSheet } from "./PdpVoucherSheet";
 import { useCampaignView } from "@/lib/campaign/useCampaignView";
-import { pdpApplicableVouchers, pdpDefaultVouchers } from "@/lib/pdpVouchers";
+import { pdpApplicableVouchers, pdpDefaultVouchers, pdpVoucherSheetEntries } from "@/lib/pdpVouchers";
 
 interface ProductPromotionBadgesProps {
   product: ShopProduct;
@@ -80,7 +80,10 @@ export function ProductPromotionBadges({
       ...(promotion.benefitType === "shipping" ? { label: shipBadgeLabel(promotion) } : {}),
     })), [applicablePromotions, viewer]);
 
-  if (!loaded || applicablePromotions.length === 0) {
+  const sheetEntries = pdpVoucherSheetEntries(promotions, product, viewer, claims.claimedIds, isWholesale);
+  const unavailable = Object.fromEntries(sheetEntries.filter(e => e.reason).map(e => [e.promotion.id, e.reason!]));
+
+  if (!loaded || sheetEntries.length === 0) {
     return null;
   }
 
@@ -117,7 +120,7 @@ export function ProductPromotionBadges({
       </section>
 
       <LoginSheet open={claims.loginOpen} onClose={claims.cancelLogin} onDone={claims.loginDone} />
-      {voucherOpen && <PdpVoucherSheet items={applicablePromotions} claimed={claims.claimedIds} pendingId={claims.pendingId}
+      {voucherOpen && <PdpVoucherSheet items={sheetEntries.map(e => e.promotion)} unavailable={unavailable} claimed={claims.claimedIds} pendingId={claims.pendingId}
         onClose={() => setVoucherOpen(false)} onDetails={p => { setVoucherOpen(false); setSelectedPromo(p); }}
         onClaim={p => { if (!user) setVoucherOpen(false); claims.claim(p.id); }} />}
       {/* Modal chi tiết điều kiện voucher */}

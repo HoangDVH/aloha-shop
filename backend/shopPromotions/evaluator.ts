@@ -1,3 +1,4 @@
+import { voucherItemInScope } from "../../shared/voucherScope.js";
 import type {
   PromotionDoc,
   PromotionCodeDoc,
@@ -15,38 +16,9 @@ function formatVnd(amount: number): string {
   return `${amount.toLocaleString("vi-VN")}đ`;
 }
 
-function normalizeMa(ma: string): string {
-  return String(ma || "").trim().toUpperCase();
-}
-
-/** Kiểm tra xem 1 sản phẩm có thuộc phạm vi áp dụng của ưu đãi không */
-export function isItemInScope(
-  item: CartItemToEvaluate,
-  promo: PromotionDoc
-): boolean {
-  const ma = normalizeMa(item.ma);
-  if (promo.excludeFlash && item.flash) return false;
-  if (promo.excludedProductMas && promo.excludedProductMas.length > 0) {
-    const excluded = promo.excludedProductMas.map(normalizeMa);
-    if (excluded.includes(ma)) return false;
-  }
-
-  if (promo.scope === "all") return true;
-
-  if (promo.scope === "product") {
-    if (!promo.productMas || !promo.productMas.length) return false;
-    const allowed = promo.productMas.map(normalizeMa);
-    return allowed.includes(ma);
-  }
-
-  if (promo.scope === "category") {
-    if (!promo.categoryIds || !promo.categoryIds.length) return false;
-    const catId = String(item.categoryId || "").trim();
-    if (!catId) return false;
-    return promo.categoryIds.includes(catId);
-  }
-
-  return false;
+/** Scope is shared with product previews and public share captions. */
+export function isItemInScope(item: CartItemToEvaluate, promo: PromotionDoc): boolean {
+  return voucherItemInScope(item, promo);
 }
 
 export function isShippingPromotion(promo: Pick<PromotionDoc, "benefitType">): boolean {

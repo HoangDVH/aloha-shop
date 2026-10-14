@@ -1,6 +1,7 @@
 export type ShopAttr = { attributeName: string; attributeValue: string };
 
 export type VariantModel = {
+  categoryId?: number;
   webPrice?: number;
   priceKind?: "web" | "si" | "si_missing";
   allowBackorder?: boolean;
@@ -18,6 +19,7 @@ export type VariantModel = {
 };
 
 export type Publicizer = (doc: Record<string, unknown>) => {
+  categoryId?: number;
   webPrice?: number;
   priceKind?: "web" | "si" | "si_missing";
   allowBackorder?: boolean;
@@ -142,6 +144,7 @@ export function shopActiveAnd(): object[] {
 
 export const SIBLING_PROJ = {
   ma: 1,
+  categoryId: 1,
   ten: 1,
   dvt: 1,
   nhom: 1,

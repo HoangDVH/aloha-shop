@@ -102,9 +102,19 @@ const LOCKED_WHEN_CLAIMED = [
   "thresholdOperator",
   "targetCustomer",
   "benefitType",
+  "scope",
+  "productMas",
+  "categoryIds",
+  "excludedProductMas",
+  "excludeFlash",
 ] as const;
 
-function sameValue(a: unknown, b: unknown): boolean {
+function sameValue(a: unknown, b: unknown, caseSensitive = false): boolean {
+  if (Array.isArray(a) || Array.isArray(b)) {
+    const list = (value: unknown) => [...new Set((Array.isArray(value) ? value : [])
+      .map(v => caseSensitive ? String(v).trim() : String(v).trim().toUpperCase()))].sort();
+    return JSON.stringify(list(a)) === JSON.stringify(list(b));
+  }
   const norm = (v: unknown) => (v === undefined || v === null || v === "" ? null : v);
   return norm(a) === norm(b);
 }
@@ -117,7 +127,8 @@ export function claimedEditError(existing: PromotionDoc, set: Partial<PromotionD
     return `Đã có ${claimed} khách lưu voucher này, tổng lượt lưu không được nhỏ hơn ${claimed}.`;
   }
   const changed = LOCKED_WHEN_CLAIMED.filter(
-    (k) => k in set && !sameValue(set[k], existing[k])
+    (k) => k in set && (k === "excludeFlash" ? Boolean(set[k]) !== Boolean(existing[k])
+      : !sameValue(set[k], existing[k], k === "categoryIds"))
   );
   const mysteryChanged = "mystery" in set && mysterySignature(set.mystery) !== mysterySignature(existing.mystery);
   if (!changed.length && !mysteryChanged) return null;
