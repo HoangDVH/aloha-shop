@@ -4,6 +4,9 @@ test.beforeEach(async ({ page }) => {
   // Read-only production checks: simulated errors and analytics never reach the server.
   await page.route('**/api/shop/client-errors', route => route.fulfill({ status: 204 }));
   await page.route('**/api/shop/visits', route => route.fulfill({ status: 204 }));
+  await page.addLocatorHandler(page.getByRole('button', { name: 'Đóng popup', exact: true }), async button => {
+    await button.click();
+  });
 });
 
 for (const path of ['/', '/tim', '/gio-hang', '/dang-nhap']) test(`public page ${path} renders without the default exception screen`, async ({ page }, info) => {
@@ -49,15 +52,25 @@ test('chunk failure reloads once and the next failure cannot reload-loop', async
 });
 
 test('a missing page chunk shows the retry interface after recovery is exhausted', async ({ page }) => {
+  let monitorReady = false;
+  await page.route('**/api/shop/client-errors', async route => {
+    if (route.request().postDataJSON().message === 'QA missing chunk ready') monitorReady = true;
+    await route.fulfill({ status: 204 });
+  });
   await page.addInitScript(() => sessionStorage.setItem('aloha_chunk_recovery_at', String(Date.now())));
   let blocked = 0;
   await page.route(url => /\/_next\/static\/chunks\/app\/\(storefront\)\/tim\/page-[^/]+\.js/.test(decodeURI(url.pathname)), route => {
     blocked++; return route.fulfill({ status: 404, contentType: 'application/javascript', body: '' });
   });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await expect(page.locator('a[href^="/tim"]').first()).toBeAttached();
-  await page.locator('a[href^="/tim"]').first().evaluate(link => link.click());
-  await expect.poll(() => blocked).toBeGreaterThan(0);
+  await expect.poll(async () => {
+    await page.evaluate(() => window.dispatchEvent(new ErrorEvent('error', { error: new Error('QA missing chunk ready') })));
+    return monitorReady;
+  }).toBe(true);
+  const catalogLink = page.getByRole('link', { name: 'Xem thêm sản phẩm nổi bật →', exact: true });
+  await expect(catalogLink).toBeVisible();
+  await catalogLink.click();
+  await expect.poll(() => blocked, { timeout: 15_000 }).toBeGreaterThan(0);
   await expect(page.getByRole('heading', { name: 'Trang gặp sự cố' })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole('button', { name: 'Thử lại' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Về trang chủ' })).toBeVisible();
