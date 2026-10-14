@@ -9,6 +9,8 @@ export interface ProductPurchaseSheetProps {
   name: string;
   image?: string;
   price: number;
+  totalPrice?: number;
+  totalPending?: boolean;
   originalPrice?: number;
   discountPercent?: number;
   voucherBadge?: string;
@@ -38,6 +40,8 @@ export function ProductPurchaseSheet({
   name,
   image,
   price,
+  totalPrice,
+  totalPending = false,
   originalPrice,
   discountPercent = 0,
   voucherBadge,
@@ -283,7 +287,7 @@ export function ProductPurchaseSheet({
             </span>
             {!pending && !disabled && (
               <span className="mt-0.5 text-xs font-medium opacity-90">
-                {formatVnd(price * qty)}
+                {totalPending ? "Đang cập nhật…" : formatVnd(totalPrice ?? price * qty)}
               </span>
             )}
           </button>

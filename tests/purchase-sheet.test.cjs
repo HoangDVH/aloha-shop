@@ -52,6 +52,19 @@ test("cancel closes without purchasing", () => {
   assert.deepEqual(f.calls, ["close"]);
 });
 
+test("buy button shows server subtotal after voucher instead of unit price times quantity", () => {
+  const f = fixture({ price: 40000, qty: 1, totalPrice: 38000 });
+  assert.equal(f.buttons.at(-1).props.children[1].props.children, "38000");
+  const multiple = fixture({ price: 40000, qty: 2, totalPrice: 76000 });
+  assert.equal(multiple.buttons.at(-1).props.children[1].props.children, "76000");
+  assert.equal(fixture({ totalPrice: 0 }).buttons.at(-1).props.children[1].props.children, "0");
+});
+
+test("buy button hides an outdated total while variant, quantity or voucher quote updates", () => {
+  const f = fixture({ price: 40000, qty: 2, totalPrice: 38000, totalPending: true });
+  assert.equal(f.buttons.at(-1).props.children[1].props.children, "Đang cập nhật…");
+});
+
 test("purchase sheet never invents vouchers while loading or when none match", () => {
   for (const voucherBadges of [undefined, []]) {
     const f = fixture({ voucherBadges });

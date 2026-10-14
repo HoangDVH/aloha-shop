@@ -92,13 +92,11 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
         : [];
     return imgs.filter(Boolean);
   }, [variantGallery, activeProduct]);
-
   const galleryVideos = useMemo(() => {
     if (activeProduct.videos?.length) return activeProduct.videos;
     if (activeProduct.videoUrl) return [activeProduct.videoUrl];
     return [] as string[];
   }, [activeProduct.videos, activeProduct.videoUrl]);
-
   const [qty, setQty] = useState(1);
   const [purchaseSheetOpen, setPurchaseSheetOpen] = useState(false);
   const cartQty = useCart(s => s.lines.find(l => l.ma === activeProduct.ma)?.qty || 0);
@@ -752,6 +750,8 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
             name={activeProduct.ten}
             image={gallery[0] || activeProduct.anh}
             price={effectiveGia}
+            totalPrice={productPricing.quote?.finalTotal}
+            totalPending={productPricing.loading || productPricing.stale || !productPricing.quote}
             originalPrice={sheetOriginal}
             discountPercent={sheetDiscount}
             voucherBadges={activeVoucherBadges}
