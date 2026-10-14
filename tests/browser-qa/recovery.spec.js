@@ -60,12 +60,11 @@ test('chunk failure reloads once and the next failure cannot reload-loop', async
 
 test('a missing page chunk shows the retry interface after recovery is exhausted', async ({ page }) => {
   // This test isolates chunk recovery from marketing dialogs and touch hit-testing.
-  await page.route('**/api/shop/appearance', async route => {
-    const response = await route.fetch();
-    const data = await response.json();
-    if (data.theme?.popup) data.theme.popup.enabled = false;
-    await route.fulfill({ response, json: data });
-  });
+  const appearanceResponse = await page.request.get('/api/shop/appearance');
+  expect(appearanceResponse.status()).toBe(200);
+  const appearance = await appearanceResponse.json();
+  if (appearance.theme?.popup) appearance.theme.popup.enabled = false;
+  await page.route('**/api/shop/appearance', route => route.fulfill({ json: appearance }));
   let monitorReady = false;
   await page.route('**/api/shop/client-errors', async route => {
     if (route.request().postDataJSON().message === 'QA missing chunk ready') monitorReady = true;
