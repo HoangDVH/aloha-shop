@@ -58,6 +58,12 @@ for (const kind of ['product', 'article']) test(`${kind} share waits for JavaScr
   const endpoint = kind === 'product' ? '/api/shop/products?limit=10' : '/api/shop/articles?limit=1';
   const item = (await (await page.request.get(endpoint)).json()).items[0];
   const path = kind === 'product' ? item.path : `/bai-viet/${item.slug}`;
+  const entryResponse = await page.request.get(path);
+  const html = await entryResponse.text();
+  const serverButton = [...html.matchAll(/<button[^>]*>[\s\S]*?<\/button>/g)].map(match => match[0])
+    .find(markup => markup.includes('aria-haspopup="dialog"') && markup.includes('Chia sẻ'));
+  expect(serverButton).toBeTruthy();
+  expect(serverButton).toMatch(/\sdisabled(?:=|\s|>)/);
   const waiting = [];
   let blocked = true;
   await page.route('**/_next/static/chunks/**', route => {
@@ -65,10 +71,11 @@ for (const kind of ['product', 'article']) test(`${kind} share waits for JavaScr
     else return route.continue();
   });
   await page.goto(path, { waitUntil: 'commit' });
-  const button = page.getByRole('button', { name: 'Chia sẻ', exact: true }).first();
-  await expect(button).toBeDisabled({ timeout: 25000 });
+  // Inspect initial disabled state in SSR HTML. WebKit cannot inspect a DOM while parser scripts are held.
+  await expect.poll(() => waiting.length).toBeGreaterThan(0);
   blocked = false;
   await Promise.all(waiting.map(route => route.continue()));
+  const button = page.getByRole('button', { name: 'Chia sẻ', exact: true }).first();
   await expect(button).toBeEnabled({ timeout: 25000 });
   await button.click();
   await expect(page.getByRole('dialog', { name: kind === 'product' ? 'Chia sẻ sản phẩm' : 'Chia sẻ bài viết' })).toBeVisible({ timeout: 25000 });
