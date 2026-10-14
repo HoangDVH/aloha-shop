@@ -19,7 +19,7 @@ RELEASE="$RELEASE_ROOT/$ID"
 mkdir -p "$RELEASE"
 chmod 700 "$RELEASE"
 # This repo tracks node_modules; exclude platform-specific binaries.
-git archive "$REF" | tar -x -C "$RELEASE" --exclude='node_modules' --exclude='*/node_modules' --exclude='*/.next' --exclude='uploads' --exclude='private'
+git archive "$REF" | tar -x -C "$RELEASE" --exclude='node_modules' --exclude='*/node_modules' --exclude='*/.next' --exclude='uploads' --exclude='private' --exclude='.token_cache.json'
 if [ -n "${DEPLOY_PATCH:-}" ]; then
   git -C "$RELEASE" apply --check "$DEPLOY_PATCH"
   git -C "$RELEASE" apply "$DEPLOY_PATCH"
@@ -36,7 +36,7 @@ npm ci --no-audit --no-fund
 npm ci --prefix frontend --no-audit --no-fund
 PUPPETEER_SKIP_DOWNLOAD=1 npm ci --prefix getPrivateTokenKV --no-audit --no-fund
 for file in .env .token_cache.json; do
-  if [ -f "$APP_DIR/getPrivateTokenKV/$file" ]; then ln -s "$APP_DIR/getPrivateTokenKV/$file" "$RELEASE/getPrivateTokenKV/$file"; fi
+  if [ -f "$APP_DIR/getPrivateTokenKV/$file" ]; then ln -sfn "$APP_DIR/getPrivateTokenKV/$file" "$RELEASE/getPrivateTokenKV/$file"; fi
 done
 npm run typecheck:api
 npm run typecheck:web
