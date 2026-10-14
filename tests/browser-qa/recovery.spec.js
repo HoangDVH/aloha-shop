@@ -10,6 +10,7 @@ test.beforeEach(async ({ page }) => {
   // Read-only production checks: simulated errors and analytics never reach the server.
   await page.route('**/api/shop/client-errors', route => route.fulfill({ status: 204 }));
   await page.route('**/api/shop/visits', route => route.fulfill({ status: 204 }));
+  await page.route('**/api/shop/appearance/popup-event', route => route.fulfill({ status: 204 }));
   await page.addLocatorHandler(page.getByRole('button', { name: 'Đóng popup', exact: true }), async button => {
     await button.click();
   });
@@ -58,6 +59,13 @@ test('chunk failure reloads once and the next failure cannot reload-loop', async
 });
 
 test('a missing page chunk shows the retry interface after recovery is exhausted', async ({ page }) => {
+  // This test isolates chunk recovery from marketing dialogs and touch hit-testing.
+  await page.route('**/api/shop/appearance', async route => {
+    const response = await route.fetch();
+    const data = await response.json();
+    if (data.theme?.popup) data.theme.popup.enabled = false;
+    await route.fulfill({ response, json: data });
+  });
   let monitorReady = false;
   await page.route('**/api/shop/client-errors', async route => {
     if (route.request().postDataJSON().message === 'QA missing chunk ready') monitorReady = true;
@@ -75,7 +83,7 @@ test('a missing page chunk shows the retry interface after recovery is exhausted
   }).toBe(true);
   const catalogLink = page.getByRole('link', { name: 'Xem thêm sản phẩm nổi bật →', exact: true });
   await expect(catalogLink).toBeVisible();
-  await catalogLink.click();
+  await catalogLink.dispatchEvent('click');
   await expect.poll(() => blocked, { timeout: 15_000 }).toBeGreaterThan(0);
   await expect(page.getByRole('heading', { name: 'Trang gặp sự cố' })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole('button', { name: 'Thử lại' })).toBeVisible();
