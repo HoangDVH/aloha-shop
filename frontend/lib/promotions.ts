@@ -59,6 +59,7 @@ export async function requestPromotionQuote(
 
 export interface AvailablePromotionUI {
   audienceEligible?: boolean;
+  ineligibleReason?: string;
   id: string;
   title: string;
   description?: string;

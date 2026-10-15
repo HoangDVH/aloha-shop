@@ -11,6 +11,8 @@ import { customerUsageId } from "./checkoutPromotions.js";
 import {
   consumeFirstPurchaseClaims,
   releaseFirstPurchaseClaims,
+  PROMOTION_CLAIMS_COL,
+  POLICY_GROUP_FIRST_PURCHASE,
 } from "./claimService.js";
 import { releaseWalletForOrder, renameWalletOrderCode, useWalletForOrder } from "./wallet/walletService.js";
 import { reclaimAfterLatePayment, settleCampaignHolds } from "../shopCampaigns/orderCampaign.js";
@@ -323,6 +325,10 @@ export async function renameRedemptionOrderCode(
     .collection(PROMOTION_REDEMPTIONS_COL)
     .updateMany({ orderCode: fromCode }, { $set: { orderCode: toCode, updatedAt: new Date().toISOString() } });
   await renameWalletOrderCode(shopDb, fromCode, toCode);
+  await shopDb.collection(PROMOTION_CLAIMS_COL).updateMany(
+    { policyGroup: POLICY_GROUP_FIRST_PURCHASE, orderId: fromCode },
+    { $set: { orderId: toCode, updatedAt: new Date().toISOString() } }
+  );
 }
 
 /**
