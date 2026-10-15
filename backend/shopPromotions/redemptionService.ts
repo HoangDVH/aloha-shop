@@ -1,4 +1,5 @@
 import type { Db } from "mongodb";
+import { reservationId, reservationLookup, reservationReplay } from "./reservationIdentity.js";
 import {
   PROMOTIONS_COL,
   PROMOTION_CODES_COL,
@@ -16,10 +17,6 @@ import {
 } from "./claimService.js";
 import { releaseWalletForOrder, renameWalletOrderCode, useWalletForOrder } from "./wallet/walletService.js";
 import { reclaimAfterLatePayment, settleCampaignHolds } from "../shopCampaigns/orderCampaign.js";
-
-function newRedemptionId(): string {
-  return `red_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-}
 
 /**
  * Giữ 1 lượt của khách: upsert có điều kiện `count < limit`.
@@ -101,19 +98,8 @@ export async function holdPromotion(
   const codeCol = shopDb.collection(PROMOTION_CODES_COL);
 
   // Một đơn có thể giữ cả ưu đãi tiền hàng và voucher ship → idempotency theo từng chương trình
-  const existing = await redCol.findOne({
-    promotionId,
-    $or: [
-      { orderCode },
-      ...(idempotencyKey ? [{ idempotencyKey }] : []),
-    ],
-  });
-
-  if (existing) {
-    if (existing.status === "held" || existing.status === "used") {
-      return { ok: true, redemptionId: String(existing.id || existing._id) };
-    }
-  }
+  const existing = await redCol.findOne(reservationLookup(args));
+  if (existing) return reservationReplay(existing as unknown as PromotionRedemptionDoc, args);
 
   const promo = await promoCol.findOne({ id: promotionId }, { projection: { usageLimitPerCustomer: 1 } });
   const perCustomerLimit = Math.max(0, Number(promo?.usageLimitPerCustomer) || 0);
@@ -217,7 +203,7 @@ export async function holdPromotion(
     }
   }
 
-  const redemptionId = newRedemptionId();
+  const redemptionId = reservationId(args);
   const redemptionDoc: PromotionRedemptionDoc = {
     id: redemptionId,
     orderCode,
@@ -236,7 +222,19 @@ export async function holdPromotion(
     updatedAt: now.toISOString(),
   };
 
-  await redCol.insertOne(redemptionDoc as any);
+  try {
+    await redCol.insertOne({ ...redemptionDoc, _id: redemptionId } as any);
+  } catch (error: any) {
+    if (error?.code !== 11000) throw error;
+    // Another identical request won the unique reservation ID. Undo only this
+    // attempt's counters, then validate the winner before returning success.
+    await promoCol.updateOne({ id: promotionId }, { $inc: { heldCount: -1, budgetHeld: -discountAmount } });
+    if (promotionCode) await codeCol.updateOne({ code: promotionCode.trim().toUpperCase() }, { $inc: { heldCount: -1 } });
+    if (usageKey) await returnCustomerUsage(shopDb, promotionId, usageKey);
+    const winner = await redCol.findOne({ _id: redemptionId } as any);
+    if (winner) return reservationReplay(winner as unknown as PromotionRedemptionDoc, args);
+    return { ok: false, error: "Lượt giữ voucher đang thay đổi. Vui lòng tải lại báo giá." };
+  }
   return { ok: true, redemptionId };
 }
 

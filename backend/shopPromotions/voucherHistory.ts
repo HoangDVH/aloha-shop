@@ -13,6 +13,8 @@ const RETURN_WINDOW_MS = 30 * 24 * 3600_000;
 
 export async function ensureRedemptionIndexes(db: Db): Promise<void> {
   await db.collection(PROMOTION_REDEMPTIONS_COL).createIndex({ customerKey: 1, createdAt: -1 });
+  await db.collection(PROMOTION_REDEMPTIONS_COL).createIndex({ promotionId: 1, orderCode: 1 });
+  await db.collection(PROMOTION_REDEMPTIONS_COL).createIndex({ promotionId: 1, buyerId: 1, idempotencyKey: 1 });
 }
 
 /** Lượt áp mới nhất của từng voucher cho khách (bỏ qua lượt không gắn mã đơn). */
