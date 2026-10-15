@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Maximize2, Play } from "lucide-react";
+import { Loader2, Maximize2, Play, Volume2, VolumeX } from "lucide-react";
 import { ProductVideoLightbox } from "@/components/pdp/ProductVideoLightbox";
 
 type Props = {
@@ -26,6 +26,212 @@ function isFileVideo(url: string) {
 type MediaItem =
   | { kind: "video"; src: string; file: boolean }
   | { kind: "image"; src: string };
+
+function GalleryVideoSlide({
+  src,
+  file,
+  poster,
+  alt,
+  isActive,
+  isFirstSlide,
+  mediaLightbox,
+  slideIndex,
+  onOpenLightbox,
+}: {
+  src: string;
+  file: boolean;
+  poster: string;
+  alt: string;
+  isActive: boolean;
+  isFirstSlide: boolean;
+  mediaLightbox: boolean;
+  slideIndex: number;
+  onOpenLightbox: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(true);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+
+  // Điều khiển phát / dừng video theo trạng thái slide đang xem
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !file) return;
+    let cancelled = false;
+
+    if (isActive && !mediaLightbox) {
+      if (video.paused) {
+        setIsBuffering(true);
+      }
+      const p = video.play();
+      if (p !== undefined) {
+        p.then(() => {
+          if (cancelled) return;
+          setIsBlocked(false);
+        }).catch(() => {
+          if (cancelled) return;
+          // Trình duyệt chặn tự động phát (iOS Low Power Mode hoặc chính sách bảo mật)
+          setIsBlocked(true);
+          setIsBuffering(false);
+        });
+      }
+    } else {
+      video.pause();
+      setIsPlaying(false);
+      setIsBuffering(false);
+    }
+    return () => { cancelled = true; video.pause(); };
+  }, [isActive, mediaLightbox, file, src]);
+
+  const handleManualPlay = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const video = videoRef.current;
+    if (!video) return;
+    setIsBlocked(false);
+    setIsBuffering(true);
+    video.play().catch(() => {
+      setIsBlocked(true);
+      setIsBuffering(false);
+    });
+  };
+
+  const toggleMute = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const next = !isMuted;
+    setIsMuted(next);
+    if (videoRef.current) {
+      videoRef.current.muted = next;
+    }
+  };
+
+  return (
+    <div
+      onClick={onOpenLightbox}
+      className="absolute inset-0 overflow-hidden bg-[var(--aloha-cream)]"
+    >
+      {/* LỚP 0: Ảnh bìa sắc nét lót đáy (hiển thị tức thì 0ms lúc nạp, tự động ẩn khi video bắt đầu chạy) */}
+      {poster ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={poster}
+          alt={alt}
+          className={`absolute inset-0 z-0 h-full w-full object-cover sm:object-contain select-none transition-opacity duration-300 ease-out ${
+            isPlaying ? "opacity-0 pointer-events-none" : "opacity-100"
+          }`}
+          draggable={false}
+        />
+      ) : null}
+
+      {file ? (
+        <>
+          {/* LỚP 1: Thẻ video - hiển thị trọn vẹn tỉ lệ nguồn trên nền xanh aloha-cream chuẩn production */}
+          <video
+            ref={videoRef}
+            key={src}
+            src={src}
+            className={`absolute inset-0 z-[1] h-full w-full cursor-pointer object-contain transition-opacity duration-300 ease-out ${
+              isPlaying ? "opacity-100" : "opacity-0"
+            }`}
+            data-slide={slideIndex}
+            preload={isFirstSlide ? "auto" : "metadata"}
+            muted={isMuted}
+            loop
+            playsInline
+            poster={poster || undefined}
+            onPlaying={() => {
+              setIsPlaying(true);
+              setIsBuffering(false);
+              setIsBlocked(false);
+            }}
+            onWaiting={() => {
+              if (!isBlocked) setIsBuffering(true);
+            }}
+            onCanPlay={() => {
+              setIsBuffering(false);
+            }}
+            onPause={() => {
+              setIsPlaying(false);
+            }}
+            onError={() => {
+              setIsBuffering(false);
+            }}
+          />
+
+          {/* LỚP 2A: Biểu tượng loading/buffer tinh tế lúc đang nạp dữ liệu */}
+          {isActive && isBuffering && !isPlaying && !isBlocked && (
+            <div className="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center">
+              <div className="flex items-center gap-2 rounded-full bg-black/60 px-3.5 py-1.5 text-xs font-medium text-white shadow-lg backdrop-blur-md">
+                <Loader2 className="h-4 w-4 animate-spin text-white" />
+                <span>Đang phát video...</span>
+              </div>
+            </div>
+          )}
+
+          {/* LỚP 2B: Nút Play cứu cánh khi trình duyệt chặn tự động phát (iOS tiết kiệm pin) */}
+          {isActive && isBlocked && !isPlaying && (
+            <button
+              type="button"
+              onClick={handleManualPlay}
+              className="group/btn absolute inset-0 z-[2] flex items-center justify-center bg-black/20 transition-colors hover:bg-black/30 cursor-pointer"
+              aria-label="Phát video"
+            >
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/70 text-white shadow-xl backdrop-blur-xs ring-2 ring-white/90 transition-transform group-hover/btn:scale-110 active:scale-95">
+                <Play className="ml-1 h-7 w-7 fill-white text-white" />
+              </div>
+            </button>
+          )}
+
+          {/* LỚP 3: Nút Bật/Tắt âm thanh chuẩn TikTok Shop */}
+          {isActive && isPlaying && (
+            <button
+              type="button"
+              onClick={toggleMute}
+              className="absolute top-3 left-3 z-[2] flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white shadow-sm backdrop-blur-xs hover:bg-black/70 transition cursor-pointer"
+              aria-label={isMuted ? "Bật âm thanh" : "Tắt âm thanh"}
+              title={isMuted ? "Bật âm thanh" : "Tắt âm thanh"}
+            >
+              {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
+            </button>
+          )}
+        </>
+      ) : (
+        /* YouTube iframe fallback */
+        <>
+          {isActive && !mediaLightbox && (
+            <iframe
+              key={src}
+              src={
+                /youtube\.com|youtu\.be|youtube-nocookie/i.test(src)
+                  ? src
+                      .replace("watch?v=", "embed/")
+                      .replace("youtu.be/", "www.youtube.com/embed/")
+                      .split("&")[0] +
+                    (src.includes("?") ? "&" : "?") +
+                    "autoplay=1&mute=1&playsinline=1&loop=1"
+                  : src
+              }
+              title={alt}
+              className="pointer-events-none absolute inset-0 z-[1] h-full w-full border-0 sm:pointer-events-auto"
+              allow="autoplay; encrypted-media; picture-in-picture"
+              allowFullScreen
+            />
+          )}
+        </>
+      )}
+
+      {/* Nút phóng to video: mobile góc trái dưới, desktop giữ nguyên góc phải dưới chuẩn cũ */}
+      <button
+        type="button"
+        onClick={onOpenLightbox}
+        className="absolute bottom-3 left-3 z-[2] inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white shadow-sm backdrop-blur-xs hover:bg-black/60 transition sm:bottom-2 sm:right-2 sm:left-auto sm:min-h-11 sm:min-w-11 sm:bg-white/95 sm:text-slate-500 sm:ring-1 sm:ring-black/5 sm:hover:bg-white cursor-pointer"
+        aria-label="Xem video phóng to"
+      >
+        <Maximize2 size={16} />
+      </button>
+    </div>
+  );
+}
 
 /**
  * Native horizontal scrolling follows the finger and snaps to each media slide.
@@ -113,12 +319,6 @@ export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
     return () => { observer.disconnect(); if (scrollFrame.current != null) cancelAnimationFrame(scrollFrame.current); };
   }, []);
 
-  useEffect(() => {
-    viewport.current?.querySelectorAll<HTMLVideoElement>("video[data-slide]").forEach(video => {
-      if (Number(video.dataset.slide) === idx && !mediaLightbox) void video.play().catch(() => {});
-      else video.pause();
-    });
-  }, [idx, mediaLightbox, media]);
 
   const onScroll = () => {
     if (scrollFrame.current != null) return;
@@ -145,62 +345,17 @@ export function ProductGallery({ images, videos = [], alt, resetKey }: Props) {
         {media.length ? media.map((current, slideIndex) => (
           <div key={`${current.kind}-${current.src}`} className="relative h-full w-full shrink-0 snap-center snap-always overflow-hidden">
           {current.kind === "video" ? (
-            <div onClick={() => openMediaLightbox(slideIndex)} className="absolute inset-0 overflow-hidden bg-black/5 sm:bg-[var(--aloha-cream)]">
-              {current.file ? (
-                <video
-                  key={current.src}
-                  src={current.src}
-                  className="absolute inset-0 h-full w-full cursor-pointer object-cover sm:object-contain"
-                  data-slide={slideIndex}
-                  autoPlay={slideIndex === idx && !mediaLightbox}
-                  preload="metadata"
-                  muted
-                  loop
-                  playsInline
-                  poster={poster || undefined}
-                  onClick={() => openMediaLightbox(slideIndex)}
-                />
-              ) : (
-                <>
-                  {poster ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={poster}
-                      alt=""
-                      className="absolute inset-0 h-full w-full object-cover sm:object-contain"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 bg-stone-900 sm:bg-[var(--aloha-green-light)]" />
-                  )}
-                  {slideIndex === idx && !mediaLightbox && <iframe
-                    key={current.src}
-                    src={
-                      /youtube\.com|youtu\.be|youtube-nocookie/i.test(current.src)
-                        ? current.src
-                            .replace("watch?v=", "embed/")
-                            .replace("youtu.be/", "www.youtube.com/embed/")
-                            .split("&")[0] +
-                          (current.src.includes("?") ? "&" : "?") +
-                          "autoplay=1&mute=1&playsinline=1&loop=1"
-                        : current.src
-                    }
-                    title={alt}
-                    className="pointer-events-none absolute inset-0 h-full w-full border-0 sm:pointer-events-auto"
-                    allow="autoplay; encrypted-media; picture-in-picture"
-                    allowFullScreen
-                  />}
-                </>
-              )}
-              {/* Nút phóng to video: mobile góc trái dưới, desktop giữ nguyên góc phải dưới chuẩn cũ */}
-              <button
-                type="button"
-                onClick={() => openMediaLightbox(slideIndex)}
-                className="absolute bottom-3 left-3 z-[2] inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white shadow-sm backdrop-blur-xs hover:bg-black/60 transition sm:bottom-2 sm:right-2 sm:left-auto sm:min-h-11 sm:min-w-11 sm:bg-white/95 sm:text-slate-500 sm:ring-1 sm:ring-black/5 sm:hover:bg-white"
-                aria-label="Xem video phóng to"
-              >
-                <Maximize2 size={16} />
-              </button>
-            </div>
+            <GalleryVideoSlide
+              src={current.src}
+              file={current.file}
+              poster={poster}
+              alt={alt}
+              isActive={slideIndex === idx}
+              isFirstSlide={slideIndex === 0}
+              mediaLightbox={mediaLightbox}
+              slideIndex={slideIndex}
+              onOpenLightbox={() => openMediaLightbox(slideIndex)}
+            />
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
             <img

@@ -83,6 +83,8 @@ export default async function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400;1,600&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
+        <link rel="preconnect" href="https://pub-47761e6b4231489580175c7b8a2d0490.r2.dev" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://pub-47761e6b4231489580175c7b8a2d0490.r2.dev" />
       </head>
       <body className="min-h-screen antialiased">
         <ClientErrorMonitor />
