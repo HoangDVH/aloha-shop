@@ -36,7 +36,8 @@ test("contradictory or missing eligibility cannot apply a new-customer voucher",
 
 test("held first order stays new audience but cannot redeem another new voucher", async () => {
   const db: any = { collection(name: string) { return { findOne: async (q: any) => name === "aloha_shop_promotion_claims" && q.state === "held" ? { state: "held" } : null }; } };
-  assert.deepEqual(await resolveVoucherBuyer(db, { userId: "A" }), { newBuyer: true, hasSuccessfulWebPurchase: false, isNewWebBuyer: false });
+  assert.deepEqual(await resolveVoucherBuyer(db, { userId: "A" }), { newBuyer: true, hasSuccessfulWebPurchase: false, isNewWebBuyer: false,
+    newVoucherBlockReason: "Ưu đãi khách mới đã được sử dụng hoặc đang được giữ ở một đơn khác." });
 });
 
 test("successful purchase uses returning audience immediately", async () => {

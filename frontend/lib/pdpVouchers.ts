@@ -31,7 +31,8 @@ export function pdpVoucherSheetEntries(promotions: AvailablePromotionUI[], produ
   viewer: { newBuyer?: boolean } | null | undefined, claimed: Set<string>, isWholesale = false, now = Date.now()) {
   const applicable = new Set(pdpApplicableVouchers(promotions, product, viewer, isWholesale, now));
   return promotions.filter(p => applicable.has(p) || (claimed.has(p.id) && voucherMatchesBuyer(p.targetCustomer, viewer)))
-    .map(p => ({ promotion: p, reason: applicable.has(p) ? undefined
+    .map(p => ({ promotion: p, reason: applicable.has(p) ? undefined : p.ineligibleReason
+      ? p.ineligibleReason
       : !productMatchesVoucher(product, p, now) ? "Không áp dụng cho sản phẩm này."
       : p.endDate && Date.parse(p.endDate) <= now ? "Voucher đã hết hạn."
       : p.startDate && Date.parse(p.startDate) > now ? "Voucher chưa bắt đầu."

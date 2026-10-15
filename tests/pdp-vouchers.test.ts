@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { pdpApplicableVouchers, pdpDefaultVouchers } from "../frontend/lib/pdpVouchers.js";
+import { pdpApplicableVouchers, pdpDefaultVouchers, pdpVoucherSheetEntries } from "../frontend/lib/pdpVouchers.js";
 import type { AvailablePromotionUI } from "../frontend/lib/promotions.js";
 import type { ShopProduct } from "../frontend/lib/api.js";
 
@@ -16,6 +16,13 @@ const offers = [
   voucher("returning", { targetCustomer: "returning_web", maxDiscountVnd: 100000 }),
   voucher("ship", { benefitType: "shipping", discountType: "fixed", discountValue: 30000, minOrderThreshold: 1000000 }),
 ];
+
+test("saved first-order voucher held elsewhere is not advertised as usable and retains the server reason", () => {
+  const reason = "Ưu đãi khách mới đang được sử dụng ở đơn DH_A.";
+  const p = voucher("new", { targetCustomer: "new_web", claimRequired: true, audienceEligible: false, ineligibleReason: reason });
+  assert.deepEqual(pdpApplicableVouchers([p], product, { newBuyer: true }, false, now), []);
+  assert.deepEqual(pdpVoucherSheetEntries([p], product, { newBuyer: true }, new Set([p.id]), false, now), [{ promotion: p, reason }]);
+});
 
 for (const newBuyer of [true, false]) test(`PDP keeps ${newBuyer ? "new" : "returning"} voucher and ship while campaign stays in full list`, () => {
   const viewer = { newBuyer };

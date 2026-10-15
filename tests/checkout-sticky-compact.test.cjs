@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const ts = require('typescript');
 const jsx = (type, props) => ({type, props:props || {}});
 const code = ts.transpileModule(fs.readFileSync('frontend/components/checkout/CheckoutStickyBar.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText;
-function render(extra={}, open=false) {
+function render(extra={}, open=false, retained=null) {
  const exports={}, calls=[]; let state=0;
  vm.runInNewContext(code,{exports,document:{},require(name){
   if(name==='react/jsx-runtime') return {jsx,jsxs:jsx};
@@ -13,6 +13,8 @@ function render(extra={}, open=false) {
   if(name==='react-dom') return {createPortal:node=>node};
   if(name==='@/lib/floatingStack') return {useStickyBarHeight:()=>null};
   if(name==='@/lib/api') return {formatVnd:v=>String(v)};
+  if(name==='@/lib/usePendingValue') return {usePendingValue:(value,pending)=>pending?retained:value};
+  if(name==='./PriceUpdateIndicator') return {PriceUpdateIndicator:'price-update'};
   throw Error(name);
  }});
  const tree=exports.CheckoutStickyBar({total:100,discount:10,grandTotal:115,shippingFee:25,canSubmit:true,submitting:false,onPlaceOrder:()=>calls.push('place'),showShipping:true,...extra});
@@ -35,4 +37,17 @@ test('expanded breakdown is scrollable and submitting prevents another order',()
  const f=render({submitting:true},true);
  assert.match(f.nodes.find(n=>n.props.id==='detail').props.className,/max-h.*overflow-y-auto/);
  assert.equal(f.nodes.filter(n=>n.type==='button')[1].props.disabled,true);
+});
+
+test('repricing keeps the previous mobile total and suppresses transient missing-information warnings',()=>{
+ const retained={total:100,discount:10,volumeDiscount:0,flashDiscount:0,productDiscount:0,
+  grandTotal:115,shippingFee:25,shippingDiscount:0,canSubmit:true,orderBlockedReason:''};
+ const f=render({total:999,grandTotal:999,shippingFee:null,totalPending:true,canSubmit:false,
+  orderBlockedReason:'Updating prices'},true,retained);
+ assert.ok(f.nodes.some(n=>n.props.children==='115'));
+ assert.ok(!f.nodes.some(n=>n.props.children==='999'));
+ assert.ok(!f.nodes.some(n=>n.props.children==='Updating prices'));
+ const action=f.nodes.filter(n=>n.type==='button')[1];
+ assert.equal(action.props.disabled,true);
+ assert.ok(f.nodes.some(n=>n.type==='price-update' && n.props.pending===true));
 });

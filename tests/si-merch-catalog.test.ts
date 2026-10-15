@@ -7,8 +7,9 @@ import { merchFields, overlaySiMerch } from "../backend/shopAppearance/merchAudi
 import { webBadgeMongoFilter } from "../backend/shopCatalog/webBadge.js";
 
 const source = readFileSync(new URL("../backend/shopCatalog/routes/products.routes.ts", import.meta.url), "utf8");
-const start = source.indexOf("        const db = await ctx.catalogDb();");
+const start = source.indexOf("        const db = await ctx.catalogDb();", source.indexOf("const { body, cache } = await cachedJson"));
 const end = source.indexOf("        const col = db.collection(COL);", start);
+assert.ok(start >= 0 && end > start, "catalog fixture must extract the cached catalog handler, not voucher exclusion code");
 const code = ts.transpileModule(`(async()=>{${source.slice(start, end)}return { filter, homeAudience, mapped: await mapHomeDocs(db, docsInput) };})()`, {
   compilerOptions: { module: ts.ModuleKind.CommonJS },
 }).outputText;

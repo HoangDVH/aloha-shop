@@ -4,9 +4,27 @@ import { Gift, Zap } from "lucide-react";
 import { formatVnd } from "@/lib/api";
 import type { CampaignQuoteLineUI, FlashLineView } from "@/lib/campaign/campaignQuote";
 
+/** Mobile: one unit price, with reference price and discount together below it. */
+export function MobileCartPrice({ gia, qty, flash, referencePrice = gia }: { gia: number; qty: number; flash: FlashLineView | null; referencePrice?: number }) {
+  const current = flash?.salePrice ?? gia;
+  const reference = flash?.listPrice ?? referencePrice;
+  const discounted = reference > current;
+  return <div className="min-w-0 text-left tabular-nums">
+    <p aria-label="Đơn giá hiện tại" className="whitespace-nowrap text-[15px] font-extrabold leading-5 text-[var(--aloha-price)]">{formatVnd(current)}</p>
+    {discounted && <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] leading-4">
+      <span aria-label="Giá trước ưu đãi" className="whitespace-nowrap text-slate-400 line-through">{formatVnd(reference)}</span>
+      <span className="rounded-sm bg-rose-50 px-1 font-medium text-[var(--aloha-price)]">-{Math.round((reference - current) / reference * 100)}%</span>
+    </div>}
+    {flash && flash.saleQty < qty && <p className="mt-1 text-[10px] leading-4 text-amber-700">{flash.saleQty} sp giá sale, {qty - flash.saleQty} sp giá thường ({formatVnd(flash.listPrice)}/sp)</p>}
+  </div>;
+}
+
 /** Đơn giá dòng giỏ: có giá sale thì hiện giá sale + giá gốc gạch, ghi rõ khi chỉ một phần được giá sale. */
-export function CartUnitPrice({ gia, qty, flash }: { gia: number; qty: number; flash: FlashLineView | null }) {
-  if (!flash) return <span>{formatVnd(gia)}</span>;
+export function CartUnitPrice({ gia, qty, flash, referencePrice = gia }: { gia: number; qty: number; flash: FlashLineView | null; referencePrice?: number }) {
+  if (!flash) return referencePrice > gia ? <span className="inline-flex flex-col leading-tight">
+    <span className="font-bold text-[var(--aloha-price)]">{formatVnd(gia)}</span>
+    <span className="mt-1 text-[11px] font-normal text-slate-400 line-through" aria-label="Đơn giá trước ưu đãi">{formatVnd(referencePrice)}</span>
+  </span> : <span>{formatVnd(gia)}</span>;
   return (
     <span className="inline-flex flex-col items-center leading-tight md:items-center">
       <span className="inline-flex items-center gap-0.5 font-bold text-[#C8102E]">

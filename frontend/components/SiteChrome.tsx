@@ -18,6 +18,7 @@ import {
   FileText,
   ChevronRight,
   Home,
+  ArrowLeft,
   Sparkles,
   Zap,
   Stethoscope,
@@ -25,6 +26,7 @@ import {
   Clock,
 } from "lucide-react";
 import { useCart } from "@/lib/cart";
+import { useShopRouter } from "@/lib/useShopRouter";
 import { fetchCategoryTreeCached, shopApiBase, type ShopCategoryNavNode } from "@/lib/api";
 import { HeaderSearch } from "@/components/HeaderSearch";
 import { HeaderAccountMenu } from "@/components/HeaderAccountMenu";
@@ -117,9 +119,30 @@ function AlohaLogo({
 export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNode[] }) {
   const pathname = usePathname() || "/";
   const searchParams = useSearchParams();
+  const router = useShopRouter();
   const dealsNavHref = useDealsNavHref();
   const dealsAccent = useDealsNavAccent();
   const count = useCart((s) => s.lines.reduce((n, l) => n + l.qty, 0));
+
+  const isCart = pathname.startsWith("/gio-hang");
+  const isCheckout = pathname.startsWith("/xac-nhan-don-hang");
+  const isMinimalMobileHeader = isCart || isCheckout;
+
+  const handleMobileBack = () => {
+    if (isCheckout) {
+      if (typeof window !== "undefined" && window.history.length > 1) {
+        router.back();
+      } else {
+        router.push("/gio-hang");
+      }
+      return;
+    }
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/");
+    }
+  };
   const [tree, setTree] = useState<ShopCategoryNavNode[]>(() =>
     categoryTree?.length ? categoryTree : []
   );
@@ -259,10 +282,42 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
       className="sticky top-0 z-50 shadow-sm"
       style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
     >
-      <PreviewBar />
-      <AnnouncementBar />
+      <div className={isMinimalMobileHeader ? "hidden md:block" : ""}>
+        <PreviewBar />
+        <AnnouncementBar />
+      </div>
+
+      {/* THANH HEADER ĐIỀU HƯỚNG TINH GỌN TRÊN MOBILE CHO GIỎ HÀNG & CHECKOUT (CHUẨN SHOPEE/TIKTOK SHOP) */}
+      {isMinimalMobileHeader ? (
+        <div className="flex h-11 sm:h-12 w-full items-center justify-between px-2.5 sm:px-3 md:hidden bg-white/95 backdrop-blur-md border-b border-stone-200/80 shadow-2xs">
+          <button
+            type="button"
+            onClick={handleMobileBack}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-700 hover:bg-stone-100 active:scale-95 transition cursor-pointer"
+            aria-label="Quay lại"
+          >
+            <ArrowLeft size={20} strokeWidth={2.2} />
+          </button>
+
+          <h1 className="min-w-0 flex-1 truncate text-center text-[15px] font-bold text-stone-900 px-2">
+            {isCheckout
+              ? "Xác nhận đơn hàng"
+              : `Giỏ hàng${count > 0 ? ` (${count})` : ""}`}
+          </h1>
+
+          <Link
+            href="/"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-700 hover:bg-stone-100 active:scale-95 transition cursor-pointer"
+            aria-label="Về trang chủ"
+            title="Về trang chủ"
+          >
+            <Home size={19} strokeWidth={2} />
+          </Link>
+        </div>
+      ) : null}
+
       {/* Hàng logo + search — kem ấm #FDF6E3 */}
-      <div className="border-b border-[var(--aloha-border-brown)]/40 bg-[#FDF6E3]">
+      <div className={`border-b border-[var(--aloha-border-brown)]/40 bg-[#FDF6E3] ${isMinimalMobileHeader ? "hidden md:block" : ""}`}>
         <div className="mx-auto flex max-w-7xl flex-col gap-2 px-3 py-2 sm:px-4 sm:py-2.5 md:flex-row md:items-center md:gap-4 lg:gap-5">
           {/* HÀNG 1 TRÊN MOBILE (MD+: NẰM CÙNG HÀNG BÊN TRÁI) */}
           <div className="flex w-full items-center justify-between gap-2 md:w-auto">

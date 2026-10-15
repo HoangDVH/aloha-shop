@@ -128,6 +128,7 @@ export function registerShopPromotionsPublicRoutes(
           targetCustomer: p.targetCustomer,
           claimRequired: p.claimRequired === true,
           audienceEligible: (allowed.has(p.id) || claimable.has(p.id)) && !(p.targetCustomer === "retail" && wholesale && !allowsWholesaleShipping(p, account)) && !(p.targetCustomer === "wholesale" && !wholesale),
+          ineligibleReason: buyerPromos.notices.find(n => n.promotionId === p.id && !n.needsClaim)?.ineligibleReason,
           scope: p.scope || "all",
           categoryIds: p.categoryIds,
           productMas: p.productMas,

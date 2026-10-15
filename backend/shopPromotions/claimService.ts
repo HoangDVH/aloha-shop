@@ -22,11 +22,27 @@ export interface PromotionClaimDoc {
 
 export async function ensureClaimIndexes(shopDb: Db): Promise<void> {
   const col = shopDb.collection<PromotionClaimDoc>(PROMOTION_CLAIMS_COL);
+  // Upserts below rely on a duplicate-key error to reject a competing order.
+  // State is deliberately excluded: released identities are reused, never duplicated.
+  await col.createIndex(
+    { policyGroup: 1, identityType: 1, identityKey: 1 },
+    { name: "claim_policy_identity_unique", unique: true }
+  );
   await col.createIndex(
     { policyGroup: 1, identityType: 1, identityKey: 1, state: 1 },
     { name: "claim_policy_identity_state_idx" }
   );
   await col.createIndex({ orderId: 1 }, { name: "claim_order_idx" });
+}
+
+const readyIndexes = new WeakMap<Db, Promise<void>>();
+function requireClaimIndexes(db: Db): Promise<void> {
+  let ready = readyIndexes.get(db);
+  if (!ready) {
+    ready = ensureClaimIndexes(db).catch(error => { readyIndexes.delete(db); throw error; });
+    readyIndexes.set(db, ready);
+  }
+  return ready;
 }
 
 export interface HoldClaimResult {
@@ -70,6 +86,8 @@ export async function holdFirstPurchaseClaims(
   }
 
   const phoneKey = phoneRes.normalized;
+  // Fail closed if existing duplicate data prevents installing the constraint.
+  await requireClaimIndexes(shopDb);
   const col = shopDb.collection<PromotionClaimDoc>(PROMOTION_CLAIMS_COL);
   const now = new Date();
   const nowIso = now.toISOString();
@@ -145,7 +163,7 @@ export async function holdFirstPurchaseClaims(
         identityKey: cleanAccountId,
         $or: [
           { state: "released" },
-          { orderId: orderCode },
+          { orderId: orderCode, state: "held" },
           { state: "held", leaseUntil: { $lte: nowIso } },
         ],
       },
@@ -176,7 +194,7 @@ export async function holdFirstPurchaseClaims(
         identityKey: phoneKey,
         $or: [
           { state: "released" },
-          { orderId: orderCode },
+          { orderId: orderCode, state: "held" },
           { state: "held", leaseUntil: { $lte: nowIso } },
         ],
       },
@@ -293,6 +311,7 @@ export async function recordFirstPurchaseConsumedForRegularOrder(
   }
 ): Promise<void> {
   const { orderCode, accountId, buyerPhone } = args;
+  await requireClaimIndexes(shopDb);
   const col = shopDb.collection<PromotionClaimDoc>(PROMOTION_CLAIMS_COL);
   const nowIso = new Date().toISOString();
 

@@ -116,7 +116,12 @@ export async function saveDraft(
   if (!isManager) {
     const cur = await getCampaign(db, id);
     if (!cur) return fail(404, "not_found", M.notFound);
-    if (moneyPart(cur.draft) !== moneyPart(v.value)) return fail(403, "manager_only", M.managerOnly);
+    // Legacy drafts may omit defaults that validation adds to the incoming draft.
+    // Compare canonical content on both sides without relaxing protected fields.
+    const baseline = validateCampaignContent(cur.draft);
+    if (isInvalidCampaign(baseline) || moneyPart(baseline.value) !== moneyPart(v.value)) {
+      return fail(403, "manager_only", M.managerOnly);
+    }
   }
   const r = await updateAtRevision(db, id, revision, { draft: v.value }, actor);
   if (r.ok) await audit(db, id, "campaign_save_draft", actor);

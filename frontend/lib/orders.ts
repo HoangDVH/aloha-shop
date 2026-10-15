@@ -23,6 +23,7 @@ export type ShopOrderDetail = {
   discount?: number;
   note?: string;
   variantLabel?: string;
+  volumePricing?: { basePrice: number; discountPercent: number; quantity: number };
   imageUrl?: string;
   ctvCode?: string;
   /** Dòng tính giá sale chiến dịch. */
@@ -66,6 +67,7 @@ export type ShopOrder = {
   /** Phần giảm do giá sale so với giá thường. */
   flashSavings?: number;
   anchorSavings?: number;
+  volumeSavings?: number;
   /** Phí ship khách trả (đã trừ hỗ trợ ship). */
   shippingFee?: number;
   shippingFeeOriginal?: number;

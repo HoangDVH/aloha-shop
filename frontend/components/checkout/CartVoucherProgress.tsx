@@ -18,7 +18,7 @@ export function CartVoucherProgress({
 
   if (goal.kind === "reached") {
     return (
-      <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2.5 text-sm font-semibold text-emerald-700" role="status">
+      <div className="flex items-center gap-2 rounded-none sm:rounded-xl bg-emerald-50 px-4 py-2.5 sm:px-3 text-sm font-semibold text-emerald-700" role="status">
         <CheckCircle2 size={16} aria-hidden />
         <span className="min-w-0 truncate">Đã đủ điều kiện · {goal.label}</span>
       </div>
@@ -27,7 +27,7 @@ export function CartVoucherProgress({
 
   if (goal.kind === "claim") {
     return (
-      <div className="flex items-center gap-2 rounded-xl bg-[#FFF3E6] px-3 py-2 text-sm text-slate-700">
+      <div className="flex items-center gap-2 rounded-none sm:rounded-xl bg-[#FFF3E6] px-4 py-2 sm:px-3 text-sm text-slate-700">
         <Ticket size={16} aria-hidden className="shrink-0 text-[#C8102E]" />
         <span className="min-w-0 flex-1">Lưu mã để dùng {goal.label}</span>
         {onClaim ? (
@@ -44,7 +44,7 @@ export function CartVoucherProgress({
   }
 
   return (
-    <div className="rounded-xl bg-[#FFF3E6] px-3 py-2.5" role="status">
+    <div className="rounded-none sm:rounded-xl bg-[#FFF3E6] px-4 py-2.5 sm:px-3" role="status">
       <p className="text-sm text-slate-700">
         Mua thêm <strong className="text-[#C8102E]">{formatVnd(goal.shortfall)}</strong> để dùng {goal.label}
       </p>

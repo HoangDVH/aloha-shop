@@ -97,6 +97,29 @@ test("AD01/AD02: nhân viên sửa chữ hero được; sửa giá flash bị 40
   if (!denied.ok) assert.equal(denied.status, 403);
 });
 
+test("staff can edit a legacy draft's text but cannot change quotas, voucher IDs or schedule", { skip: TEST_MONGO_SKIP }, async () => {
+  const legacy = daiLeContent();
+  const c = await createCampaign(t.db, legacy, "manager");
+  const text = structuredClone(legacy);
+  text.display.hero.subtitle = "Updated copy only";
+  const accepted = await saveDraft(t.db, c._id, text, c.revision, "staff", false);
+  assert.equal(accepted.ok, true);
+  if (!accepted.ok) return;
+  for (const change of [
+    (content: typeof legacy) => { content.products[0].quota += 1; },
+    (content: typeof legacy) => { content.voucherIds.push("EXTRA-VOUCHER"); },
+    (content: typeof legacy) => { content.info.endAt = "2026-10-04T23:59:00+07:00"; },
+  ]) {
+    const altered = structuredClone(accepted.value.draft);
+    change(altered);
+    const denied = await saveDraft(t.db, c._id, altered, accepted.value.revision, "staff", false);
+    assert.equal(denied.ok, false);
+    if (!denied.ok) assert.equal(denied.status, 403);
+    const current = await t.db.collection(CAMPAIGNS_COL).findOne({ _id: c._id as any });
+    assert.equal(current?.revision, accepted.value.revision);
+  }
+});
+
 test("AD05: giá dưới vốn → chưa bật khi thiếu lý do; có lý do thì bật và audit lưu lý do", { skip: TEST_MONGO_SKIP }, async () => {
   const content = daiLeContent();
   content.products[0].salePrice = 80_000;

@@ -1,15 +1,16 @@
 "use client";
 
-import { Ticket } from "lucide-react";
+import { ChevronRight, Ticket } from "lucide-react";
 import { formatVnd } from "@/lib/api";
-import { shopShowCheckoutShipping } from "@/lib/checkoutFlags";
-import { SmartFreeshipBar } from "@/components/cart/SmartFreeshipBar";
+import { OrderPaymentSummary } from "./OrderPaymentSummary";
 import type { Delivery } from "./checkoutTypes";
+import { usePendingValue } from "@/lib/usePendingValue";
 
 type Props = {
   delivery: Delivery;
   total: number;
   totalPending?: boolean;
+  priceScopeKey?: string;
   discount?: number;
   /** Giảm do giá flash so với giá thường (`total` là tiền hàng giá thường). */
   flashDiscount?: number;
@@ -41,6 +42,7 @@ export function CheckoutSummaryAside({
   delivery,
   total,
   totalPending = false,
+  priceScopeKey = "",
   discount = 0,
   flashDiscount = 0,
   volumeDiscount = 0,
@@ -61,50 +63,45 @@ export function CheckoutSummaryAside({
   submitting,
   onPlaceOrder,
 }: Props) {
-  const showShip = shopShowCheckoutShipping();
-  const goodsBeforeVoucher = Math.max(0, total - flashDiscount);
-  const goodsAfter = Math.max(0, goodsBeforeVoucher - discount);
-  const amountText = (value: number) => totalPending ? "Đang cập nhật…" : formatVnd(value);
-  const saved = anchorDiscount + volumeDiscount + flashDiscount + discount + (showShip ? shippingDiscount : 0);
+  const promotion = usePendingValue({ discount, appliedTitle }, totalPending, priceScopeKey);
+  const visibleDiscount = promotion?.discount ?? 0;
+  const pricePending = totalPending || (delivery === "giao_tan_noi" && shippingLoading);
+  const displayAction = usePendingValue({ canSubmit, orderBlockedReason }, pricePending, priceScopeKey);
+  const amountText = formatVnd;
 
   return (
-    <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
-      {!totalPending && delivery === "giao_tan_noi" ? (
-        <div className="lg:hidden">
-          <SmartFreeshipBar currentAmount={goodsBeforeVoucher} appliedDiscount={shippingDiscount} variant="compact" />
-        </div>
-      ) : null}
-
+    <aside className="space-y-2 sm:space-y-4 lg:sticky lg:top-24 lg:self-start">
       <button
         type="button"
+        aria-busy={totalPending}
         onClick={onOpenPromotion}
-        className="flex w-full items-center justify-between rounded-[var(--aloha-radius-lg)] bg-white px-4 py-3 shadow-[var(--aloha-shadow)] ring-1 ring-black/[0.04] transition hover:bg-slate-50 cursor-pointer text-left"
+        className="flex w-full items-center justify-between bg-white px-4 py-3 sm:py-3.5 sm:rounded-[var(--aloha-radius-lg)] sm:shadow-[var(--aloha-shadow)] sm:ring-1 sm:ring-black/[0.04] transition hover:bg-slate-50 cursor-pointer text-left"
       >
-        {totalPending ? <span className="text-sm text-slate-500">Đang cập nhật ưu đãi…</span> : discount > 0 ? (
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--aloha-green-light)] text-[var(--aloha-green)] shrink-0">
-              <Ticket size={18} />
+          <div className={`flex min-h-10 items-center gap-2.5 transition-opacity motion-reduce:transition-none ${totalPending ? "opacity-60" : "opacity-100"}`}>
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-rose-50 text-[var(--aloha-price)] shrink-0 sm:h-8 sm:w-8 sm:rounded-full sm:bg-[var(--aloha-green-light)] sm:text-[var(--aloha-green)]">
+              <Ticket size={17} />
             </div>
             <div>
-              <span className="text-sm font-bold text-[var(--aloha-ink)]">
-                Đã giảm {amountText(discount)}
+              <span className="text-[13px] sm:text-sm font-bold text-stone-900">
+                {visibleDiscount > 0 ? `Đã giảm ${amountText(visibleDiscount)}` : "Ưu đãi từ shop"}
               </span>
-              {appliedTitle ? (
-                <span className="block text-[11px] text-[var(--aloha-green)] font-semibold truncate max-w-[200px]">
-                  {appliedTitle}
+                <span className="block min-h-4 text-[11px] text-[var(--aloha-green)] font-semibold truncate max-w-[200px]">
+                  {promotion?.appliedTitle}
                 </span>
-              ) : null}
             </div>
           </div>
-        ) : (
-          <span className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--aloha-ink)]">
-            <Ticket size={18} className="text-[var(--aloha-green)]" />
-            Ưu đãi
-          </span>
-        )}
-        <span className="text-sm font-medium text-[var(--aloha-green)]">
-          {discount > 0 ? "Xem/Đổi ›" : "Nhập ưu đãi ›"}
-        </span>
+        <div className="flex items-center gap-1">
+          {visibleDiscount > 0 ? (
+            <span className="rounded bg-rose-50 px-2 py-0.5 text-xs font-bold text-[var(--aloha-price)]">
+              -{amountText(visibleDiscount)}
+            </span>
+          ) : (
+            <span className="text-xs sm:text-sm font-medium text-[var(--aloha-green)]">
+              Nhập ưu đãi
+            </span>
+          )}
+          <ChevronRight size={16} className="text-stone-400" />
+        </div>
       </button>
 
       {error ? (
@@ -113,107 +110,12 @@ export function CheckoutSummaryAside({
         </p>
       ) : null}
 
-      {/* Desktop: chi tiết thanh toán đầy đủ */}
-      <section className="hidden rounded-[var(--aloha-radius-lg)] bg-white p-5 shadow-[var(--aloha-shadow)] ring-1 ring-black/[0.04] lg:block">
-        <h2 className="mb-3 text-base font-extrabold text-[var(--aloha-ink)]">
-          Chi tiết thanh toán
-        </h2>
-        {delivery === "giao_tan_noi" ? (
-          <SmartFreeshipBar currentAmount={goodsBeforeVoucher} appliedDiscount={shippingDiscount} variant="compact" className="mb-3.5" />
-        ) : null}
-        {totalPending ? <p role="status" className="py-3 text-sm text-slate-500">Đang cập nhật giá và ưu đãi…</p> : <div className="space-y-2.5 text-[15px] text-slate-500">
-          <div className="flex items-center justify-between gap-3">
-            <span>Tổng tiền hàng</span>
-            <span className="tabular-nums">{amountText(total + anchorDiscount + volumeDiscount)}</span>
-          </div>
-          {anchorDiscount > 0 ? (
-            <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold">
-              <span>Giảm giá sản phẩm</span>
-              <span className="tabular-nums">-{amountText(anchorDiscount)}</span>
-            </div>
-          ) : null}
-          {volumeDiscount > 0 && <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold"><span>Giảm theo số lượng</span><span>-{amountText(volumeDiscount)}</span></div>}
-          {flashDiscount > 0 ? (
-            <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold">
-              <span>Giảm Flash Sale</span>
-              <span className="tabular-nums">-{amountText(flashDiscount)}</span>
-            </div>
-          ) : null}
-          {discount > 0 ? (
-            <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold">
-              <span>Voucher shop</span>
-              <span className="tabular-nums">-{amountText(discount)}</span>
-            </div>
-          ) : null}
-          {showShip ? (
-            delivery === "nhan_cua_hang" ? (
-              <div className="flex items-center justify-between gap-3">
-                <span>Phí vận chuyển</span>
-                <span className="tabular-nums text-slate-700">0đ (Nhận tại cửa hàng)</span>
-              </div>
-            ) : shippingLoading ? (
-              <div className="flex items-center justify-between gap-3">
-                <span>Phí vận chuyển</span>
-                <span className="tabular-nums text-slate-400">Đang tính…</span>
-              </div>
-            ) : shippingFee != null ? (
-              <>
-                <div className="flex items-center justify-between gap-3">
-                  <span>Phí vận chuyển tạm tính</span>
-                  {freeShipApplied && shippingFee === 0 ? (
-                    <span className="tabular-nums font-medium text-emerald-700">0đ (Miễn phí vận chuyển)</span>
-                  ) : (
-                    <span className="tabular-nums font-medium text-slate-700">{amountText(shippingFee)}</span>
-                  )}
-                </div>
-                {shippingDiscount > 0 ? (
-                  <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold">
-                    <span className="min-w-0 truncate" title={shippingPromotionTitle}>
-                      {shippingPromotionTitle || "Hỗ trợ phí ship"}
-                    </span>
-                    <span className="tabular-nums">-{amountText(shippingDiscount)}</span>
-                  </div>
-                ) : null}
-              </>
-            ) : (
-              <div className="flex items-center justify-between gap-3">
-                <span>Phí vận chuyển</span>
-                <span className="tabular-nums font-medium text-amber-700">Chờ xác nhận</span>
-              </div>
-            )
-          ) : null}
-
-          <div className="border-t border-slate-200/90" />
-
-          {/* Dòng tổng theo Section 7.2 */}
-          {delivery === "nhan_cua_hang" ? (
-            <div className="flex items-center justify-between gap-3">
-              <span>Tổng tiền thanh toán</span>
-              <span className="text-base font-bold tabular-nums text-[var(--aloha-price)]">
-                {amountText(goodsAfter)}
-              </span>
-            </div>
-          ) : shippingFee != null ? (
-            <div className="flex items-center justify-between gap-3">
-              <span>Tổng tạm tính</span>
-              <span className="text-base font-bold tabular-nums text-[var(--aloha-price)]">
-                {amountText(grandTotal)}
-              </span>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-xs font-semibold text-slate-700 leading-snug">Tiền hàng chưa gồm phí vận chuyển:</span>
-              <span className="text-base font-bold tabular-nums text-[var(--aloha-price)]">
-                {amountText(goodsAfter)}
-              </span>
-            </div>
-          )}
-          {saved > 0 ? (
-            <p className="rounded-lg bg-[var(--aloha-green-light)] px-3 py-1.5 text-center text-xs font-bold text-[var(--aloha-green-mid)]">
-              Bạn đã tiết kiệm {amountText(saved)}
-            </p>
-          ) : null}
-        </div>}
+      {/* Chi tiết thanh toán / Tóm tắt đơn hàng dùng chung cho mobile và desktop. */}
+      <OrderPaymentSummary total={total} totalPending={totalPending} priceScopeKey={priceScopeKey} discount={discount}
+        flashDiscount={flashDiscount} volumeDiscount={volumeDiscount} anchorDiscount={anchorDiscount}
+        delivery={delivery} shippingFee={shippingFee} shippingDiscount={shippingDiscount}
+        shippingPromotionTitle={shippingPromotionTitle} freeShipApplied={freeShipApplied}
+        shippingLoading={shippingLoading} grandTotal={grandTotal}>
 
         {error ? (
           <p className="mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs font-semibold text-red-700">
@@ -221,26 +123,26 @@ export function CheckoutSummaryAside({
           </p>
         ) : null}
 
-        {!error && orderBlockedReason ? (
+        {!error && displayAction?.orderBlockedReason ? (
           <div className="mt-3 rounded-xl bg-amber-50 border border-amber-200/80 px-3 py-2 text-xs text-amber-900 flex items-start gap-1.5 leading-tight">
             <span className="shrink-0 text-amber-600 font-bold">⚠️</span>
-            <span>{orderBlockedReason}</span>
+            <span>{displayAction.orderBlockedReason}</span>
           </div>
         ) : null}
 
         <button
           type="button"
-          disabled={submitting}
+          disabled={submitting || pricePending}
           onClick={onPlaceOrder}
-          className={`mt-4 w-full rounded-full py-3.5 text-sm font-bold text-white transition active:scale-98 cursor-pointer ${
-            !canSubmit
+          className={`hidden lg:block mt-4 w-full rounded-full py-3.5 text-sm font-bold text-white transition active:scale-98 cursor-pointer ${
+            displayAction && !displayAction.canSubmit
               ? "bg-amber-600 hover:bg-amber-700 shadow-xs"
               : "bg-[var(--aloha-green)] hover:bg-[var(--aloha-green-hover)] shadow-sm"
           }`}
         >
-          {submitting ? "Đang gửi…" : !canSubmit ? "Hoàn tất thông tin để đặt hàng" : "Đặt hàng"}
+          {submitting ? "Đang gửi…" : displayAction && !displayAction.canSubmit ? "Hoàn tất thông tin để đặt hàng" : "Đặt hàng"}
         </button>
-      </section>
+      </OrderPaymentSummary>
     </aside>
   );
 }

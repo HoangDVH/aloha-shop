@@ -54,6 +54,27 @@ const DETAILS = [
   { productCode: "SP2", productName: "Đất", quantity: 1, price: 200_000, discount: 30_000 },
 ];
 
+test("order and invoice payloads preserve order-wide and individual product notes separately", async () => {
+  const { pushShopOrderToKiotViet, pushShopInvoiceToKiotViet } = await import("../backend/shopOrders/kvPush.js");
+  const orderNote = "Gọi trước khi giao; đóng gói làm quà";
+  const lineNote = "Chọn chậu màu trắng";
+  const input = {
+    customerName: "Khách test", customerPhone: "0900000000", address: "1 Test",
+    orderDetails: [{ ...DETAILS[0], note: lineNote }, DETAILS[1]],
+    usingCod: true, method: "Cash", description: orderNote, totalPayment: 0, shippingFee: 0,
+  };
+  posted.length = 0;
+  await pushShopOrderToKiotViet(fakeDb, input);
+  const order = posted.find(p => p.path === "/orders");
+  assert.ok(order?.body.description.includes(orderNote));
+  assert.equal(order.body.orderDetails[0].note, lineNote);
+  assert.equal(order.body.orderDetails[1].note, "");
+  await pushShopInvoiceToKiotViet(fakeDb, input);
+  const invoice = posted.find(p => p.path === "/invoices");
+  assert.ok(invoice?.body.description.includes(orderNote));
+  assert.equal(invoice.body.invoiceDetails[0].note, lineNote);
+});
+
 /** Cùng công thức với orderCreateRoutes: phí gửi KV = phí gốc − hỗ trợ ship. */
 function charged(fee: number, shipDiscount: number) {
   return Math.max(0, fee - shipDiscount);

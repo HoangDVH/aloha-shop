@@ -24,7 +24,10 @@ import {
   useCampaignCartNotices,
   useCampaignRequoteKey,
 } from "@/lib/campaign/campaignQuote";
-import { CampaignGiftRows, CartUnitPrice, SavingsRows } from "@/components/checkout/CampaignLineBits";
+import { CampaignGiftRows, MobileCartPrice } from "@/components/checkout/CampaignLineBits";
+import { usePendingValue } from "@/lib/usePendingValue";
+import { PriceUpdateIndicator } from "@/components/checkout/PriceUpdateIndicator";
+import { OrderPaymentSummary } from "@/components/checkout/OrderPaymentSummary";
 import { useStickyBarHeight } from "@/lib/floatingStack";
 
 export default function CartPage() {
@@ -125,8 +128,14 @@ export default function CartPage() {
   const tongSauGiam = Math.max(0, tamTinh - flashSavings - discountAmount);
 
   const totalPending = selectedLines.length > 0 && (promoLoading || promoStale || !promoQuote);
+  const priceScopeKey = user?.id || "guest";
+  const confirmedPrice = usePendingValue({ amount: tongSauGiam, subtotal: promoQuote?.subtotal ?? tamTinh,
+    saved: discountAmount + flashSavings + anchorSavings + volumeSavings,
+    discount: discountAmount, title: promoQuote?.applied?.title, quote: promoQuote }, totalPending, priceScopeKey);
+  const displayAmount = confirmedPrice ? formatVnd(confirmedPrice.amount) : "—";
+  const displayDiscount = confirmedPrice?.discount ?? 0;
   const handleCheckout = () => {
-    if (selectedQty <= 0) return;
+    if (selectedQty <= 0 || totalPending) return;
     if (!user) {
       router.push("/dang-nhap?next=/xac-nhan-don-hang");
       return;
@@ -135,8 +144,8 @@ export default function CartPage() {
   };
 
   return (
-    <div className="shop-pb-sticky mx-auto max-w-7xl space-y-4 px-4 py-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="shop-pb-sticky mx-auto max-w-7xl px-0 sm:px-4 py-0 sm:py-6 space-y-2 sm:space-y-4">
+      <div className="hidden md:flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-extrabold text-[var(--aloha-ink)]">Giỏ hàng</h1>
         <SiCartNotice />
         {lines.length > 0 ? (
@@ -148,6 +157,9 @@ export default function CartPage() {
           </Link>
         ) : null}
       </div>
+      <div className="contents md:hidden">
+        <SiCartNotice />
+      </div>
       {priceNote ? (
         <p className="rounded-lg bg-[var(--aloha-green-light)] px-3 py-2 text-sm font-medium text-[var(--aloha-green-mid)]">
           {priceNote}
@@ -155,13 +167,15 @@ export default function CartPage() {
       ) : null}
 
       {/* THANH TIẾN TRÌNH FREESHIP THÔNG MINH (CHO CẢ DESKTOP LẪN MOBILE) */}
-      {lines.length > 0 && !totalPending ? (
-        <SmartFreeshipBar currentAmount={promoQuote?.subtotal ?? tamTinh} showMoreShopping={false} />
+      {lines.length > 0 ? (
+        <div aria-busy={totalPending} className={`transition-opacity motion-reduce:transition-none ${totalPending ? "opacity-60" : "opacity-100"}`}>
+          {confirmedPrice ? <SmartFreeshipBar currentAmount={confirmedPrice.subtotal} showMoreShopping={false} className="rounded-none sm:rounded-2xl border-x-0 sm:border-x" /> : <div className="h-12 rounded-none sm:rounded-xl bg-slate-50" />}
+        </div>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-2 sm:gap-4 lg:grid-cols-[1fr_320px]">
         {/* Cột trái */}
-        <section className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-[var(--aloha-line)]">
+        <section className="w-full bg-white rounded-none sm:rounded-xl shadow-none sm:shadow-sm ring-0 sm:ring-1 sm:ring-[var(--aloha-line)] overflow-hidden">
           {!lines.length ? (
             <div className="flex flex-col items-center px-4 py-16 text-center">
               <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-[var(--aloha-cream)] text-[var(--aloha-green)]/50">
@@ -178,7 +192,7 @@ export default function CartPage() {
             </div>
           ) : (
             <>
-              <div className="flex items-center justify-between gap-3 border-b border-[var(--aloha-line)] bg-[var(--aloha-cream)] px-3 py-2.5 text-sm font-semibold text-slate-600 md:hidden">
+              <div className="flex items-center justify-between gap-3 border-b border-stone-100 sm:border-[var(--aloha-line)] bg-[var(--aloha-cream)] px-4 py-2.5 text-sm font-semibold text-slate-600 lg:hidden">
                 <label className="inline-flex items-center gap-2">
                   <input
                     type="checkbox"
@@ -211,7 +225,7 @@ export default function CartPage() {
                   <Trash2 size={14} /> Xóa
                 </button>
               </div>
-              <div className="hidden items-center gap-3 border-b border-[var(--aloha-line)] bg-[var(--aloha-cream)] px-4 py-3 text-sm font-semibold text-slate-600 md:grid md:grid-cols-[auto_1fr_110px_130px_110px_36px]">
+              <div className="hidden items-center gap-2 border-b border-[var(--aloha-line)] bg-[var(--aloha-cream)] px-4 py-3 text-sm font-semibold text-slate-600 lg:grid lg:grid-cols-[auto_minmax(0,1fr)_90px_104px_96px_44px]">
                 <input
                   type="checkbox"
                   checked={allSelected}
@@ -255,31 +269,33 @@ export default function CartPage() {
               <ul className="divide-y divide-[var(--aloha-line)]">
                 {lines.map((l) => {
                   const fl = l.selected ? flashLineFor(campaign, l.ma) : null;
-                  const serverRows = (campaign?.lines || []).filter(row => row.ma === l.ma && !row.isGift);
+                  const serverRows = (l.selected ? campaign?.lines || [] : []).filter(row => row.ma === l.ma && !row.isGift);
                   const unitPrice = serverRows[0]?.price ?? l.gia;
                   const lineTotal = serverRows.length ? serverRows.reduce((sum, row) => sum + row.price * row.quantity, 0) : l.gia * l.qty;
+                  const referencePrice = Math.max(unitPrice, ...serverRows.map(row => row.compareAtPrice ?? row.listPrice ?? row.price));
+                  const referenceTotal = serverRows.length ? serverRows.reduce((sum, row) => sum + Math.max(row.price, row.compareAtPrice ?? row.listPrice ?? row.price) * row.quantity, 0) : lineTotal;
                   return (
                   <li
                     key={l.ma}
-                    className="grid grid-cols-[auto_1fr] items-start gap-3 px-3 py-4 md:grid-cols-[auto_1fr_110px_130px_110px_36px] md:items-center md:px-4"
+                    className="relative grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-2.5 px-4 py-3 sm:py-4 lg:grid-cols-[auto_minmax(0,1fr)_90px_104px_96px_44px] lg:items-center lg:px-4"
                   >
                     <input
                       type="checkbox"
                       checked={!!l.selected}
                       onChange={() => toggleSelected(l.ma)}
-                      className="mt-2 accent-[var(--aloha-green)] md:mt-0"
+                      className="mt-2 accent-[var(--aloha-green)] lg:mt-0"
                     />
                     <div className="flex min-w-0 gap-3">
                       <Link
                         href={l.path}
-                        className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-[var(--aloha-cream)] ring-1 ring-[var(--aloha-line)]"
+                        className="h-16 w-16 shrink-0 overflow-hidden rounded-md bg-[var(--aloha-cream)] ring-1 ring-black/[0.04]"
                       >
                         {l.anh ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={l.anh} alt="" className="h-full w-full object-cover" />
                         ) : null}
                       </Link>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1 pr-8 lg:pr-0">
                         <Link
                           href={l.path}
                           className="line-clamp-2 text-sm font-bold uppercase text-[var(--aloha-ink)] hover:text-[var(--aloha-green)]"
@@ -287,20 +303,18 @@ export default function CartPage() {
                           {l.ten}
                         </Link>
                         <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                          <span className="inline-flex rounded border border-[var(--aloha-line)] px-2 py-0.5 text-[11px] font-semibold text-slate-600">
-                            {formatVariantLabel(l) || l.dvt || "Cái"}
+                          <span className="inline-block rounded bg-stone-100 px-1.5 py-0.5 text-[11px] font-medium text-stone-600">
+                            {formatVariantLabel(l) ? `【${formatVariantLabel(l)}】` : (l.dvt ? `【${l.dvt}】` : "【Cái】")}
                           </span>
                           {isPreOrderTon(l.ton, l.qty) ? (
-                            <span className="inline-flex rounded border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-800">
+                            <span className="inline-flex rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">
                               Đặt trước
                             </span>
                           ) : null}
                         </div>
                         {/* Mobile price/qty */}
-                        <div className="mt-2 flex flex-wrap items-center gap-3 md:hidden">
-                          <span className="text-sm text-slate-700">
-                            <CartUnitPrice gia={unitPrice} qty={l.qty} flash={fl} />
-                          </span>
+                        <div className="mt-2 -mr-8 flex flex-wrap items-end justify-between gap-2 lg:hidden">
+                          <div aria-busy={l.selected && totalPending} className={l.selected && totalPending ? "opacity-60" : ""}><MobileCartPrice gia={unitPrice} qty={l.qty} flash={fl} referencePrice={referencePrice} /></div>
                           <QtyCtrl
                             qty={l.qty}
                             plusDisabled={
@@ -311,24 +325,13 @@ export default function CartPage() {
                             onMinus={() => setQty(l.ma, l.qty - 1)}
                             onPlus={() => setQty(l.ma, l.qty + 1)}
                           />
-                          <span className="ml-auto text-sm font-bold text-[var(--aloha-price)]">
-                            {formatVnd(lineTotal)}
-                          </span>
-                          <button
-                            type="button"
-                            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-600"
-                            onClick={() => remove(l.ma)}
-                            aria-label="Xóa"
-                          >
-                            <Trash2 size={16} />
-                          </button>
                         </div>
                       </div>
                     </div>
-                    <div className="hidden text-center text-sm text-slate-700 md:block">
-                      <CartUnitPrice gia={unitPrice} qty={l.qty} flash={fl} />
+                    <div className="hidden min-w-0 text-sm text-slate-700 lg:block">
+                      <div aria-busy={l.selected && totalPending} className={l.selected && totalPending ? "opacity-60" : ""}><MobileCartPrice gia={unitPrice} qty={l.qty} flash={fl} referencePrice={referencePrice} /></div>
                     </div>
-                    <div className="hidden flex-col items-center md:flex">
+                    <div className="hidden flex-col items-center lg:flex">
                       <QtyCtrl
                         qty={l.qty}
                         plusDisabled={
@@ -343,18 +346,15 @@ export default function CartPage() {
                         <span className="mt-1 text-[10px] font-semibold text-amber-700">
                           Đặt trước
                         </span>
-                      ) : stockMax(l.ton) != null ? (
-                        <span className="mt-1 text-[10px] text-slate-400">
-                          Còn {stockMax(l.ton)}
-                        </span>
                       ) : null}
                     </div>
-                    <div className="hidden text-right text-sm font-bold text-[var(--aloha-price)] md:block">
-                      {formatVnd(lineTotal)}
+                    <div className="hidden text-right text-sm font-bold text-[var(--aloha-price)] lg:block">
+                      <span className="whitespace-nowrap">{formatVnd(lineTotal)}</span>
+                      {referenceTotal > lineTotal && <span className="mt-1 block whitespace-nowrap text-[11px] font-normal text-slate-400 line-through">{formatVnd(referenceTotal)}</span>}
                     </div>
                     <button
                       type="button"
-                      className="hidden min-h-11 min-w-11 items-center justify-center justify-self-end rounded-full text-slate-400 hover:bg-red-50 hover:text-red-600 md:inline-flex"
+                      className="absolute right-1 top-2 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-600 lg:static lg:justify-self-end"
                       onClick={() => remove(l.ma)}
                       aria-label="Xóa"
                     >
@@ -370,55 +370,59 @@ export default function CartPage() {
         </section>
 
         {/* Cột phải — tóm tắt */}
-        <aside className="space-y-3">
-          {selectedLines.length ? <CartVoucherProgress quote={promoQuote} onClaim={candidateClaim.claim} /> : null}
+        <aside className="space-y-2 sm:space-y-3">
+          {selectedLines.length ? <CartVoucherProgress quote={confirmedPrice?.quote ?? null} onClaim={candidateClaim.claim} /> : null}
           <div
             onClick={() => setPromoModalOpen(true)}
-            className="flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-[var(--aloha-line)] cursor-pointer hover:bg-slate-50 transition"
+            aria-busy={totalPending}
+            className={`flex min-h-[52px] sm:min-h-[64px] items-center justify-between bg-white px-4 py-3 rounded-none sm:rounded-xl shadow-none sm:shadow-sm ring-0 sm:ring-1 sm:ring-[var(--aloha-line)] cursor-pointer hover:bg-slate-50 transition ${totalPending ? "opacity-60" : "opacity-100"}`}
           >
-            {totalPending ? <span className="text-sm text-slate-500">Đang cập nhật ưu đãi…</span> : discountAmount > 0 ? (
-              <div className="flex items-center gap-2">
-                <Ticket size={18} className="text-[var(--aloha-green)]" />
+            {displayDiscount > 0 ? (
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-rose-50 text-[var(--aloha-price)] shrink-0 sm:h-8 sm:w-8 sm:rounded-full sm:bg-[var(--aloha-green-light)] sm:text-[var(--aloha-green)]">
+                  <Ticket size={16} />
+                </div>
                 <div>
-                  <span className="text-sm font-bold text-[var(--aloha-ink)]">
-                    Đã giảm {formatVnd(discountAmount)}
+                  <span className="text-[13px] sm:text-sm font-bold text-stone-900">
+                    Đã giảm {formatVnd(displayDiscount)}
                   </span>
-                  {promoQuote?.applied?.title ? (
+                  {confirmedPrice?.title ? (
                     <span className="block text-[11px] text-[var(--aloha-green)] font-semibold truncate max-w-[180px]">
-                      {promoQuote.applied.title}
+                      {confirmedPrice.title}
                     </span>
                   ) : null}
                 </div>
               </div>
             ) : (
-              <span className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--aloha-ink)]">
-                <Ticket size={18} className="text-[var(--aloha-green)]" />
-                Ưu đãi
-              </span>
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-rose-50 text-[var(--aloha-price)] shrink-0 sm:h-8 sm:w-8 sm:rounded-full sm:bg-[var(--aloha-green-light)] sm:text-[var(--aloha-green)]">
+                  <Ticket size={16} />
+                </div>
+                <span className="text-[13px] sm:text-sm font-bold text-stone-900">
+                  Ưu đãi từ shop
+                </span>
+              </div>
             )}
-            <span className="inline-flex items-center gap-1 text-sm font-medium text-[var(--aloha-green)]">
-              {discountAmount > 0 ? "Xem/Đổi" : "Nhập ưu đãi"}
-              <ChevronRight size={16} />
-            </span>
+            <div className="flex items-center gap-1">
+              {displayDiscount > 0 ? (
+                <span className="rounded bg-rose-50 px-2 py-0.5 text-xs font-bold text-[var(--aloha-price)]">
+                  -{formatVnd(displayDiscount)}
+                </span>
+              ) : (
+                <span className="text-xs sm:text-sm font-medium text-[var(--aloha-green)]">
+                  Nhập ưu đãi
+                </span>
+              )}
+              <ChevronRight size={16} className="text-stone-400" />
+            </div>
           </div>
 
-          <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-[var(--aloha-line)]">
-            <div className="flex items-center justify-between text-sm text-slate-600">
-              <span>Tạm tính</span>
-              <span>{totalPending ? "Đang cập nhật…" : formatVnd(tamTinh + anchorSavings + volumeSavings)}</span>
-            </div>
-            {!totalPending && <SavingsRows flash={flashSavings} volume={volumeSavings} voucher={discountAmount} anchor={anchorSavings} voucherPromo={promoQuote?.applied} />}
-            <div className="my-3 border-t border-[var(--aloha-line)]" />
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="font-bold text-[var(--aloha-ink)] block">Tạm tính tiền hàng</span>
-                <span className="text-[11px] text-slate-400">Chưa gồm phí vận chuyển</span>
-              </div>
-              <span className="text-xl font-black text-[var(--aloha-price)]">{totalPending ? "Đang cập nhật…" : formatVnd(tongSauGiam)}</span>
-            </div>
+          <OrderPaymentSummary total={tamTinh} totalPending={totalPending} priceScopeKey={priceScopeKey} discount={discountAmount}
+            flashDiscount={flashSavings} volumeDiscount={volumeSavings} anchorDiscount={anchorSavings}
+            grandTotal={tongSauGiam} cart showFreeshipProgress={false}>
             <button
               type="button"
-              disabled={selectedQty <= 0}
+              disabled={selectedQty <= 0 || totalPending}
               onClick={handleCheckout}
               className={`mt-4 hidden w-full items-center justify-center rounded-lg py-3 text-sm font-bold text-white lg:flex ${
                 selectedQty > 0
@@ -431,7 +435,7 @@ export default function CartPage() {
             <p className="mt-2 hidden text-center text-[11px] text-slate-400 lg:block">
               Phí vận chuyển sẽ được tính tại bước xác nhận đơn.
             </p>
-          </div>
+          </OrderPaymentSummary>
         </aside>
       </div>
 
@@ -447,17 +451,17 @@ export default function CartPage() {
               />
               Tất cả
             </label>
-            <div className="min-w-0 flex-1 text-right">
-              <p className="text-[11px] text-slate-500">
-                {totalPending ? "Đang cập nhật…" : discountAmount + flashSavings + anchorSavings + volumeSavings > 0
-                  ? `Tiết kiệm ${formatVnd(discountAmount + flashSavings + anchorSavings + volumeSavings)}`
-                  : `Tổng (${selectedQty})`}
+            <div aria-busy={totalPending} className={`min-w-0 flex-1 text-right transition-opacity motion-reduce:transition-none ${totalPending ? "opacity-60" : "opacity-100"}`}>
+              <p className="min-h-4 truncate text-[11px] text-slate-500">
+                {(confirmedPrice?.saved ?? 0) > 0 ? `Tiết kiệm ${formatVnd(confirmedPrice!.saved)}` : `Tổng (${selectedQty})`}
               </p>
-              <p className="truncate text-base font-black text-[var(--aloha-price)]">{totalPending ? "Đang cập nhật…" : formatVnd(tongSauGiam)}</p>
+              <div className="flex min-h-6 items-center justify-end gap-1"><PriceUpdateIndicator pending={totalPending} compact />
+                <p className="truncate text-base font-black tabular-nums text-[var(--aloha-price)]">{displayAmount}</p>
+              </div>
             </div>
             <button
               type="button"
-              disabled={selectedQty <= 0}
+              disabled={selectedQty <= 0 || totalPending}
               onClick={handleCheckout}
               className={`inline-flex min-h-11 min-w-[6.5rem] items-center justify-center rounded-xl px-4 text-sm font-bold text-white ${
                 selectedQty > 0
@@ -509,16 +513,16 @@ function QtyCtrl({
   plusDisabled?: boolean;
 }) {
   return (
-    <div className="inline-flex items-center overflow-hidden rounded-xl border border-[var(--aloha-line)]">
+    <div className="inline-flex shrink-0 items-center overflow-hidden rounded-lg border border-[var(--aloha-line)]">
       <button
         type="button"
         onClick={onMinus}
-        className="inline-flex h-11 w-11 items-center justify-center text-[var(--aloha-green)] hover:bg-[var(--aloha-green-light)]"
+        className="inline-flex h-9 w-8 items-center justify-center text-[var(--aloha-green)] hover:bg-[var(--aloha-green-light)]"
         aria-label="Giảm số lượng"
       >
         −
       </button>
-      <span className="flex h-11 min-w-11 items-center justify-center border-x border-[var(--aloha-line)] text-sm font-bold">
+      <span className="flex h-9 min-w-8 items-center justify-center border-x border-[var(--aloha-line)] text-sm font-bold">
         {qty}
       </span>
       <button
@@ -527,7 +531,7 @@ function QtyCtrl({
         title={plusDisabled ? "Đã đạt số lượng tồn kho" : "Tăng số lượng"}
         onClick={onPlus}
         aria-label="Tăng số lượng"
-        className={`inline-flex h-11 w-11 items-center justify-center text-[var(--aloha-green)] ${
+        className={`inline-flex h-9 w-8 items-center justify-center text-[var(--aloha-green)] ${
           plusDisabled
             ? "cursor-not-allowed text-slate-300"
             : "hover:bg-[var(--aloha-green-light)]"

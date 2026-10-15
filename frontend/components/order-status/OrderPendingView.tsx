@@ -10,6 +10,7 @@ import {
   Package,
   ShoppingBag,
 } from "lucide-react";
+import { isOrderShippingPending } from "@/lib/orderShippingStatus";
 import { formatVnd } from "@/lib/api";
 import { OrderGoodsSavings, OrderLineTags, OrderSavedTotal, orderListSubtotal } from "./OrderCampaignBits";
 import { OrderShipFeeChangeNote } from "./OrderShipFeeChangeNote";
@@ -128,7 +129,7 @@ export function OrderPendingView({
             Aloha đã lưu yêu cầu. Đơn đang chờ cửa hàng kiểm tra và đồng bộ; bạn không cần đặt lại.
           </p>
         ) : null}
-        {order.shippingFeePending ? (
+        {isOrderShippingPending(order) ? (
           <p className="mb-3 text-sm text-stone-600">
             Tổng tạm tính chưa bao gồm phí giao hàng. Aloha sẽ xác nhận trước khi yêu cầu thanh toán.
           </p>
@@ -463,9 +464,7 @@ export function OrderPendingView({
                   <span>Phí ship</span>
                   <span>0đ (Nhận tại cửa hàng)</span>
                 </div>
-              ) : order.shippingEstimate?.status === "needs_confirmation" ||
-                order.shippingEstimate?.status === "unavailable" ||
-                (order.shippingFee == null && !order.freeShipApplied) ? (
+              ) : isOrderShippingPending(order) ? (
                 <div className="flex justify-between text-slate-600">
                   <span>Phí ship</span>
                   <span className="font-medium text-amber-700">Chờ xác nhận</span>
@@ -496,9 +495,7 @@ export function OrderPendingView({
                     <span className="text-sm font-bold text-[var(--aloha-ink)]">Tổng tiền thanh toán</span>
                     <span className="text-base font-extrabold text-[#EE6055]">{formatVnd(order.total)}</span>
                   </>
-                ) : order.shippingEstimate?.status === "needs_confirmation" ||
-                  order.shippingEstimate?.status === "unavailable" ||
-                  (order.shippingFee == null && !order.freeShipApplied) ? (
+                ) : isOrderShippingPending(order) ? (
                   <>
                     <div className="flex flex-col">
                       <span className="text-sm font-bold text-[var(--aloha-ink)]">Tổng tạm tính</span>

@@ -43,6 +43,7 @@ export type CampaignPricing = {
   flashSavings: number;
   /** Giá trước KM − giá web (chỉ hiển thị, không trừ vào tiền hàng). */
   anchorSavings: number;
+  referencePrices?: Record<string, number>;
   plan: CampaignHoldPlan | null;
 };
 
@@ -110,6 +111,8 @@ export async function priceWithCampaign(db: Db, input: ShopOrderDetail[], buyer:
     notices: [...flash.notices, ...gifts.notices],
     flashSavings: flash.flashSavings,
     anchorSavings: anchorSavingsOf(active, flash.details, nowMs),
+    referencePrices: Object.fromEntries(flash.details.filter(d => !d.isGift && d.quantity > 0).map(d => [d.productCode,
+      (d.volumePricing?.basePrice ?? d.flash?.listPrice ?? d.price) + anchorSavingsOf(active, [d], nowMs) / d.quantity])),
     plan: hasHolds ? plan : null,
   };
 }

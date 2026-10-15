@@ -62,6 +62,7 @@ test('public gift page reads persisted selections and clearing one gift leaves a
   ]);
   const docs = [{ ma: 'A', ten: 'Alpha', anh: '/a.jpg' }, { ma: 'B', ten: 'Beta', anh: '/b.jpg' }];
   const db = { collection: (name: string) => name === 'aloha_gift_collections' ? {
+    find: (q: any) => ({ sort: () => ({ toArray: async () => [...gifts.values()].filter(gift => gift.isActive === q.isActive).map(gift => structuredClone(gift)) }) }),
     findOne: async (q: any) => {
       const gift = gifts.get(q.slug);
       return gift && gift.isActive === q.isActive ? gift : null;

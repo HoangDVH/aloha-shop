@@ -81,7 +81,7 @@ export function noticeFor(p: PromotionDoc, reason: string, extra: Partial<Evalua
  */
 export function applyBuyerRules(
   promotions: PromotionDoc[],
-  ctx: { status: RetailStatus; campaignVoucherIds: Set<string>; saved: Set<string>; walletOn: boolean; account?: any; newBuyer?: boolean }
+  ctx: { status: RetailStatus; campaignVoucherIds: Set<string>; saved: Set<string>; walletOn: boolean; account?: any; newBuyer?: boolean; newVoucherBlockReason?: string }
 ): { promotions: PromotionDoc[]; notices: EvaluatedCandidate[] } {
   const kept: PromotionDoc[] = [];
   const notices: EvaluatedCandidate[] = [];
@@ -91,6 +91,10 @@ export function applyBuyerRules(
     const needsWallet = ctx.walletOn && Boolean(p.claimRequired);
     const campaignOnly = ctx.campaignVoucherIds.has(p.id) || needsWallet;
     const visible = p.isPublic !== false;
+    if (p.targetCustomer === "new_web" && ctx.newVoucherBlockReason) {
+      if (visible) notices.push(noticeFor(p, ctx.newVoucherBlockReason));
+      continue;
+    }
     if (campaignOnly && !allowed && !(allowsWholesaleShipping(p, ctx.account) && !ctx.status.locked)) {
       if (visible) {
         const reason = ctx.status.locked ? CAMPAIGN_ADMIN_MESSAGES.locked : CAMPAIGN_ERROR_MESSAGES.retail_only;
@@ -168,7 +172,7 @@ export async function loadBuyerPromotions(db: Db, input: BuyerPromotionInput): P
     if (claimNotice) extra.push(claimNotice);
     extra.push(...(await notStartedNotices(db, saved, input.now.toISOString())));
   }
-  const ruled = applyBuyerRules(all, { status, campaignVoucherIds, saved, walletOn, account, newBuyer: buyerContext.newBuyer });
+  const ruled = applyBuyerRules(all, { status, campaignVoucherIds, saved, walletOn, account, ...buyerContext });
   const seen = new Set(ruled.notices.map((n) => n.promotionId));
   const drawn = walletOn ? await drawnPercentsFor(db, input.accountId) : new Map<string, number>();
   return {
