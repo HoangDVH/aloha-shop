@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Info } from "lucide-react";
 import { siRequest } from "@/lib/siQueries";
 import type { WholesalePolicy } from "@/lib/wholesalePolicy";
 
@@ -15,7 +16,10 @@ function PolicyForm({ policy }: { policy: WholesalePolicy }) {
     <div className="grid gap-3 sm:grid-cols-3">{Object.entries(fields).map(([key, label]) => <label key={key} className="text-sm">{label}
       <input required type="number" min={1} step={1} value={rules[key as keyof typeof fields]} onChange={e => setRules({ ...rules, [key]: Number(e.target.value) })} className="mt-1 w-full rounded border p-2" />
     </label>)}</div>
-    <p className="text-sm text-slate-500">Mỗi mã hàng là một mẫu. Khách HCM đã có đơn hoàn tất hoặc hóa đơn KiotViet hợp lệ được miễn mức đơn đầu. Khách tự bố trí xe nhận hàng tại cửa hàng hoặc TP.HCM.</p>
+    <div className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600 border border-slate-200/80">
+      <Info size={14} className="text-slate-400 shrink-0" />
+      <span>Mỗi mã hàng là một mẫu. Khách HCM đã có đơn hoàn tất/hóa đơn KiotViet được miễn mức đơn đầu. Khách tự bố trí xe nhận hàng tại cửa hàng hoặc TP.HCM.</span>
+    </div>
     <button disabled={mutation.isPending} className="rounded bg-green-700 px-4 py-2 text-white">{mutation.isPending ? "Đang lưu…" : "Lưu chính sách"}</button>
     {mutation.error && <p role="alert" className="text-red-700">{mutation.error.message}</p>}
   </form>;

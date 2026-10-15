@@ -147,10 +147,7 @@ export function BrandPanel({
                     ))}
                   </select>
                 </WbField>
-                <WbField
-                  label="Logo"
-                  hint="PNG/WebP nền trong suốt — tối đa 4MB."
-                >
+                <WbField label="Logo">
                   <ImageUploadField
                     kind="logo"
                     value={draft.theme.logoUrl || ""}
@@ -170,15 +167,12 @@ export function BrandPanel({
                     placeholder="/brand/logo-header-on-theme.png"
                   />
                 </WbField>
-                <WbField
-                  label="Favicon"
-                  hint="Icon tab trình duyệt · PNG/WebP vuông."
-                >
+                <WbField label="Favicon">
                   <ImageUploadField
                     kind="favicon"
                     value={draft.theme.faviconUrl || ""}
                     onChange={(url) => patchTheme({ faviconUrl: url })}
-                    hint="Favicon · tối đa 4MB"
+                    hint="Icon tab trình duyệt vuông · tối đa 4MB"
                     previewClassName="overflow-hidden rounded-lg border border-gray-200"
                   />
                 </WbField>
