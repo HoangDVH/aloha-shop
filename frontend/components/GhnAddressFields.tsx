@@ -214,7 +214,7 @@ export function GhnAddressFields({
 
       {loading ? null : ghnOk ? (
         <div className="grid gap-3 sm:grid-cols-3">
-          <label className="block">
+          <div className="block">
             <span className="mb-1.5 block text-xs font-semibold text-slate-600">
               Tỉnh/Thành <span className="text-red-500">*</span>
             </span>
@@ -239,8 +239,8 @@ export function GhnAddressFields({
                 </option>
               ))}
             </AddressLocationSelect>
-          </label>
-          <label className="block">
+          </div>
+          <div className="block">
             <span className="mb-1.5 block text-xs font-semibold text-slate-600">
               Quận/Huyện <span className="text-red-500">*</span>
             </span>
@@ -267,8 +267,8 @@ export function GhnAddressFields({
                 </option>
               ))}
             </AddressLocationSelect>
-          </label>
-          <label className="block">
+          </div>
+          <div className="block">
             <span className="mb-1.5 block text-xs font-semibold text-slate-600">
               Phường/Xã <span className="text-red-500">*</span>
             </span>
@@ -290,11 +290,11 @@ export function GhnAddressFields({
                 </option>
               ))}
             </AddressLocationSelect>
-          </label>
+          </div>
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block">
+          <div className="block">
             <span className="mb-1.5 block text-xs font-semibold text-slate-600">
               Tỉnh/Thành phố <span className="text-red-500">*</span>
             </span>
@@ -316,8 +316,8 @@ export function GhnAddressFields({
                 </option>
               ))}
             </AddressLocationSelect>
-          </label>
-          <label className="block">
+          </div>
+          <div className="block">
             <span className="mb-1.5 block text-xs font-semibold text-slate-600">
               Phường/Xã <span className="text-red-500">*</span>
             </span>
@@ -343,7 +343,7 @@ export function GhnAddressFields({
                 placeholder="Nhập phường/xã"
               />
             )}
-          </label>
+          </div>
           <p className="sm:col-span-2 text-xs text-amber-700">
             Chưa có GHN_TOKEN — dùng danh mục tĩnh. Thêm token vào .env để dropdown chuẩn GHN.
           </p>

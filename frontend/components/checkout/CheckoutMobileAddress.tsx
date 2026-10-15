@@ -115,7 +115,7 @@ export function CheckoutMobileAddress(props: Props) {
         </li>)}</ul>
       </div> : <>
         <div className="flex-1 overflow-y-auto px-4 py-5">
-          <div className="[&_.auth-field]:min-h-12 [&_.auth-field]:rounded-xl [&_.auth-field]:border-0 [&_.auth-field]:bg-[#f4f4f5] [&_.auth-field]:text-base [&_label>span]:text-sm [&_label>span]:text-slate-800">
+          <div className="[&_.auth-field]:min-h-12 [&_.auth-field]:rounded-xl [&_.auth-field]:border-0 [&_.auth-field]:bg-[#f4f4f5] [&_.auth-field]:text-base [&_:is(label,div)>span]:text-sm [&_:is(label,div)>span]:text-slate-800">
             <GhnAddressFields mobileLocationPicker value={value} onChange={patch => setValue(current => ({ ...current, ...patch }))} addressLabel="Chi tiết địa chỉ" />
           </div>
           <label className="mt-6 flex min-h-12 items-center justify-between gap-4 text-sm font-semibold">Đặt làm mặc định

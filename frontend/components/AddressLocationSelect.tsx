@@ -28,7 +28,17 @@ export function AddressLocationSelect({ mobilePicker = false, children, value, d
   useEffect(() => {
     if (open) search.current?.focus();
   }, [open]);
-  function close() { setOpen(false); setQuery(""); trigger.current?.focus(); }
+  function close() {
+    setOpen(false);
+    setQuery("");
+    if (typeof setTimeout !== "undefined") {
+      setTimeout(() => {
+        trigger.current?.focus();
+      }, 50);
+    } else {
+      trigger.current?.focus();
+    }
+  }
 
   if (!mobilePicker) return <select className={className} value={value} disabled={disabled} onChange={onChange}>{children}</select>;
   return <>
@@ -49,14 +59,14 @@ export function AddressLocationSelect({ mobilePicker = false, children, value, d
         }
       }}>
       <header className="flex min-h-14 shrink-0 items-center gap-2 border-b border-slate-100 px-2 pt-[env(safe-area-inset-top)]">
-        <button type="button" aria-label="Quay lại chọn địa chỉ" onClick={close} className="flex h-11 w-11 shrink-0 items-center justify-center"><ArrowLeft size={20} /></button>
+        <button type="button" aria-label="Quay lại chọn địa chỉ" onClick={event => { event?.preventDefault?.(); event?.stopPropagation?.(); close(); }} className="flex h-11 w-11 shrink-0 items-center justify-center"><ArrowLeft size={20} /></button>
         <h3 className="min-w-0 text-base font-bold">{placeholder}</h3>
       </header>
       <div className="shrink-0 p-4"><input ref={search} type="search" aria-label="Tìm địa chỉ" placeholder="Tìm kiếm" value={query}
         onChange={event => setQuery(event.target.value)} className="min-h-12 w-full min-w-0 rounded-xl bg-slate-100 px-4 text-base outline-none focus:ring-2 focus:ring-[var(--aloha-green)]" /></div>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[max(16px,env(safe-area-inset-bottom))]">
         {filtered.map(option => <button key={option.value} type="button" aria-pressed={option.value === String(value)}
-          onClick={() => { onChange({ target: { value: option.value } }); close(); }}
+          onClick={event => { event?.preventDefault?.(); event?.stopPropagation?.(); onChange({ target: { value: option.value } }); close(); }}
           className="flex min-h-12 w-full items-center justify-between gap-3 border-b border-slate-100 py-3 text-left text-sm">
           <span className="min-w-0 break-words">{option.label}</span>{option.value === String(value) && <Check size={18} className="shrink-0 text-[var(--aloha-green)]" />}
         </button>)}
