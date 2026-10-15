@@ -62,6 +62,10 @@ export type CampaignVoucherUI = {
   minOrderThreshold?: number;
   thresholdOperator?: ">" | ">=";
   targetCustomer?: string;
+  scope?: "all" | "category" | "product";
+  productMas?: string[];
+  categoryIds?: string[];
+  excludedProductMas?: string[];
   startDate?: string;
   endDate?: string;
   claimRequired: boolean;

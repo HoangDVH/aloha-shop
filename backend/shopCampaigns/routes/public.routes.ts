@@ -14,19 +14,21 @@ import { CAMPAIGN_ERROR_MESSAGES } from "../messages.js";
 import { productGifts } from "../types.js";
 import { hasSuccessfulWebPurchase } from "../../shopPromotions/returningBuyer.js";
 import { voucherMatchesBuyer } from "../../../shared/voucherAudience.js";
+import { publicProductVouchers } from "../../shopPromotions/publicProductVouchers.js";
 
 type GetDb = () => Promise<Db>;
 
 /** Voucher chiến dịch dạng công khai; bỏ voucher sỉ (chiến dịch chỉ cho khách lẻ). */
-async function publicVouchers(db: Db, ids: string[], nowIso: string, newBuyer: boolean) {
-  if (!ids.length) return [];
-  const rows = await db
+export async function publicVouchers(db: Db, ids: string[], nowIso: string, newBuyer: boolean, includeProductVouchers = true) {
+  const linked = await db
     .collection<PromotionDoc>(PROMOTIONS_COL)
     .find({ id: { $in: ids }, status: "active", targetCustomer: { $ne: "wholesale" } })
     .toArray();
+  const extra = includeProductVouchers ? await publicProductVouchers(db, nowIso) : [];
+  const rows = [...new Map([...linked, ...extra].map(p => [p.id, p])).values()];
   const order = new Map(ids.map((id, i) => [id, i]));
   return rows
-    .filter((p) => (!p.endDate || p.endDate >= nowIso) && voucherMatchesBuyer(p.targetCustomer, { newBuyer }))
+    .filter((p) => p.isPublic !== false && (!p.endDate || p.endDate >= nowIso) && voucherMatchesBuyer(p.targetCustomer, { newBuyer }))
     .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
     .map((p) => ({
       id: p.id,
@@ -40,6 +42,10 @@ async function publicVouchers(db: Db, ids: string[], nowIso: string, newBuyer: b
       minOrderThreshold: p.minOrderThreshold,
       thresholdOperator: p.thresholdOperator || ">",
       targetCustomer: p.targetCustomer,
+      scope: p.scope,
+      productMas: p.productMas,
+      categoryIds: p.categoryIds,
+      excludedProductMas: p.excludedProductMas,
       startDate: p.startDate,
       endDate: p.endDate,
       claimRequired: Boolean((p as any).claimRequired),
@@ -135,7 +141,7 @@ async function previewHandler(getDb: GetDb, req: Request, res: Response) {
     preview: true,
     state: active.phase,
     campaign: publicCampaign(active),
-    vouchers: await publicVouchers(db, v.value.voucherIds, new Date(at).toISOString(), newBuyer),
+    vouchers: await publicVouchers(db, v.value.voucherIds, new Date(at).toISOString(), newBuyer, false),
     upcoming: null,
     viewer: viewerView(viewer, newBuyer),
   });

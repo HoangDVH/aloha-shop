@@ -193,6 +193,18 @@ export function voucherUseHref(voucherId: string): string {
   return `/tim?voucher=${encodeURIComponent(voucherId)}`;
 }
 
+export function voucherScopeHint(v: { scope?: string; productMas?: string[]; excludedProductMas?: string[] }): string {
+  if (v.scope === "category") return "Chỉ áp dụng sản phẩm thuộc nhóm ưu đãi";
+  if (v.scope !== "product") return "";
+  const excluded = new Set((v.excludedProductMas || []).map(ma => ma.trim().toUpperCase()));
+  const count = new Set((v.productMas || []).map(ma => ma.trim().toUpperCase()).filter(ma => ma && !excluded.has(ma))).size;
+  return count ? `Chỉ áp dụng ${count} sản phẩm` : "Chỉ áp dụng sản phẩm được chọn";
+}
+
+export function productVouchersFirst<T extends { scope?: string }>(list: T[]): T[] {
+  return [...list].sort((a,b) => Number(b.scope === "product") - Number(a.scope === "product"));
+}
+
 /**
  * Gom nhóm voucher theo loại ưu đãi chuẩn sàn TMĐT (Shopee/Lazada):
  * 1. Nhóm Giảm giá đơn hàng / sản phẩm (goods) lên đầu.
