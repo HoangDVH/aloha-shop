@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Button, Card, Col, Row, Spin } from "antd";
+import { Button, Card, Col, Row, Spin, Tooltip } from "antd";
+import { HelpCircle } from "lucide-react";
 import { toast } from "@/components/admin/toast";
 import { useCtvSettings, usePatchCtvSettings } from "../../ctvQueries";
 
@@ -55,7 +56,12 @@ export function FraudSettingsCard() {
       <Row gutter={[16, 12]}>
         <Col xs={24} md={8}>
           <label className="block text-[12px] font-semibold text-slate-600">
-            Ngưỡng cảnh báo trùng SĐT / 90 ngày
+            <span className="inline-flex items-center gap-1">
+              Ngưỡng cảnh báo trùng SĐT / 90 ngày
+              <Tooltip title="Chỉ cảnh báo mềm — không tự khóa hoa hồng (trừ khi CTV tự mua).">
+                <HelpCircle className="h-3.5 w-3.5 text-slate-400 hover:text-slate-600 cursor-help" />
+              </Tooltip>
+            </span>
             <input
               type="number"
               min={1}
@@ -64,9 +70,6 @@ export function FraudSettingsCard() {
               className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             />
           </label>
-          <p className="mt-1 text-[11px] text-slate-400">
-            Chỉ cảnh báo mềm — không tự khóa hoa hồng (trừ khi tự mua).
-          </p>
         </Col>
         <Col xs={24} md={10}>
           <label className="block text-[12px] font-semibold text-slate-600">
@@ -80,19 +83,26 @@ export function FraudSettingsCard() {
           </label>
         </Col>
         <Col xs={24} md={6}>
-          <label className="mt-6 flex items-center gap-2 text-[13px] font-semibold text-slate-700">
-            <input
-              type="checkbox"
-              checked={softWarn}
-              onChange={(e) => setSoftWarn(e.target.checked)}
-            />
-            Bật cảnh báo mềm trùng SĐT
-          </label>
-          <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
-            <b>Hard:</b> tự mua (SĐT/địa chỉ/TK trùng CTV) → khóa HH.
-            <br />
-            <b>Soft:</b> trùng SĐT nhiều → chỉ cảnh báo.
-          </p>
+          <div className="mt-6">
+            <label className="inline-flex items-center gap-2 text-[13px] font-semibold text-slate-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={softWarn}
+                onChange={(e) => setSoftWarn(e.target.checked)}
+              />
+              Bật cảnh báo mềm trùng SĐT
+              <Tooltip
+                title={
+                  <span>
+                    <b>Hard:</b> tự mua (SĐT/địa chỉ/TK trùng CTV) → khóa hoa hồng.<br />
+                    <b>Soft:</b> trùng SĐT nhiều người nhận → chỉ cảnh báo để admin kiểm tra.
+                  </span>
+                }
+              >
+                <HelpCircle className="h-3.5 w-3.5 text-slate-400 hover:text-slate-600 cursor-help" />
+              </Tooltip>
+            </label>
+          </div>
         </Col>
       </Row>
     </Card>
