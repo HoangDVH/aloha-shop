@@ -29,6 +29,7 @@ function render(extra = {}) {
     livePromo: { listPrice: 398000, salePrice: 199000 }, liveTon: 0,
     activeProduct: { ma: 'CBDVDP', dvt: 'CÁI' }, user: { siRegion: 'HCM' },
     SiPriceBadge: 'si-price', ProductCampaignBox: 'campaign-price', ProductMobilePromoExtras: 'mobile-extras',
+    ProductTierPricing: 'tier-pricing', qty: 31,
     formatVnd: String, purchaseDisabled: false, isPreOrder: true, addCart() {},
     ...extra,
   };
@@ -57,4 +58,10 @@ test('wholesale pending and missing prices cannot show retail flash prices', () 
     const nodes = render(extra);
     assert.equal(nodes.some(n => n.type === 'campaign-price' || n.type === 'si-price'), false);
   }
+});
+
+test('volume pricing table appears only for retail products outside campaign offers', () => {
+  assert.ok(render({hasPromo: false, expectsSi: false, livePriceKind: 'web', livePromo: null}).some(n => n.type === 'tier-pricing'));
+  assert.equal(render({hasPromo: false, expectsSi: false, livePriceKind: 'web'}).some(n => n.type === 'tier-pricing'), false);
+  assert.equal(render({expectsSi: false, livePriceKind: 'web'}).some(n => n.type === 'tier-pricing'), false);
 });

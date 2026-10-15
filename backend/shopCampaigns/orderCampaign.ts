@@ -21,6 +21,7 @@ import {
 import { beginHoldOperation, runHoldOperation } from "./flash/settleOperation.js";
 import { buildGiftLines, loadGiftOffers } from "./gifts/giftLines.js";
 import { anchorSavingsOf } from "./anchorSales.js";
+import { excludeCampaignVolumePricing } from "./volumePolicy.js";
 import type { CampaignHolds, GiftHold } from "./flash/flashTypes.js";
 import { FLASH_COUNTERS_COL } from "./types.js";
 
@@ -94,7 +95,7 @@ export async function priceWithCampaign(db: Db, input: ShopOrderDetail[], buyer:
     loadFlashOffers(db, active, nowMs, mas, keys),
     loadGiftOffers(db, active, mas, nowMs),
   ]);
-  const flash = applyFlashOffers(details, offers);
+  const flash = applyFlashOffers(excludeCampaignVolumePricing(active, details, nowMs), offers);
   const gifts = buildGiftLines(flash.details, giftOffers, active.content.info.name);
   const all = [...flash.details, ...gifts.lines];
   const specs = new Map<string, CounterSpec>();
