@@ -1,4 +1,5 @@
 import type { ShopProduct } from "./api";
+import { voucherCustomerTitle } from "./voucherFormat";
 import type { AvailablePromotionUI } from "./promotions";
 import { productMatchesVoucher } from "./productVoucherScope";
 import type { PublicSharePreview } from "../../shared/publicSharePreview";
@@ -57,7 +58,7 @@ export function buildProductCaption(product: ShopProduct, url: string, now = Dat
     `${sharePlainText(product.ten)}${percent > 0 ? ` — ${program}GIẢM ĐẾN ${percent}%!` : ""}`,
     !price.price && !offer ? "Liên hệ ALOHA để được báo giá" : final < reference
       ? `Giá ${money(reference)} chỉ còn ${money(final)}/${unit}` : `Giá ${money(final)}/${unit}`,
-    voucher ? `Khi áp dụng voucher “${sharePlainText(voucher.title)}” đặt hàng TẠI WEB${audience}${voucher.claimRequired ? ", cần lưu voucher" : ""}.` : "",
+    voucher ? `Khi áp dụng voucher “${sharePlainText(voucherCustomerTitle(voucher.title))}” đặt hàng TẠI WEB${audience}${voucher.claimRequired ? ", cần lưu voucher" : ""}.` : "",
     "Chưa gồm phí vận chuyển.",
     `Xem chi tiết & đặt mua tại: ${url}`,
     final < reference ? "Mua ngay để nhận mức giá ưu đãi tốt nhất!" : "Mua ngay tại ALOHA!",

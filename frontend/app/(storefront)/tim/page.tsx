@@ -1,4 +1,5 @@
 import { WholesaleHomeCatalog } from "@/components/WholesaleHomeCatalog";
+import { voucherCustomerTitle } from "@/lib/voucherFormat";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { ShopPageLoader } from "@/components/ShopPageLoader";
@@ -121,7 +122,7 @@ async function CatalogBody({
       badge,
       voucher: voucher || undefined,
     });
-    voucherTitle = prod.voucher?.title || "";
+    voucherTitle = voucherCustomerTitle(prod.voucher?.title);
     // /tim?badge=ban_chay: nếu chưa gắn nhãn tay → fallback xếp theo doanh thu
     // (cùng logic mục «Sản phẩm bán chạy» trên trang chủ)
     if (
