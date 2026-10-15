@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
-function render(expanded = false, loading = false) {
+import { voucherCustomerTitle } from "../frontend/lib/voucherFormat.js";
+function render(expanded = false, loading = false, title = "Voucher 5%") {
   const exports: any = {};
   const jsx = (type: any, props: any) => ({ type, props });
   vm.runInNewContext(ts.transpileModule(readFileSync("frontend/components/pdp/ProductPricingSummary.tsx", "utf8"), {
@@ -11,10 +12,11 @@ function render(expanded = false, loading = false) {
   }).outputText, { exports, require(name: string) {
     if (name === "react/jsx-runtime") return { jsx, jsxs: jsx };
     if (name === "@/lib/api") return { formatVnd: (n: number) => `${n}đ` };
+    if (name === "@/lib/voucherFormat") return { voucherCustomerTitle };
     return {};
   } });
   return exports.ProductPricingSummary({ expanded, pricing: { loading, stale: false, quote: {
-    subtotal: 1350000, finalTotal: 1282500, discountTotal: 67500, applied: { title: "Voucher 5%" },
+    subtotal: 1350000, finalTotal: 1282500, discountTotal: 67500, applied: { title },
     campaign: { volumeSavings: 150000 },
   } } });
 }
@@ -33,4 +35,10 @@ test("PDP summary displays one breakdown and one final total using server saving
 });
 test("pending repricing hides the previous total", () => {
   assert.equal(JSON.stringify(render(false, true)).includes("1282500đ"), false);
+});
+
+test("PDP summary hides old product-count suffixes from voucher titles", () => {
+  const text = JSON.stringify(render(false, false, "Giảm 10% đặt trước 20/10 (3 sản phẩm)"));
+  assert.ok(text.includes("Giảm 10% đặt trước 20/10"));
+  assert.equal(text.includes("3 sản phẩm"), false);
 });
