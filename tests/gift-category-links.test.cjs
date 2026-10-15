@@ -15,6 +15,7 @@ test('gift menu opens the story pages and closes navigation on selection', () =>
     if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx };
     if (name === 'next/link') return { __esModule: true, default: 'link' };
     if (name === '@/lib/giftFilters') return { GIFT_FILTER_OPTIONS: options };
+    if (name === 'lucide-react') return Object.fromEntries(['ArrowRight', 'BriefcaseBusiness', 'ChevronRight', 'Gift', 'Heart', 'House', 'Sprout', 'Trophy'].map(name => [name, name]));
     throw new Error(name);
   } });
   let closed = 0;

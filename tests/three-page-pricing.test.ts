@@ -4,7 +4,7 @@ import { calculateTierPrice } from "../frontend/lib/volumePricing.js";
 import { evaluatePromotions, evaluateShippingPromotions } from "../backend/shopPromotions/evaluator.js";
 import { applyBuyerRules } from "../backend/shopPromotions/wallet/walletRules.js";
 import { promo } from "./helpers/walletFixtures.js";
-const now = new Date();
+const now = new Date("2026-10-15T03:00:00.000Z");
 const region = () => ({ status: "matched" as const, regionId: "all", regionVersion: 1, source: "name" as const });
 let cases = 0;
 test("quantity, customer voucher, saved wallet and shipping matrix agrees with independent arithmetic", () => {
@@ -21,7 +21,7 @@ test("quantity, customer voucher, saved wallet and shipping matrix agrees with i
     const ship30 = promo("SHIP30", { benefitType: "shipping", discountValue: 30000, minOrderThreshold: 1000000, regionId: "all", claimRequired: true });
     const ship50 = { ...ship30, id: "SHIP50", discountValue: 50000, minOrderThreshold: 2000000 };
     const rules = applyBuyerRules([goods, ship30, ship50], { status: { retail: true, locked: false, isTestBuyer: false },
-      account: { roles: ["customer"], active: true }, campaignVoucherIds: new Set([goods.id, ship30.id, ship50.id]),
+      account: { roles: ["customer"], active: true }, newBuyer: !returning, campaignVoucherIds: new Set([goods.id, ship30.id, ship50.id]),
       saved: new Set(saved ? [goods.id, ship30.id, ship50.id] : []), walletOn: true });
     const buyer = { isWholesale: false, isNewWebBuyer: !returning, hasSuccessfulWebPurchase: returning };
     const items = [{ ma: "P", price: unit, quantity: qty }];
