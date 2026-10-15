@@ -352,9 +352,9 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
   const mobileAction = mobilePurchaseAction({ needPick, variantsLoading, purchaseDisabled, quantityExceedsStock: activeProduct.allowBackorder === false && qty + cartQty > liveTon });
 
   const tierInfo = useMemo(() => {
-    if (expectsSi || liveGia <= 0 || pricePending) return null;
+    if (expectsSi || livePromo || liveGia <= 0 || pricePending) return null;
     return calculateTierPrice(liveGia, qty);
-  }, [expectsSi, liveGia, pricePending, qty]);
+  }, [expectsSi, livePromo, liveGia, pricePending, qty]);
 
   const effectiveGia = tierInfo?.unitPrice ?? liveGia;
   const productPricing = useProductPricing({ ma: activeProduct.ma, name: activeProduct.ten, qty, price: liveGia, enabled: !purchaseDisabled });
@@ -535,7 +535,7 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
                         unit={activeProduct.dvt}
                         variant={user.siRegion === "HCM" || user.siRegion === "TINH" ? "wholesale-detail" : "detail"}
                       />
-                    ) : !pricePending && liveGia > 0 ? (
+                    ) : !pricePending && !livePromo && liveGia > 0 ? (
                       <ProductTierPricing
                         basePrice={liveGia}
                         unit={activeProduct.dvt || "cái"}
