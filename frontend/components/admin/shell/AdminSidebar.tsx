@@ -4,13 +4,13 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useId, useState } from "react";
 import {
+  Activity,
   BarChart3,
   Briefcase,
   CalendarHeart,
   Inbox,
   ChevronDown,
   Coins,
-  ExternalLink,
   FileText,
   Globe,
   LayoutDashboard,
@@ -347,15 +347,14 @@ export function AdminSidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
           Bác sĩ cây cảnh
         </Link>
 
-        <a
-          href="/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-500 hover:bg-[var(--aloha-green-light)] hover:text-[var(--aloha-ink)]"
+        <Link
+          href="/admin/tinh-trang-website"
+          className={linkClass(pathname.startsWith("/admin/tinh-trang-website"))}
+          style={pathname.startsWith("/admin/tinh-trang-website") ? activeNavStyle : undefined}
         >
-          <ExternalLink className="h-4 w-4 shrink-0" />
-          Mở storefront
-        </a>
+          <Activity className="h-4 w-4 shrink-0" />
+          Tình trạng website
+        </Link>
       </nav>
       <div className="border-t border-[#eef0f3] p-3">
         <p className="truncate text-xs font-semibold text-slate-700">
