@@ -16,6 +16,8 @@ import { useShopLoadingWhile } from "@/lib/useShopLoadingWhile";
 import { AddressMergerAlert } from "./AddressMergerAlert";
 import { normalizeAddressString, type AddressMergerSuggest } from "@/lib/addressMerger";
 
+import { AddressLocationSelect } from "./AddressLocationSelect";
+
 export type AddressDraft = CheckoutAddressValue & {
   fullName: string;
   phone: string;
@@ -28,6 +30,7 @@ type Props = {
   hideContactFields?: boolean;
   addressLabel?: string;
   showMergerAlert?: boolean;
+  mobileLocationPicker?: boolean;
 };
 
 export function GhnAddressFields({
@@ -36,6 +39,7 @@ export function GhnAddressFields({
   hideContactFields = false,
   addressLabel = "Địa chỉ nhận hàng",
   showMergerAlert = true,
+  mobileLocationPicker = false,
 }: Props) {
   const [ghnOk, setGhnOk] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -214,7 +218,8 @@ export function GhnAddressFields({
             <span className="mb-1.5 block text-xs font-semibold text-slate-600">
               Tỉnh/Thành <span className="text-red-500">*</span>
             </span>
-            <select
+            <AddressLocationSelect
+              mobilePicker={mobileLocationPicker}
               className="auth-field"
               value={value.ghnProvinceId || ""}
               onChange={(e) => {
@@ -233,13 +238,14 @@ export function GhnAddressFields({
                   {p.name}
                 </option>
               ))}
-            </select>
+            </AddressLocationSelect>
           </label>
           <label className="block">
             <span className="mb-1.5 block text-xs font-semibold text-slate-600">
               Quận/Huyện <span className="text-red-500">*</span>
             </span>
-            <select
+            <AddressLocationSelect
+              mobilePicker={mobileLocationPicker}
               className="auth-field"
               value={value.ghnDistrictId || ""}
               disabled={!value.ghnProvinceId}
@@ -260,13 +266,14 @@ export function GhnAddressFields({
                   {d.name}
                 </option>
               ))}
-            </select>
+            </AddressLocationSelect>
           </label>
           <label className="block">
             <span className="mb-1.5 block text-xs font-semibold text-slate-600">
               Phường/Xã <span className="text-red-500">*</span>
             </span>
-            <select
+            <AddressLocationSelect
+              mobilePicker={mobileLocationPicker}
               className="auth-field"
               value={value.ghnWardCode || ""}
               disabled={!value.ghnDistrictId}
@@ -282,7 +289,7 @@ export function GhnAddressFields({
                   {w.name}
                 </option>
               ))}
-            </select>
+            </AddressLocationSelect>
           </label>
         </div>
       ) : (
@@ -291,7 +298,8 @@ export function GhnAddressFields({
             <span className="mb-1.5 block text-xs font-semibold text-slate-600">
               Tỉnh/Thành phố <span className="text-red-500">*</span>
             </span>
-            <select
+            <AddressLocationSelect
+              mobilePicker={mobileLocationPicker}
               className="auth-field"
               value={value.province}
               onChange={(e) =>
@@ -307,14 +315,15 @@ export function GhnAddressFields({
                   {p}
                 </option>
               ))}
-            </select>
+            </AddressLocationSelect>
           </label>
           <label className="block">
             <span className="mb-1.5 block text-xs font-semibold text-slate-600">
               Phường/Xã <span className="text-red-500">*</span>
             </span>
             {staticWards.length ? (
-              <select
+              <AddressLocationSelect
+              mobilePicker={mobileLocationPicker}
                 className="auth-field"
                 value={value.ward}
                 onChange={(e) => onChange({ ward: e.target.value })}
@@ -325,7 +334,7 @@ export function GhnAddressFields({
                     {w}
                   </option>
                 ))}
-              </select>
+              </AddressLocationSelect>
             ) : (
               <input
                 className="auth-field"

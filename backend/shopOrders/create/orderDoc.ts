@@ -1,6 +1,7 @@
 import type { ShopOrderDetail } from "../models.js";
 import type { VerifiedQuote } from "./shippingQuoteCheck.js";
 import type { CampaignHolds } from "../../shopCampaigns/flash/flashTypes.js";
+import { volumeSavingsForLines } from "../../../shared/orderSavings.js";
 
 export type OrderDocInput = {
   wholesaleEligibility?: unknown;
@@ -118,6 +119,7 @@ export function buildOrderDoc(input: OrderDocInput): Record<string, unknown> {
   const ship = deliveryMethod === "giao_tan_noi";
   const isSi = user?.siStatus === "active" && user?.roles?.includes("si");
   const status = statusFields(input);
+  const volumeSavings = volumeSavingsForLines(input.orderDetails);
   return {
     id: input.code,
     code: input.code,
@@ -149,6 +151,9 @@ export function buildOrderDoc(input: OrderDocInput): Record<string, unknown> {
     ctvCodes: input.ctvCodes,
     subtotal: input.subtotal,
     shippingFee: input.shippingFeeCharged,
+    shippingFeePending: ship && (!input.quoteVerified || input.quoteVerified.fee == null ||
+      input.quoteVerified.shippingEstimateStatus === "needs_confirmation" ||
+      input.quoteVerified.shippingEstimateStatus === "unavailable"),
     shippingFeeOriginal: input.shippingFeeOriginal,
     shippingDiscount: input.shippingDiscount,
     shippingPromotion: shippingPromotionSnapshot(input),
@@ -184,6 +189,7 @@ export function buildOrderDoc(input: OrderDocInput): Record<string, unknown> {
     ...(input.campaignHolds ? { campaignHolds: input.campaignHolds } : {}),
     ...(input.flashSavings > 0 ? { flashSavings: input.flashSavings } : {}),
     ...(input.anchorSavings > 0 ? { anchorSavings: input.anchorSavings } : {}),
+    ...(volumeSavings > 0 ? { volumeSavings } : {}),
     stockApplied: false,
     stockHeld: false,
     status: status.status,

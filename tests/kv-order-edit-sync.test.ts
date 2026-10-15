@@ -92,7 +92,7 @@ const sync = (kv: any) =>
 const load = () => t.db.collection(SHOP_ORDERS).findOne({ code: "WEB-T1" }) as Promise<any>;
 
 test("KE10: NV đổi phí ship trên KV → đơn web cập nhật + ghi lịch sử", { skip: TEST_MONGO_SKIP }, async () => {
-  await t.db.collection(SHOP_ORDERS).insertOne(baseOrder());
+  await t.db.collection(SHOP_ORDERS).insertOne(baseOrder({ volumeSavings: 15000 }));
   const r = await sync(kvOrder(30_000));
   assert.equal(r.changed, true);
   const o = await load();
@@ -101,6 +101,14 @@ test("KE10: NV đổi phí ship trên KV → đơn web cập nhật + ghi lịch
   assert.equal(o.moneyChanges.length, 1);
   assert.deepEqual(o.moneyChanges[0].shippingFee, { from: 0, to: 30_000 });
   assert.equal(o.moneyChanges[0].linesChanged, false);
+  assert.equal(o.volumeSavings, 15000);
+});
+
+test("repricing product lines on KiotViet clears outdated volume-savings snapshots", { skip: TEST_MONGO_SKIP }, async () => {
+  await t.db.collection(SHOP_ORDERS).insertOne(baseOrder({ volumeSavings: 15000 }));
+  const r = await sync(kvOrder(0, [{ productCode: "A", price: 200000, quantity: 1 }]));
+  assert.equal(r.changed, true);
+  assert.equal((await load()).volumeSavings, undefined);
 });
 
 test("KE11: KV trả dòng khác thứ tự, tiền y nguyên → không ghi", { skip: TEST_MONGO_SKIP }, async () => {

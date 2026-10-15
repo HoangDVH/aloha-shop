@@ -186,31 +186,30 @@ export function SmartFreeshipBar({
         isHighestReached
           ? "border-emerald-200/90 bg-gradient-to-r from-emerald-50/95 via-teal-50/80 to-emerald-50/95 shadow-xs"
           : "border-teal-200/80 bg-gradient-to-r from-teal-50/85 via-emerald-50/70 to-teal-50/85 shadow-2xs"
-      } p-3 sm:p-4 ${className}`}
+      } px-3.5 py-2 sm:px-4 sm:py-2.5 ${className}`}
       role="status"
       aria-live="polite"
     >
-      <div className="flex items-center justify-between gap-2.5">
-        <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
-          {/* Icon tròn sinh động */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2.5 md:gap-6">
+        {/* Vế trái: Icon + Thông điệp */}
+        <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
           <span
-            className={`flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-xs transition-colors ${
+            className={`flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg text-white shadow-xs transition-colors ${
               isHighestReached
                 ? "bg-gradient-to-br from-emerald-500 to-teal-600"
                 : "bg-gradient-to-br from-[#0D9488] to-[#0F766E]"
             }`}
           >
             {isHighestReached ? (
-              <CheckCircle2 size={18} strokeWidth={2.5} aria-hidden />
+              <CheckCircle2 size={16} strokeWidth={2.5} aria-hidden />
             ) : (
-              <Truck size={17} strokeWidth={2.4} aria-hidden />
+              <Truck size={15} strokeWidth={2.4} aria-hidden />
             )}
           </span>
 
-          {/* Dòng thông điệp chính */}
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0">
             {isHighestReached ? (
-              <p className="text-xs sm:text-[13.5px] font-bold text-emerald-900 leading-snug">
+              <p className="text-xs sm:text-[13px] font-bold text-emerald-900 leading-snug">
                 Đã đạt mốc tiền hàng cho{" "}
                 <span className="text-[#0D9488] uppercase">{currentTier?.label || "Miễn phí vận chuyển"}</span>
               </p>
@@ -229,76 +228,87 @@ export function SmartFreeshipBar({
           </div>
         </div>
 
-        {/* Nút hành động Mua thêm nếu chưa đạt mốc cao nhất */}
-        {!isHighestReached && showMoreShopping ? (
-          <Link
-            href={targetHref}
-            className="group inline-flex min-h-[30px] sm:min-h-[32px] shrink-0 items-center gap-0.5 rounded-full border border-teal-200/90 bg-white/95 px-2.5 sm:px-3 py-1 text-[11px] sm:text-xs font-bold text-teal-800 shadow-2xs transition-all hover:bg-white hover:text-teal-900 hover:shadow-xs active:scale-95 select-none"
-          >
-            <span>Mua thêm</span>
-            <ChevronRight
-              size={13}
-              className="text-teal-600 transition-transform duration-200 group-hover:translate-x-0.5"
-            />
-          </Link>
-        ) : isHighestReached ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100/90 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
-            <Sparkles size={12} className="text-amber-500 fill-amber-500" />
-            {appliedDiscount > 0 ? "Đã áp dụng" : "Xem điều kiện"}
-          </span>
-        ) : null}
-      </div>
-
-      {/* Thanh tiến trình Progress Bar với Mốc Milestone Pins */}
-      <div className="relative mt-3.5 pt-1 pb-4" aria-hidden>
-        {/* Track bar */}
-        <div className="relative h-2 w-full overflow-hidden rounded-full bg-slate-200/80">
-          <div
-            className={`h-full rounded-full transition-all duration-500 ease-out shadow-xs ${
-              isHighestReached
-                ? "bg-gradient-to-r from-emerald-500 to-teal-500"
-                : "bg-gradient-to-r from-[#0D9488] via-emerald-500 to-[#0F766E]"
-            }`}
-            style={{ width: `${overallPct}%` }}
-          />
-        </div>
-
-        {/* Milestone Pins */}
-        <div className="pointer-events-none absolute inset-x-0 top-0">
-          {tiers.map((tier) => {
-            const pinPct = Math.round((tier.threshold / maxThreshold) * 100);
-            const reached = currentAmount >= tier.threshold;
-            return (
+        {/* Vế phải: Thanh tiến trình ngang gọn gàng trên Desktop, ở tầng dưới trên Mobile */}
+        <div className="flex min-w-0 flex-1 md:max-w-md lg:max-w-lg items-center gap-3">
+          <div className="relative flex-1 pt-0.5 pb-4 sm:pb-4.5" aria-hidden>
+            {/* Track bar */}
+            <div className="relative h-1.5 sm:h-2 w-full overflow-hidden rounded-full bg-slate-200/80">
               <div
-                key={tier.threshold}
-                className="absolute -top-0.5 -translate-x-1/2 flex flex-col items-center"
-                style={{ left: `${Math.min(97, Math.max(3, pinPct))}%` }}
-              >
-                {/* Pin Dot */}
-                <span
-                  className={`flex h-3.5 w-3.5 items-center justify-center rounded-full ring-2 ring-white shadow-xs transition-all duration-300 ${
-                    reached
-                      ? "bg-emerald-600 text-white scale-110"
-                      : "bg-white border-2 border-slate-300 text-slate-400"
-                  }`}
-                >
-                  {reached ? (
-                    <Check size={8} strokeWidth={3.5} />
-                  ) : (
-                    <span className="h-1 w-1 rounded-full bg-slate-400" />
-                  )}
-                </span>
-                {/* Pin Label */}
-                <span
-                  className={`mt-1.5 text-[10px] sm:text-[10.5px] font-bold whitespace-nowrap transition-colors ${
-                    reached ? "text-emerald-700" : "text-slate-400"
-                  }`}
-                >
-                  {tier.label} ({formatCompactVnd(tier.threshold)})
-                </span>
-              </div>
-            );
-          })}
+                className={`h-full rounded-full transition-all duration-500 ease-out shadow-xs ${
+                  isHighestReached
+                    ? "bg-gradient-to-r from-emerald-500 to-teal-500"
+                    : "bg-gradient-to-r from-[#0D9488] via-emerald-500 to-[#0F766E]"
+                }`}
+                style={{ width: `${overallPct}%` }}
+              />
+            </div>
+
+            {/* Milestone Pins */}
+            <div className="pointer-events-none absolute inset-x-0 top-0">
+              {tiers.map((tier, idx) => {
+                const pinPct = Math.round((tier.threshold / maxThreshold) * 100);
+                const reached = currentAmount >= tier.threshold;
+                const isFirst = idx === 0 && pinPct <= 15;
+                const isLast = idx === tiers.length - 1 || pinPct >= 85;
+
+                return (
+                  <div
+                    key={tier.threshold}
+                    className="absolute -top-0.5"
+                    style={{ left: `${Math.min(100, Math.max(0, pinPct))}%` }}
+                  >
+                    {/* Dot tròn mốc: luôn căn tâm chuẩn xác ngay tại mốc phần trăm của thanh track */}
+                    <span
+                      className={`absolute -top-0 -translate-x-1/2 flex h-3 w-3 sm:h-3.5 sm:w-3.5 items-center justify-center rounded-full ring-2 ring-white shadow-xs transition-all duration-300 ${
+                        reached
+                          ? "bg-emerald-600 text-white scale-110"
+                          : "bg-white border-2 border-slate-300 text-slate-400"
+                      }`}
+                    >
+                      {reached ? (
+                        <Check size={7} strokeWidth={3.5} />
+                      ) : (
+                        <span className="h-1 w-1 rounded-full bg-slate-400" />
+                      )}
+                    </span>
+
+                    {/* Nhãn mốc: căn lề thông minh tránh tràn mép container */}
+                    <span
+                      className={`absolute top-4 sm:top-4 text-[9.5px] sm:text-[10px] font-bold whitespace-nowrap transition-colors ${
+                        reached ? "text-emerald-700" : "text-slate-400"
+                      } ${
+                        isLast
+                          ? "right-0 translate-x-1 text-right"
+                          : isFirst
+                          ? "left-0 -translate-x-1 text-left"
+                          : "left-0 -translate-x-1/2 text-center"
+                      }`}
+                    >
+                      {tier.label} ({formatCompactVnd(tier.threshold)})
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {!isHighestReached && showMoreShopping ? (
+            <Link
+              href={targetHref}
+              className="group inline-flex min-h-[28px] shrink-0 items-center gap-0.5 rounded-full border border-teal-200/90 bg-white/95 px-2.5 py-0.5 text-[11px] font-bold text-teal-800 shadow-2xs transition-all hover:bg-white hover:text-teal-900 active:scale-95 select-none"
+            >
+              <span>Mua thêm</span>
+              <ChevronRight
+                size={12}
+                className="text-teal-600 transition-transform duration-200 group-hover:translate-x-0.5"
+              />
+            </Link>
+          ) : isHighestReached ? (
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-100/90 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
+              <Sparkles size={11} className="text-amber-500 fill-amber-500" />
+              {appliedDiscount > 0 ? "Đã áp dụng" : "Xem điều kiện"}
+            </span>
+          ) : null}
         </div>
       </div>
     </div>

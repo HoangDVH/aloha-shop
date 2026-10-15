@@ -307,7 +307,7 @@ export async function syncShopOrderMoneyFromKv(opts: {
         updatedAt: now,
       },
       // Dòng đổi trên KV thì bỏ "Giảm giá sản phẩm" (giá trước KM) thay vì giữ số cũ sai.
-      $unset: { kvMoneyConflict: "", ...(sameLines ? {} : { anchorSavings: "" }) },
+      $unset: { kvMoneyConflict: "", ...(sameLines ? {} : { anchorSavings: "", volumeSavings: "" }) },
       $push: {
         moneyChanges: {
           $each: [

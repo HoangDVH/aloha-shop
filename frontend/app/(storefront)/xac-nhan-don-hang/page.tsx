@@ -413,30 +413,26 @@ function CheckoutConfirm() {
 
   return (
     <>
-      <div className="shop-pb-sticky mx-auto max-w-7xl animate-fade-up space-y-5 px-4 py-6 lg:pb-8">
-        <div className="flex flex-wrap items-end justify-between gap-2">
+      <div className="shop-pb-sticky mx-auto max-w-7xl animate-fade-up px-0 sm:px-4 py-0 sm:py-6 space-y-2 sm:space-y-5 lg:pb-8">
+        <div className="hidden md:flex flex-wrap items-end justify-between gap-2">
           <h1 className="text-2xl font-extrabold text-[var(--aloha-ink)]">Xác nhận đơn hàng</h1>
           <Link href="/gio-hang" className="text-sm font-semibold text-[var(--aloha-green)] hover:underline">
             ← Giỏ hàng
           </Link>
         </div>
 
-        <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
-          <div className="space-y-4">
-            <CheckoutLineItems
-              selected={selected}
-              note={note}
-              onNoteChange={setNote}
-              campaign={campaign}
-            />
-
-            <CheckoutAddressSection
+        <div className="grid gap-2 sm:gap-5 lg:grid-cols-[1fr_360px]">
+          <div className="flex min-w-0 flex-col gap-2 sm:gap-4">
+            <div className="order-1 lg:order-2">
+              <CheckoutAddressSection
               delivery={delivery}
               onDeliveryChange={setDelivery}
               draft={draft}
               onDraftChange={patchDraft}
               addresses={addresses}
               selectedAddr={selectedAddr}
+              onSelectAddress={(id) => { setSelectedAddrId(id); setShowNewForm(false); }}
+              onAddressSaved={(list, id) => { setAddresses(list); setSelectedAddrId(id); setShowNewForm(false); }}
               showNewForm={showNewForm}
               onShowNewForm={() => setShowNewForm(true)}
               onOpenPicker={() => setPickerOpen(true)}
@@ -447,13 +443,24 @@ function CheckoutConfirm() {
               userFullName={user.fullName}
               userPhone={user.phone}
             />
+            </div>
+            <div className="order-2 lg:order-1">
+              <CheckoutLineItems
+              selected={selected}
+              note={note}
+              onNoteChange={setNote}
+              campaign={campaign}
+              pricesPending={promoLoading || promoStale || !promoQuote}
+            />
+            </div>
 
 
-            <SiCartNotice />
+            <div className="contents lg:block lg:order-3"><SiCartNotice /></div>
           </div>
 
           <CheckoutSummaryAside
-            totalPending={promoLoading || promoStale || !promoQuote || (showShip && delivery === "giao_tan_noi" && shippingLoading)}
+            totalPending={promoLoading || promoStale || !promoQuote}
+            priceScopeKey={user.id}
             delivery={delivery}
             total={total}
             discount={discountAmount}
@@ -517,6 +524,8 @@ function CheckoutConfirm() {
       {/* Ngoài khối animate — portal body để fixed không bị kéo theo cuộn */}
       <CheckoutStickyBar
         totalPending={promoLoading || promoStale || !promoQuote || (showShip && delivery === "giao_tan_noi" && shippingLoading)}
+        goodsPending={promoLoading || promoStale || !promoQuote}
+        priceScopeKey={user.id}
         total={total + anchorSavings + volumeSavings}
         discount={discountAmount + flashSavings + anchorSavings + volumeSavings}
         volumeDiscount={volumeSavings}

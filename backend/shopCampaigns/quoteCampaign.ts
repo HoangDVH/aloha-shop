@@ -11,6 +11,7 @@ export type QuoteLine = {
   price: number;
   volumePricing?: ShopOrderDetail["volumePricing"];
   listPrice?: number;
+  compareAtPrice?: number;
   flash?: boolean;
   isGift?: boolean;
   giftFor?: string;
@@ -59,7 +60,7 @@ export async function quoteWithCampaign(
     .map((d) => ({ ...byMa.get(d.productCode)!, price: d.price, quantity: d.quantity, flash: Boolean(d.flash) }));
   return {
     items: evalItems,
-    lines: r.details.map(toLine),
+    lines: r.details.map(d => ({ ...toLine(d), compareAtPrice: r.referencePrices?.[d.productCode] })),
     flashSavings: r.flashSavings,
     volumeSavings: r.details.reduce((n, d) => n + (d.volumePricing ? Math.max(0, d.volumePricing.basePrice - (d.flash?.listPrice ?? d.price)) * d.quantity : 0), 0),
     anchorSavings: r.anchorSavings,

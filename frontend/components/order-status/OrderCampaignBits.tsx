@@ -3,6 +3,7 @@
 import { Gift, Zap } from "lucide-react";
 import { formatVnd } from "@/lib/api";
 import type { ShopOrder, ShopOrderDetail } from "@/lib/orders";
+import { volumeSavingsForLines } from "../../../shared/orderSavings";
 
 /** Nhãn "Quà tặng" / "Flash Sale" dưới tên sản phẩm trong đơn. */
 export function OrderLineTags({ d }: { d: ShopOrderDetail }) {
@@ -25,7 +26,11 @@ export function OrderLineTags({ d }: { d: ShopOrderDetail }) {
 /** Tiền hàng theo giá thường (để các dòng giảm cộng lại đúng tổng). */
 export function orderListSubtotal(order: ShopOrder): number | null {
   if (order.subtotal == null) return null;
-  return order.subtotal + (order.flashSavings || 0) + (order.anchorSavings || 0);
+  return order.subtotal + (order.flashSavings || 0) + (order.anchorSavings || 0) + orderVolumeSavings(order);
+}
+
+export function orderVolumeSavings(order: ShopOrder): number {
+  return order.volumeSavings ?? volumeSavingsForLines(order.orderDetails || []);
 }
 
 /** "Giảm giá sản phẩm" + "Giảm Flash Sale" + "Voucher shop" của đơn đã lưu. */
@@ -38,6 +43,9 @@ export function OrderGoodsSavings({ order }: { order: ShopOrder }) {
           <span>-{formatVnd(order.anchorSavings)}</span>
         </div>
       ) : null}
+      {orderVolumeSavings(order) > 0 ? <div className="flex justify-between font-semibold text-[var(--aloha-price)]">
+        <span>Giảm theo số lượng</span><span>-{formatVnd(orderVolumeSavings(order))}</span>
+      </div> : null}
       {order.flashSavings ? (
         <div className="flex justify-between font-semibold text-[var(--aloha-price)]">
           <span>Giảm Flash Sale</span>
@@ -57,7 +65,7 @@ export function OrderGoodsSavings({ order }: { order: ShopOrder }) {
 /** Tổng "Bạn đã tiết kiệm" = giá trước KM + flash + voucher + hỗ trợ ship, cùng số với lúc checkout. */
 export function OrderSavedTotal({ order }: { order: ShopOrder }) {
   const saved =
-    (order.anchorSavings || 0) + (order.flashSavings || 0) + (order.discount || 0) + (order.shippingDiscount || 0);
+    (order.anchorSavings || 0) + orderVolumeSavings(order) + (order.flashSavings || 0) + (order.discount || 0) + (order.shippingDiscount || 0);
   if (saved <= 0) return null;
   return (
     <p className="rounded-lg bg-[var(--aloha-green-light)] px-3 py-1.5 text-center text-xs font-bold text-[var(--aloha-green-mid)]">

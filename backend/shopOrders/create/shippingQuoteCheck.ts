@@ -46,9 +46,10 @@ export function checkShippingQuote(input: QuoteInput): ShippingQuoteResult {
     totalWeightGram: 0,
     freeShipApplied: false,
   };
-  // Phase COD: không bắt quote — phí ship = 0 (code quote vẫn giữ để bật lại)
-  if (input.customerArranged || deliveryMethod !== "giao_tan_noi" || !shopRequireShippingQuote()) return empty;
+  // Optional means a quote may be absent, not that a supplied signed quote is ignored.
+  if (input.customerArranged || deliveryMethod !== "giao_tan_noi") return empty;
   if (!quoteToken) {
+    if (!shopRequireShippingQuote()) return empty;
     return fail(400, { error: "Thiếu báo giá phí ship — tải lại trang checkout" });
   }
   try {

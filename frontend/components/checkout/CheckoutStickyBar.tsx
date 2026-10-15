@@ -3,11 +3,15 @@
 import { createPortal } from "react-dom";
 import { useEffect, useId, useState } from "react";
 import { useStickyBarHeight } from "@/lib/floatingStack";
+import { usePendingValue } from "@/lib/usePendingValue";
+import { PriceUpdateIndicator } from "./PriceUpdateIndicator";
 import { formatVnd } from "@/lib/api";
 
 type Props = {
   total: number;
   totalPending?: boolean;
+  goodsPending?: boolean;
+  priceScopeKey?: string;
   discount?: number;
   volumeDiscount?: number;
   flashDiscount?: number;
@@ -31,6 +35,8 @@ type Props = {
 export function CheckoutStickyBar({
   total,
   totalPending = false,
+  goodsPending = totalPending,
+  priceScopeKey = "",
   discount = 0,
   volumeDiscount = 0,
   flashDiscount = 0,
@@ -45,10 +51,25 @@ export function CheckoutStickyBar({
   orderBlockedReason,
   onPlaceOrder,
 }: Props) {
+  const confirmed = usePendingValue({ total, discount, volumeDiscount, flashDiscount, productDiscount,
+    grandTotal, shippingFee, shippingDiscount, canSubmit, orderBlockedReason }, totalPending, `${priceScopeKey}:${deliveryMethod}`);
+  const displayCanSubmit = totalPending ? confirmed?.canSubmit ?? true : canSubmit;
+  const displayBlockedReason = totalPending ? confirmed?.orderBlockedReason : orderBlockedReason;
+  const hasDisplayValue = !totalPending || Boolean(confirmed);
+  if (totalPending) {
+    total = confirmed?.total ?? 0;
+    discount = confirmed?.discount ?? 0;
+    volumeDiscount = confirmed?.volumeDiscount ?? 0;
+    flashDiscount = confirmed?.flashDiscount ?? 0;
+    productDiscount = confirmed?.productDiscount ?? 0;
+    grandTotal = confirmed?.grandTotal ?? 0;
+    shippingFee = confirmed?.shippingFee ?? null;
+    shippingDiscount = confirmed?.shippingDiscount ?? 0;
+  }
   const [detailsOpen, setDetailsOpen] = useState(false);
   const detailId = useId();
   const amount = deliveryMethod === "nhan_cua_hang" || shippingFee == null ? Math.max(0, total - discount) : grandTotal;
-  const amountText = (value: number) => totalPending ? "Đang cập nhật…" : formatVnd(value);
+  const amountText = (value: number) => hasDisplayValue ? formatVnd(value) : "—";
   const voucherDiscount = Math.max(0, discount - volumeDiscount - flashDiscount - productDiscount);
   const totalLabel = deliveryMethod === "nhan_cua_hang" ? "Tổng thanh toán" : shippingFee == null ? "Tiền hàng (chưa gồm ship)" : "Tổng tạm tính";
   const stickyRef = useStickyBarHeight<HTMLDivElement>();
@@ -62,7 +83,8 @@ export function CheckoutStickyBar({
       style={{ position: "fixed" }}
     >
       <div className="mx-auto max-w-7xl space-y-2.5">
-        {detailsOpen && totalPending ? <p role="status" className="text-sm text-slate-500">Đang cập nhật giá và ưu đãi…</p> : detailsOpen ? <div id={detailId} className="max-h-[40dvh] space-y-1.5 overflow-y-auto text-[13px] text-slate-500">
+        {detailsOpen ? <div id={detailId} aria-busy={totalPending} className="max-h-[40dvh] space-y-1.5 overflow-y-auto text-[13px] text-slate-500">
+          <div data-price-region="goods" aria-busy={goodsPending} className={`space-y-1.5 transition-opacity motion-reduce:transition-none ${goodsPending ? "opacity-60" : "opacity-100"}`}>
           <div className="flex items-center justify-between gap-3">
             <span>Tổng tiền hàng</span>
             <span className="tabular-nums">{amountText(total)}</span>
@@ -76,6 +98,8 @@ export function CheckoutStickyBar({
               <span className="tabular-nums">-{amountText(voucherDiscount)}</span>
             </div>
           ) : null}
+          </div>
+          <div data-price-region="shipping" aria-busy={totalPending} className={`transition-opacity motion-reduce:transition-none ${totalPending ? "opacity-60" : "opacity-100"}`}>
           {showShipping ? (
             deliveryMethod === "nhan_cua_hang" ? (
               <div className="flex items-center justify-between gap-3">
@@ -102,6 +126,7 @@ export function CheckoutStickyBar({
               </div>
             )
           ) : null}
+          </div>
           <div className="border-t border-slate-200/90" />
           {deliveryMethod === "nhan_cua_hang" ? (
             <div className="flex items-center justify-between gap-3">
@@ -126,30 +151,30 @@ export function CheckoutStickyBar({
             </div>
           )}
         </div> : null}
-        {!canSubmit && orderBlockedReason ? (
+        {!displayCanSubmit && displayBlockedReason ? (
           <div className="rounded-lg bg-amber-50 border border-amber-200/90 px-2.5 py-1.5 text-[11px] leading-tight text-amber-900 flex items-center gap-1.5 shadow-2xs">
             <span className="shrink-0 text-amber-600">⚠️</span>
-            <span className="truncate">{orderBlockedReason}</span>
+            <span className="truncate">{displayBlockedReason}</span>
           </div>
         ) : null}
         <div className="flex items-center gap-3">
           <button type="button" aria-expanded={detailsOpen} aria-controls={detailId} onClick={() => setDetailsOpen(v => !v)} className="min-h-11 min-w-0 flex-1 text-left">
-            <span className="block text-[11px] text-slate-500">{totalLabel}</span>
-            <span className="block text-base font-bold text-[var(--aloha-price)]">{amountText(amount)}</span>
+            <span className="flex min-h-5 items-center gap-1 text-[11px] text-slate-500">{totalLabel}<PriceUpdateIndicator pending={totalPending} compact /></span>
+            <span aria-busy={totalPending} className={`block whitespace-nowrap text-base font-bold tabular-nums text-[var(--aloha-price)] transition-opacity motion-reduce:transition-none ${totalPending ? "opacity-60" : "opacity-100"}`}>{amountText(amount)}</span>
             <span className="block text-[11px] text-[var(--aloha-green)]">{detailsOpen ? "Thu gọn" : "Xem chi tiết"}</span>
           </button>
         <button
           type="button"
-          disabled={submitting}
+          disabled={submitting || totalPending}
           onClick={onPlaceOrder}
-          className={`flex min-h-12 shrink-0 flex-col items-center justify-center rounded-xl px-4 py-3 text-white transition active:scale-95 shadow-xs cursor-pointer ${
-            !canSubmit
+          className={`flex min-h-12 min-w-[110px] shrink-0 flex-col items-center justify-center rounded-xl px-4 py-3 text-white transition active:scale-95 shadow-xs cursor-pointer ${
+            !displayCanSubmit
               ? "bg-amber-600 hover:bg-amber-700"
               : "bg-[var(--aloha-green)] hover:bg-[var(--aloha-green-hover)]"
           }`}
         >
           <span className="text-[14px] sm:text-[15px] font-extrabold leading-none">
-            {submitting ? "Đang gửi…" : !canSubmit ? "Cần thông tin" : "Đặt hàng"}
+            {submitting ? "Đang gửi…" : !displayCanSubmit ? "Cần thông tin" : "Đặt hàng"}
           </span>
         </button>
         </div>

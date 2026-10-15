@@ -23,7 +23,7 @@ export function SiCartNotice() {
   const missing = quote.data.missing;
   const total = quote.data.subtotal;
   const minimum = quote.data.minimum;
-  return <aside className="mb-5 rounded-2xl border border-green-200 bg-[var(--aloha-green-light)] p-4 text-sm">
+  return <aside className="w-full bg-[var(--aloha-green-light)] px-4 py-3 sm:p-4 border-y border-green-200/80 sm:border sm:rounded-2xl text-sm mb-0 sm:mb-5">
     <p className="font-bold text-[var(--aloha-green-dark)]">Đơn hàng giá sỉ</p>
     {missing.length ? <p className="mt-2 text-amber-900">Cần báo giá trước khi đặt: {missing.join(", ")}</p> : minimum > 0 ? <>
       <p className="mt-2">{total>=minimum ? "Đã đủ mức tiền hàng tối thiểu" : `Thêm ${formatVnd(minimum-total)} tiền hàng để đủ điều kiện mua sỉ`}</p>

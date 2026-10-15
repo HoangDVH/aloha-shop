@@ -13,6 +13,7 @@ export type CampaignQuoteLineUI = {
   quantity: number;
   price: number;
   listPrice?: number;
+  compareAtPrice?: number;
   flash?: boolean;
   isGift?: boolean;
   giftFor?: string;
