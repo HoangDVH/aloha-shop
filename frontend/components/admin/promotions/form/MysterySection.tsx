@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { Button, Form, InputNumber, Switch, type FormInstance } from "antd";
-import { Gift, Plus, Trash2 } from "lucide-react";
+import { Button, Form, InputNumber, Switch, Tooltip, type FormInstance } from "antd";
+import { Gift, Info, Plus, Trash2 } from "lucide-react";
 import { CollapsibleCard } from "./CollapsibleCard";
 import { MYSTERY_DEFAULT_TIERS, mysteryOdds, type MysteryFormTier, type PromotionItem } from "./promotionFormModel";
 
@@ -13,7 +13,6 @@ type Props = {
   onToggle: () => void;
 };
 
-const HINT = "text-[11px] text-slate-400 mt-0.5";
 const NUM = "!w-full !h-8 !rounded-md [&_.ant-input-number-input]:!h-[30px]";
 
 function OddsSummary({ tiers }: { tiers: MysteryFormTier[] }) {
@@ -70,15 +69,13 @@ export function MysterySection({ form, editingItem, collapsed, onToggle }: Props
 
   return (
     <CollapsibleCard title="Túi mù — giảm ngẫu nhiên" collapsed={collapsed} onToggle={onToggle}>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="font-medium text-slate-800 flex items-center gap-1.5">
-            <Gift size={14} className="text-amber-600" /> Khách bấm &quot;Bóc ngay&quot; để nhận mức giảm ngẫu nhiên
-          </div>
-          <p className={HINT}>
-            Mỗi khách bóc 1 lần, mức trúng lưu cố định vào ví và dùng khi đặt hàng. Bật túi mù sẽ tự chuyển sang
-            giảm theo %, bắt buộc lưu mã và cần mức trần giảm tối đa.
-          </p>
+      <div className="flex items-center justify-between gap-4 py-1">
+        <div className="font-medium text-slate-800 flex items-center gap-1.5">
+          <Gift size={14} className="text-amber-600 shrink-0" />
+          <span>Khách bấm &quot;Bóc ngay&quot; để nhận mức giảm ngẫu nhiên</span>
+          <Tooltip title="Mỗi khách bóc 1 lần, mức trúng lưu cố định vào ví và dùng khi đặt hàng. Bật túi mù sẽ tự chuyển sang giảm theo %, bắt buộc lưu mã và cần mức trần giảm tối đa.">
+            <Info size={13} className="text-slate-400 hover:text-slate-600 cursor-help shrink-0" />
+          </Tooltip>
         </div>
         <Form.Item name="mysteryOn" valuePropName="checked" noStyle>
           <Switch size="small" onChange={toggle} disabled={locked} />
@@ -90,10 +87,15 @@ export function MysterySection({ form, editingItem, collapsed, onToggle }: Props
         </p>
       ) : null}
       {on ? (
-        <div className="space-y-2">
+        <div className="space-y-2 pt-1">
           <div className="grid grid-cols-[1fr_1fr_1fr_32px] gap-2 text-[11px] font-semibold text-slate-500">
             <span>Mức giảm (%)</span>
-            <span>Tỉ lệ (trọng số)</span>
+            <span className="flex items-center gap-1">
+              Tỉ lệ (trọng số)
+              <Tooltip title="Trọng số quyết định xác suất bốc trúng (ví dụ 50 / 20 / 15 / 8 / 5 / 2 = 50% khách trúng mức thấp nhất). Mức có số suất khi hết sẽ không còn bốc trúng; hết sạch suất các mức thì voucher hết lượt.">
+                <Info size={12} className="text-slate-400 hover:text-slate-600 cursor-help" />
+              </Tooltip>
+            </span>
             <span>Số suất (trống = không giới hạn)</span>
             <span />
           </div>
@@ -128,10 +130,6 @@ export function MysterySection({ form, editingItem, collapsed, onToggle }: Props
               </>
             )}
           </Form.List>
-          <p className={HINT}>
-            Ví dụ tỉ lệ 50 / 20 / 15 / 8 / 5 / 2 = 50% khách trúng mức thấp nhất. Mức có số suất khi hết sẽ không
-            còn bốc trúng; hết sạch suất các mức thì voucher hết lượt.
-          </p>
           <OddsSummary tiers={tiers} />
           <TierStats editingItem={editingItem} />
         </div>

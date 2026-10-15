@@ -5,7 +5,7 @@ import { Plus, RefreshCw, Search } from "lucide-react";
 import { toast } from "@/components/admin/toast";
 import { websiteApi } from "../api";
 import { uploadAppearanceImage } from "../appearance/ImageUploadField";
-import { WbBtn, wbInput, wbSelect } from "../ui";
+import { WbBtn } from "../ui";
 import {
   fileToDataUrl,
   isAllowedImageFile,
@@ -392,11 +392,35 @@ export function ShopArticlesAdmin() {
         </div>
       </div>
 
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[220px] flex-1">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex items-center gap-1.5 text-xs">
+          {[
+            { id: "all", label: "Tất cả" },
+            { id: "1", label: "Đang hiện" },
+            { id: "0", label: "Đang ẩn" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => {
+                setVisible(tab.id as "all" | "1" | "0");
+                setPage(1);
+              }}
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                visible === tab.id
+                  ? "bg-[#0F9D58] text-white shadow-xs"
+                  : "border border-gray-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="relative min-w-[220px] flex-1 sm:max-w-xs">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
           <input
-            className={`${wbInput} pl-8`}
+            className="h-9 w-full rounded-lg border border-gray-200 bg-white pl-8 pr-3 text-xs sm:text-sm text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-[#0F9D58]/50 focus:ring-2 focus:ring-[#0F9D58]/15"
             placeholder="Tìm tiêu đề / slug…"
             value={q}
             onChange={(e) => {
@@ -405,18 +429,6 @@ export function ShopArticlesAdmin() {
             }}
           />
         </div>
-        <select
-          className={`${wbSelect} w-[160px]`}
-          value={visible}
-          onChange={(e) => {
-            setVisible(e.target.value as "all" | "1" | "0");
-            setPage(1);
-          }}
-        >
-          <option value="all">Tất cả</option>
-          <option value="1">Đang hiện</option>
-          <option value="0">Đang ẩn</option>
-        </select>
       </div>
 
       <ArticleTable

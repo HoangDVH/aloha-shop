@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Copy, ExternalLink, Pencil, Plus, RefreshCw, Search } from "lucide-react";
 import { toast } from "@/components/admin/toast";
 import { websiteApi } from "@/components/admin/website/api";
-import { WbBadge, WbBtn, wbInput, wbSelect } from "@/components/admin/website/ui";
+import { WbBadge, WbBtn } from "@/components/admin/website/ui";
 import { AdminPageHeader } from "@/components/admin/shell/AdminUi";
 import {
   EMPLOYMENT_TYPE_LABELS,
@@ -190,17 +190,53 @@ export function JobsAdmin() {
           </>
         }
       />
-      <div className="mb-3 flex flex-wrap gap-2">
-        <div className="relative min-w-[220px] flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-          <input className={`${wbInput} pl-8`} placeholder="Tìm tên vị trí…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
-        </div>
-        <select className={`${wbSelect} w-[160px]`} value={status} onChange={(e) => { setStatus(e.target.value as "" | JobStatus); setPage(1); }}>
-          <option value="">Tất cả trạng thái</option>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex items-center gap-1.5 overflow-x-auto text-xs no-scrollbar">
+          <button
+            type="button"
+            onClick={() => {
+              setStatus("");
+              setPage(1);
+            }}
+            className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+              status === ""
+                ? "bg-[#0F9D58] text-white shadow-xs"
+                : "border border-gray-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+            }`}
+          >
+            Tất cả trạng thái
+          </button>
           {Object.entries(JOB_STATUS_LABELS).map(([v, l]) => (
-            <option key={v} value={v}>{l}</option>
+            <button
+              key={v}
+              type="button"
+              onClick={() => {
+                setStatus(v as JobStatus);
+                setPage(1);
+              }}
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                status === v
+                  ? "bg-[#0F9D58] text-white shadow-xs"
+                  : "border border-gray-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              }`}
+            >
+              {l}
+            </button>
           ))}
-        </select>
+        </div>
+
+        <div className="relative min-w-[220px] flex-1 sm:max-w-xs">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+          <input
+            className="h-9 w-full rounded-lg border border-gray-200 bg-white pl-8 pr-3 text-xs sm:text-sm text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-[#0F9D58]/50 focus:ring-2 focus:ring-[#0F9D58]/15"
+            placeholder="Tìm tên vị trí…"
+            value={q}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setPage(1);
+            }}
+          />
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">

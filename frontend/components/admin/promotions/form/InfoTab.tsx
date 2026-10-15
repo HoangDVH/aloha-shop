@@ -52,31 +52,28 @@ function HintIcon({ title, size = 13 }: { title: string; size?: number }) {
 function BenefitTypeRow({ editingItem, isShipping, onBenefitTypeChange }: Props) {
   const locked = !!editingItem && (editingItem.usedCount || 0) + (editingItem.heldCount || 0) > 0;
   return (
-    <>
-      <div className="flex items-center gap-4 flex-wrap text-xs text-slate-700">
-        <span className="font-semibold text-slate-700">Loại ưu đãi</span>
-        <Form.Item name="benefitType" noStyle>
-          <Radio.Group onChange={(e) => onBenefitTypeChange(e.target.value)} disabled={locked}>
-            <Radio value="goods">Giảm tiền hàng</Radio>
-            <Radio value="shipping">Hỗ trợ phí ship</Radio>
-          </Radio.Group>
-        </Form.Item>
-        {isShipping ? (
-          <span className="inline-flex items-center gap-2">
-            <span className="font-medium text-slate-600">Vùng áp dụng</span>
-            <Form.Item name="regionId" noStyle>
-              <Select className="!w-72 !h-9 [&_.ant-select-selector]:!h-9 [&_.ant-select-selector]:!rounded-lg [&_.ant-select-selection-item]:!leading-[34px]" options={SHIPPING_REGION_OPTIONS} />
-            </Form.Item>
-          </span>
-        ) : null}
-      </div>
+    <div className="flex items-center gap-4 flex-wrap text-xs text-slate-700">
+      <span className="font-semibold text-slate-700">Loại ưu đãi</span>
+      <Form.Item name="benefitType" noStyle>
+        <Radio.Group onChange={(e) => onBenefitTypeChange(e.target.value)} disabled={locked}>
+          <Radio value="goods">Giảm tiền hàng</Radio>
+          <Radio value="shipping">
+            <span className="inline-flex items-center gap-1">
+              Hỗ trợ phí ship
+              <HintIcon title="Tự áp dụng khi giao hàng tận nơi, địa chỉ thuộc vùng và đơn chưa được miễn ship. Giảm tối đa bằng mệnh giá, không vượt phí ship thực tế." />
+            </span>
+          </Radio>
+        </Radio.Group>
+      </Form.Item>
       {isShipping ? (
-        <p className="text-[11px] text-slate-500 -mt-2">
-          Tự áp dụng khi giao hàng tận nơi, địa chỉ thuộc vùng và đơn chưa được miễn ship. Giảm tối đa
-          bằng mệnh giá, không vượt phí ship thực tế. Dùng chung được với ưu đãi giảm tiền hàng.
-        </p>
+        <span className="inline-flex items-center gap-2">
+          <span className="font-medium text-slate-600">Vùng áp dụng</span>
+          <Form.Item name="regionId" noStyle>
+            <Select className="!w-72 !h-9 [&_.ant-select-selector]:!h-9 [&_.ant-select-selector]:!rounded-lg [&_.ant-select-selection-item]:!leading-[34px]" options={SHIPPING_REGION_OPTIONS} />
+          </Form.Item>
+        </span>
       ) : null}
-    </>
+    </div>
   );
 }
 
@@ -296,16 +293,18 @@ function NotesAndOptions({ isShipping }: Props) {
         <div>
           <Form.Item name="isAutoApply" valuePropName="checked" noStyle>
             <Checkbox disabled={isShipping}>
-              <span className="font-medium text-slate-800">
+              <span className="font-medium text-slate-800 inline-flex items-center gap-1.5">
                 Áp dụng tự động trên website khi thỏa điều kiện (⚡ Ưu đãi tự động)
+                <HintIcon
+                  title={
+                    isShipping
+                      ? "Voucher hỗ trợ ship luôn tự áp dụng khi thỏa điều kiện."
+                      : "Tự động áp dụng khi giỏ hàng thỏa điều kiện. Nếu bỏ chọn, khách phải nhập mã coupon vào ô mã giảm giá."
+                  }
+                />
               </span>
             </Checkbox>
           </Form.Item>
-          <p className="text-[11px] text-slate-400 ml-6 mt-0.5">
-            {isShipping
-              ? "Voucher hỗ trợ ship luôn tự áp dụng, không phát mã."
-              : "Nếu bỏ chọn, voucher chỉ kích hoạt khi khách hàng nhập mã coupon vào ô mã giảm giá."}
-          </p>
         </div>
         <div>
           <Form.Item name="allowStack" valuePropName="checked" noStyle>

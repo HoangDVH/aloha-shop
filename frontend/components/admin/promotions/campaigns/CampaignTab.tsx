@@ -275,7 +275,7 @@ export function CampaignTab({
                     loading={busy}
                     className="!h-9 !rounded-lg !bg-[#2D5A27] hover:!bg-[#23481e] font-bold text-xs shadow-xs text-white"
                   >
-                    + Tạo chiến dịch
+                    Tạo chiến dịch
                   </Button>
                 </Dropdown>
               ) : null}

@@ -265,7 +265,7 @@ function AdminPromotionsContent() {
               setFormOpen(true);
             }}
           >
-            + Đợt phát hành voucher
+            Đợt phát hành voucher
           </Button>
         </div>
       </div>

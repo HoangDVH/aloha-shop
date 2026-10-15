@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { CalendarClock, Paperclip, RefreshCw, Search, UserRound } from "lucide-react";
+import { CalendarClock, Paperclip, RefreshCw, Search, UserRound, X } from "lucide-react";
 import { toast } from "@/components/admin/toast";
 import { websiteApi } from "@/components/admin/website/api";
-import { WbBadge, WbBtn, wbInput, wbSelect } from "@/components/admin/website/ui";
+import { WbBadge, WbBtn } from "@/components/admin/website/ui";
 import { AdminPageHeader } from "@/components/admin/shell/AdminUi";
 import {
   APPLICATION_SOURCE_LABELS,
@@ -18,6 +18,9 @@ import { ApplicationDrawer } from "./ApplicationDrawer";
 import type { AdminApplicationListItem, AdminJob } from "./recruitmentAdminTypes";
 
 const LIMIT = 30;
+
+const filterSelect =
+  "h-9 rounded-lg border border-gray-200 bg-white px-2.5 text-xs sm:text-sm text-gray-700 outline-none transition hover:border-gray-300 focus:border-[#0F9D58]/50 focus:ring-2 focus:ring-[#0F9D58]/15";
 
 export function ApplicationsAdmin() {
   const sp = useSearchParams();
@@ -73,6 +76,18 @@ export function ApplicationsAdmin() {
     setPage(1);
   };
 
+  const hasActiveFilters = Boolean(q || jobId || status || submissionType || source || hasCv);
+
+  const resetAllFilters = () => {
+    setQ("");
+    setJobId("");
+    setStatus("");
+    setSubmissionType("");
+    setSource("");
+    setHasCv("");
+    setPage(1);
+  };
+
   return (
     <div>
       <AdminPageHeader
@@ -84,41 +99,116 @@ export function ApplicationsAdmin() {
           </WbBtn>
         }
       />
-      <div className="mb-3 flex flex-wrap gap-2">
-        <div className="relative min-w-[220px] flex-1">
+
+      {/* Trạng thái quy trình ứng viên (chuẩn ATS / Tuyển dụng) */}
+      <div className="mb-2.5 flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
+        <button
+          type="button"
+          onClick={() => resetPage(setStatus)("")}
+          className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+            status === ""
+              ? "bg-[#0F9D58] text-white shadow-xs"
+              : "border border-gray-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+          }`}
+        >
+          Tất cả trạng thái
+        </button>
+        {Object.entries(APPLICATION_STATUS_LABELS).map(([v, l]) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => resetPage(setStatus)(v as ApplicationStatus)}
+            className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+              status === v
+                ? "bg-[#0F9D58] text-white shadow-xs"
+                : "border border-gray-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+            }`}
+          >
+            {l}
+          </button>
+        ))}
+      </div>
+
+      {/* Thanh công cụ tìm kiếm & bộ lọc ngang tinh gọn */}
+      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-white p-2 shadow-2xs">
+        <div className="relative min-w-[200px] flex-1">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-          <input className={`${wbInput} pl-8`} placeholder="Mã, email, SĐT, tên…" value={q} onChange={(e) => resetPage(setQ)(e.target.value)} />
+          <input
+            className="h-9 w-full rounded-lg border border-gray-200 bg-slate-50/50 pl-8 pr-7 text-xs sm:text-sm text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-[#0F9D58]/50 focus:bg-white focus:ring-2 focus:ring-[#0F9D58]/15"
+            placeholder="Tìm theo mã, email, SĐT, tên…"
+            value={q}
+            onChange={(e) => resetPage(setQ)(e.target.value)}
+          />
+          {q ? (
+            <button
+              type="button"
+              onClick={() => resetPage(setQ)("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <X size={14} />
+            </button>
+          ) : null}
         </div>
-        <select className={`${wbSelect} w-[220px]`} value={jobId} onChange={(e) => resetPage(setJobId)(e.target.value)}>
+
+        <select
+          className={`${filterSelect} w-full sm:w-[190px]`}
+          value={jobId}
+          onChange={(e) => resetPage(setJobId)(e.target.value)}
+        >
           <option value="">Tất cả vị trí</option>
           <option value="none">Liên hệ chung (không gắn tin)</option>
           {jobs.map((j) => (
-            <option key={j.id} value={j.id}>{j.title}</option>
+            <option key={j.id} value={j.id}>
+              {j.title}
+            </option>
           ))}
         </select>
-        <select className={`${wbSelect} w-[160px]`} value={status} onChange={(e) => resetPage(setStatus)(e.target.value as "" | ApplicationStatus)}>
-          <option value="">Tất cả trạng thái</option>
-          {Object.entries(APPLICATION_STATUS_LABELS).map(([v, l]) => (
-            <option key={v} value={v}>{l}</option>
-          ))}
-        </select>
-        <select className={`${wbSelect} w-[170px]`} value={submissionType} onChange={(e) => resetPage(setSubmissionType)(e.target.value)}>
+
+        <select
+          className={`${filterSelect} w-full sm:w-[145px]`}
+          value={submissionType}
+          onChange={(e) => resetPage(setSubmissionType)(e.target.value)}
+        >
           <option value="">Mọi loại hồ sơ</option>
           <option value="job_application">Ứng tuyển tin</option>
           <option value="general_interest">Liên hệ tuyển dụng</option>
         </select>
-        <select className={`${wbSelect} w-[180px]`} value={source} onChange={(e) => resetPage(setSource)(e.target.value)}>
+
+        <select
+          className={`${filterSelect} w-full sm:w-[150px]`}
+          value={source}
+          onChange={(e) => resetPage(setSource)(e.target.value)}
+        >
           <option value="">Mọi nguồn nộp</option>
           {Object.entries(APPLICATION_SOURCE_LABELS).map(([v, l]) => (
-            <option key={v} value={v}>{l}</option>
+            <option key={v} value={v}>
+              {l}
+            </option>
           ))}
           <option value="unknown">Không rõ nguồn</option>
         </select>
-        <select className={`${wbSelect} w-[130px]`} value={hasCv} onChange={(e) => resetPage(setHasCv)(e.target.value)}>
+
+        <select
+          className={`${filterSelect} w-full sm:w-[110px]`}
+          value={hasCv}
+          onChange={(e) => resetPage(setHasCv)(e.target.value)}
+        >
           <option value="">CV: tất cả</option>
           <option value="1">Có CV</option>
           <option value="0">Không CV</option>
         </select>
+
+        {hasActiveFilters ? (
+          <button
+            type="button"
+            onClick={resetAllFilters}
+            className="inline-flex h-9 items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs font-semibold text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+            title="Đặt lại tất cả bộ lọc"
+          >
+            <X size={13} />
+            <span>Xóa lọc</span>
+          </button>
+        ) : null}
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">

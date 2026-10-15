@@ -3,10 +3,7 @@
 import React, { useEffect, useState } from "react";
 import {
   Button,
-  Card,
-  Col,
   Empty,
-  Row,
   Segmented,
   Select,
   Spin,
@@ -18,7 +15,6 @@ import { ChevronRight } from "lucide-react";
 import { toast } from "@/components/admin/toast";
 import {
   useCtvBills,
-  useCtvStats,
   useExportBillExcel,
   useLockBill,
   useMarkBillPaid,
@@ -65,13 +61,11 @@ export function CommissionsHub({
   const [listSeedCtv, setListSeedCtv] = useState<string | undefined>();
   const [listSeedPeriod, setListSeedPeriod] = useState<string | undefined>();
   const billQ = useCtvBills(period);
-  const statsQ = useCtvStats();
   const lockM = useLockBill();
   const paidM = useMarkBillPaid();
   const exportM = useExportBillExcel();
   const bill = billQ.data?.bill;
   const preview = billQ.data?.preview;
-  const st = (statsQ.data || {}) as Record<string, unknown>;
   const billLocked = bill?.status === "locked" || bill?.status === "paid" || bill?.status === "cancelled";
   const tableLines = billLocked
     ? (Array.isArray(bill?.ctvLines) ? bill.ctvLines : [])
@@ -81,92 +75,8 @@ export function CommissionsHub({
   // Lấy gốc tháng YYYY-MM
   const monthBase = /^(\d{4}-\d{2})/.exec(period)?.[1] || period;
 
-  const summary =
-    seg === "ky"
-      ? [
-          {
-            title: "Tổng kỳ này",
-            value: formatVnd(Number(tableTotals?.commission) || 0),
-            sub: `${Number(tableTotals?.ctvCount) || 0} CTV · ${Number(tableTotals?.orderCount) || 0} đơn`,
-            tone: "#2D5A27",
-          },
-          {
-            title: "Trạng thái kỳ",
-            value: billStatusLabel(bill?.status),
-            sub: period,
-            tone: billLocked ? "#3b82f6" : "#c47a2c",
-          },
-          {
-            title: "Đủ điều kiện (shop)",
-            value: formatVnd(Number(st.eligibleAmount) || 0),
-            sub: `${st.eligibleCount || 0} dòng toàn shop`,
-            tone: "#2D5A27",
-          },
-          {
-            title: "Đã vào kỳ chưa chi",
-            value: formatVnd(Number(st.billedAmount) || 0),
-            sub: `${st.billedCount || 0} dòng billed`,
-            tone: "#7c3aed",
-          },
-        ]
-      : [
-          {
-            title: "Hoa hồng đang giữ",
-            value: formatVnd(Number(st.heldAmount) || 0),
-            sub: `${st.heldCount || 0} dòng`,
-            tone: "#c47a2c",
-          },
-          {
-            title: "Đủ điều kiện chi",
-            value: formatVnd(Number(st.eligibleAmount) || 0),
-            sub: `${st.eligibleCount || 0} dòng`,
-            tone: "#2D5A27",
-          },
-          {
-            title: `Kỳ ${period}`,
-            value: billStatusLabel(bill?.status),
-            sub: formatVnd(
-              Number(bill?.totals?.commission) ||
-                Number(preview?.totals?.commission) ||
-                0
-            ),
-            tone: "#3b82f6",
-          },
-          {
-            title: "Sẵn sàng chi",
-            value: formatVnd(Number(st.eligibleAmount) || 0),
-            sub: "Chỉ dòng đủ điều kiện (không gồm đang giữ)",
-            tone: "#7c3aed",
-          },
-        ];
-
   return (
     <div className="space-y-4">
-      <Row gutter={[12, 12]}>
-        {summary.map((s) => (
-          <Col xs={24} sm={12} lg={6} key={s.title}>
-            <Card
-              bordered={false}
-              className="shadow-sm"
-              styles={{
-                body: {
-                  borderLeft: `3px solid ${s.tone}`,
-                  padding: "14px 16px",
-                },
-              }}
-            >
-              <p className="m-0 text-[12px] font-semibold text-slate-500">
-                {s.title}
-              </p>
-              <p className="mt-1 mb-0 text-lg font-extrabold text-[#1a2e1a]">
-                {s.value}
-              </p>
-              <p className="mb-0 mt-1 text-[11px] text-slate-400">{s.sub}</p>
-            </Card>
-          </Col>
-        ))}
-      </Row>
-
       <div className="overflow-hidden rounded-xl border border-[#e4ebe3] bg-white shadow-sm">
         <div className="border-b border-[#eef2ee] bg-[#f4f6f4] px-3 py-2.5">
           <div className="mb-1 text-[11px] font-bold tracking-wide text-slate-400 uppercase">

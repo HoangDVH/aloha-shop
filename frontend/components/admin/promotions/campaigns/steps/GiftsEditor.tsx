@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { InputNumber } from "antd";
-import { Gift, Trash2 } from "lucide-react";
+import { InputNumber, Tooltip } from "antd";
+import { Gift, Info, Trash2 } from "lucide-react";
 import {
   MAX_GIFTS_PER_PRODUCT,
   rowGifts,
@@ -103,10 +103,10 @@ export function GiftsEditor({ row, factsByMa, locked, onChange, onNeedFacts }: P
               ({gifts.length}/{MAX_GIFTS_PER_PRODUCT})
             </span>
           ) : null}
+          <Tooltip title="Mỗi quà tính suất riêng; quà nào hết thì các quà còn lại vẫn được tặng.">
+            <Info size={13} className="text-slate-400 hover:text-slate-600 cursor-help" />
+          </Tooltip>
         </span>
-        {gifts.length > 1 ? (
-          <span className="text-[11px] text-slate-500">Mỗi quà tính suất riêng; quà nào hết thì các quà còn lại vẫn được tặng.</span>
-        ) : null}
       </div>
       {gifts.length ? (
         <ul className="space-y-1.5">
