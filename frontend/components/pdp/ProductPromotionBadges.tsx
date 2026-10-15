@@ -102,7 +102,7 @@ export function ProductPromotionBadges({
                 type="button"
                 onClick={() => promotion.claimRequired && !claims.claimedIds.has(promotion.id) ? claims.claim(promotion.id) : setSelectedPromo(promotion)}
                 disabled={Boolean(claims.pendingId)}
-                title={`${voucherCustomerTitle(promotion.title)}${promotion.minOrderThreshold ? ` · Đơn từ ${formatVnd(promotion.minOrderThreshold)}` : ""} · ${promotion.claimRequired ? "Bấm để lưu voucher" : "Bấm xem điều kiện"}`}
+                title={`${voucherCustomerTitle(promotion.title)}${isShipping && promotion.minOrderThreshold ? ` · Đơn từ ${formatVnd(promotion.minOrderThreshold)}` : ""} · ${promotion.claimRequired ? "Bấm để lưu voucher" : "Bấm xem điều kiện"}`}
                 className={`flex min-h-14 w-[250px] sm:w-[270px] shrink-0 items-stretch overflow-hidden rounded-lg border text-left transition disabled:opacity-50 ${isShipping ? "border-[#bce9df] bg-[#f0fbf8] text-[#087a69] hover:bg-[#e4f7f1]" : "border-[#f4cfc2] bg-[#fff5ef] text-[#b5482d] hover:bg-[#ffede2]"}`}
               >
                 <span className="flex w-12 shrink-0 flex-col items-center justify-center gap-1 border-r border-dashed border-current/20 px-1 py-1 text-center">
@@ -111,7 +111,7 @@ export function ProductPromotionBadges({
                 </span>
                 <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-2 py-2">
                   <span className="text-xs font-bold">{label}</span>
-                  <span className="text-[10px] text-slate-500">{promotion.minOrderThreshold ? `Đơn từ ${formatVnd(promotion.minOrderThreshold)}` : "Không có mức tối thiểu"}</span>
+                  {isShipping && <span className="text-[10px] text-slate-500">{promotion.minOrderThreshold ? `Đơn từ ${formatVnd(promotion.minOrderThreshold)}` : "Không có mức tối thiểu"}</span>}
                 </span>
                 <span className={`my-auto mr-2 shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${promotion.claimRequired && !claims.claimedIds.has(promotion.id) ? isShipping ? "bg-[#087a69] text-white" : "bg-[#bf4e32] text-white" : isShipping ? "bg-[#d9f2e9] text-[#087a69]" : "bg-[#ffe6d8] text-[#a63e20]"}`}>{promotion.claimRequired ? claims.pendingId === promotion.id ? "Đang lưu…" : claims.claimedIds.has(promotion.id) ? "Đã lưu" : "Nhận" : "Chi tiết"}</span>
               </button>
@@ -179,7 +179,7 @@ export function ProductPromotionBadges({
                   <span className="font-semibold text-rose-600">
                     {selectedPromo.discountType === "percentage"
                       ? `Giảm ${pctText(selectedPromo)}${
-                          selectedPromo.maxDiscountVnd
+                          selectedPromo.benefitType === "shipping" && selectedPromo.maxDiscountVnd
                             ? ` (Tối đa ${formatVnd(selectedPromo.maxDiscountVnd)})`
                             : ""
                         }`
@@ -187,7 +187,7 @@ export function ProductPromotionBadges({
                   </span>
                 </div>
 
-                {selectedPromo.minOrderThreshold ? (
+                {selectedPromo.benefitType === "shipping" && selectedPromo.minOrderThreshold ? (
                   <div className="flex justify-between items-center">
                     <span className="text-slate-500">Đơn tối thiểu:</span>
                     <span className="font-medium text-slate-800">

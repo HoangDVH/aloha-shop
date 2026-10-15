@@ -70,7 +70,7 @@ export function DealsOverview({
   const focusIds = parseFocusIds(searchParams.get("focus"));
 
   return (
-    <div className="space-y-8 pb-20 sm:space-y-12 lg:pb-0">
+    <div className="space-y-4 pb-20 sm:space-y-5 lg:pb-0">
       <DealsBanner
         campaign={campaign}
         below={<QuickTiles campaign={campaign} vouchers={vouchers} offsetMs={offsetMs} className="pt-2 sm:pt-4 sm:px-0" />}

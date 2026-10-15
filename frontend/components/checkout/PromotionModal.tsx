@@ -81,12 +81,14 @@ type Props = {
 };
 
 function stubMaxLabel(c: EvaluatedCandidateUI): string | undefined {
+  if (c.benefitType !== "shipping") return undefined;
   return c.maxDiscountVnd && c.discountType === "percentage"
     ? `TỐI ĐA ${Math.round(c.maxDiscountVnd / 1000)}K`
     : undefined;
 }
 
 function minOrderText(c: EvaluatedCandidateUI): string {
+  if (c.benefitType !== "shipping") return "";
   return c.minOrderThreshold ? `Đơn từ ${formatVnd(c.minOrderThreshold)}` : "Mọi đơn hàng";
 }
 

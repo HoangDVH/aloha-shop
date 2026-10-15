@@ -59,7 +59,7 @@ export function PromotionDetailModal({ cand, onClose }: Props) {
               {cand.benefitType === "shipping"
                 ? `Giảm ${formatVnd(cand.discountValue)} phí ship`
                 : cand.discountType === "percentage"
-                ? `${pctText(cand)} ${cand.maxDiscountVnd ? `(tối đa ${formatVnd(cand.maxDiscountVnd)})` : ""}`
+                ? pctText(cand)
                 : formatVnd(cand.discountValue)}
             </span>
           </div>
@@ -73,14 +73,14 @@ export function PromotionDetailModal({ cand, onClose }: Props) {
             </div>
           ) : null}
 
-          <div className="flex justify-between">
+          {cand.benefitType === "shipping" && <div className="flex justify-between">
             <span className="text-slate-400">Đơn tối thiểu:</span>
             <span className="font-semibold text-slate-800">
               {cand.minOrderThreshold
                 ? `${cand.thresholdOperator === ">=" ? "Từ" : "Trên"} ${formatVnd(cand.minOrderThreshold)}`
                 : "Không giới hạn"}
             </span>
-          </div>
+          </div>}
 
           <div className="flex justify-between">
             <span className="text-slate-400">Phạm vi áp dụng:</span>

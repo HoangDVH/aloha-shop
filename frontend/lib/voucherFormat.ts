@@ -76,17 +76,9 @@ export function formatVoucherBadge(p: VoucherLike): { label: string; type: "good
   }
   if (p.discountType === "fixed") {
     let text = `Giảm ${formatCompactVnd(p.discountValue)}`;
-    if (p.minOrderThreshold && p.minOrderThreshold > 0) {
-      text += ` đơn ${formatCompactVnd(p.minOrderThreshold)}`;
-    }
     return { label: text, type: "goods" };
   }
   let text = `Giảm ${pctText(p)}`;
-  if (p.maxDiscountVnd && p.maxDiscountVnd > 0) {
-    text += ` tối đa ${formatCompactVnd(p.maxDiscountVnd)}`;
-  } else if (p.minOrderThreshold && p.minOrderThreshold > 0) {
-    text += ` đơn ${formatCompactVnd(p.minOrderThreshold)}`;
-  }
   return { label: text, type: "goods" };
 }
 
@@ -169,6 +161,7 @@ export function cleanVoucherTitle(v: {
 
 /** Dòng điều kiện dưới giá trị vé: "Đơn từ 350K · Tối đa 100K". */
 export function voucherConditionText(p: VoucherLike): string {
+  if (p.benefitType !== "shipping") return "";
   const parts: string[] = [];
   parts.push(
     p.minOrderThreshold && p.minOrderThreshold > 0

@@ -18,6 +18,7 @@ export function tikTokDiscountText(v: CampaignVoucherUI): string {
 }
 
 export function tikTokMinOrderText(v: CampaignVoucherUI): string {
+  if (v.benefitType !== "shipping") return "";
   if (v.minOrderThreshold && v.minOrderThreshold > 0) {
     return `Đơn từ ${formatVnd(v.minOrderThreshold)}`;
   }

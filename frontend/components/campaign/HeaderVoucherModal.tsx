@@ -34,6 +34,10 @@ function vnDate(iso?: string) {
 }
 
 function getVoucherDisplay(v: CampaignVoucherUI) {
+  if (v.benefitType !== "shipping") return {
+    primary: voucherCustomerTitle(v.title) || `Giảm ${v.discountType === "percentage" ? pctText(v) : formatCompactVnd(v.discountValue).toUpperCase()}`,
+    condition: "",
+  };
   let primary = "";
   if (v.benefitType === "shipping") {
     primary = shipSupportText(v);

@@ -56,14 +56,16 @@ function tikTokDiscountText(v: { benefitType?: "goods" | "shipping"; discountTyp
   return `Giảm ${formatVnd(v.discountValue)}`;
 }
 
-function tikTokMinOrderText(v: { minOrderThreshold?: number }): string {
+function tikTokMinOrderText(v: { minOrderThreshold?: number; benefitType?: string }): string {
+  if (v.benefitType !== "shipping") return "";
   if (v.minOrderThreshold && v.minOrderThreshold > 0) {
     return `Đơn từ ${formatVnd(v.minOrderThreshold)}`;
   }
   return "Mọi đơn hàng";
 }
 
-function tikTokCapText(v: { discountType: string; maxDiscountVnd?: number }): string {
+function tikTokCapText(v: { discountType: string; maxDiscountVnd?: number; benefitType?: string }): string {
+  if (v.benefitType !== "shipping") return "";
   if (v.discountType === "percentage" && v.maxDiscountVnd && v.maxDiscountVnd > 0) {
     return `Tối đa ${formatVnd(v.maxDiscountVnd)}`;
   }
