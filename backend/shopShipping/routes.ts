@@ -1,4 +1,5 @@
 import { applyCatalogPrices } from "../shopOrders/orderRouteShared.js";
+import { isWholesaleAccount } from "../shopAuth/roles.js";
 import { isWholesaleTinh, isWholesaleHcm } from "../shopPromotions/tinhShipping.js";
 import { SHOP_ACCOUNTS, shopAccountIdQuery } from "../shopAuth/models.js";
 import type { Express, Request, Response } from "express";
@@ -195,7 +196,7 @@ export function registerShopShippingRoutes(
           phone: buyerPhone,
           email: buyerEmail,
           userId,
-          isWholesale: Boolean(req.shopAuth?.roles?.includes("si") || req.shopAuth?.roles?.includes("wholesale")),
+          isWholesale: isWholesaleAccount(buyer),
           isWholesaleTinh: isWholesaleTinh(buyer),
           isWholesaleHcm: isWholesaleHcm(buyer),
         };

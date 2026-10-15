@@ -1,5 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import type { Db } from "mongodb";
+import { storedShopRoles, registrationShopRoles } from "./roles.js";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import {
@@ -72,15 +73,8 @@ async function rateLimitIp(ip: string): Promise<boolean> {
   return rateLimitAllow(`login:${ip}`, IP_MAX, IP_WINDOW_MS);
 }
 
-function parseRoles(raw: unknown): ShopRole[] {
-  const arr = Array.isArray(raw) ? raw.map(String) : [];
-  const roles = arr.filter((r): r is ShopRole => r === "customer" || r === "ctv");
-  if (!roles.length) return ["customer"];
-  return [...new Set(roles)];
-}
-
 function accessPayloadOf(user: Record<string, unknown>): ShopAccessPayload {
-  return { sub: String(user._id), email: String(user.email || ""), roles: parseRoles(user.roles) };
+  return { sub: String(user._id), email: String(user.email || ""), roles: storedShopRoles(user.roles) };
 }
 
 /** Đăng nhập mới mở chuỗi phiên mới; /refresh truyền familyId của token cũ để giữ chuỗi. */
@@ -177,7 +171,7 @@ export function requireShopAuth(getShopDb: GetShopDb) {
         ...payload,
         userId: payload.sub,
         active: true,
-        roles: parseRoles(user.roles),
+        roles: storedShopRoles(user.roles),
       };
       next();
     } catch {
@@ -245,7 +239,7 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
       const password = String(req.body?.password || "");
       const fullName = String(req.body?.fullName || "").trim();
       const phoneRaw = String(req.body?.phone || "").trim();
-      const roles = parseRoles(req.body?.roles);
+      const roles = registrationShopRoles(req.body?.roles);
       const asCtv = roles.includes("ctv");
 
       if (!email || !email.includes("@")) {
@@ -489,7 +483,7 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
       }
 
       if (becomeCtv) {
-        const roles = parseRoles(user.roles);
+        const roles = storedShopRoles(user.roles);
         const status = String(user.ctvStatus || "");
         if (status === "active" && roles.includes("ctv")) {
           return res.status(400).json({ error: "Tài khoản đã là CTV" });

@@ -1,4 +1,5 @@
 import type { StepFail } from "./stepResult.js";
+import { isWholesaleAccount } from "../../shopAuth/roles.js";
 import { isWholesaleTinh, isWholesaleHcm } from "../../shopPromotions/tinhShipping.js";
 import type { Db } from "mongodb";
 import { qualifiesFreeShip } from "../../shopShipping/freeShip.js";
@@ -92,6 +93,7 @@ export async function evaluateOrderPromotions(
   const buyerPromos = await loadBuyerPromotions(shopDb, {
     now,
     accountId: input.accountId,
+    account: input.account,
     phone: input.customerPhone,
     email: input.buyerEmail,
     selectedCode: requestedCode,
@@ -103,9 +105,9 @@ export async function evaluateOrderPromotions(
     email: input.buyerEmail,
     userId: input.accountId,
     ...buyerPromos.buyerContext,
-    isWholesale: Boolean(input.roles?.includes("si") || input.roles?.includes("wholesale")),
+    isWholesale: isWholesaleAccount(input.account),
     isWholesaleTinh: isWholesaleTinh(input.account),
-          isWholesaleHcm: isWholesaleHcm(input.account),
+    isWholesaleHcm: isWholesaleHcm(input.account),
   };
   const customerKey = customerKeyFor(input.accountId);
   const evalGoods = (promotions: typeof activePromos) =>
