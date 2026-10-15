@@ -2,7 +2,7 @@
 
 import { X, AlertCircle } from "lucide-react";
 import { formatVnd } from "@/lib/api";
-import { pctText } from "@/lib/voucherFormat";
+import { pctText, voucherCustomerTitle } from "@/lib/voucherFormat";
 import dayjs from "dayjs";
 import type { EvaluatedCandidateUI } from "./PromotionModal";
 
@@ -28,7 +28,7 @@ export function PromotionDetailModal({ cand, onClose }: Props) {
               Chi tiết điều kiện ưu đãi
             </span>
             <h3 className="text-sm font-bold text-slate-800 mt-1">
-              {cand.title}
+              {voucherCustomerTitle(cand.title)}
             </h3>
           </div>
           <button

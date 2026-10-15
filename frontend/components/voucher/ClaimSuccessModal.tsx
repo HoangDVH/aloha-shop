@@ -1,4 +1,5 @@
 "use client";
+import { voucherCustomerTitle } from "@/lib/voucherFormat";
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -72,7 +73,7 @@ export function ClaimSuccessModal({
 
   const { icon, tone, stubTopLabel, stubValue } = voucherIconAndTone(voucher);
   const condition = voucherConditionText(voucher);
-  let headline = voucher.title || "Voucher ưu đãi";
+  let headline = voucherCustomerTitle(voucher.title) || "Voucher ưu đãi";
   if (voucher.mystery?.drawnPercent) {
     headline = headline
       .replace(/Giảm\s*\d+[–-]\d+%\s*/gi, "")

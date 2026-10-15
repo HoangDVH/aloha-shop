@@ -1,4 +1,5 @@
 "use client";
+import { voucherCustomerTitle } from "@/lib/voucherFormat";
 
 import type { ReactNode } from "react";
 
@@ -157,9 +158,9 @@ export function VoucherTicket({
               className={`font-bold leading-snug line-clamp-1 break-words ${lg ? "text-[12px] sm:text-[13px]" : "text-[11.5px] sm:text-[12px]"} ${
                 disabled ? "text-slate-500" : "text-slate-900"
               }`}
-              title={title}
+              title={voucherCustomerTitle(title)}
             >
-              {title}
+              {voucherCustomerTitle(title)}
             </h4>
             {badge}
           </div>

@@ -1,4 +1,5 @@
 "use client";
+import { voucherCustomerTitle } from "@/lib/voucherFormat";
 import { formatVnd } from "@/lib/api";
 import { useShopAuth } from "@/components/ShopAuthProvider";
 import { usePromotionQuote } from "@/lib/usePromotionQuote";
@@ -30,7 +31,7 @@ export function ProductPricingSummary({ pricing, qty = 1, unit = "sản phẩm" 
       {volume > 0 && row("Giảm theo số lượng", volume, true)}
       {anchor > 0 && row("Giảm giá sản phẩm", anchor, true)}
       {flash > 0 && row("Giảm Flash Sale", flash, true)}
-      {voucher > 0 && row(quote.applied?.title || "Voucher tiền hàng", voucher, true)}
+      {voucher > 0 && row(voucherCustomerTitle(quote.applied?.title) || "Voucher tiền hàng", voucher, true)}
       <div className="flex items-start justify-between gap-3 border-t border-slate-200 pt-3">
         <div><p className="font-bold text-slate-800">TẠM TÍNH</p><p className="mt-1 text-[11px] text-slate-500">Chưa bao gồm phí vận chuyển</p></div>
         <div className="text-right"><p className="text-xl font-extrabold tabular-nums text-[#e65343] sm:text-2xl">{formatVnd(quote.finalTotal)}</p>{savings > 0 && <p className="mt-1 text-[11px] text-green-700">Tiết kiệm {formatVnd(savings)}</p>}</div>
