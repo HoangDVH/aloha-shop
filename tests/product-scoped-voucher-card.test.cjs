@@ -11,8 +11,21 @@ test('scoped card separates saving from browsing correct products',()=>{
   assert.match(JSON.stringify(tree),/Chỉ áp dụng 3 sản phẩm/);
   const all=nodes(tree),link=all.find(n=>n.type==='a'),button=all.find(n=>n.type==='button');
   assert.equal(link.props.href,'/tim?voucher=OCT20');
-  assert.equal(link.props.children,'Xem sản phẩm áp dụng');
+  assert.equal(link.props.children,'Sản phẩm áp dụng ›');
   assert.equal(button.props.children,'Lưu mã');button.props.onClick();assert.equal(claims,1);
+});
+
+test('compact cards never fill the list height and keep scope details on the product link',()=>{
+  for(const popup of [true,false]){
+    const tree=ProductScopedVoucherCard({voucher,state:'auto',onClaim(){},popup});
+    assert(!tree.props.className.split(/\s+/).includes('h-full'));
+    assert(tree.props.className.includes('shrink-0'));
+    const all=nodes(tree);
+    const link=all.find(n=>n.type==='a');
+    assert.match(link.props['aria-label'],/Chỉ áp dụng 3 sản phẩm/);
+    assert(!all.some(n=>n.props?.children==='Áp dụng khi đủ điều kiện'));
+    assert(!all.some(n=>n.props?.children==='Chỉ áp dụng 3 sản phẩm'));
+  }
 });
 test('saved and blocked states never advertise another save or universal application',()=>{
   for(const state of ['claimed','locked','soldOut','upcoming','auto']){
