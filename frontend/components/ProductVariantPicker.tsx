@@ -181,6 +181,7 @@ export function useProductVariants(product: ShopProduct): {
   pick: (axisName: string, value: string) => void;
   axes: ShopVariantAxis[];
   gallery: string[];
+  models: ShopVariantModel[];
 } {
   const [loading, setLoading] = useState(true);
   const [axes, setAxes] = useState<ShopVariantAxis[]>([]);
@@ -318,6 +319,7 @@ export function useProductVariants(product: ShopProduct): {
     pick,
     axes: displayAxes,
     gallery,
+    models,
   };
 }
 
@@ -336,37 +338,23 @@ export function ProductVariantPicker({
 }) {
   if (!axes.length) return null;
   if (sheet) return (
-    <div className="space-y-4">
+    <div className="space-y-4 w-full min-w-0">
       {axes.map((ax, axIdx) => {
         const hasSpecificImages = ax.kind === "attr" && ax.values.some((v) => Boolean(v.image));
         const withImages = hasSpecificImages || (axIdx === 0 && ax.kind === "attr" && Boolean(fallbackImage));
-        // Nếu biến thể nhiều hơn 1 dòng (lớn hơn 3 với thẻ ảnh, hoặc lớn hơn 4 với text): lướt ngang trên cùng hàng
-        const isMultiRow = withImages ? ax.values.length > 3 : ax.values.length > 4;
 
         return (
-          <fieldset key={ax.name} className="border-0 p-0 m-0">
+          <div key={ax.name} className="w-full min-w-0">
             <div className="mb-2 flex items-center justify-between">
-              <legend className="text-sm sm:text-base font-bold text-stone-900">
+              <span className="text-sm sm:text-base font-bold text-stone-900">
                 {ax.name} ({ax.values.length})
-              </legend>
-              {isMultiRow && (
-                <span className="text-[11px] font-medium text-stone-400">
-                  Vuốt ngang →
-                </span>
-              )}
+              </span>
             </div>
             <div
               className={
-                isMultiRow
-                  ? "flex w-full overflow-x-auto gap-2.5 pb-2 pt-0.5 scrollbar-none snap-x snap-mandatory overscroll-x-contain [&::-webkit-scrollbar]:hidden"
-                  : withImages
-                    ? "flex flex-wrap gap-2.5"
-                    : "flex flex-wrap gap-2"
-              }
-              style={
-                isMultiRow
-                  ? { WebkitOverflowScrolling: "touch", scrollbarWidth: "none", msOverflowStyle: "none" }
-                  : undefined
+                withImages
+                  ? "grid grid-cols-3 gap-2 sm:gap-2.5 w-full"
+                  : "flex flex-wrap gap-2 w-full"
               }
             >
               {ax.values.map((v) => {
@@ -383,10 +371,8 @@ export function ProductVariantPicker({
                     onClick={() => onPick(ax.name, v.value)}
                     className={`group relative overflow-hidden transition-all text-left ${
                       withImages
-                        ? "w-[104px] min-w-[104px] max-w-[104px] shrink-0 snap-start flex flex-col rounded-xl border-2"
-                        : isMultiRow
-                          ? "shrink-0 snap-start inline-flex items-center justify-center min-h-10 rounded-lg border-2 px-3.5 py-2 text-xs font-semibold"
-                          : "inline-flex items-center justify-center min-h-10 rounded-lg border-2 px-3.5 py-2 text-xs font-semibold"
+                        ? "w-full flex flex-col rounded-xl border-2"
+                        : "inline-flex items-center justify-center min-h-10 rounded-lg border-2 px-3.5 py-2 text-xs font-semibold"
                     } ${
                       active
                         ? "border-[#ff2442] bg-[#fff5f6] text-[#ff2442] shadow-xs"
@@ -440,7 +426,7 @@ export function ProductVariantPicker({
                 );
               })}
             </div>
-          </fieldset>
+          </div>
         );
       })}
     </div>

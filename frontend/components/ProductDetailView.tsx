@@ -27,6 +27,10 @@ import { useCampaignView } from "@/lib/campaign/useCampaignView";
 import { mobilePurchaseAction } from "@/components/pdp/purchaseAction";
 import { ProductQuantityPicker } from "@/components/pdp/ProductQuantityPicker";
 import { ProductPurchaseSheet } from "@/components/pdp/ProductPurchaseSheet";
+import {
+  ProductMobileVariantSelector,
+  ProductMobileVariantSkeleton,
+} from "@/components/pdp/ProductMobileVariantSelector";
 import { usePdpVoucherBadges } from "@/lib/usePdpVoucherBadges";
 import { ProductShareButton } from "@/components/pdp/ProductShareSheet";
 import { ProductAttachedItems, selectBuyNowLines } from "@/components/pdp/ProductAttachedItems";
@@ -55,6 +59,7 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
     pick: pickVariant,
     axes: variantAxes,
     gallery: variantGallery,
+    models: variantModels,
   } = useProductVariants(product);
   const selectedModel = selection.model;
   const activeProduct = useMemo((): ShopProduct => {
@@ -98,6 +103,47 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
     if (activeProduct.videoUrl) return [activeProduct.videoUrl];
     return [] as string[];
   }, [activeProduct.videos, activeProduct.videoUrl]);
+  const variantThumbnails = useMemo(() => {
+    const list: string[] = [];
+    const seen = new Set<string>();
+
+    const pushImg = (url?: string) => {
+      const s = String(url || "").trim();
+      if (!s || seen.has(s)) return;
+      seen.add(s);
+      list.push(s);
+    };
+
+    // 1. Ảnh từ các giá trị phân loại (axis values)
+    for (const ax of variantAxes) {
+      for (const v of ax.values) {
+        pushImg(v.image);
+      }
+    }
+
+    // 2. Ảnh từ models nếu values chưa có đủ
+    for (const m of variantModels || []) {
+      pushImg(m.anh);
+      for (const img of m.images || []) pushImg(img);
+    }
+
+    // 3. Nếu các biến thể không có ảnh riêng, fallback sang ảnh sản phẩm
+    if (list.length === 0) {
+      pushImg(product.anh);
+      for (const img of gallery) pushImg(img);
+    }
+
+    return list;
+  }, [variantAxes, variantModels, product.anh, gallery]);
+
+  const variantSelectedLabel = useMemo(() => {
+    const parts = Object.values(variantSelected).filter(Boolean);
+    if (parts.length > 0) return parts.join(", ");
+    if (selectedModel?.ten && selectedModel.ten !== product.ten) {
+      return selectedModel.ten;
+    }
+    return "";
+  }, [variantSelected, selectedModel, product.ten]);
   const [qty, setQty] = useState(1);
   const [purchaseSheetOpen, setPurchaseSheetOpen] = useState(false);
   const cartQty = useCart(s => s.lines.find(l => l.ma === activeProduct.ma)?.qty || 0);
@@ -605,6 +651,23 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
                 ) : null}
                 </div>
                 ) : null}
+
+                {/* Mobile TikTok Shop Variant Selector Bar */}
+                <div className="lg:hidden">
+                  {variantsLoading ? (
+                    <ProductMobileVariantSkeleton />
+                  ) : variantAxes.length > 0 ? (
+                    <ProductMobileVariantSelector
+                      axes={variantAxes}
+                      selectedLabel={variantSelectedLabel}
+                      thumbnails={variantThumbnails}
+                      needPick={needPick}
+                      qty={qty}
+                      unit={activeProduct.dvt}
+                      onClick={() => setPurchaseSheetOpen(true)}
+                    />
+                  ) : null}
+                </div>
 
                 {variantAxes.length > 0 ? (
                   <div className="hidden lg:block">
