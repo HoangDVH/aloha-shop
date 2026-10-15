@@ -1,4 +1,5 @@
 "use client";
+import { voucherCustomerTitle } from "@/lib/voucherFormat";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -126,7 +127,7 @@ function WalletRow({ item }: { item: WalletItemUI }) {
         <div className="flex items-center justify-between gap-1.5 min-w-0">
           <h4
             className="text-[12px] sm:text-[13px] font-bold text-slate-900 leading-tight truncate flex-1"
-            title={v.title || title}
+            title={voucherCustomerTitle(v.title) || title}
           >
             {title}
           </h4>

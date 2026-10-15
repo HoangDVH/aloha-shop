@@ -8,11 +8,11 @@ function nodes(n){return !n||typeof n!=='object'?[]:[n,...[n.props?.children].fl
 test('scoped card separates saving from browsing correct products',()=>{
   let claims=0;
   const tree=ProductScopedVoucherCard({voucher,state:'claimable',onClaim:()=>claims++});
-  assert.match(JSON.stringify(tree),/Chỉ áp dụng 3 sản phẩm/);
+  assert(!JSON.stringify(tree).includes('3 sản phẩm'));
   const all=nodes(tree),link=all.find(n=>n.type==='a'),button=all.find(n=>n.type==='button');
   assert.equal(link.props.href,'/tim?voucher=OCT20');
   assert.equal(link.props.children,'Sản phẩm áp dụng ›');
-  assert.equal(button.props.children,'Lưu mã');button.props.onClick();assert.equal(claims,1);
+  assert.equal(button.props.children,'Nhận');button.props.onClick();assert.equal(claims,1);
 });
 
 test('compact cards never fill the list height and keep scope details on the product link',()=>{
@@ -22,7 +22,7 @@ test('compact cards never fill the list height and keep scope details on the pro
     assert(tree.props.className.includes('shrink-0'));
     const all=nodes(tree);
     const link=all.find(n=>n.type==='a');
-    assert.match(link.props['aria-label'],/Chỉ áp dụng 3 sản phẩm/);
+    assert.match(link.props['aria-label'],/sản phẩm áp dụng/i);
     assert(!all.some(n=>n.props?.children==='Áp dụng khi đủ điều kiện'));
     assert(!all.some(n=>n.props?.children==='Chỉ áp dụng 3 sản phẩm'));
   }
@@ -35,9 +35,19 @@ test('saved and blocked states never advertise another save or universal applica
     assert(!JSON.stringify(tree).includes('Tự động áp dụng'));
   }
 });
-test('scope counts distinct eligible codes and campaign ordering promotes the product voucher',()=>{
-  assert.equal(format.voucherScopeHint({scope:'product',productMas:[' a ','A','B'],excludedProductMas:['b']}),'Chỉ áp dụng 1 sản phẩm');
+test('scope is explicit without product counts and campaign ordering promotes the product voucher',()=>{
+  assert.equal(format.voucherScopeHint({scope:'product',productMas:[' a ','A','B'],excludedProductMas:['b']}),'Chỉ áp dụng sản phẩm được chọn');
   const list=[{id:'NEW'},{id:'OCT20',scope:'product'},{id:'SHIP'}];
   assert.equal(format.productVouchersFirst(list)[0].id,'OCT20');
   assert.equal(list[0].id,'NEW');
+});
+
+test('old voucher titles omit the product-count annotation without changing eligibility data',()=>{
+  const original={...voucher,title:'Giảm 10% đặt trước 20/10 (3 sản phẩm)'};
+  for(const popup of [true,false]){
+    const tree=ProductScopedVoucherCard({voucher:original,state:'auto',onClaim(){},popup});
+    assert(!JSON.stringify(tree).includes('3 sản phẩm'));
+  }
+  assert.equal(format.voucherCustomerTitle(original.title),'Giảm 10% đặt trước 20/10');
+  assert.equal(original.productMas.length,3);
 });

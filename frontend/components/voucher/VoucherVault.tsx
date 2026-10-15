@@ -1,4 +1,5 @@
 "use client";
+import { voucherCustomerTitle } from "@/lib/voucherFormat";
 import { voucherMatchesBuyer } from "@/lib/voucherAudience";
 
 import Link from "next/link";
@@ -315,7 +316,7 @@ export function VoucherVault({
                   <div className="flex items-center justify-between gap-1">
                     <h4
                       className="text-[12px] sm:text-[13px] font-bold text-slate-900 leading-tight truncate"
-                      title={v.title || title}
+                      title={voucherCustomerTitle(v.title) || title}
                     >
                       {title}
                     </h4>

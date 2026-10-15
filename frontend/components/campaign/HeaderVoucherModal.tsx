@@ -1,4 +1,5 @@
 "use client";
+import { voucherCustomerTitle } from "@/lib/voucherFormat";
 import { voucherMatchesBuyer } from "@/lib/voucherAudience";
 
 import { useEffect, useState, useMemo } from "react";
@@ -44,7 +45,7 @@ function getVoucherDisplay(v: CampaignVoucherUI) {
       primary += ` (Tối đa ${formatCompactVnd(v.maxDiscountVnd).toUpperCase()})`;
     }
   } else {
-    primary = v.title || "Voucher ưu đãi";
+    primary = voucherCustomerTitle(v.title) || "Voucher ưu đãi";
   }
 
   let condition = "";
@@ -54,7 +55,7 @@ function getVoucherDisplay(v: CampaignVoucherUI) {
     condition = `Đơn tối thiểu ${formatCompactVnd(v.minOrderThreshold).toUpperCase()}`;
   }
 
-  const title = v.title?.trim();
+  const title = voucherCustomerTitle(v.title);
   if (title && !v.mystery?.drawnPercent) {
     const cap =
       v.benefitType !== "shipping" && v.discountType === "percentage" && v.maxDiscountVnd && v.maxDiscountVnd > 0

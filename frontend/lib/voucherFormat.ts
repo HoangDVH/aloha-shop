@@ -108,13 +108,17 @@ export function voucherHeadline(p: VoucherLike): string {
  * - "Giảm 10% Siêu Sale 10/10" -> "Siêu Sale 10/10"
  * - "Hỗ trợ phí ship 30k" -> "Hỗ trợ phí vận chuyển"
  */
+export function voucherCustomerTitle(title?: string): string {
+  return (title || "").replace(/\s*\(\s*3\s+sản\s+phẩm\s*\)/giu, "").trim();
+}
+
 export function cleanVoucherTitle(v: {
   title?: string;
   benefitType?: "goods" | "shipping";
   targetCustomer?: string;
   mystery?: MysteryInfo;
 }): string {
-  const raw = (v.title || "").trim();
+  const raw = voucherCustomerTitle(v.title);
 
   // 1. Voucher vận chuyển
   if (v.benefitType === "shipping") {
@@ -196,9 +200,7 @@ export function voucherUseHref(voucherId: string): string {
 export function voucherScopeHint(v: { scope?: string; productMas?: string[]; excludedProductMas?: string[] }): string {
   if (v.scope === "category") return "Chỉ áp dụng sản phẩm thuộc nhóm ưu đãi";
   if (v.scope !== "product") return "";
-  const excluded = new Set((v.excludedProductMas || []).map(ma => ma.trim().toUpperCase()));
-  const count = new Set((v.productMas || []).map(ma => ma.trim().toUpperCase()).filter(ma => ma && !excluded.has(ma))).size;
-  return count ? `Chỉ áp dụng ${count} sản phẩm` : "Chỉ áp dụng sản phẩm được chọn";
+  return "Chỉ áp dụng sản phẩm được chọn";
 }
 
 export function productVouchersFirst<T extends { scope?: string }>(list: T[]): T[] {

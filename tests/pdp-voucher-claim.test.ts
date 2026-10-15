@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
 import { pdpApplicableVouchers, pdpDefaultVouchers, pdpVoucherSheetEntries } from "../frontend/lib/pdpVouchers.js";
+import { voucherCustomerTitle } from "../frontend/lib/voucherFormat.js";
 test("PDP voucher badge claims the exact voucher; automatic promotions open details instead", () => {
   for (const [claimRequired, saved] of [[true, false], [true, true], [false, false]]) {
     const voucher = { id: "V5", targetCustomer: "new_web", scope: "all", discountType: "percentage", discountValue: 5, claimRequired, audienceEligible: true };
@@ -21,7 +22,7 @@ test("PDP voucher badge claims the exact voucher; automatic promotions open deta
       if (name === "lucide-react") return {};
       if (name === "@/lib/promotions") return {};
       if (name === "@/lib/api") return { formatVnd: String };
-      if (name === "@/lib/voucherFormat") return { pctText: () => "5%", formatCompactVnd: String, formatVoucherBadge: () => ({ label: "5%", type: "goods" }) };
+      if (name === "@/lib/voucherFormat") return { voucherCustomerTitle, pctText: () => "5%", formatCompactVnd: String, formatVoucherBadge: () => ({ label: "5%", type: "goods" }) };
       if (name === "@/lib/campaign/useVoucherClaims") return { useVoucherClaims: () => ({
         claim: (id: string) => claimed.push(id), claimedIds: new Set(saved ? ["V5"] : []), pendingId: null,
       }) };

@@ -20,7 +20,7 @@ import { claimStateOf, type ClaimState } from "@/components/voucher/ClaimButton"
 import { ClaimSuccessModal } from "@/components/voucher/ClaimSuccessModal";
 import { openVoucherModal } from "@/lib/campaign/useVoucherModal";
 import { formatVnd } from "@/lib/api";
-import { ProductScopedVoucherCard } from "@/components/voucher/ProductScopedVoucherCard";
+import { CompactVoucherCard, ProductScopedVoucherCard } from "@/components/voucher/ProductScopedVoucherCard";
 import { productVouchersFirst } from "@/lib/voucherFormat";
 import { TikTokMobileVoucherStrip, tikTokDiscountText, tikTokMinOrderText } from "./MobileVoucherStrip";
 
@@ -335,127 +335,8 @@ export function DealsVoucherStrip({
           ref={row.ref}
           className="-mx-4 flex snap-x scroll-px-4 gap-2.5 overflow-x-auto px-4 py-1.5 [scrollbar-width:none] sm:mx-0 sm:scroll-px-0 sm:gap-3 sm:px-0 [&::-webkit-scrollbar]:hidden"
         >
-          {list.map((v) => {
-            const state = states.get(v.id) as ClaimState;
-            if (v.scope === "product") return <li key={v.id} className="w-[285px] shrink-0 snap-start"><ProductScopedVoucherCard voucher={v} state={state} pending={claims.pendingId === v.id} onClaim={() => claims.claim(v.id)} /></li>;
-            const isShip = v.benefitType === "shipping";
-            const isMystery = Boolean(v.mystery);
-            const isClaimed = state === "claimed" || state === "auto";
-            const discountText = tikTokDiscountText(v);
-            const minOrderText = tikTokMinOrderText(v);
-            const title = cleanVoucherTitle(v);
-            const dim = state === "soldOut" || state === "locked";
-            const focused = focusIds.includes(v.id);
+          {list.map(v => <li key={v.id} className="w-[270px] shrink-0 snap-start"><CompactVoucherCard voucher={v} state={states.get(v.id)!} pending={claims.pendingId === v.id} onClaim={() => claims.claim(v.id)} /></li>)}
 
-            return (
-              <li
-                key={v.id}
-                className={`relative flex min-h-[80px] w-[285px] shrink-0 snap-start overflow-hidden rounded-xl sm:rounded-2xl bg-white border border-stone-200/90 shadow-2xs select-none transition-all duration-200 hover:shadow-md ${
-                  dim ? "opacity-60" : ""
-                } ${focused ? "aloha-focus-pulse" : ""} ${justSaved.has(v.id) ? "aloha-voucher-shine" : ""}`}
-              >
-                {/* Cuống vé bên trái - Chuẩn TikTok Shop (Ảnh 2 & 3) */}
-                <div
-                  className={`flex w-[64px] shrink-0 flex-col items-center justify-center p-1.5 border-r border-dashed ${
-                    isShip
-                      ? "bg-[#E6F8F6] text-[#00B5A5] border-[#B2EBE6]"
-                      : "bg-[#FFF0F2] text-[#FE2C55] border-[#FDD3D9]"
-                  }`}
-                >
-                  {isShip ? (
-                    <Truck size={20} strokeWidth={2.2} />
-                  ) : isMystery ? (
-                    <Zap size={20} className="fill-current" strokeWidth={0} />
-                  ) : (
-                    <TicketPercent size={20} strokeWidth={2.2} />
-                  )}
-                  <span className="mt-1 text-[10px] font-bold leading-none text-center">
-                    {isShip ? "Vận chuyển" : isMystery ? "Túi mù" : "Sản phẩm"}
-                  </span>
-                </div>
-
-                {/* Vết khuyết bán nguyệt (Notches) */}
-                <span className="pointer-events-none absolute -top-1.5 left-[64px] z-10 h-3 w-3 -translate-x-1/2 rounded-full bg-white border border-stone-200/90" />
-                <span className="pointer-events-none absolute -bottom-1.5 left-[64px] z-10 h-3 w-3 -translate-x-1/2 rounded-full bg-white border border-stone-200/90" />
-
-                {/* Thân vé bên phải */}
-                <div className="flex min-w-0 flex-1 flex-col justify-between py-2 px-2.5 sm:px-3">
-                  {/* HÀNG 1: TIÊU ĐỀ VOUCHER (Trải rộng 100% thân vé, hiển thị trọn vẹn) */}
-                  <div className="flex items-center justify-between gap-1">
-                    <h4
-                      className="text-[12px] sm:text-[13px] font-bold text-slate-900 leading-tight truncate"
-                      title={v.title || title}
-                    >
-                      {title}
-                    </h4>
-                    {v.claimLimitTotal && v.claimLimitTotal > 1 ? (
-                      <span
-                        className={`shrink-0 rounded-xs px-1 text-[8.5px] sm:text-[9px] font-black text-white ${
-                          isShip ? "bg-[#00B5A5]" : "bg-[#FE2C55]"
-                        }`}
-                      >
-                        x{v.claimLimitTotal}
-                      </span>
-                    ) : null}
-                  </div>
-
-                  {/* HÀNG 2: MỨC GIẢM (TRÊN) & ĐIỀU KIỆN (DƯỚI) - BÊN PHẢI LÀ NÚT HÀNH ĐỘNG */}
-                  <div className="flex items-center justify-between gap-1.5 pt-0.5">
-                    <div className="min-w-0 flex-1 flex flex-col justify-center">
-                      <span
-                        className={`text-[13.5px] sm:text-[14.5px] font-black leading-tight truncate ${
-                          isShip ? "text-[#008A7E]" : "text-[#FE2C55]"
-                        }`}
-                      >
-                        {discountText}
-                      </span>
-                      <span className="text-[10px] sm:text-[11px] font-medium text-slate-500 leading-tight truncate mt-0.5">
-                        {minOrderText}
-                      </span>
-                    </div>
-
-                    <div className="shrink-0 self-center">
-                      {isClaimed ? (
-                        <Link
-                          href={voucherUseHref(v.id)}
-                          className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-[11px] font-bold border transition ${
-                            isShip
-                              ? "border-[#00B5A5] text-[#00B5A5] bg-cyan-50/40 hover:bg-cyan-100/50"
-                              : "border-[#FE2C55] text-[#FE2C55] bg-rose-50/40 hover:bg-rose-100/50"
-                          }`}
-                        >
-                          Dùng
-                        </Link>
-                      ) : isMystery && !v.mystery?.drawnPercent ? (
-                        <button
-                          type="button"
-                          disabled={claims.pendingId === v.id || state === "soldOut"}
-                          onClick={() => claims.claim(v.id)}
-                          className="inline-flex items-center justify-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold text-white bg-gradient-to-r from-amber-500 to-rose-500 shadow-xs active:scale-95 disabled:opacity-50 transition cursor-pointer"
-                        >
-                          <Gift size={12} strokeWidth={2.5} />
-                          <span>{claims.pendingId === v.id ? "…" : "Bóc"}</span>
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled={claims.pendingId === v.id || state === "soldOut"}
-                          onClick={() => claims.claim(v.id)}
-                          className={`inline-flex items-center justify-center rounded-full px-3.5 py-1 text-[11px] font-bold text-white shadow-xs active:scale-95 disabled:opacity-50 transition cursor-pointer ${
-                            isShip
-                              ? "bg-[#00B5A5] hover:bg-[#009E90]"
-                              : "bg-[#FE2C55] hover:bg-[#E01E43]"
-                          }`}
-                        >
-                          {claims.pendingId === v.id ? "…" : "Nhận"}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </li>
-            );
-          })}
         </ul>
         </div>
       </section>
