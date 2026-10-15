@@ -233,7 +233,7 @@ function CodesPanel(props: {
           icon={<Plus size={13} />}
           onClick={() => onManageCodes(record)}
         >
-          + Tạo mã voucher
+          Tạo mã voucher
         </Button>
       </div>
       {loading ? (

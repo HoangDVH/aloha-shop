@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import dayjs from "dayjs";
-import { Input, InputNumber, Switch } from "antd";
-import { Globe, Edit3 } from "lucide-react";
+import { Input, InputNumber, Switch, Tooltip } from "antd";
+import { Globe, Edit3, HelpCircle } from "lucide-react";
 import type { CampaignContentAdmin, FieldError } from "@/lib/campaign/campaignAdminApi";
 import { fieldErrorsFor } from "../wizardModel";
 import { LockedNote } from "./StepBits";
@@ -175,11 +175,11 @@ export function WhenStep({ content, update, locked, errors }: Props) {
 
           {/* Teaser hé lộ trước */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80">
-            <div>
-              <div className="text-xs font-bold text-slate-800">Xem trước &amp; Đếm ngược (Teaser hé lộ)</div>
-              <p className="text-[11px] text-slate-500 mt-0.5">
-                Hiển thị huy hiệu sắp diễn ra kèm đồng hồ đếm ngược trên web trước giờ mở bán
-              </p>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold text-slate-800">Xem trước &amp; Đếm ngược (Teaser hé lộ)</span>
+              <Tooltip title="Hiển thị huy hiệu sắp diễn ra kèm đồng hồ đếm ngược trên web trước giờ mở bán">
+                <HelpCircle className="h-3.5 w-3.5 text-slate-400 hover:text-slate-600 cursor-help" />
+              </Tooltip>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <InputNumber

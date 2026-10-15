@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { Collapse, Input } from "antd";
+import { Collapse, Input, Tooltip } from "antd";
 import {
   Image as ImageIcon,
+  Info,
   Palette,
   BellRing,
   Settings2,
@@ -356,11 +357,15 @@ function FlashStageFields({
             placeholder={FLASH_STAGE_DEFAULT.badge}
             className="!h-9 !rounded-lg text-xs"
           />
-          <p className="mt-1 text-[11px] text-slate-400">Ô vàng cạnh tiêu đề ở trang Ưu đãi, chỉ hiện trên máy tính. Để trống thì ẩn.</p>
         </div>
       </div>
       <div>
-        <label className="text-xs font-bold text-slate-700 block mb-1">Dòng mô tả phụ</label>
+        <div className="flex items-center gap-1.5 mb-1">
+          <label className="text-xs font-bold text-slate-700">Dòng mô tả phụ</label>
+          <Tooltip title="Chỉ hiện dưới tiêu đề ở trang Ưu đãi → tab Flash Sale (máy tính). Dải trang chủ không hiện dòng này.">
+            <Info size={12} className="text-slate-400 hover:text-slate-600 cursor-help" />
+          </Tooltip>
+        </div>
         <Input
           value={stage.subtitle}
           maxLength={140}
@@ -368,19 +373,16 @@ function FlashStageFields({
           placeholder={FLASH_STAGE_DEFAULT.subtitle}
           className="!h-9 !rounded-lg text-xs"
         />
-        <p className="mt-1 text-[11px] text-slate-400">
-          Chỉ hiện dưới tiêu đề ở trang Ưu đãi → tab Flash Sale (máy tính). Dải trang chủ không hiện dòng này.
-        </p>
       </div>
 
       <div className="space-y-1.5">
-        <div className="text-[11px] font-semibold text-slate-500">
-          Xem trước tiêu đề trang chủ{hasSlots ? " (đồng hồ chỉ hiện khi đang trong khung giờ mở bán)" : ""}
+        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500">
+          <span>Xem trước tiêu đề trang chủ{hasSlots ? " (đồng hồ chỉ hiện khi đang trong khung giờ mở bán)" : ""}</span>
+          <Tooltip title="Trang chủ luôn ghi gọn &quot;Flash Sale&quot; như các sàn; tên đợt sale đã nằm trên banner chính.">
+            <Info size={12} className="text-slate-400 hover:text-slate-600 cursor-help" />
+          </Tooltip>
         </div>
         <FlashStagePreview countdown={hasSlots} />
-        <p className="text-[11px] text-slate-400">
-          Trang chủ luôn ghi gọn &quot;Flash Sale&quot; như các sàn; tên đợt sale đã nằm trên banner chính.
-        </p>
       </div>
     </div>
   );
@@ -535,16 +537,18 @@ export function DisplayStep({ content, update, errors }: Props) {
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-bold text-slate-700 block mb-1">Dòng mô tả đầu trang</label>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <label className="text-xs font-bold text-slate-700">Dòng mô tả đầu trang</label>
+                        <Tooltip title="Chỉ hiện trên banner khi chưa có ảnh banner chính; luôn dùng làm mô tả khi chia sẻ link.">
+                          <Info size={12} className="text-slate-400 hover:text-slate-600 cursor-help" />
+                        </Tooltip>
+                      </div>
                       <Input
                         value={display.hero.subtitle}
                         maxLength={240}
                         onChange={(e) => setDisplay({ hero: { ...display.hero, subtitle: e.target.value } })}
                         className="!h-9 !rounded-lg text-xs"
                       />
-                      <p className="mt-1 text-[11px] text-slate-400">
-                        Chỉ hiện trên banner khi chưa có ảnh banner chính; luôn dùng làm mô tả khi chia sẻ link.
-                      </p>
                     </div>
                     <div className="sm:col-span-2">
                       <label className="text-xs font-bold text-slate-700 block mb-1">Hạn đặt để giao kịp (dải dưới banner trang ưu đãi)</label>
@@ -559,7 +563,12 @@ export function DisplayStep({ content, update, errors }: Props) {
                   </div>
 
                   <div className="pt-2 border-t border-slate-100">
-                    <label className="text-xs font-bold text-slate-700 block mb-1">Chữ trên nút Header</label>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <label className="text-xs font-bold text-slate-700">Chữ trên nút Header</label>
+                      <Tooltip title="Trên điện thoại, hệ thống tự động bỏ chữ &quot;Voucher&quot; ở đầu cho gọn (ví dụ &quot;Voucher 50K&quot; → &quot;50K&quot;).">
+                        <Info size={12} className="text-slate-400 hover:text-slate-600 cursor-help" />
+                      </Tooltip>
+                    </div>
                     <Input
                       value={display.headerPill.text}
                       maxLength={40}
@@ -567,9 +576,6 @@ export function DisplayStep({ content, update, errors }: Props) {
                       onChange={(e) => setDisplay({ headerPill: { ...display.headerPill, text: e.target.value } })}
                       className="!h-9 !rounded-lg text-xs max-w-xs"
                     />
-                    <p className="mt-1 text-[11px] text-slate-400">
-                      Điện thoại tự bỏ chữ &quot;Voucher&quot; ở đầu cho gọn (ví dụ &quot;Voucher 50K&quot; → &quot;50K&quot;).
-                    </p>
                   </div>
                 </div>
               ),
