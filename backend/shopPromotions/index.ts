@@ -7,6 +7,7 @@ import { registerVoucherWalletRoutes } from "./wallet/walletRoutes.js";
 import { ensureWalletIndexes } from "./wallet/walletService.js";
 import { ensureRedemptionIndexes } from "./voucherHistory.js";
 import { ensureClaimIndexes } from "./claimService.js";
+import { ensurePublicProductVoucherIndex } from "./publicProductVouchers.js";
 
 export function registerShopPromotionsRoutes(
   app: Express,
@@ -16,6 +17,8 @@ export function registerShopPromotionsRoutes(
   registerShopPromotionsPublicRoutes(app, getShopDb);
   registerShopPromotionsAdminRoutes(app, getDb, getShopDb);
   registerVoucherWalletRoutes(app, getShopDb);
+  void getShopDb().then(ensurePublicProductVoucherIndex)
+    .catch((e) => console.warn("[shopPromotions] product-voucher index:", e?.message || e));
   void getShopDb().then(ensureClaimIndexes)
     .catch((e) => console.warn("[shopPromotions] first-purchase index:", e?.message || e));
   void getShopDb()

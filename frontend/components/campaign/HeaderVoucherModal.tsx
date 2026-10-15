@@ -20,7 +20,8 @@ import type {
   CampaignUI,
 } from "@/lib/campaign/campaignApi";
 import { useVoucherClaims } from "@/lib/campaign/useVoucherClaims";
-import { formatCompactVnd, pctText, shipSupportText, sortVouchersGrouped, voucherUseHref, withDrawn } from "@/lib/voucherFormat";
+import { formatCompactVnd, pctText, shipSupportText, sortVouchersGrouped, productVouchersFirst, voucherUseHref, withDrawn } from "@/lib/voucherFormat";
+import { ProductScopedVoucherCard } from "@/components/voucher/ProductScopedVoucherCard";
 import { LoginSheet } from "@/components/campaign/LoginSheet";
 import { claimStateOf } from "@/components/voucher/ClaimButton";
 import { ClaimSuccessModal } from "@/components/voucher/ClaimSuccessModal";
@@ -112,7 +113,7 @@ export function HeaderVoucherModal({
     const list = vouchers
       .filter((v) => voucherMatchesBuyer(v.targetCustomer, viewer))
       .map((v) => withDrawn(v, drawn));
-    return sortVouchersGrouped(list);
+    return productVouchersFirst(sortVouchersGrouped(list));
   }, [vouchers, viewer, drawnKey]);
   const justClaimed = claims.claimedVoucherId
     ? visibleVouchers.find((v) => v.id === claims.claimedVoucherId) ?? null
@@ -160,7 +161,7 @@ export function HeaderVoucherModal({
     >
       {/* KHỐI POPUP PHONG CÁCH TIKTOK SHOP */}
       <div
-        className="relative flex flex-col w-full max-w-[340px] sm:max-w-[360px] rounded-[30px] shadow-2xl shadow-rose-950/40 animate-in zoom-in-95 duration-200 bg-gradient-to-b from-[#FF4D6D] via-[#FE2C55] to-[#FF4767]"
+        className="relative flex max-h-[calc(100dvh-128px)] min-h-0 flex-col w-full max-w-[340px] sm:max-w-[360px] rounded-[30px] shadow-2xl shadow-rose-950/40 animate-in zoom-in-95 duration-200 bg-gradient-to-b from-[#FF4D6D] via-[#FE2C55] to-[#FF4767]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Nút đóng nhỏ góc trên phải (dành cho desktop / tiện tay) */}
@@ -174,7 +175,7 @@ export function HeaderVoucherModal({
         </button>
 
         {/* 1. MÁI HIÊN CỬA HÀNG (CANOPY / AWNING) VỚI LOGO SHOP Ở CHÍNH GIỮA */}
-        <div className="relative w-full pt-6 select-none">
+        <div className="relative w-full shrink-0 pt-6 select-none">
           {/* Badge logo tròn ALOHA nằm chính giữa phía trên mái hiên */}
           <div className="absolute -top-6 left-1/2 -translate-x-1/2 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-md border-[2.5px] border-[#FE2C55] ring-4 ring-white/25">
             <span className="text-[12px] font-black text-[#FE2C55] tracking-wider uppercase">
@@ -230,7 +231,7 @@ export function HeaderVoucherModal({
         </div>
 
         {/* 3. TIÊU ĐỀ POPUP (CHUẨN TIKTOK SHOP: "Tiết kiệm với voucher" + "Ưu đãi độc quyền từ người bán") */}
-        <div className="relative px-5 pt-1.5 pb-3 text-center">
+        <div className="relative shrink-0 px-5 pt-1.5 pb-3 text-center">
           <h3
             id="tiktok-voucher-title"
             className="text-lg sm:text-[20px] font-black text-white tracking-tight drop-shadow-xs"
@@ -243,7 +244,7 @@ export function HeaderVoucherModal({
         </div>
 
         {/* 4. DANH SÁCH VOUCHER (CÁC VÉ TRẮNG BO GÓC CÓ VẾT CẮT KHUYẾT HAI BÊN NHƯ TIKTOK) */}
-        <div className="relative px-4 pb-3 max-h-[50vh] overflow-y-auto space-y-2.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden overscroll-contain">
+        <div className="relative min-h-0 flex-1 px-4 pb-3 overflow-y-auto space-y-2.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden overscroll-contain">
           {visibleVouchers.length === 0 ? (
             <div className="rounded-2xl bg-white/95 p-6 text-center text-slate-500 shadow-sm">
               <ShoppingBag size={32} className="mx-auto text-rose-300 mb-2" />
@@ -253,6 +254,8 @@ export function HeaderVoucherModal({
           ) : (
             visibleVouchers.map((v) => {
               const state = claimStateOf(v, viewer, claims.claimedIds.has(v.id), nowMs);
+              if (v.scope === "product") return <ProductScopedVoucherCard key={v.id} voucher={v} state={state} pending={claims.pendingId === v.id}
+                onClaim={() => claims.claim(v.id)} onProducts={onClose} popup />;
               const { primary, condition } = getVoucherDisplay(v);
               const isClaimable = state === "claimable";
               const isUsable = state === "claimed" || state === "auto";
@@ -322,7 +325,7 @@ export function HeaderVoucherModal({
         </div>
 
         {/* 5. PHẦN ĐÁY MODAL: NỀN TRẮNG CHỨA NÚT "NHẬN HẾT" RỰC RỠ */}
-        <div className="bg-white rounded-b-[30px] p-4 pt-3.5 border-t border-rose-100/40">
+        <div className="shrink-0 bg-white rounded-b-[30px] p-4 pt-3.5 border-t border-rose-100/40">
           <button
             type="button"
             onClick={handleMainAction}

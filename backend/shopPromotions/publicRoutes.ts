@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 import type { Db } from "mongodb";
+import { isWholesaleAccount } from "../shopAuth/roles.js";
 import type { GetShopDb } from "../shopAuth/routes.js";
 import { ACCESS_COOKIE, verifyShopAccessToken } from "../shopAuth/tokens.js";
 import { SHOP_ACCOUNTS, shopAccountIdQuery } from "../shopAuth/models.js";
@@ -82,7 +83,7 @@ export function registerShopPromotionsPublicRoutes(
         accountId: account?._id ? String(account._id) : undefined, phone: account?.phone, email: account?.email });
       const allowed = new Set(buyerPromos.promotions.map(p => p.id));
       const claimable = new Set(buyerPromos.notices.filter(p => p.needsClaim).map(p => p.promotionId));
-      const wholesale = Boolean(account?.roles?.includes("si") || account?.roles?.includes("wholesale"));
+      const wholesale = isWholesaleAccount(account);
 
       const promotions = await shopDb
         .collection<PromotionDoc>(PROMOTIONS_COL)
@@ -204,9 +205,7 @@ export function registerShopPromotionsPublicRoutes(
         const buyerPhone = String(body.phone || userAccount?.phone || "").trim();
         const buyerEmail = String(body.email || userAccount?.email || "").trim();
         const buyerUserId = userAccount?._id ? String(userAccount._id) : undefined;
-        const isWholesale = Boolean(
-          userAccount?.roles?.includes("si") || userAccount?.roles?.includes("wholesale")
-        );
+        const isWholesale = isWholesaleAccount(userAccount);
 
         // Kiểm tra điều kiện khách mới mua lần đầu trên web
 

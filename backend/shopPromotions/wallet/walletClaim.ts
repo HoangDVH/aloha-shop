@@ -1,4 +1,5 @@
 import { resolveVoucherBuyer } from "../voucherBuyer.js";
+import { publicProductVouchers } from "../publicProductVouchers.js";
 import { voucherMatchesBuyer } from "../../../shared/voucherAudience.js";
 import type { Db } from "mongodb";
 import { CAMPAIGN_ERROR_MESSAGES } from "../../shopCampaigns/messages.js";
@@ -67,7 +68,9 @@ async function claimOne(
 /** Id voucher của chiến dịch khách đang thấy (chiến dịch chỉ-test chỉ tài khoản test thấy). */
 async function viewerCampaignVoucherIds(db: Db, viewer: CampaignViewer, nowMs: number): Promise<string[]> {
   const state = await getCurrentCampaign(db, nowMs, { isTestBuyer: viewer.status.isTestBuyer }, { fresh: true });
-  return state.active?.content.voucherIds || [];
+  if (!state.active) return [];
+  const extras = await publicProductVouchers(db, new Date(nowMs).toISOString());
+  return [...new Set([...state.active.content.voucherIds, ...extras.map(p => p.id)])];
 }
 
 /** Lưu 1 voucher từ kho voucher chiến dịch. Voucher không nằm trong chiến dịch đang chạy → 404. */
