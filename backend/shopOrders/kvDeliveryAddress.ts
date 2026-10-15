@@ -1,6 +1,7 @@
 import { kvApiBase, type KvCreds } from "../services/kvApiClient.js";
+import { convertDeliveryAddress, newDeliveryAddressText, type AddressMigration } from "../shopShipping/addressMigration/convert.js";
 
-export type KvDeliveryAddress = { province: string; district?: string; ward: string };
+export type KvDeliveryAddress = { province: string; district?: string; ward: string; streetAddress?: string };
 type Location = { id: number; name: string };
 type DeliveryRegion = { locationId?: number; locationName: string; wardName: string };
 const caches = new Map<string, { expires: number; pending: Promise<Location[]> }>();
@@ -11,7 +12,8 @@ export function kvDeliveryAddressForOrder(order: Record<string, unknown>): KvDel
   if (order.deliveryMethod === "nhan_cua_hang") return undefined;
   const province = String(order.province || "").trim(), ward = String(order.ward || "").trim();
   if (!province || !ward) return undefined;
-  return { province, district: String(order.district || "").trim(), ward };
+  const streetAddress = String(order.shippingAddress || "").trim();
+  return { province, district: String(order.district || "").trim(), ward, ...(streetAddress ? { streetAddress } : {}) };
 }
 
 /** Match both legacy province + district; never guess a district from its name alone. */
@@ -57,4 +59,20 @@ export async function resolveKvDeliveryRegion(creds: KvCreds, token: string, add
     console.warn("[kv-delivery] location lookup unavailable", e instanceof Error ? e.message : "unknown error");
     return matchKvDeliveryRegion(address, []);
   }
+}
+
+/** Keep legacy input on the shop; only the KiotViet delivery copy uses the new format. */
+export async function resolveKvDeliveryAddress(creds: KvCreds, token: string, address: KvDeliveryAddress | undefined, fullAddress: string): Promise<{
+  region: Partial<DeliveryRegion>; address: string; audit?: AddressMigration; warning?: string;
+}> {
+  if (!address) return { region: {}, address: fullAddress };
+  const audit = convertDeliveryAddress(address);
+  if (audit.current) {
+    const region = await resolveKvDeliveryRegion(creds, token, { province: audit.current.province, ward: audit.current.ward });
+    if (region.locationId) return { region, address: newDeliveryAddressText(audit, fullAddress), audit };
+    audit.state = "needs_review";
+    audit.reason = "Chưa đối chiếu được tỉnh/thành 2 cấp trong danh mục KiotViet; cần xác nhận trước khi tra cước.";
+  }
+  return { region: await resolveKvDeliveryRegion(creds, token, address), address: fullAddress, audit,
+    warning: "[CẦN XÁC NHẬN ĐỊA CHỈ 2 CẤP] " + audit.reason };
 }

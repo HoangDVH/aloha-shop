@@ -44,7 +44,7 @@ test("orders and invoices send separate address fields without changing prices o
       SHOP_KV_BRANCH_ID: "1", SHOP_KV_SOLD_BY_ID: "2", SHOP_KV_SALE_CHANNEL_ID: "3", SHOP_KV_ACCOUNT_ID: "0" });
     globalThis.fetch = (async (url, init) => {
       if (String(url).includes("connect/token")) return Response.json({ access_token: "test" });
-      if (String(url).includes("/locations")) return Response.json({ total: 1, data: [{ id: 339, name: "Hồ Chí Minh - Quận 12" }] });
+      if (String(url).includes("/locations")) return Response.json({ total: 1, data: [{ id: 770, name: "Thành phố Hồ Chí Minh" }] });
       assert.equal(init?.method, "POST"); payloads.push(JSON.parse(String(init?.body)));
       return Response.json({ id: 99, code: "QA99" });
     }) as typeof fetch;
@@ -55,8 +55,8 @@ test("orders and invoices send separate address fields without changing prices o
     await ensureReviewKvOrder(base); await ensureAwaitingInvoice(base);
     for (const payload of payloads) {
       const delivery = payload.orderDelivery || payload.invoiceDelivery;
-      assert.equal(delivery.locationId, 339); assert.equal(delivery.wardName, address.ward);
-      assert.equal(delivery.address, base.address); assert.equal(payload.totalPayment, 0);
+      assert.equal(delivery.locationId, 770); assert.equal(delivery.wardName, address.ward);
+      assert.equal(delivery.address, "45f, Phường An Phú Đông, Thành phố Hồ Chí Minh"); assert.equal(payload.totalPayment, 0);
     }
     assert.equal(payloads[0].discount, 12500); assert.equal(payloads[0].orderDetails[0].price, 250000);
     assert.equal(payloads[0].usingCod, false);

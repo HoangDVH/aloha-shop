@@ -9,7 +9,8 @@ import {
   type KvCreds,
 } from "../services/kvApiClient.js";
 import type { ShopOrderDetail } from "./models.js";
-import { resolveKvDeliveryRegion } from "./kvDeliveryAddress.js";
+import { resolveKvDeliveryAddress } from "./kvDeliveryAddress.js";
+import type { AddressMigration } from "../shopShipping/addressMigration/convert.js";
 
 async function fetchJson(
   url: string,
@@ -213,6 +214,7 @@ export type PushShopOrderKvInput = {
 };
 
 export type PushShopOrderKvResult = {
+  kvDeliveryAddress?: AddressMigration;
   kvOrderId: number | string;
   kvOrderCode: string;
   raw: any;
@@ -249,8 +251,8 @@ export async function pushShopOrderToKiotViet(
 
   const receiver = input.customerName || "Khách web";
   const phone = input.customerPhone || "";
-  const shipAddr = input.address || "Nhận tại cửa hàng ALOHA";
-  const deliveryRegion = await resolveKvDeliveryRegion(creds, token, input.deliveryAddress);
+  const delivery = await resolveKvDeliveryAddress(creds, token, input.deliveryAddress, input.address || "Nhận tại cửa hàng ALOHA");
+  const shipAddr = delivery.address;
 
   const payload: Record<string, unknown> = {
     ...(input.customerId ? { customerId: input.customerId } : {}),
@@ -262,12 +264,12 @@ export async function pushShopOrderToKiotViet(
     ...(orderDiscount > 0 ? { discount: orderDiscount } : {}),
     usingCod: input.usingCod,
     method: input.method || (input.usingCod ? "Cash" : "Transfer"),
-    description: input.description.slice(0, 500),
+    description: [delivery.warning, input.description].filter(Boolean).join(" | ").slice(0, 500),
     status: 1,
     totalPayment: Math.max(0, Math.round(Number(input.totalPayment) || 0)),
     // KV bật giao hàng → bắt buộc orderDelivery ("THU PHÍ SHIP")
     orderDelivery: {
-      ...deliveryRegion,
+      ...delivery.region,
       receiver,
       contactNumber: phone || "0000000000",
       address: shipAddr,
@@ -297,10 +299,12 @@ export async function pushShopOrderToKiotViet(
     kvOrderId,
     kvOrderCode: kvOrderCode || String(kvOrderId),
     raw: data,
+    kvDeliveryAddress: delivery.audit,
   };
 }
 
 export type PushShopInvoiceKvResult = {
+  kvDeliveryAddress?: AddressMigration;
   kvInvoiceId: number | string;
   kvInvoiceCode: string;
   raw: any;
@@ -358,7 +362,7 @@ export async function pushShopInvoiceToKiotViet(
     (d) => String(d.productName || "") === "Phí vận chuyển"
   );
   const surchargeId = Number(process.env.SHOP_KV_SURCHARGE_ID || 0);
-  const deliveryRegion = await resolveKvDeliveryRegion(creds, token, input.deliveryAddress);
+  const delivery = await resolveKvDeliveryAddress(creds, token, input.deliveryAddress, input.address || "Nhận tại cửa hàng ALOHA");
 
   const payload: Record<string, unknown> = {
     ...(input.customerId ? { customerId: input.customerId } : {}),
@@ -369,7 +373,7 @@ export async function pushShopInvoiceToKiotViet(
     invoiceDetails,
     usingCod: !!input.usingCod,
     method: input.method || (input.usingCod ? "Cash" : "Transfer"),
-    description: `${input.description}${shipNote}`.slice(0, 500),
+    description: [delivery.warning, `${input.description}${shipNote}`].filter(Boolean).join(" | ").slice(0, 500),
     // Chờ CK (KiotQR): chưa thu tiền trên HĐ; đã paid: ghi đủ totalPayment
     totalPayment: input.awaitingBankTransfer ? 0 : input.totalPayment,
     isDraft: false,
@@ -419,7 +423,7 @@ export async function pushShopInvoiceToKiotViet(
   }
   if (input.deliveryAddress) payload.invoiceDelivery = {
     ...((payload.invoiceDelivery || {}) as Record<string, unknown>), receiver, contactNumber: phone || undefined,
-    address: input.address, ...deliveryRegion,
+    address: delivery.address, ...delivery.region,
   };
 
   const api = kvApiBase();
@@ -444,6 +448,7 @@ export async function pushShopInvoiceToKiotViet(
     kvInvoiceId,
     kvInvoiceCode: kvInvoiceCode || String(kvInvoiceId),
     raw: data,
+    kvDeliveryAddress: delivery.audit,
   };
 }
 

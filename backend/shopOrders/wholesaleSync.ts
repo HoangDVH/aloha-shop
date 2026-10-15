@@ -89,7 +89,7 @@ export async function syncWholesaleOrder(db: Db, ops: Db, id: unknown, deps = {
       totalPayment: 0, shippingFee: Number(order.shippingFee) || 0 });
     if (!result.kvOrderCode || String(result.kvOrderCode) === String(result.kvOrderId)) throw new Error("missing_official_code");
     await orders.updateOne(filter, { $set: { kvOrderId: result.kvOrderId, kvOrderCode: result.kvOrderCode,
-      kvCustomerId: Number(account!.kvCustomerId), kvPushStatus: "synced", kvSyncedAt: new Date().toISOString(), kvSyncReason: null },
+      kvDeliveryAddress: result.kvDeliveryAddress || null, kvCustomerId: Number(account!.kvCustomerId), kvPushStatus: "synced", kvSyncedAt: new Date().toISOString(), kvSyncReason: null },
       $addToSet: { legacyCodes: order.code }, $unset: { kvSyncOwner: "", kvSyncLeaseUntil: "", kvSyncNextAt: "" } });
     // code/id stay immutable; displayShopOrderCode uses the official KV code.
     syncBus.publish(["shop_orders"], "si-order-synced", { ids: [order.code] });

@@ -122,6 +122,7 @@ async function pushCodOrReviewOrder(ctx: KvPushContext, code: string): Promise<K
     const kvOrderCode = String(ord.kvOrderCode || "").trim() || null;
     const patch: Record<string, unknown> = {
       kvOrderId: ord.kvOrderId,
+      kvDeliveryAddress: ord.kvDeliveryAddress || null,
       kvOrderCode,
       updatedAt: new Date().toISOString(),
     };
@@ -178,6 +179,7 @@ async function pushAwaitingInvoice(ctx: KvPushContext, code: string): Promise<Kv
     });
     await patchOrder(ctx, {
       kvInvoiceId: inv.kvInvoiceId,
+      kvDeliveryAddress: inv.kvDeliveryAddress || null,
       kvInvoiceCode: inv.kvInvoiceCode,
       kvInvoiceMode: "awaiting",
       updatedAt: new Date().toISOString(),

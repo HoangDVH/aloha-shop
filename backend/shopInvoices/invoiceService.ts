@@ -50,6 +50,7 @@ export type EnsurePaidInvoiceInput = {
 };
 
 export type EnsurePaidInvoiceResult = {
+  kvDeliveryAddress?: import("../shopShipping/addressMigration/convert.js").AddressMigration;
   kvInvoiceId: number | string;
   kvInvoiceCode: string;
   /** true nếu đã thu trên HĐ awaiting (không tạo mã mới) */
@@ -90,6 +91,7 @@ export async function ensureAwaitingInvoice(
   return {
     kvInvoiceId: inv.kvInvoiceId,
     kvInvoiceCode: inv.kvInvoiceCode,
+    kvDeliveryAddress: inv.kvDeliveryAddress,
   };
 }
 
@@ -159,6 +161,7 @@ export async function ensurePaidInvoice(
   return {
     kvInvoiceId: inv.kvInvoiceId,
     kvInvoiceCode: inv.kvInvoiceCode,
+    kvDeliveryAddress: inv.kvDeliveryAddress,
   };
 }
 
@@ -185,6 +188,7 @@ export type EnsureCodKvOrderInput = {
 };
 
 export type EnsureCodKvOrderResult = {
+  kvDeliveryAddress?: import("../shopShipping/addressMigration/convert.js").AddressMigration;
   kvOrderId: number | string;
   kvOrderCode: string;
 };
@@ -213,6 +217,7 @@ export async function ensureReviewKvOrder(
   return {
     kvOrderId: ord.kvOrderId,
     kvOrderCode: ord.kvOrderCode,
+    kvDeliveryAddress: ord.kvDeliveryAddress,
   };
 }
 
@@ -238,6 +243,7 @@ export async function ensureCodKvOrder(
   return {
     kvOrderId: ord.kvOrderId,
     kvOrderCode: ord.kvOrderCode,
+    kvDeliveryAddress: ord.kvDeliveryAddress,
   };
 }
 
@@ -297,6 +303,7 @@ export async function ensureCodDeliveredInvoice(
     return {
       kvInvoiceId: inv.kvInvoiceId,
       kvInvoiceCode: inv.kvInvoiceCode,
+    kvDeliveryAddress: inv.kvDeliveryAddress,
     };
   } catch (e: any) {
     const msg = String(e?.message || e || "");
@@ -321,6 +328,7 @@ export async function ensureCodDeliveredInvoice(
     return {
       kvInvoiceId: inv.kvInvoiceId,
       kvInvoiceCode: inv.kvInvoiceCode,
+    kvDeliveryAddress: inv.kvDeliveryAddress,
     };
   }
 }

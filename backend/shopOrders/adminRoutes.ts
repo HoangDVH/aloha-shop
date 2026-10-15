@@ -599,7 +599,7 @@ export function registerShopOrdersAdminRoutes(
               $set: {
                 kvOrderId: ord.kvOrderId,
                 kvOrderCode: ord.kvOrderCode,
-                kvPushError: null,
+                kvPushError: null, kvDeliveryAddress: ord.kvDeliveryAddress || null,
                 updatedAt: new Date().toISOString(),
               },
             }

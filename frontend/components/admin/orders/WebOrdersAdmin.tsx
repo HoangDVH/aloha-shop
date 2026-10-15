@@ -13,6 +13,7 @@ type OrderRow = {
   code: string;
   kvOrderCode?: string | null;
   kvInvoiceCode?: string | null;
+  kvDeliveryAddress?: { state: string; reason?: string; original?: { province: string; district?: string; ward: string }; current?: { province: string; ward: string } };
   createdAt: string;
   customerName?: string;
   customerPhone?: string;
@@ -170,6 +171,7 @@ export function WebOrdersAdmin() {
                   <Tag color={p.color}>{p.label}</Tag>
                   {["unpaid", "processing", "underpaid", "expired", "failed"].includes(r.paymentStatus) && r.kvPaymentVerification?.state === "pending" && <PaymentVerificationNotice code={r.code} reason={r.kvPaymentVerification.reason} attempts={r.kvPaymentVerification.attempts} />}
                   {r.priceMode === "si" ? <Tag color="purple">Sỉ</Tag> : null}
+                  {r.kvDeliveryAddress?.state === "needs_review" ? <Tooltip title={r.kvDeliveryAddress.reason}><Tag color="orange">Cần xác nhận địa chỉ 2 cấp</Tag></Tooltip> : r.kvDeliveryAddress?.current ? <Tooltip title={`Đã gửi KiotViet: ${r.kvDeliveryAddress.current.ward}, ${r.kvDeliveryAddress.current.province}. Địa chỉ gốc: ${[r.kvDeliveryAddress.original?.ward, r.kvDeliveryAddress.original?.district, r.kvDeliveryAddress.original?.province].filter(Boolean).join(", ")}`}><Tag color="blue">Địa chỉ 2 cấp</Tag></Tooltip> : null}
                   {r.isTest ? <Tag color="magenta">TEST</Tag> : null}
                 </div>
               );
