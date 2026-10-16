@@ -15,6 +15,7 @@ export function trackFunnel(event: "visit" | "cart" | "checkout", identity?: Ide
   if (!session || typeof window === "undefined" || navigator.webdriver || !isVisitPage(window.location.pathname)) return;
   try {
     void fetch("/api/shop/funnel", { method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true,
-      body: JSON.stringify({ ...session, path: window.location.pathname, event }) }).catch(() => {});
+      body: JSON.stringify({ visitorId: session.visitorId, sessionId: session.sessionId,
+        path: window.location.pathname, event }) }).catch(() => {});
   } catch { /* Analytics cannot interrupt cart or checkout. */ }
 }

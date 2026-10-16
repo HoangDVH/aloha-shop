@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
 import * as session from "../frontend/lib/visitSession.js";
+import { funnelInput } from "../backend/shopAnalytics/funnel.js";
 
 const code = ts.transpileModule(readFileSync("frontend/lib/funnelTracking.ts", "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
 function fixture(path = "/", webdriver = false) {
@@ -34,4 +35,20 @@ test("admin/bots are skipped, storage/network errors never interrupt shopping", 
   const storage = fixture(); storage.breakStorage(); assert.doesNotThrow(() => storage.exports.trackFunnel("cart"));
   assert.equal(storage.exports.funnelSession(), undefined);
   const network = fixture(); network.breakFetch(); assert.doesNotThrow(() => network.exports.trackFunnel("checkout"));
+});
+
+test("ShopVisitTracker full session sends only API fields accepted by strict funnel schema", () => {
+  const f = fixture();
+  const fullSession = session.nextVisitSession(null, 1000, randomUUID);
+  for (const event of ["visit", "cart", "checkout"]) {
+    f.exports.trackFunnel(event, fullSession);
+  }
+  assert.equal(f.calls.length, 3);
+  for (const payload of f.calls) {
+    assert.deepEqual(Object.keys(payload).sort(), ["event", "path", "sessionId", "visitorId"]);
+    assert.equal(payload.visitorId, fullSession.visitorId);
+    assert.equal(payload.sessionId, fullSession.sessionId);
+    assert.equal(funnelInput.safeParse(payload).success, true);
+  }
+  assert.equal(funnelInput.safeParse({ ...fullSession, path: "/", event: "visit" }).success, false);
 });
