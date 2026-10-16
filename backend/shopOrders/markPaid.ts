@@ -2,6 +2,7 @@
  * Claim unpaid → processing → Hóa đơn KV → trừ kho atomic → paid + SSE.
  */
 import type { Db } from "mongodb";
+import { randomUUID } from "node:crypto";
 import { kvDeliveryAddressForOrder } from "./kvDeliveryAddress.js";
 import { syncBus } from "../syncBus.js";
 import { SHOP_ORDERS, type ShopOrderDetail } from "./models.js";
@@ -112,7 +113,12 @@ export async function markShopOrderPaid(opts: {
   }
 
   // Claim: unpaid|underpaid|failed → processing (failed = lần tạo HĐ KV trước lỗi, cho NV bấm lại)
-  let claimed = existing as Record<string, unknown>;
+  let claimed: Record<string, unknown>;
+  const paymentClaimId = randomUUID();
+  const processing = (): MarkPaidResult => ({
+    ok: false, code: "payment_processing",
+    error: "Đơn đang được xác nhận thanh toán. Vui lòng chờ; nếu xử lý bị gián đoạn cần đối soát trước khi thử lại.",
+  });
   const claimable = ["unpaid", "underpaid", "failed"];
   if (claimable.includes(String(restExisting.paymentStatus || ""))) {
     const claimFilter: Record<string, unknown> = {
@@ -131,6 +137,7 @@ export async function markShopOrderPaid(opts: {
       {
         $set: {
           paymentStatus: "processing",
+          paymentClaimId,
           paymentClaimedAt: now,
           paymentClaimSource: opts.source,
           updatedAt: now,
@@ -142,30 +149,25 @@ export async function markShopOrderPaid(opts: {
       },
       { returnDocument: "after" }
     );
-    const claimedDoc = (claim as any)?.value ?? claim;
+    const claimedDoc = claim && "value" in claim ? (claim as any).value : claim;
     if (!claimedDoc) {
       const again = await col.findOne({ _id: existing._id });
       if (again?.paymentStatus === "paid") {
         const { _id: __, ...r } = again as any;
         return { ok: true, alreadyPaid: true, order: r };
       }
-      if (opts.source === "kiotqr") return { ok: false, error: "Đơn đã thay đổi trong lúc đối soát", code: "kv_payment_order_changed" };
       if (again?.paymentStatus === "processing") {
-        claimed = again as any;
-      } else {
-        return { ok: false, error: "Không claim được đơn (đang xử lý hoặc hết hạn)", code: "claim_failed" };
+        return processing();
       }
+      if (opts.source === "kiotqr") return { ok: false, error: "Đơn đã thay đổi trong lúc đối soát", code: "kv_payment_order_changed" };
+      return { ok: false, error: "Không claim được đơn (đang xử lý hoặc hết hạn)", code: "claim_failed" };
     } else {
       claimed = claimedDoc as any;
     }
   } else if (restExisting.paymentStatus === "processing") {
-    claimed = existing as any;
-    if (opts.sepayTransactionId != null && !claimed.sepayTransactionId) {
-      await col.updateOne(
-        { _id: existing._id },
-        { $set: { sepayTransactionId: opts.sepayTransactionId, updatedAt: now } }
-      );
-    }
+    // A processing status is not permission to replay remote/stock side effects.
+    // No automatic lease takeover: the previous remote outcome may be unknown.
+    return processing();
   } else {
     return {
       ok: false,
@@ -174,6 +176,8 @@ export async function markShopOrderPaid(opts: {
     };
   }
 
+  const ownedClaim = { _id: existing._id, paymentStatus: "processing", paymentClaimId };
+  const claimLost = (): MarkPaidResult => ({ ok: false, code: "payment_claim_lost", error: "Quyền xử lý thanh toán đã thay đổi, cần đối soát đơn." });
   const details = orderDetailsOf(claimed);
   const total = Number(claimed.totalPayment ?? claimed.total) || 0;
   const description = String(claimed.customerNote || claimed.description || `Shop ${claimed.code}`).slice(
@@ -195,26 +199,13 @@ export async function markShopOrderPaid(opts: {
     kvInvoiceId !== "";
 
   try {
-    if (keepKiotQrInvoice) {
-      await col.updateOne(
-        { _id: existing._id },
-        {
-          $set: {
-            kvInvoiceId,
-            kvInvoiceCode,
-            kvInvoiceMode: "paid",
-            kvInvoiceCancelledAt: null,
-            updatedAt: new Date().toISOString(),
-          },
-        }
-      );
-    } else {
+    if (!keepKiotQrInvoice) {
       const shippingFee = Math.max(0, Math.round(Number(claimed.shippingFee) || 0));
       const paymentCode = String(claimed.paymentCode || "").trim();
       const inv = await ensurePaidInvoice({
         mainDb: opts.mainDb,
         customerId: claimed.kvCustomerId ? Number(claimed.kvCustomerId) : undefined,
-      customerName: String(claimed.customerName || "Khách web"),
+        customerName: String(claimed.customerName || "Khách web"),
         customerPhone: String(claimed.customerPhone || ""),
         address: fullAddressOf(claimed), deliveryAddress: kvDeliveryAddressForOrder(claimed),
         orderDetails: details,
@@ -231,19 +222,20 @@ export async function markShopOrderPaid(opts: {
       });
       kvInvoiceId = inv.kvInvoiceId;
       kvInvoiceCode = inv.kvInvoiceCode;
-      await col.updateOne(
-        { _id: existing._id },
-        {
-          $set: {
-            kvInvoiceId,
-            kvInvoiceCode,
-            kvInvoiceMode: "paid",
-            kvInvoiceCancelledAt: null,
-            updatedAt: new Date().toISOString(),
-          },
-        }
-      );
     }
+    const invoiceWrite = await col.updateOne(
+      ownedClaim,
+      {
+        $set: {
+          kvInvoiceId,
+          kvInvoiceCode,
+          kvInvoiceMode: "paid",
+          kvInvoiceCancelledAt: null,
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    );
+    if (invoiceWrite.matchedCount !== 1) return claimLost();
   } catch (e: any) {
     const rawMsg = String(e?.message || e || "");
     let stockHint = "";
@@ -256,7 +248,7 @@ export async function markShopOrderPaid(opts: {
     }
     const failMsg = `${rawMsg}${stockHint}`.slice(0, 400);
     await col.updateOne(
-      { _id: existing._id },
+      ownedClaim,
       {
         $set: {
           paymentStatus: "failed",
@@ -290,8 +282,8 @@ export async function markShopOrderPaid(opts: {
 
   const orderStatus = shortfall.length ? "thieu_hang" : "cho_xu_ly";
   const paidAt = new Date().toISOString();
-  await col.updateOne(
-    { _id: existing._id },
+  const paidWrite = await col.updateOne(
+    ownedClaim,
     {
       $set: {
         paymentStatus: "paid",
@@ -320,6 +312,7 @@ export async function markShopOrderPaid(opts: {
       },
     }
   );
+  if (paidWrite.matchedCount !== 1) return claimLost();
 
   const finalDoc = await col.findOne({ _id: existing._id });
   const { _id: ___, ...order } = (finalDoc || claimed) as any;
