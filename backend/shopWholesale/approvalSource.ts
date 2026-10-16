@@ -1,5 +1,14 @@
 import { SI_TERMS_VERSION } from "./policy.js";
 
+/** The review queue includes newly activated price access and legacy applications. */
+export function wholesaleAdminFilter(status: string): Record<string, unknown> {
+  if (status === "cho_duyet") return { roles: "si", $or: [
+    { siStatus: "cho_duyet" }, { siStatus: "active", "siVerification.status": "pending" },
+  ] };
+  if (status === "active") return { roles: "si", siStatus: "active", "siVerification.status": { $ne: "pending" } };
+  return { roles: "si", ...(status ? { siStatus: status } : {}) };
+}
+
 /** Legacy admin grants are recognized from their trusted permission audit. */
 export function wholesaleApprovalBasis(account: any): "customer_terms" | "admin_grant" | null {
   if (account.siProfile?.acceptedTermsAt && account.siProfile.termsVersion === SI_TERMS_VERSION) return "customer_terms";

@@ -13,7 +13,10 @@ test('scoped card separates saving from browsing correct products',()=>{
   const all=nodes(tree),link=all.find(n=>n.type==='a'),button=all.find(n=>n.type==='button');
   assert.equal(link.props.href,'/tim?voucher=OCT20');
   assert.equal(link.props.children,'Sản phẩm áp dụng ›');
-  assert.equal(button.props.children,'Nhận');button.props.onClick();assert.equal(claims,1);
+  assert.equal(button.props.children,'Lưu mã');button.props.onClick();assert.equal(claims,1);
+  const pending=nodes(ProductScopedVoucherCard({voucher,state:'claimable',pending:true,onClaim(){}})).find(n=>n.type==='button');
+  assert.equal(pending.props.disabled,true);
+  assert.equal(pending.props.children,'Đang lưu…');
 });
 
 test('compact cards never fill the list height and keep scope details on the product link',()=>{

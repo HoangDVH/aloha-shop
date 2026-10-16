@@ -33,6 +33,7 @@ export type PublicShopAccount = {
   ctvStatus: CtvStatus | null;
   siStatus?: CtvStatus | null;
   siRegion?: "HCM" | "TINH" | null;
+  siVerificationStatus?: "pending" | "verified" | null;
   siProfile?: Record<string, unknown> | null;
   zaloVerified?: boolean;
   active: boolean;
@@ -133,6 +134,11 @@ export function toPublicShopAccount(doc: Record<string, unknown>): PublicShopAcc
     ctvStatus,
     siStatus: (["cho_duyet", "active", "khoa", "tu_choi"].includes(String(doc.siStatus)) ? doc.siStatus : null) as CtvStatus | null,
     siRegion: doc.siRegion === "HCM" || doc.siRegion === "TINH" ? doc.siRegion : null,
+    siVerificationStatus: (() => {
+      const verification = doc.siVerification;
+      if (!verification || typeof verification !== "object" || !("status" in verification)) return null;
+      return verification.status === "verified" ? "verified" : verification.status === "pending" ? "pending" : null;
+    })(),
     siProfile: (doc.siProfile as Record<string, unknown>) || null,
     zaloVerified: Boolean(doc.zaloId && doc.zaloVerifiedAt),
     active: doc.active !== false,

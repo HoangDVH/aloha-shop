@@ -14,6 +14,7 @@ import {
   popupPathAllowed,
   type PopupCapRecord,
 } from "@/lib/popupRules";
+import { usePublicAppearance } from "@/lib/publicContentQueries";
 import { PopupReopenBadge } from "@/components/PopupReopenBadge";
 
 /** Cuộn tới tỉ lệ này của trang thì hiện luôn, không chờ hết thời gian trễ. */
@@ -102,23 +103,13 @@ export function ShopWelcomePopup() {
   const [, setStorageTick] = useState(0);
   const [forceShow] = useState(wantForcePopup);
 
+  const { data: appearance } = usePublicAppearance();
   useEffect(() => {
-    let cancelled = false;
-    void fetch(`${shopApiBase()}/api/shop/appearance`, { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        const p = data?.theme?.popup as AppearancePopup | undefined;
-        const hasBanners =
-          Boolean(p?.imageUrl?.trim()) ||
-          (Array.isArray(p?.items) &&
-            p.items.some((it) => it.enabled !== false && Boolean(it.imageUrl?.trim())));
-        if (!cancelled && p?.enabled && hasBanners) setPopup(p);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    const p = appearance?.theme?.popup;
+    const hasBanners = Boolean(p?.imageUrl?.trim()) ||
+      (Array.isArray(p?.items) && p.items.some(it => it.enabled !== false && Boolean(it.imageUrl?.trim())));
+    setPopup(p?.enabled && hasBanners ? p : null);
+  }, [appearance]);
 
   const audience = popup?.audience || "all";
 

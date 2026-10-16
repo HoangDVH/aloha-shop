@@ -1,8 +1,8 @@
 type CategoryProduct = { ma?: string; ton?: number; nhomPath?: string; nhom?: string; categoryName?: string; categorySlug?: string };
 const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\u0111/g, "d").replace(/[-_]/g, " ");
 
-export function isWholesaleHomeViewer(user: { roles: string[]; siStatus?: string | null; siRegion?: string | null } | null | undefined) {
-  return Boolean(user?.roles.includes("si") && user.siStatus === "active" && (user.siRegion === "HCM" || user.siRegion === "TINH"));
+export function isWholesaleHomeViewer(user: { roles: string[]; active?: boolean; siStatus?: string | null; siRegion?: string | null } | null | undefined) {
+  return Boolean(user?.active !== false && user?.roles.includes("si") && user.siStatus === "active");
 }
 
 export function wholesaleHomeHref(href: string, wholesale: boolean) {
@@ -25,10 +25,10 @@ export function sortWholesaleStockProducts<T extends CategoryProduct>(items: T[]
   return items.slice().sort((a, b) => stock(b) - stock(a) || revenue(b) - revenue(a));
 }
 
-/** Repeat two pots then one ordinary plant, with stock priority inside each group. */
-export function orderWholesaleHomeProducts<T extends CategoryProduct>(items: T[], stockFirst = true): T[] {
+/** Pots lead accessories; stock and revenue determine order inside each product group. */
+export function orderWholesaleHomeProducts<T extends CategoryProduct>(items: T[], stockFirst = true, revenueRank?: ReadonlyMap<string, number>): T[] {
   const pots: T[] = [], plants: T[] = [], other: T[] = [], finished: T[] = [];
-  for (const item of stockFirst ? sortWholesaleStockProducts(items) : items) {
+  for (const item of stockFirst ? sortWholesaleStockProducts(items, revenueRank) : items) {
     const category = normalize([item.nhomPath, item.nhom, item.categoryName, item.categorySlug].filter(Boolean).join(" >> "));
     if (isFinishedPlantCategory(category)) finished.push(item);
     else if (category.includes("chau trong cay")) pots.push(item);

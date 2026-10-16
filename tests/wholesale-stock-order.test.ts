@@ -14,7 +14,7 @@ test("available stock outranks sales; equal-stock pots use revenue and keep stab
   assert.equal(input[0].ma, "BEST");
 });
 
-test("home retains two-pot/one-plant layout and finished products last", () => {
+test("home keeps pots ahead of accessories and finished plants, with stock priority inside each group", () => {
   const input = [pot("LOW", 1), {ma:"F",ton:999,nhomPath:"CÂY THÀNH PHẨM TRỒNG SẴN"}, pot("HIGH", 90),
     {ma:"TREE",ton:30,nhomPath:"CÂY CẢNH ĐỦ LOẠI >> CÂY PHONG THỦY"}, pot("MID", 50)];
   assert.deepEqual(orderWholesaleHomeProducts(input).map(p=>p.ma), ["HIGH", "MID", "TREE", "LOW", "F"]);
@@ -55,6 +55,6 @@ test("approved wholesale default ordering is global before pagination; guests re
 test("explicit price/newest/deal sorts are not overridden by wholesale stock priority", () => {
   for(const sort of ["price_asc", "price_desc", "moi", "giam_gia"]){
     assert.deepEqual(Array.from(request("si", sort), (p:any)=>p.ma), ["LOW", "MID", "MID_SALES", "HIGH"],sort);
-    assert.deepEqual(Array.from(request("si", sort,true), (p:any)=>p.ma), ["LOW", "MID", "MID_SALES", "HIGH"],sort);
+    assert.deepEqual(Array.from(request("si", sort,true), (p:any)=>p.ma), ["HIGH", "MID_SALES", "MID", "LOW"],sort);
   }
 });

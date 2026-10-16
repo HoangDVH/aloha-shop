@@ -19,6 +19,7 @@ function quote(file, extra = {}) {
     user: { siStatus: 'active', roles: ['si'], siRegion: 'HCM' },
     liveGia: undefined, liveWebPrice: undefined, livePriceKind: undefined,
     liveAllowBackorder: undefined, liveCampaignPromo: undefined, displayTon: 10,
+    discountOnImage: false,
     isPromoSelling: p => Boolean(p?.slotOpen), isPromoPriceActive: p => Boolean(p?.slotOpen),
     promoAnchorPrice: p => p?.compareAtPrice || 0,
     stockMax: n => n, flashDealProgress: () => null, anchorDealProgress: () => null,

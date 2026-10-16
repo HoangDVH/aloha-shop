@@ -22,12 +22,14 @@ export function ProductPricingSummary({ pricing, qty = 1, unit = "sản phẩm" 
   const flash = quote?.campaign?.flashSavings || 0;
   const anchor = quote?.campaign?.anchorSavings || 0;
   const voucher = quote?.discountTotal || 0;
-  const savings = volume + flash + anchor + voucher;
+  const wholesale = quote?.wholesaleSavings || 0;
+  const savings = volume + flash + anchor + voucher + wholesale;
   const row = (label: string, amount: number, saving = false) => <div className="flex justify-between gap-4"><span className="min-w-0 text-slate-500">{label}</span><span className={`shrink-0 tabular-nums ${saving ? "font-semibold text-green-800" : "text-slate-700"}`}>{saving ? "−" : ""}{formatVnd(amount)}</span></div>;
   return <section className="overflow-hidden rounded-xl border border-slate-100 bg-slate-50/80 text-sm" aria-live="polite">
     <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-2.5"><h2 className="font-semibold text-slate-800">Chi tiết tạm tính</h2><span className="text-xs text-slate-500">{qty} {unit.toLowerCase()}</span></div>
     {loading || stale || !quote ? <p className="px-4 py-4 text-slate-500">Đang cập nhật giá và voucher…</p> : <div className="space-y-2 px-4 py-3">
       {row("Tiền hàng trước giảm", quote.subtotal + savings - voucher)}
+      {wholesale > 0 && row("Ưu đãi giá sỉ so với giá web", wholesale, true)}
       {volume > 0 && row("Giảm theo số lượng", volume, true)}
       {anchor > 0 && row("Giảm giá sản phẩm", anchor, true)}
       {flash > 0 && row("Giảm Flash Sale", flash, true)}

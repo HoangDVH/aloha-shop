@@ -13,7 +13,7 @@ import {
   livePropsForMa,
   useLiveProductPrices,
 } from "@/lib/useLiveProductPrices";
-import { PromoCalmLine, PromoListPrice, isPromoPriceActive, promoAnchorPrice } from "@/components/campaign/CardPromo";
+import { PromoCalmLine, PromoListPrice, isPromoPriceActive, promoAnchorPrice, promoDiscountPct } from "@/components/campaign/CardPromo";
 import { ProductDealCard } from "@/components/campaign/ProductDealCard";
 
 const MAX_IMAGE_BADGES = 2;
@@ -41,6 +41,8 @@ export function cardStatusBadges(s: {
 type ProductCardProps = {
   product: ShopProduct;
   shopee?: boolean;
+  discountOnImage?: boolean;
+  largePrice?: boolean;
   variant?: "default" | "deal";
   /** Giá mới từ API prices — nếu có thì hiện thay product.gia */
   liveWebPrice?: number;
@@ -71,6 +73,8 @@ export function ProductCard({ variant = "default", ...props }: ProductCardProps)
 function ProductCardDefault({
   product,
   shopee = false,
+  discountOnImage = false,
+  largePrice = false,
   liveWebPrice,
   liveGia,
   liveTon,
@@ -101,6 +105,7 @@ function ProductCardDefault({
   const wholesaleDiscount = wholesaleCard && Number.isFinite(webPrice) && Number(webPrice) > displayGia && displayGia > 0
     ? Math.floor(((Number(webPrice) - displayGia) / Number(webPrice)) * 100)
     : 0;
+  const imageDiscount = wholesaleDiscount || (discountOnImage && promo ? promoDiscountPct(promo, displayGia) : 0);
   const zeroPriceBlocked = priceKind === "si_missing" || (!(displayGia > 0) && !canPurchaseZeroPrice(user?.email));
   const purchaseBlocked = pricePending || zeroPriceBlocked || (preOrder && allowBackorder === false);
 
@@ -197,12 +202,9 @@ function ProductCardDefault({
           <ProductLinkPending overlay />
         </Link>
 
-        {wholesaleDiscount > 0 ? (
-          <span
-            className="pointer-events-none absolute right-0 top-0 z-10 rounded-bl-sm bg-[#fff0eb] px-2 py-1 text-lg font-normal leading-tight text-[#ee4d2d] sm:text-xl"
-            aria-label={`Thấp hơn giá web ${wholesaleDiscount}%`}
-          >
-            -{wholesaleDiscount}%
+        {imageDiscount > 0 ? (
+          <span className="pointer-events-none absolute right-0 top-1.5 z-10 rounded-l-md bg-[#E53935] py-0.5 pl-2 pr-1.5 text-[10px] font-black text-white shadow-xs sm:text-[11px]">
+            -{imageDiscount}%
           </span>
         ) : null}
 
@@ -234,18 +236,17 @@ function ProductCardDefault({
           {product.ten}
           <ProductLinkPending />
         </Link>
-        {product.giftDimensions ? <p className="text-[11px] leading-relaxed text-stone-500">{product.giftDimensions}</p> : null}
 
         <div className={`mt-auto flex items-end justify-between gap-1 pt-0.5 ${wholesaleCard ? "items-center" : "items-end"}`}>
           <div className="min-w-0 flex-1">
           {expectsSi && !pricePending && priceKind === "si" ? (
-            <SiPriceBadge price={displayGia} webPrice={webPrice} unit={product.dvt} variant={wholesaleCard ? "wholesale-card" : "card"} />
+            <SiPriceBadge price={displayGia} webPrice={webPrice} unit={product.dvt} variant={wholesaleCard ? "wholesale-card" : "card"} largePrice={largePrice} />
           ) : (
           <div className="flex min-w-0 flex-col justify-end">
             <div
               className={`min-w-0 break-words font-extrabold tracking-tight ${
                 promoDeal || shopee ? "text-[#EE4D2D]" : "text-[var(--aloha-price)]"
-              } ${shopee ? "text-sm sm:text-base" : "text-base sm:text-lg"}`}
+              } ${largePrice ? "flex h-5 items-baseline whitespace-nowrap text-[18px] leading-5 sm:h-6 sm:text-[22px] sm:leading-6 [&>span]:min-w-0 [&>span]:truncate [&>span]:text-[12px] sm:[&>span]:text-[13px]" : shopee ? "text-sm sm:text-base" : "text-base sm:text-lg"}`}
             >
               {pricePending ? "Đang cập nhật…" : priceKind === "si_missing" ? "Liên hệ" : formatVnd(displayGia)}
               {promo ? <PromoListPrice promo={promo} price={displayGia} /> : null}
@@ -259,7 +260,7 @@ function ProductCardDefault({
                 </span>
               ) : null}
             </div>
-            {promo ? <PromoCalmLine promo={promo} price={displayGia} /> : null}
+            {promo ? <PromoCalmLine promo={promo} price={displayGia} showDiscount={!discountOnImage} /> : null}
           </div>
           )}
           </div>
@@ -275,6 +276,8 @@ function ProductCardDefault({
 export function ProductGrid({
   products,
   shopee = false,
+  discountOnImage = false,
+  largePrice = false,
   /** Trang chủ: 6 SP / hàng (desktop), giữ card nhỏ gọn */
   homeRow6 = false,
   variant = "default",
@@ -282,6 +285,8 @@ export function ProductGrid({
 }: {
   products: ShopProduct[];
   shopee?: boolean;
+  discountOnImage?: boolean;
+  largePrice?: boolean;
   homeRow6?: boolean;
   variant?: "default" | "deal";
   columns?: 4 | 5 | 6;
@@ -312,6 +317,8 @@ export function ProductGrid({
           key={p.ma}
           product={p}
           variant={variant}
+          largePrice={largePrice}
+          discountOnImage={discountOnImage}
           shopee={shopee || homeRow6 || colMode === 6 || variant === "deal"}
           {...livePropsForMa(liveMap, p.ma)}
         />

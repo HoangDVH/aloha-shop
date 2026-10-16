@@ -58,6 +58,24 @@ test("shipping discounts are applied once and a fully subsidized fee is still re
   assert.equal(covered.shippingFee, 0);
   assert.equal(covered.shippingFeePending, false);
 }));
+
+test("unlinked wholesale HCM/TINH review orders retain charged shipping and its subsidy", () => optionalQuote(() => {
+  const result = check({ quoteToken: token(40700), shippingFee: 40700 });
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  for (const siRegion of ["HCM", "TINH"]) {
+    const input = orderInput(result, 20000);
+    const doc = buildOrderDoc({ ...input, user: { roles: ["si"], siStatus: "active", siRegion } });
+    assert.equal(doc.kvPushStatus, "queued");
+    assert.equal(doc.kvCustomerId, null);
+    assert.equal(doc.shippingFeeOriginal, 40700);
+    assert.equal(doc.shippingDiscount, 20000);
+    assert.equal(doc.shippingFee, 20700);
+    assert.equal(doc.shippingFeePending, false);
+    assert.equal(doc.total, 495700);
+    assert.equal(doc.paidAmount, 0);
+  }
+}));
 test("unknown shipping stays pending; an optional absent quote preserves the legacy flow", () => optionalQuote(() => {
   for (const body of [{}, { quoteToken: token(null), shippingFee: 0 }]) {
     const result = check(body);

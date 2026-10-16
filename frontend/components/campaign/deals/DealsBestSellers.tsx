@@ -48,13 +48,13 @@ export function DealsBestSellers({ campaign }: { campaign: CampaignUI }) {
   const shortName = campaign.display.hero.title?.match(/\d{1,2}\/\d{1,2}/)?.[0];
 
   return (
-    <section id="ban-chay" className="scroll-mt-24 space-y-4 rounded-3xl bg-white p-4 sm:p-6 shadow-sm border border-rose-100/80">
+    <section id="ban-chay" className="scroll-mt-24 space-y-3.5 sm:space-y-4">
       <DealsSectionHead
         icon={Trophy}
         title={shortName ? `Top bán chạy nhất ${shortName}` : "Top sản phẩm bán chạy nhất"}
         subtitle="Top cây cảnh & chậu được yêu thích nhất trong đợt ưu đãi"
       />
-      <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-3 sm:overflow-visible lg:max-w-4xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <ul className="-mx-3 flex snap-x gap-2.5 overflow-x-auto px-3 pb-1 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-3 sm:gap-3.5 sm:overflow-visible lg:max-w-4xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {items.map((x, i) => (
           <li key={x.product.ma} className="w-[46vw] max-w-[220px] shrink-0 snap-start sm:w-auto sm:max-w-none">
             <ProductDealCard product={x.product} rank={i + 1} soldCount={x.sold} />

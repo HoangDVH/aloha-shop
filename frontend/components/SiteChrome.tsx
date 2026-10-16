@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { useShopRouter } from "@/lib/useShopRouter";
-import { fetchCategoryTreeCached, shopApiBase, type ShopCategoryNavNode } from "@/lib/api";
+import { fetchCategoryTreeCached, type ShopCategoryNavNode } from "@/lib/api";
 import { HeaderSearch } from "@/components/HeaderSearch";
 import { HeaderAccountMenu } from "@/components/HeaderAccountMenu";
 import { CategoryMobileNav } from "@/components/CategoryNavMenu";
@@ -37,7 +37,7 @@ import { FooterGoogleMap } from "@/components/footer/FooterGoogleMap";
 import { applyNavConfig } from "@/lib/navConfig";
 import type { NavConfig, AppearanceTheme } from "@/lib/appearanceTypes";
 import { applyThemeCssVars } from "@/lib/themeCss";
-import { onShopAppearanceChanged } from "@/lib/catalogSync";
+import { usePublicAppearance } from "@/lib/publicContentQueries";
 import { SHOP_OPEN_MOBILE_CATS } from "@/components/ShopMobileTabBar";
 import { SHOP_BRAND, shopBrand } from "@/lib/brand";
 import { AnnouncementBar } from "@/components/campaign/AnnouncementBar";
@@ -227,29 +227,14 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
     };
   }, [tree.length]);
 
+  const { data: appearance } = usePublicAppearance();
   useEffect(() => {
-    let cancelled = false;
-    const loadNav = () => {
-      void fetch(`${shopApiBase()}/api/shop/appearance`, { cache: "no-store" })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((data) => {
-          if (cancelled) return;
-          if (data?.nav) setNav(data.nav as NavConfig);
-          if (data?.theme) {
-            const t = data.theme as AppearanceTheme;
-            setTheme(t);
-            applyThemeCssVars(t);
-          }
-        })
-        .catch(() => {});
-    };
-    loadNav();
-    const unsub = onShopAppearanceChanged(() => loadNav());
-    return () => {
-      cancelled = true;
-      unsub();
-    };
-  }, []);
+    if (appearance?.nav) setNav(appearance.nav);
+    if (appearance?.theme) {
+      setTheme(appearance.theme);
+      applyThemeCssVars(appearance.theme);
+    }
+  }, [appearance]);
 
   const navApplied = useMemo(() => applyNavConfig(tree, nav), [tree, nav]);
 
@@ -750,29 +735,13 @@ export function SiteFooter() {
   const [theme, setTheme] = useState<AppearanceTheme | null>(null);
   const dealsNavHref = useDealsNavHref();
 
+  const { data: appearance } = usePublicAppearance(!pathname.startsWith("/bac-si-cay"));
   useEffect(() => {
-    if (pathname.startsWith("/bac-si-cay")) return;
-    let cancelled = false;
-    const load = () => {
-      void fetch(`${shopApiBase()}/api/shop/appearance`, { cache: "no-store" })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((data) => {
-          if (cancelled) return;
-          if (data?.theme) {
-            const t = data.theme as AppearanceTheme;
-            setTheme(t);
-            applyThemeCssVars(t);
-          }
-        })
-        .catch(() => {});
-    };
-    load();
-    const unsub = onShopAppearanceChanged(() => load());
-    return () => {
-      cancelled = true;
-      unsub();
-    };
-  }, []);
+    if (appearance?.theme) {
+      setTheme(appearance.theme);
+      applyThemeCssVars(appearance.theme);
+    }
+  }, [appearance]);
 
   const siteName = shopBrand(theme?.siteName) || SHOP_BRAND;
   const footer = {

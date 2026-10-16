@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { Db } from "mongodb";
 import type { ShopOrderDetail } from "../shopOrders/models.js";
 import { isActiveWholesale } from "./policy.js";
+import { assignWholesaleRegion } from "./regionAssignment.js";
 
 export const purchasePolicySchema = z.object({
   hcmFirstMinimum: z.number().int().min(1).max(100000000),
@@ -32,14 +33,15 @@ export function purchaseGroup(product: Record<string, any>): string | null {
   return null;
 }
 export type PurchaseIssue = { code: string; message: string; productCode?: string; required?: number; quantity?: number };
+export type WholesaleDelivery = { deliveryMethod?: string; province?: string; district?: string; ward?: string };
 export function evaluatePurchasePolicy(input: { account: any; lines: ShopOrderDetail[];
   products: Map<string, any>; policy: PurchasePolicy; history: "returning" | "new" | "unknown";
-  delivery?: { deliveryMethod?: string; province?: string } }) {
+  delivery?: WholesaleDelivery }) {
   const { account, lines, products, policy, history, delivery } = input;
   const issues: PurchaseIssue[] = [];
   const goods = lines.filter(l => !l.isGift);
   const subtotal = goods.reduce((sum, l) => sum + l.price * l.quantity, 0);
-  const minimum = !isActiveWholesale(account) ? 0 : account.siRegion === "TINH" ? policy.tinhMinimum : history === "returning" ? 0 : policy.hcmFirstMinimum;
+  const minimum = !isActiveWholesale(account) || !["HCM", "TINH"].includes(account.siRegion) ? 0 : account.siRegion === "TINH" ? policy.tinhMinimum : history === "returning" ? 0 : policy.hcmFirstMinimum;
   if (!isActiveWholesale(account)) issues.push({ code: "account", message: "Tài khoản chưa có quyền mua sỉ đang hoạt động." });
   if (isActiveWholesale(account)) {
     if (!["HCM", "TINH"].includes(account.siRegion)) issues.push({ code: "region", message: "Tài khoản sỉ cần được xác nhận khu vực." });
@@ -59,8 +61,8 @@ export function evaluatePurchasePolicy(input: { account: any; lines: ShopOrderDe
         message: `${line.productName} (${code}): tối thiểu ${required} sản phẩm/mẫu, cần thêm ${required - quantity}.` });
     }
     if (account.siRegion === "HCM" && delivery?.deliveryMethod === "giao_tan_noi") {
-      const province = String(delivery.province || "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
-      if (!/^(?:tp\.?\s*|thanh pho\s*)?ho chi minh$/.test(province.trim())) issues.push({ code: "delivery", message: "Khách sỉ HCM cần nhận tại cửa hàng hoặc địa chỉ tại TP.HCM; khách tự bố trí xe nhận hàng." });
+      const destination = assignWholesaleRegion({ province: delivery.province || "", district: delivery.district, ward: delivery.ward || "" });
+      if (destination.region !== "HCM") issues.push({ code: "delivery", message: "Khách sỉ HCM cần nhận tại cửa hàng hoặc địa chỉ thuộc TP.HCM cũ. Địa chỉ ngoài phạm vi hoặc chưa xác định rõ cần Aloha xác nhận." });
     }
   }
   return { policyVersion: policy.version, subtotal, minimum, remaining: Math.max(0, minimum - subtotal),

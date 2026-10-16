@@ -1,6 +1,7 @@
 import type { Db } from 'mongodb';
 import { ObjectId } from 'mongodb';
 import { publicReadCache } from '../cache/readCache.js';
+import { syncBus } from "../syncBus.js";
 import { GIFT_COLLECTIONS_COL, type GiftCollectionItem } from './types.js';
 
 export const INITIAL_GIFT_SEEDS: Omit<GiftCollectionItem, '_id'>[] = [
@@ -122,6 +123,7 @@ export async function createGiftAdmin(db: Db, doc: Omit<GiftCollectionItem, '_id
   };
   const res = await col.insertOne(insertData as any);
   await publicReadCache.invalidate('gifts');
+  syncBus.publish([GIFT_COLLECTIONS_COL], "shop-gifts:create");
   return { ...insertData, _id: res.insertedId.toString() };
 }
 
@@ -134,7 +136,10 @@ export async function updateGiftAdmin(db: Db, idOrSlug: string, patch: Partial<G
       updatedAt: new Date().toISOString(),
     },
   });
-  if (res.matchedCount > 0) await publicReadCache.invalidate('gifts');
+  if (res.matchedCount > 0) {
+    await publicReadCache.invalidate('gifts');
+    syncBus.publish([GIFT_COLLECTIONS_COL], "shop-gifts:update");
+  }
   return res.matchedCount > 0;
 }
 
@@ -142,6 +147,9 @@ export async function deleteGiftAdmin(db: Db, idOrSlug: string): Promise<boolean
   const col = db.collection<GiftCollectionItem>(GIFT_COLLECTIONS_COL);
   const query = ObjectId.isValid(idOrSlug) ? { _id: new ObjectId(idOrSlug) as any } : { slug: idOrSlug };
   const res = await col.deleteOne(query);
-  if (res.deletedCount > 0) await publicReadCache.invalidate('gifts');
+  if (res.deletedCount > 0) {
+    await publicReadCache.invalidate('gifts');
+    syncBus.publish([GIFT_COLLECTIONS_COL], "shop-gifts:delete");
+  }
   return res.deletedCount > 0;
 }

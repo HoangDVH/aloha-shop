@@ -74,11 +74,24 @@ test("deal fallback combines eligible groups before truncating, deduplicates, an
   f.responses.push([finished], [finished, pot, tree]);
   f.hook([], { badge: "uu_dai", sort: "ten" }, 3);
   const before = JSON.stringify(f.options.queryKey);
-  assert.deepEqual((await f.options.queryFn({})).map((p: any) => p.ma), ["P", "C", "F"]);
+  assert.deepEqual(Array.from(await f.options.queryFn({}), (p: any) => p.ma), ["P", "C", "F"]);
   assert.equal(f.calls[1].badge, "ban_chay_sap_het");
   f.setCampaign({ id: "new", products: [{ ma: "P" }] });
   f.hook([], { badge: "uu_dai", sort: "ten" }, 3);
   assert.notEqual(JSON.stringify(f.options.queryKey), before);
+});
+
+test("all wholesale home section sorts prioritize stock and preserve server revenue ties", async () => {
+  for (const siRegion of ["HCM", "TINH"]) for (const sort of ["moi", "ten", "price_asc", "ban_chay"]) {
+    const f = hookFixture();
+    f.setUser({ id: siRegion, roles: ["si"], siStatus: "active", siRegion });
+    f.responses.push([{ ...finished, ton: 1 }, { ...tree, ton: 40 }, { ...pot, ton: 80 }]);
+    f.hook([], { sort, categoryId: 123 }, 3);
+    assert.deepEqual((await f.options.queryFn({})).map((p: any) => p.ma), ["P", "C", "F"]);
+    assert.equal(f.calls[0].categoryId, 123);
+    f.responses.push([{ ...tree, ton: 80 }, { ...pot, ton: 80 }]);
+    assert.deepEqual(Array.from(await f.options.queryFn({}), (p: any) => p.ma), ["P", "C"]);
+  }
 });
 
 test("finished sections move last only for approved wholesale viewers", () => {

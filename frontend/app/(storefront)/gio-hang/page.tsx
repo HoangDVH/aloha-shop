@@ -130,7 +130,7 @@ export default function CartPage() {
   const totalPending = selectedLines.length > 0 && (promoLoading || promoStale || !promoQuote);
   const priceScopeKey = user?.id || "guest";
   const confirmedPrice = usePendingValue({ amount: tongSauGiam, subtotal: promoQuote?.subtotal ?? tamTinh,
-    saved: discountAmount + flashSavings + anchorSavings + volumeSavings,
+    saved: discountAmount + flashSavings + anchorSavings + volumeSavings + (promoQuote?.wholesaleSavings || 0),
     discount: discountAmount, title: promoQuote?.applied?.title, quote: promoQuote }, totalPending, priceScopeKey);
   const displayAmount = confirmedPrice ? formatVnd(confirmedPrice.amount) : "—";
   const displayDiscount = confirmedPrice?.discount ?? 0;
@@ -418,7 +418,7 @@ export default function CartPage() {
           </div>
 
           <OrderPaymentSummary total={tamTinh} totalPending={totalPending} priceScopeKey={priceScopeKey} discount={discountAmount}
-            flashDiscount={flashSavings} volumeDiscount={volumeSavings} anchorDiscount={anchorSavings}
+            flashDiscount={flashSavings} volumeDiscount={volumeSavings} anchorDiscount={anchorSavings} wholesaleDiscount={promoQuote?.wholesaleSavings}
             grandTotal={tongSauGiam} cart showFreeshipProgress={false}>
             <button
               type="button"

@@ -39,8 +39,8 @@ export function promoDiscountPct(promo: CampaignPromoUI, price?: number): number
  * Dòng dưới giá cho thẻ ở trang thường (danh mục, tìm kiếm): chip "-18%" + "2 quà tặng".
  * Không thanh tiến độ, không nhấp nháy — hiệu ứng gấp chỉ dành cho trang ưu đãi / flash sale.
  */
-export function PromoCalmLine({ promo, price }: { promo: CampaignPromoUI; price?: number }) {
-  const pct = promoDiscountPct(promo, price);
+export function PromoCalmLine({ promo, price, showDiscount = true }: { promo: CampaignPromoUI; price?: number; showDiscount?: boolean }) {
+  const pct = showDiscount ? promoDiscountPct(promo, price) : 0;
   const giftCount = promo.giftLabel ? promo.gifts?.length || 1 : 0;
   if (!pct && !giftCount) return <div className="mt-0.5 h-[1.05rem]" aria-hidden />;
   return (

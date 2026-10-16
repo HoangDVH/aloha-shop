@@ -32,7 +32,7 @@ function matches(row, query) {
   });
 }
 function fixture(overrides = {}, accountOverrides = {}) {
-  const row = { _id: 'o1', code: 'WEB-1', shopAccountId: 'u1', priceMode:'si', kvPushStatus:'queued',
+  const row = { _id: 'o1', code: 'WEB-1', shopAccountId: 'u1', priceMode:'si', siRegion:'HCM', kvPushStatus:'queued',
     orderStatus:'cho_xac_nhan', revision:0, updatedAt:'v1', createdAt:new Date().toISOString(), policyAcceptedAt:'yes',
     orderDetails:[{productCode:'P1',quantity:1,price:1100,priceKind:'si'}], ...overrides };
   const account={ _id:'u1', siStatus:'active', roles:['si'], kvCustomerId:5, kvRetailer:'shop', siRegion:'HCM', phoneNorm:'0123', ...accountOverrides };
@@ -45,12 +45,83 @@ function fixture(overrides = {}, accountOverrides = {}) {
   }
   const db={collection:name=>name==='accounts'?{findOne:async()=>account}:{updateOne:async(q,u)=>update(q,u),findOneAndUpdate:async(q,u)=>update(q,u).modifiedCount?structuredClone(row):null}};
   let calls=0;
-  const deps={lookup:async()=>({customers:[{id:5}],retailer:'shop'}),region:async()=> 'HCM',send:async input=>{calls++;assert.equal(input.totalPayment,0);assert.equal(input.orderDetails[0].price,1100);return {kvOrderId:99,kvOrderCode:'DH0099'};}};
+  const deps={provision:async()=>({status:'disabled'}),lookup:async()=>({customers:[{id:5}],retailer:'shop'}),region:async()=> 'HCM',check:async()=>({canCheckout:true}),send:async input=>{calls++;assert.equal(input.totalPayment,0);assert.equal(input.orderDetails[0].price,1100);return {kvOrderId:99,kvOrderCode:'DH0099'};}};
   return {row,account,db,deps,calls:()=>calls};
 }
 test('concurrent workers create once and preserve immutable web code',async()=>{
   const f=fixture();await Promise.all(Array.from({length:20},()=>syncWholesaleOrder(f.db,{},'o1',f.deps)));
   assert.equal(f.calls(),1);assert.equal(f.row.code,'WEB-1');assert.equal(f.row.kvOrderCode,'DH0099');assert.equal(f.row.kvPushStatus,'synced');
+});
+
+test('pending verification customer can send a review order without an assigned KV wholesale group', async () => {
+  const f = fixture({}, { siVerification: { status: 'pending' } });
+  f.deps.region = async () => null;
+  const send = f.deps.send;
+  f.deps.send = async input => {
+    assert.match(input.description, /Khách sỉ mới/);
+    assert.match(input.description, /chờ xác minh thông tin\/nhóm sỉ/);
+    return send(input);
+  };
+  await syncWholesaleOrder(f.db, {}, 'o1', f.deps);
+  assert.equal(f.calls(), 1); assert.equal(f.row.kvPushStatus, 'synced');
+  assert.equal(f.account.siVerification.status, 'pending');
+});
+
+test('first order provisions its customer then rechecks the current link before sending', async () => {
+  const f = fixture({}, { kvCustomerId: null, siVerification: { status: 'pending' } });
+  let provisions = 0;
+  f.deps.provision = async (_shop, _ops, id) => {
+    assert.equal(id, 'u1'); provisions++; f.account.kvCustomerId = 5;
+    return { status: 'synced' };
+  };
+  await Promise.all(Array.from({ length: 10 }, () => syncWholesaleOrder(f.db, {}, 'o1', f.deps)));
+  assert.equal(provisions, 1); assert.equal(f.calls(), 1);
+});
+
+test('equal MongoDB Date timestamps from separate reads do not block an otherwise valid review order', async () => {
+  const f = fixture({}, { updatedAt: new Date(), siVerification: { status: 'pending' } });
+  const collection = f.db.collection;
+  f.db.collection = name => name === 'accounts' ? { findOne: async () => structuredClone(f.account) } : collection(name);
+  await syncWholesaleOrder(f.db, {}, 'o1', f.deps);
+  assert.equal(f.calls(), 1);
+});
+
+test('verification changing during remote lookup requires a fresh review before sending', async () => {
+  const f = fixture({}, { siVerification: { status: 'pending' } });
+  f.deps.lookup = async () => { f.account.siVerification.status = 'verified'; return { customers: [{ id: 5 }], retailer: 'shop' }; };
+  await syncWholesaleOrder(f.db, {}, 'o1', f.deps);
+  assert.equal(f.calls(), 0); assert.equal(f.row.kvPushStatus, 'customer_review');
+});
+
+test('a changed or missing regional snapshot requires review before any remote call', async () => {
+  for (const snapshot of ['HCM', undefined]) {
+    const f = fixture({ siRegion: snapshot }, { siRegion: 'TINH' });
+    f.deps.lookup = async () => { assert.fail('Region change must stop before remote lookup'); };
+    await syncWholesaleOrder(f.db, {}, 'o1', f.deps);
+    assert.equal(f.calls(), 0); assert.equal(f.row.kvPushStatus, 'needs_review');
+  }
+});
+
+test('policy is checked on accepted prices and full destination before dispatch', async () => {
+  const f = fixture({ province: 'HCM', district: 'district', ward: 'ward', deliveryMethod: 'giao_tan_noi' });
+  let checked = 0;
+  f.deps.check = async (_shop, _ops, buyer, lines, destination, excludeCode) => {
+    checked++;
+    assert.equal(buyer.siRegion, 'HCM'); assert.equal(lines[0].price, 1100);
+    assert.equal(destination.district, 'district'); assert.equal(destination.ward, 'ward');
+    assert.equal(excludeCode, 'WEB-1');
+    return { canCheckout: false, issues: [{ code: 'minimum' }] };
+  };
+  await syncWholesaleOrder(f.db, {}, 'o1', f.deps);
+  assert.equal(checked, 1); assert.equal(f.calls(), 0); assert.equal(f.row.kvPushStatus, 'needs_review');
+  assert.equal(f.row.orderDetails[0].price, 1100);
+});
+
+test('region changed during policy lookup cannot reach remote dispatch even without updatedAt change', async () => {
+  const f = fixture();
+  f.deps.check = async () => { f.account.siRegion = 'TINH'; return { canCheckout: true }; };
+  await syncWholesaleOrder(f.db, {}, 'o1', f.deps);
+  assert.equal(f.calls(), 0); assert.equal(f.row.kvPushStatus, 'customer_review');
 });
 test('lost response is unknown; repeated delivery never creates again',async()=>{
   const f=fixture();let calls=0;f.deps.send=async()=>{calls++;throw Error('timeout after commit');};

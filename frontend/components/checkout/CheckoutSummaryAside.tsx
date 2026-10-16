@@ -17,6 +17,7 @@ type Props = {
   volumeDiscount?: number;
   /** Giá trước KM − giá web: chỉ hiển thị, không trừ thêm (`total` đã là giá web). */
   anchorDiscount?: number;
+  wholesaleDiscount?: number;
   appliedTitle?: string;
   voucherPromo?: { discountType?: string; discountValue?: number } | null;
   onOpenPromotion?: () => void;
@@ -29,6 +30,7 @@ type Props = {
   grandTotal: number;
   error: string;
   orderBlockedReason: string;
+  minimumNoticeShown?: boolean;
   canSubmit: boolean;
   submitting: boolean;
   onPlaceOrder: () => void;
@@ -47,6 +49,7 @@ export function CheckoutSummaryAside({
   flashDiscount = 0,
   volumeDiscount = 0,
   anchorDiscount = 0,
+  wholesaleDiscount = 0,
   appliedTitle,
   voucherPromo,
   onOpenPromotion,
@@ -59,6 +62,7 @@ export function CheckoutSummaryAside({
   grandTotal,
   error,
   orderBlockedReason,
+  minimumNoticeShown = false,
   canSubmit,
   submitting,
   onPlaceOrder,
@@ -112,7 +116,7 @@ export function CheckoutSummaryAside({
 
       {/* Chi tiết thanh toán / Tóm tắt đơn hàng dùng chung cho mobile và desktop. */}
       <OrderPaymentSummary total={total} totalPending={totalPending} priceScopeKey={priceScopeKey} discount={discount}
-        flashDiscount={flashDiscount} volumeDiscount={volumeDiscount} anchorDiscount={anchorDiscount}
+        flashDiscount={flashDiscount} volumeDiscount={volumeDiscount} anchorDiscount={anchorDiscount} wholesaleDiscount={wholesaleDiscount}
         delivery={delivery} shippingFee={shippingFee} shippingDiscount={shippingDiscount}
         shippingPromotionTitle={shippingPromotionTitle} freeShipApplied={freeShipApplied}
         shippingLoading={shippingLoading} grandTotal={grandTotal}>
@@ -123,7 +127,7 @@ export function CheckoutSummaryAside({
           </p>
         ) : null}
 
-        {!error && displayAction?.orderBlockedReason ? (
+        {!error && !minimumNoticeShown && displayAction?.orderBlockedReason ? (
           <div className="mt-3 rounded-xl bg-amber-50 border border-amber-200/80 px-3 py-2 text-xs text-amber-900 flex items-start gap-1.5 leading-tight">
             <span className="shrink-0 text-amber-600 font-bold">⚠️</span>
             <span>{displayAction.orderBlockedReason}</span>
@@ -140,7 +144,7 @@ export function CheckoutSummaryAside({
               : "bg-[var(--aloha-green)] hover:bg-[var(--aloha-green-hover)] shadow-sm"
           }`}
         >
-          {submitting ? "Đang gửi…" : displayAction && !displayAction.canSubmit ? "Hoàn tất thông tin để đặt hàng" : "Đặt hàng"}
+          {submitting ? "Đang gửi…" : displayAction && !displayAction.canSubmit ? minimumNoticeShown ? "Mua thêm để đủ điều kiện" : "Hoàn tất thông tin để đặt hàng" : "Đặt hàng"}
         </button>
       </OrderPaymentSummary>
     </aside>

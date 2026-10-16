@@ -18,6 +18,16 @@ test("HCM first purchase: below minimum blocked, exact threshold allowed; return
   assert.equal(check("HCM", 1000, "unknown").issues.some(i => i.code === "history"), true);
   assert.equal(check("HCM", 2000000, "unknown").canCheckout, true);
 });
+
+test("HCM first order of 2,030,000 to District 8 Ward 2 passes both amount and destination checks", () => {
+  const result = evaluatePurchasePolicy({ account: { ...account, siRegion: "HCM" }, policy, history: "new",
+    products: new Map([["P", { siPurchaseGroup: "other" }]]),
+    lines: [{ productCode: "P", productName: "P", price: 2030000, quantity: 1 }],
+    delivery: { deliveryMethod: "giao_tan_noi", province: "Hồ Chí Minh", district: "Quận 8", ward: "Phường 2" } });
+  assert.equal(result.remaining, 0);
+  assert.deepEqual(result.issues, []);
+  assert.equal(result.canCheckout, true);
+});
 test("TINH: every order needs minimum, including returning customers; no carton exception", () => {
   assert.equal(check("TINH", 1999999, "returning").canCheckout, false);
   assert.equal(check("TINH", 2000000).canCheckout, true);
@@ -58,6 +68,15 @@ test("inactive or unapproved account cannot pass wholesale checker", () => {
   assert.equal(result.issues[0].code, "account");
 });
 
+test("accounts with uncertain addresses see prices but require region confirmation before checkout", () => {
+  const result = evaluatePurchasePolicy({ account: { ...account, siRegion: null }, policy, history: "new",
+    products: new Map([["P", { siPurchaseGroup: "other" }]]),
+    lines: [{ productCode: "P", productName: "P", price: 3000000, quantity: 1 }] });
+  assert.equal(result.canCheckout, false);
+  assert.equal(result.minimum, 0);
+  assert.deepEqual(result.issues.map(issue => issue.code), ["region"]);
+});
+
 test("customer-arranged HCM transport does not require carrier quote or charge carrier fee", () => {
   const result = checkShippingQuote({ body: { shippingFee: 50000 }, customerArranged: true, deliveryMethod: "giao_tan_noi",
     orderDetails: [], subtotal: 2000000, province: "Hồ Chí Minh", district: "", ward: "Bến Thành" });
@@ -66,9 +85,22 @@ test("customer-arranged HCM transport does not require carrier quote or charge c
 });
 test("HCM pickup allowed, outside HCM delivery blocked; local address allowed", () => {
   for (const [deliveryMethod, province, allowed] of [["nhan_cua_hang", "", true], ["giao_tan_noi", "Đồng Nai", false], ["giao_tan_noi", "Thành phố Hồ Chí Minh", true]] as const) {
-    const result = evaluatePurchasePolicy({ account: { ...account, siRegion: "HCM" }, policy, history: "returning", products: new Map(), lines: [], delivery: { deliveryMethod, province } });
+    const result = evaluatePurchasePolicy({ account: { ...account, siRegion: "HCM" }, policy, history: "returning", products: new Map(), lines: [], delivery: { deliveryMethod, province, ward: "Bến Thành" } });
     assert.equal(result.canCheckout, allowed);
   }
+});
+
+test("HCM destination uses the old boundary, rejecting merged provinces and ambiguous names", () => {
+  const run = (delivery: any) => evaluatePurchasePolicy({ account: { ...account, siRegion: "HCM" },
+    policy, history: "returning", products: new Map(), lines: [], delivery });
+  for (const ward of ["Lái Thiêu", "Dĩ An", "Vũng Tàu", "Thanh An"]) {
+    const result = run({ deliveryMethod: "giao_tan_noi", province: "Hồ Chí Minh", ward });
+    assert.equal(result.canCheckout, false, ward);
+    assert.ok(result.issues.some(issue => issue.code === "delivery"));
+  }
+  assert.equal(run({ deliveryMethod: "giao_tan_noi", province: "Hồ Chí Minh", district: "Quận 1", ward: "Bến Nghé" }).canCheckout, true);
+  assert.equal(run({ deliveryMethod: "giao_tan_noi", province: "Hồ Chí Minh", ward: "Bến Thành" }).canCheckout, true);
+  assert.equal(run({ deliveryMethod: "nhan_cua_hang", province: "Bình Dương", ward: "Lái Thiêu" }).canCheckout, true);
 });
 test("KiotViet purchase requires exact customer, completed status, excludes returned/cancelled", () => {
   assert.equal(completedKvPurchase({ customerId: 1, status: 1, total: 10000 }, 1), true);

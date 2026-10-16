@@ -163,7 +163,7 @@ export default function DonHangStatusPage() {
   const addressLine =
     order.deliveryMethod === "nhan_cua_hang"
       ? "Nhận tại cửa hàng ALOHA"
-      : [order.shippingAddress, order.ward, order.province].filter(Boolean).join(", ");
+      : [order.shippingAddress, order.ward, order.district, order.province].filter(Boolean).join(", ");
   const payLabel =
     order.method === "Pending" || order.orderStatus === "cho_xac_nhan"
       ? "Thanh toán sau khi xác nhận ảnh (trả trước hoặc cọc tối thiểu phí ship)"
@@ -194,7 +194,7 @@ export default function DonHangStatusPage() {
   }
 
   return (
-    <div className="relative mx-auto max-w-5xl animate-fade-up px-3 py-4 sm:px-4 lg:py-6">
+    <div className="relative mx-auto max-w-7xl animate-fade-up px-3 py-3 sm:px-4 lg:py-4">
       {["unpaid", "processing", "underpaid", "expired", "failed"].includes(order.paymentStatus || "") && order.kvPaymentVerification?.state === "pending" && <p role="status" className="mb-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Đang chờ xác minh thanh toán. Hệ thống sẽ tự đối soát lại; nếu bạn đã chuyển khoản, vui lòng không thanh toán lần nữa.</p>}
       {isSuccessView ? (
         <OrderSuccessView

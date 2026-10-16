@@ -14,7 +14,7 @@ export type HomeProductsQuery = Omit<Parameters<typeof fetchProducts>[0], "signa
 export function useWholesaleHomeProducts(products: ShopProduct[], query: HomeProductsQuery | undefined, limit: number) {
   const { user } = useShopAuth();
   const wholesale = isWholesaleHomeViewer(user);
-  const stockFirst = !query?.sort || ["ban_chay", "ban-chay", "bestsellers"].includes(query.sort);
+  const stockFirst = true;
   const qc = useQueryClient();
   useEffect(() => {
     if (!wholesale) return;
@@ -22,7 +22,7 @@ export function useWholesaleHomeProducts(products: ShopProduct[], query: HomePro
   }, [wholesale, qc]);
   const { campaign } = useCampaignView();
   const result = useQuery({
-    queryKey: ["shop", "si", "home", user?.id, user?.siStatus, user?.siRegion, query, limit,
+    queryKey: ["shop", "si", "home", "pots-stock-first-v3", user?.id, user?.siStatus, user?.siRegion, query, limit,
       query?.badge === "uu_dai" ? campaign : null],
     enabled: wholesale && Boolean(query),
     queryFn: async ({ signal }) => {

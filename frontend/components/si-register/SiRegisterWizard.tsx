@@ -17,8 +17,7 @@ import {
 } from "lucide-react";
 import { siRegisterSchema, type SiRegisterInput } from "@/lib/siRegisterSchema";
 import { SiApiError, siRequest, useSiSession } from "@/lib/siQueries";
-import { googleStartUrl, shopLogout } from "@/lib/auth";
-import { GoogleAuthButton } from "@/components/GoogleAuthButton";
+import { shopLoginHref, shopLogout } from "@/lib/auth";
 import { defaultWholesalePolicy, useWholesalePolicy } from "@/lib/wholesalePolicy";
 import { shopMeQueryKey, useShopMeQuery } from "@/lib/authQueries";
 import { formatVnd } from "@/lib/api";
@@ -83,11 +82,11 @@ export function SiRegisterWizard() {
   const register = useMutation({ mutationFn: async (values: SiRegisterInput) => {
     saveDraft();
     setError(""); setErrorCode("");
-    return submitSiRegistration(values, Boolean(account), siRequest);
-  }, onSuccess: data => { qc.setQueryData(shopMeQueryKey, data.user); void qc.invalidateQueries({ queryKey: ["shop", "si"] }); useSiDraft.getState().clear(); setError(""); setErrorCode(""); }, onError: e => { setError(e.message); setErrorCode(e instanceof SiApiError ? e.code : ""); } });
+    return submitSiRegistration({ ...values, ...ghnLoc }, Boolean(account), siRequest);
+  }, onSuccess: data => { qc.setQueryData(shopMeQueryKey, data.user); void qc.invalidateQueries({ queryKey: ["shop", "campaign"] }); void qc.invalidateQueries({ queryKey: ["shop", "cart", "quote"] }); void qc.invalidateQueries({ queryKey: ["shop", "si"] }); useSiDraft.getState().clear(); setError(""); setErrorCode(""); }, onError: e => { setError(e.message); setErrorCode(e instanceof SiApiError ? e.code : ""); } });
   const continueWithPhoneAccount = async () => {
     await shopLogout();
-    window.location.href = `/dang-nhap?next=${encodeURIComponent(registrationReturnPath)}`;
+    window.location.href = shopLoginHref(registrationReturnPath);
   };
   const field = (name: keyof SiRegisterInput, label: string, type = "text", optional = false) => <label className="block text-sm font-semibold text-slate-700" key={name}>
     {label} {optional && <span className="font-normal text-slate-400">(không bắt buộc)</span>}
@@ -269,16 +268,18 @@ export function SiRegisterWizard() {
           </div>
         {status === "cho_duyet" || status === "active" || status === "khoa" ? <div className="py-8 text-center">
           <div className="mx-auto mb-5 w-fit rounded-full bg-[var(--aloha-green-light)] p-5 text-[var(--aloha-green)]"><Check size={30}/></div>
-          <h2 className="text-2xl font-bold">{status === "active" ? "Tài khoản sỉ đã được mở" : status === "khoa" ? "Tài khoản sỉ tạm khóa" : "Aloha đã nhận hồ sơ của bạn"}</h2>
-          <p className="mt-3 leading-relaxed text-slate-600">{status === "active" ? "Bạn có thể xem giá sỉ và mua hàng ngay tại shop." : status === "khoa" ? "Vui lòng liên hệ Aloha để được hỗ trợ." : "Hồ sơ đang chờ duyệt. Aloha sẽ đối chiếu thông tin và liên hệ với bạn khi cần bổ sung."}</p>
-          <Link href="/" className="mt-7 inline-flex min-h-12 items-center gap-2 rounded-xl bg-[var(--aloha-green)] px-6 font-bold text-white">Tiếp tục mua sắm <ArrowRight size={18}/></Link>
+          <h2 className="text-2xl font-bold">{status === "active" ? "Bạn đã là khách sỉ Aloha" : status === "khoa" ? "Tài khoản sỉ tạm khóa" : "Aloha đã nhận hồ sơ của bạn"}</h2>
+          <p className="mt-3 leading-relaxed text-slate-600">{status === "active" ? account?.siRegion ? `Bạn thuộc nhóm ${account.siRegion === "HCM" ? "sỉ HCM (phạm vi TP.HCM cũ)" : "sỉ tỉnh"}. Bạn có thể xem giá sỉ và đặt hàng theo chính sách nhóm. Aloha sẽ kiểm tra thông tin và điều chỉnh nhóm nếu cần.` : "Bạn được xem giá sỉ và chọn hàng ngay. Địa chỉ chưa đủ rõ để tự phân nhóm; Aloha sẽ hỗ trợ xác nhận khu vực." : status === "khoa" ? "Vui lòng liên hệ Aloha để được hỗ trợ." : "Hồ sơ đang chờ duyệt. Aloha sẽ đối chiếu thông tin và liên hệ với bạn khi cần bổ sung."}</p>
+          <Link href="/" className="mt-7 inline-flex min-h-12 items-center gap-2 rounded-xl bg-[var(--aloha-green)] px-6 font-bold text-white">{status === "active" ? "Vào shop xem giá sỉ" : "Tiếp tục mua sắm"} <ArrowRight size={18}/></Link>
         </div> : <>
           <ol className="mb-7 flex justify-between gap-2" aria-label="Các bước đăng ký">{["Đăng nhập","Đăng ký mua sỉ"].map((label,i)=><li key={label} aria-current={step===i+1?"step":undefined} className={`flex flex-1 flex-col gap-2 text-xs sm:text-sm ${step>=i+1?"text-[var(--aloha-green)]":"text-slate-400"}`}><span className={`flex h-8 w-8 items-center justify-center rounded-full font-bold ${step>=i+1?"bg-[var(--aloha-green)] text-white":"bg-slate-100"}`}>{step>i+1?<Check size={16}/>:i+1}</span>{label}</li>)}</ol>
-          <h2 className="mb-2 text-xl font-bold">{step===1?"Bắt đầu với tài khoản Google":"Thông tin đăng ký mua sỉ"}</h2>
+          <h2 className="mb-2 text-xl font-bold">{step===1?"Bắt đầu với tài khoản Aloha":"Thông tin đăng ký mua sỉ"}</h2>
           {step===1 ? <div className="mt-4 space-y-4">
-            <p className="text-sm leading-relaxed text-slate-500">Đăng nhập để lưu hồ sơ. Aloha sẽ xác minh thông tin cửa hàng khi duyệt.</p>
-            {me.isPending || account ? <p>Đang kiểm tra tài khoản…</p> : <GoogleAuthButton href={googleStartUrl(registrationReturnPath)} label="Tiếp tục với Google" />}
-            <p className="text-sm">Đã có tài khoản Aloha? <Link href={`/dang-nhap?next=${encodeURIComponent(registrationReturnPath)}`} className="font-semibold text-[var(--aloha-green)] underline">Đăng nhập</Link></p>
+            <p className="text-sm leading-relaxed text-slate-500">Dùng tài khoản mua hàng Aloha để đăng ký mua sỉ. Sau khi đăng nhập hoặc tạo tài khoản, bạn sẽ quay lại đây để điền hồ sơ.</p>
+            {me.isPending || account ? <p>Đang kiểm tra tài khoản…</p> : <>
+              <Link href={shopLoginHref(registrationReturnPath)} className="flex min-h-12 w-full items-center justify-center rounded-xl bg-[var(--aloha-green)] px-6 font-bold text-white">Đăng nhập</Link>
+              <p className="text-sm">Chưa có tài khoản Aloha? <Link href={`/dang-ky?next=${encodeURIComponent(registrationReturnPath)}`} className="font-semibold text-[var(--aloha-green)] underline">Đăng ký tài khoản</Link></p>
+            </>}
           </div> : <form onSubmit={form.handleSubmit(values=>register.mutate(values))} onBlur={saveDraft} className="mt-5 space-y-5">
               <>
                 {field("fullName","Họ tên người liên hệ")}
@@ -327,7 +328,7 @@ export function SiRegisterWizard() {
               {field("businessType","Loại hình kinh doanh","text",true)}
               {!account && <>{field("email","Email","email")}{field("password","Mật khẩu (ít nhất 8 ký tự)","password")}</>}
               <details className="rounded-xl border border-slate-200 p-4"><summary className="cursor-pointer text-sm font-semibold">Thông tin bổ sung</summary><div className="mt-4 space-y-4">{field("taxCode","Mã số thuế","text",true)}{field("note","Ghi chú / quy mô / fanpage","text",true)}</div></details>
-              <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Sỉ HCM: đơn đầu từ {formatVnd(policy.hcmFirstMinimum)}. Sỉ tỉnh: mỗi đơn từ {formatVnd(policy.tinhMinimum)} và đủ số lượng từng mẫu. Mỗi mã sản phẩm là một mẫu; màu/kích thước khác mã tính riêng. Aloha xác nhận khu vực khi duyệt.</p>
+              <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Sỉ HCM: đơn đầu từ {formatVnd(policy.hcmFirstMinimum)}. Sỉ tỉnh: mỗi đơn từ {formatVnd(policy.tinhMinimum)} và đủ số lượng từng mẫu. Mỗi mã sản phẩm là một mẫu; màu/kích thước khác mã tính riêng. Hệ thống tự phân nhóm theo địa chỉ: chỉ phạm vi TP.HCM cũ là sỉ HCM; Bình Dương và Bà Rịa–Vũng Tàu cũ vẫn là sỉ tỉnh. Aloha kiểm tra thông tin sau đăng ký.</p>
               <label className="flex items-start gap-3 text-sm">
                 <input
                   type="checkbox"

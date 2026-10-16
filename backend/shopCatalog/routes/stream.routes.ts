@@ -42,6 +42,7 @@ export function registerCatalogStreamRoutes(app: Express, _ctx: CatalogCtx) {
       const appearanceHit = cols.some(
         (c) =>
           c === "aloha_shop_appearance" ||
+          c === "aloha_gift_collections" ||
           c.includes("appearance") ||
           c.includes("shop_appearance")
       );

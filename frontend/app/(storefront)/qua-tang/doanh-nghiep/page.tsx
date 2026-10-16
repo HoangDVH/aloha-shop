@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { SHOP_BRAND } from "@/lib/brand";
 import { DoanhNghiepFormClient } from "./DoanhNghiepFormClient";
+import { FeaturedClientsCarousel } from "./FeaturedClientsCarousel";
 
 export const metadata: Metadata = {
   title: "Quà Tặng Doanh Nghiệp (B2B) | Giải Pháp Cây Xanh Trọn Gói Aloha",
@@ -334,34 +335,7 @@ export default function DoanhNghiepGiftPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {FEATURED_CLIENTS.map((client, idx) => (
-              <div
-                key={idx}
-                className="overflow-hidden rounded-2xl border border-stone-200/90 bg-white shadow-xs transition hover:shadow-md"
-              >
-                <div className="aspect-[4/3] w-full overflow-hidden bg-stone-100">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={client.image}
-                    alt={client.name}
-                    className="h-full w-full object-cover transition duration-500 hover:scale-104"
-                  />
-                </div>
-                <div className="p-4">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 px-2 py-0.5 rounded">
-                    {client.category}
-                  </span>
-                  <h4 className="mt-2 text-sm font-bold text-stone-900 line-clamp-1">
-                    {client.name}
-                  </h4>
-                  <p className="mt-1 text-xs text-stone-500 line-clamp-2">
-                    {client.scale}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+          <FeaturedClientsCarousel clients={FEATURED_CLIENTS} />
         </div>
       </section>
 

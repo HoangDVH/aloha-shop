@@ -16,6 +16,7 @@ type Props = {
   volumeDiscount?: number;
   flashDiscount?: number;
   productDiscount?: number;
+  wholesaleDiscount?: number;
   grandTotal: number;
   shippingFee: number | null;
   shippingDiscount?: number;
@@ -24,6 +25,7 @@ type Props = {
   canSubmit: boolean;
   submitting: boolean;
   orderBlockedReason?: string;
+  minimumNoticeShown?: boolean;
   onPlaceOrder: () => void;
 };
 
@@ -41,6 +43,7 @@ export function CheckoutStickyBar({
   volumeDiscount = 0,
   flashDiscount = 0,
   productDiscount = 0,
+  wholesaleDiscount = 0,
   grandTotal,
   shippingFee,
   shippingDiscount = 0,
@@ -49,9 +52,10 @@ export function CheckoutStickyBar({
   canSubmit,
   submitting,
   orderBlockedReason,
+  minimumNoticeShown = false,
   onPlaceOrder,
 }: Props) {
-  const confirmed = usePendingValue({ total, discount, volumeDiscount, flashDiscount, productDiscount,
+  const confirmed = usePendingValue({ total, discount, volumeDiscount, flashDiscount, productDiscount, wholesaleDiscount,
     grandTotal, shippingFee, shippingDiscount, canSubmit, orderBlockedReason }, totalPending, `${priceScopeKey}:${deliveryMethod}`);
   const displayCanSubmit = totalPending ? confirmed?.canSubmit ?? true : canSubmit;
   const displayBlockedReason = totalPending ? confirmed?.orderBlockedReason : orderBlockedReason;
@@ -62,6 +66,7 @@ export function CheckoutStickyBar({
     volumeDiscount = confirmed?.volumeDiscount ?? 0;
     flashDiscount = confirmed?.flashDiscount ?? 0;
     productDiscount = confirmed?.productDiscount ?? 0;
+    wholesaleDiscount = confirmed?.wholesaleDiscount ?? 0;
     grandTotal = confirmed?.grandTotal ?? 0;
     shippingFee = confirmed?.shippingFee ?? null;
     shippingDiscount = confirmed?.shippingDiscount ?? 0;
@@ -87,8 +92,9 @@ export function CheckoutStickyBar({
           <div data-price-region="goods" aria-busy={goodsPending} className={`space-y-1.5 transition-opacity motion-reduce:transition-none ${goodsPending ? "opacity-60" : "opacity-100"}`}>
           <div className="flex items-center justify-between gap-3">
             <span>Tổng tiền hàng</span>
-            <span className="tabular-nums">{amountText(total)}</span>
+            <span className="tabular-nums">{amountText(total + wholesaleDiscount)}</span>
           </div>
+          {wholesaleDiscount > 0 && <div className="flex justify-between text-emerald-700"><span>Ưu đãi giá sỉ so với giá web</span><span>-{amountText(wholesaleDiscount)}</span></div>}
           {productDiscount > 0 && <div className="flex justify-between text-emerald-700"><span>Giảm giá sản phẩm</span><span>-{amountText(productDiscount)}</span></div>}
           {volumeDiscount > 0 && <div className="flex justify-between text-emerald-700"><span>Giảm theo số lượng</span><span>-{amountText(volumeDiscount)}</span></div>}
           {flashDiscount > 0 && <div className="flex justify-between text-emerald-700"><span>Giảm Flash Sale</span><span>-{amountText(flashDiscount)}</span></div>}
@@ -151,7 +157,7 @@ export function CheckoutStickyBar({
             </div>
           )}
         </div> : null}
-        {!displayCanSubmit && displayBlockedReason ? (
+        {!displayCanSubmit && !minimumNoticeShown && displayBlockedReason ? (
           <div className="rounded-lg bg-amber-50 border border-amber-200/90 px-2.5 py-1.5 text-[11px] leading-tight text-amber-900 flex items-center gap-1.5 shadow-2xs">
             <span className="shrink-0 text-amber-600">⚠️</span>
             <span className="truncate">{displayBlockedReason}</span>
@@ -174,7 +180,7 @@ export function CheckoutStickyBar({
           }`}
         >
           <span className="text-[14px] sm:text-[15px] font-extrabold leading-none">
-            {submitting ? "Đang gửi…" : !displayCanSubmit ? "Cần thông tin" : "Đặt hàng"}
+            {submitting ? "Đang gửi…" : !displayCanSubmit ? minimumNoticeShown ? "Mua thêm" : "Cần thông tin" : "Đặt hàng"}
           </span>
         </button>
         </div>

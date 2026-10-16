@@ -42,6 +42,8 @@ export interface EvaluatedCandidateUI {
 }
 
 export interface PromotionQuoteUI {
+  /** Display-only saving already included in wholesale prices. */
+  wholesaleSavings?: number;
   buyerAudience?: { newBuyer: boolean };
   applied?: {
     promotionId: string;

@@ -107,7 +107,7 @@ function buildSteps(o: ShopOrder): Step[] {
 }
 
 /** Timeline dòng đời đơn — giống KiotViet. */
-export function OrderStatusTimeline({ order }: { order: ShopOrder }) {
+export function OrderStatusTimeline({ order, compact = false }: { order: ShopOrder; compact?: boolean }) {
   const steps = buildSteps(order);
   const activeIdx = steps.findIndex((s) => s.active);
   let lastDoneIdx = -1;
@@ -115,8 +115,7 @@ export function OrderStatusTimeline({ order }: { order: ShopOrder }) {
     if (s.done) lastDoneIdx = idx;
   });
 
-  return (
-    <div>
+  const timeline = (
       <ol className="flex w-full items-start justify-between gap-0.5">
         {steps.map((step, i) => {
           const last = i === steps.length - 1;
@@ -153,6 +152,14 @@ export function OrderStatusTimeline({ order }: { order: ShopOrder }) {
           );
         })}
       </ol>
-    </div>
   );
+  if (!compact) return <div>{timeline}</div>;
+  const current = activeIdx >= 0 ? activeIdx : Math.max(0, lastDoneIdx);
+  return <>
+    <div className="hidden lg:block">{timeline}</div>
+    <details className="lg:hidden">
+      <summary className="min-h-9 cursor-pointer text-sm font-semibold text-green-800">Bước {current + 1}/{steps.length} · {steps[current]?.label} <span className="text-xs font-normal">· Xem tiến trình</span></summary>
+      <div className="pt-2">{timeline}</div>
+    </details>
+  </>;
 }

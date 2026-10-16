@@ -49,20 +49,97 @@ export function CompactVoucherCard({voucher: v, state, pending, onClaim, onProdu
   const label = ship ? `Hỗ trợ phí ship ${v.discountType === "fixed" ? formatVnd(v.discountValue) : pctText(v)}`
     : scope && v.title ? voucherCustomerTitle(v.title, v)
     : formatVoucherBadge({ ...v, maxDiscountVnd: undefined, minOrderThreshold: undefined }).label;
-  const action = "inline-flex min-h-7 shrink-0 items-center justify-center rounded-full px-2 text-[10px] font-semibold";
-  return <article title={label} className={`flex min-h-[68px] min-w-0 shrink-0 items-stretch overflow-hidden rounded-lg border text-left ${ship ? "border-[#bce9df] bg-[#f0fbf8] text-[#087a69]" : "border-[#f4cfc2] bg-[#fff5ef] text-[#b5482d]"}`}>
-    <span className="flex w-10 shrink-0 flex-col items-center justify-center gap-1 border-r border-dashed border-current/20 px-1 text-center text-[9px] leading-tight">
-      {ship ? <Truck size={16} aria-hidden /> : <TicketPercent size={16} aria-hidden />}<span>{ship ? "Vận chuyển" : "Sản phẩm"}</span>
-    </span>
-    <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-2 py-2">
-      <p className="line-clamp-2 text-xs font-bold leading-4">{label}</p>
-      {ship && (v.minOrderThreshold || 0) > 0 && <p className="text-[10px] leading-3 text-slate-500">Đơn từ {formatVnd(v.minOrderThreshold!)}</p>}
-      {scope && <Link href={voucherUseHref(v.id)} onClick={onProducts} aria-label="Xem sản phẩm áp dụng" className="mt-1 w-fit text-[10px] leading-3 underline underline-offset-2">Sản phẩm áp dụng ›</Link>}
-    </div>
-    <div className="my-auto mr-2 shrink-0">
-      {canClaim ? <button type="button" disabled={pending} onClick={onClaim} className={`${action} ${ship ? "bg-[#087a69]" : "bg-[#bf4e32]"} text-white disabled:opacity-50`}>{pending ? "Đang lưu…" : "Nhận"}</button>
-        : usable ? <Link href={voucherUseHref(v.id)} onClick={onProducts} className={`${action} ${ship ? "bg-[#d9f2e9]" : "bg-[#ffe6d8]"}`}>{state === "claimed" ? "Đã lưu" : "Dùng"}</Link>
-        : <span className={`${action} bg-stone-100 text-stone-500`}>{state === "soldOut" ? "Hết lượt" : state === "upcoming" ? "Sắp mở" : "Không áp dụng"}</span>}
-    </div>
-  </article>;
+  const action = "inline-flex min-h-[28px] shrink-0 items-center justify-center rounded-full px-3 text-[11px] font-bold tracking-tight transition-all select-none cursor-pointer";
+
+  return (
+    <article
+      title={label}
+      className="group relative flex min-h-[72px] min-w-0 shrink-0 items-stretch overflow-hidden rounded-xl bg-white text-left shadow-xs ring-1 ring-black/[0.08] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:ring-black/[0.12]"
+    >
+      {/* CUỐNG VÉ BÊN TRÁI (TICKET STUB) CHUẨN SHOPEE */}
+      <div
+        className={`relative flex w-12 sm:w-14 shrink-0 flex-col items-center justify-center gap-1 border-r border-dashed ${
+          ship
+            ? "border-teal-200/90 bg-teal-50/80 text-teal-700"
+            : "border-rose-200/90 bg-rose-50/80 text-[var(--campaign-primary,#C8102E)]"
+        } px-1 text-center`}
+      >
+        {/* Rãnh khuyết vé tròn phía trên (Top Ticket Notch) */}
+        <span
+          className="pointer-events-none absolute -top-1.5 -right-1.5 z-10 h-3 w-3 rounded-full bg-[var(--campaign-cream,#FFF0F5)] ring-1 ring-black/[0.08]"
+          aria-hidden="true"
+        />
+        {/* Rãnh khuyết vé tròn phía dưới (Bottom Ticket Notch) */}
+        <span
+          className="pointer-events-none absolute -bottom-1.5 -right-1.5 z-10 h-3 w-3 rounded-full bg-[var(--campaign-cream,#FFF0F5)] ring-1 ring-black/[0.08]"
+          aria-hidden="true"
+        />
+
+        {ship ? (
+          <Truck size={17} strokeWidth={2.3} aria-hidden />
+        ) : (
+          <TicketPercent size={17} strokeWidth={2.3} aria-hidden />
+        )}
+        <span className="text-[9px] font-black uppercase tracking-tight leading-none">
+          {ship ? "Vận chuyển" : "Sản phẩm"}
+        </span>
+      </div>
+
+      {/* THÂN VÉ NỀN TRẮNG TINH KHIẾT (MAIN BODY) */}
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-3 py-2 bg-white">
+        <p className="line-clamp-2 text-xs font-bold leading-4 text-slate-900 group-hover:text-[var(--campaign-primary,#C8102E)] transition-colors">
+          {label}
+        </p>
+        {ship && (v.minOrderThreshold || 0) > 0 ? (
+          <p className="text-[10px] leading-3 font-medium text-slate-500">
+            Đơn từ {formatVnd(v.minOrderThreshold!)}
+          </p>
+        ) : null}
+        {scope ? (
+          <Link
+            href={voucherUseHref(v.id)}
+            onClick={onProducts}
+            aria-label="Xem sản phẩm áp dụng"
+            className="mt-0.5 w-fit text-[10.5px] font-semibold text-[var(--campaign-primary,#C8102E)] hover:underline underline-offset-2"
+          >
+            Sản phẩm áp dụng ›
+          </Link>
+        ) : null}
+      </div>
+
+      {/* KHỐI NÚT ACTION BÊN PHẢI */}
+      <div className="my-auto mr-2.5 sm:mr-3 shrink-0">
+        {canClaim ? (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={onClaim}
+            className={`${action} ${
+              ship
+                ? "bg-[#0F766E] hover:bg-[#0D655E] text-white shadow-xs"
+                : "bg-gradient-to-r from-[var(--campaign-primary,#C8102E)] to-[#E11D48] text-white shadow-xs hover:brightness-110 active:scale-95"
+            } disabled:opacity-50`}
+          >
+            {pending ? "Đang lưu…" : "Lưu mã"}
+          </button>
+        ) : usable ? (
+          <Link
+            href={voucherUseHref(v.id)}
+            onClick={onProducts}
+            className={`${action} ${
+              ship
+                ? "border border-teal-300 bg-teal-50/70 text-teal-700 hover:bg-teal-100"
+                : "border border-rose-200 bg-rose-50/80 text-[var(--campaign-primary,#C8102E)] hover:bg-rose-100"
+            }`}
+          >
+            Dùng
+          </Link>
+        ) : (
+          <span className={`${action} bg-slate-100 text-slate-400 font-medium cursor-not-allowed`}>
+            {state === "soldOut" ? "Hết lượt" : state === "upcoming" ? "Sắp mở" : "Không áp dụng"}
+          </span>
+        )}
+      </div>
+    </article>
+  );
 }

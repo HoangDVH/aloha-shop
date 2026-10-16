@@ -1,6 +1,7 @@
 import { formatVnd } from "@/lib/api";
 
-export function SiPriceBadge({ price, webPrice, unit, variant = "detail" }: {
+export function SiPriceBadge({ price, webPrice, unit, largePrice = false, variant = "detail" }: {
+  largePrice?: boolean;
   price: number;
   webPrice?: number;
   unit?: string;
@@ -12,17 +13,17 @@ export function SiPriceBadge({ price, webPrice, unit, variant = "detail" }: {
 
   if (variant === "wholesale-card") {
     return (
-      <div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+      <div className={`flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5 ${largePrice ? "[&>del]:min-w-0 [&>del]:flex-1 [&>del]:truncate" : ""}`}>
         <span
           aria-label={`Giá sỉ: ${formatVnd(price)}`}
-          className="whitespace-nowrap text-[14px] font-extrabold leading-tight tracking-tight text-[#ee4d2d] tabular-nums sm:text-base"
+          className={`whitespace-nowrap font-extrabold tracking-tight text-[#ee4d2d] tabular-nums ${largePrice ? "text-[18px] leading-5 sm:text-[22px] sm:leading-6" : "text-[14px] leading-tight sm:text-base"}`}
         >
           {formatVnd(price)}
         </span>
         {hasWebPrice ? (
           <del
             aria-label={`Giá web: ${formatVnd(webPrice!)}`}
-            className="whitespace-nowrap text-[10px] font-medium text-gray-400 tabular-nums sm:text-[11px]"
+            className={`whitespace-nowrap font-medium text-gray-400 tabular-nums ${largePrice ? "text-[12px] sm:text-[13px]" : "text-[10px] sm:text-[11px]"}`}
           >
             {formatVnd(webPrice!)}
           </del>

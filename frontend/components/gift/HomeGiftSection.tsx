@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useMemo } from "react";
 import Link from "next/link";
 import { Sparkles, ArrowRight, Building2, ChevronRight, ChevronLeft } from "lucide-react";
 import { GiftImage } from "@/components/gift/GiftImage";
+import { usePublicGifts } from "@/lib/publicContentQueries";
 
 export interface GiftCardItem {
   _id?: string;
@@ -29,8 +30,11 @@ function getShortGiftTitle(title: string): string {
   return title.trim();
 }
 
-export function HomeGiftSection({ initialItems = [] }: { initialItems?: GiftCardItem[] }) {
-  const [items, setItems] = useState<GiftCardItem[]>(initialItems);
+const EMPTY_GIFTS: GiftCardItem[] = [];
+
+export function HomeGiftSection({ initialItems }: { initialItems?: GiftCardItem[] }) {
+  const { data } = usePublicGifts(initialItems);
+  const items = data || EMPTY_GIFTS;
   const [isVisible, setIsVisible] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
   const [mobileSlide, setMobileSlide] = useState(0);
@@ -39,20 +43,6 @@ export function HomeGiftSection({ initialItems = [] }: { initialItems?: GiftCard
   const scrollRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
-
-  useEffect(() => {
-    // Nếu chưa có server data, fetch client side
-    if (!initialItems.length) {
-      fetch("/api/shop/gifts")
-        .then((res) => res.json())
-        .then((json) => {
-          if (json.ok && Array.isArray(json.data)) {
-            setItems(json.data);
-          }
-        })
-        .catch(() => {});
-    }
-  }, [initialItems]);
 
   // Chia danh sách thành các slide (mỗi slide tối đa 2 mục quà tặng chuẩn UI mobile)
   const mobilePairs = useMemo(() => {
@@ -125,7 +115,7 @@ export function HomeGiftSection({ initialItems = [] }: { initialItems?: GiftCard
       {/* Họa tiết lá trang trí mờ tinh tế */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/decor/leaves-top.png"
+        src="/decor/leaves-tr.png"
         alt=""
         aria-hidden
         className="pointer-events-none absolute -right-6 -top-6 z-0 h-40 w-40 opacity-15 sm:h-56 sm:w-56"

@@ -7,6 +7,9 @@ export const addressSchema = z.object({
   district: z.string().trim().max(120).optional().default(""),
   ward: z.string().trim().min(2).max(120),
   detail: z.string().trim().min(3).max(300),
+  ghnProvinceId: z.number().int().nonnegative().optional(),
+  ghnDistrictId: z.number().int().nonnegative().optional(),
+  ghnWardCode: z.string().trim().max(30).optional(),
 });
 export const applicationSchema = addressSchema.extend({
   lookupId: z.string().uuid(), fullName: z.string().trim().min(2).max(120),
@@ -19,8 +22,8 @@ export const applicationSchema = addressSchema.extend({
   acceptedTerms: z.literal(true),
 });
 
-export function canonicalAddress(input: { province: string; ward: string; detail: string }) {
+export function canonicalAddress(input: { province: string; district?: string; ward: string; detail: string }) {
   const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .toLowerCase().replace(/đ/g, "d").trim().replace(/\s+/g, " ");
-  return [norm(input.province), norm(input.ward), norm(input.detail)].join("|");
+  return [norm(input.province), norm(input.district || ""), norm(input.ward), norm(input.detail)].join("|");
 }

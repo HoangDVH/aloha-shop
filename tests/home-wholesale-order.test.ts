@@ -7,10 +7,10 @@ const pots = Array.from({ length: 5 }, (_, i) => product(`P${i}`, "CHẬU TRỒN
 const plants = Array.from({ length: 3 }, (_, i) => product(`C${i}`, "CÂY CẢNH ĐỦ LOẠI >> CÂY PHONG THỦY"));
 const finished = [product("F", "CÂY CẢNH ĐỦ LOẠI >> CÂY THÀNH PHẨM TRỒNG SẴN >> CÂY TRỒNG THỦY SINH"), product("S", "CÂY CẢNH ĐỦ LOẠI >> CÂY THÀNH PHẨM SALE >> ĐỒNG GIÁ")];
 
-test("only approved HCM/TINH wholesale viewers qualify", () => {
-  for (const siRegion of ["HCM", "TINH"]) assert.equal(isWholesaleHomeViewer({ roles: ["si"], siStatus: "active", siRegion }), true);
+test("active wholesale viewers see wholesale home before and after regional verification", () => {
+  for (const siRegion of ["HCM", "TINH", null]) assert.equal(isWholesaleHomeViewer({ roles: ["si"], siStatus: "active", siRegion }), true);
   for (const user of [null, { roles: ["ctv"] }, { roles: ["si"], siStatus: "cho_duyet", siRegion: "HCM" },
-    { roles: ["si"], siStatus: "khoa", siRegion: "TINH" }, { roles: ["si"], siStatus: "active", siRegion: null },
+    { roles: ["si"], siStatus: "khoa", siRegion: "TINH" }, { roles: ["si"], siStatus: "active", active: false, siRegion: null },
     { roles: ["khach"], siStatus: "active", siRegion: "HCM" }]) assert.equal(isWholesaleHomeViewer(user), false);
 });
 
@@ -35,6 +35,23 @@ test("classification uses category ancestry rather than the word pot in a plant 
   assert.equal(isFinishedPlantCategory("CÂY PHONG THỦY"), false);
   const misleading = { ...plants[0], ten: "Cây trong chậu trồng cây" };
   assert.deepEqual(orderWholesaleHomeProducts([misleading, ...pots]).slice(0, 3).map(p => p.ma), ["P0", "P1", "C0"]);
+});
+
+test("pots lead other groups with stock then revenue priority inside each group", () => {
+  const items = [
+    { ...pots[0], ton: 2 }, { ...pots[1], ton: 40 },
+    { ...plants[0], ton: 80 }, { ...finished[0], ton: 100 }, { ...plants[1], ton: 40 },
+  ];
+  const rank = new Map([["C1", 900], ["P1", 100]]);
+  assert.deepEqual(orderWholesaleHomeProducts(items, true, rank).map(p => p.ma), ["P1", "P0", "C0", "C1", "F"]);
+});
+
+test("high-stock stickers and accessories cannot displace pots on wholesale home", () => {
+  const items = [{ ma: "STICKER", ton: 99999, nhomPath: "PHỤ KIỆN TRANG TRÍ" },
+    { ma: "BOARD", ton: 9000, nhomPath: "PHỤ KIỆN TRANG TRÍ" },
+    { ...pots[0], ton: 12 }, { ...pots[1], ton: 90 }, { ...pots[2], ton: 90 }];
+  const rank = new Map([["P2", 100], ["P1", 50]]);
+  assert.deepEqual(orderWholesaleHomeProducts(items, true, rank).map(p => p.ma), ["P2", "P1", "P0", "STICKER", "BOARD"]);
 });
 
 test("view-more preserves private list only for wholesale featured/offer links", () => {

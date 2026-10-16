@@ -16,6 +16,7 @@ type Props = {
   flashDiscount?: number;
   volumeDiscount?: number;
   anchorDiscount?: number;
+  wholesaleDiscount?: number;
   delivery?: Delivery;
   shippingFee?: number | null;
   shippingDiscount?: number;
@@ -30,7 +31,7 @@ type Props = {
 
 /** One price breakdown for cart and checkout, at every viewport size. */
 export function OrderPaymentSummary({ total: liveTotal, totalPending = false, discount: liveDiscount = 0,
-  flashDiscount: liveFlash = 0, volumeDiscount: liveVolume = 0, anchorDiscount: liveAnchor = 0,
+  flashDiscount: liveFlash = 0, volumeDiscount: liveVolume = 0, anchorDiscount: liveAnchor = 0, wholesaleDiscount: liveWholesale = 0,
   delivery = "giao_tan_noi", shippingFee: liveShippingFee = null, shippingDiscount: liveShipDiscount = 0,
   shippingPromotionTitle: liveShipTitle, freeShipApplied: liveFreeShip = false, shippingLoading = false,
   grandTotal: liveGrandTotal, cart = false, showFreeshipProgress = true, children, priceScopeKey = "" }: Props) {
@@ -38,9 +39,9 @@ export function OrderPaymentSummary({ total: liveTotal, totalPending = false, di
   const shippingPending = !cart && showShip && delivery === "giao_tan_noi" && (shippingLoading || totalPending);
   const pending = totalPending || shippingPending;
   const goods = usePendingValue({ total: liveTotal, discount: liveDiscount, flashDiscount: liveFlash,
-    volumeDiscount: liveVolume, anchorDiscount: liveAnchor }, totalPending, priceScopeKey);
-  const { total, discount, flashDiscount, volumeDiscount, anchorDiscount } = goods || {
-    total: 0, discount: 0, flashDiscount: 0, volumeDiscount: 0, anchorDiscount: 0,
+    volumeDiscount: liveVolume, anchorDiscount: liveAnchor, wholesaleDiscount: liveWholesale }, totalPending, priceScopeKey);
+  const { total, discount, flashDiscount, volumeDiscount, anchorDiscount, wholesaleDiscount } = goods || {
+    total: 0, discount: 0, flashDiscount: 0, volumeDiscount: 0, anchorDiscount: 0, wholesaleDiscount: 0,
   };
   const shipping = usePendingValue({ shippingFee: liveShippingFee, shippingDiscount: liveShipDiscount,
     shippingPromotionTitle: liveShipTitle, freeShipApplied: liveFreeShip, grandTotal: liveGrandTotal },
@@ -51,7 +52,7 @@ export function OrderPaymentSummary({ total: liveTotal, totalPending = false, di
   const goodsBeforeVoucher = Math.max(0, total - flashDiscount);
   const goodsAfter = Math.max(0, goodsBeforeVoucher - discount);
   const amountText = (value: number) => goods ? formatVnd(value) : "—";
-  const savings = anchorDiscount + volumeDiscount + flashDiscount + discount + (showShip ? shippingDiscount : 0);
+  const savings = wholesaleDiscount + anchorDiscount + volumeDiscount + flashDiscount + discount + (showShip ? shippingDiscount : 0);
   const saved = usePendingValue(savings, pending, priceScopeKey) ?? 0;
   const fading = "transition-opacity duration-150 motion-reduce:transition-none";
   return (
@@ -69,8 +70,9 @@ export function OrderPaymentSummary({ total: liveTotal, totalPending = false, di
           <div data-price-region="goods" aria-busy={totalPending} className={`space-y-3 ${fading} ${totalPending ? "opacity-60" : "opacity-100"}`}>
           <div className="flex items-center justify-between gap-3">
             <span>Giá gốc sản phẩm</span>
-            <span className="tabular-nums">{amountText(total + anchorDiscount + volumeDiscount)}</span>
+            <span className="tabular-nums">{amountText(total + anchorDiscount + volumeDiscount + wholesaleDiscount)}</span>
           </div>
+          {wholesaleDiscount > 0 && <div className="flex justify-between gap-3 font-semibold text-[var(--aloha-price)]"><span>Ưu đãi giá sỉ so với giá web</span><span className="tabular-nums">-{amountText(wholesaleDiscount)}</span></div>}
           {anchorDiscount > 0 ? (
             <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold">
               <span>Giảm giá sản phẩm</span>

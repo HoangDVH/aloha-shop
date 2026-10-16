@@ -1,9 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Alert, Button, Input, Pagination, Spin } from "antd";
-import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
+import { Alert, Button, Input, InputNumber, Select, Pagination, Spin } from "antd";
+import { Plus } from "lucide-react";
 import { adminFetch } from "@/components/admin/api/adminFetch";
+
+import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { GiftProductRow } from "./GiftProductRow";
+import { giftProductPage, insertGiftProduct, moveGiftProduct } from "./productOrder";
 
 type Product = { ma: string; ten: string; anh?: string; gia?: number; visible?: boolean };
 type SearchResult = { items: Product[]; selected: Product[]; total: number; limit: number };
@@ -27,12 +32,22 @@ export function GiftProductPicker({ value = [], onChange }: {
 }) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [selectedPage, setSelectedPage] = useState(1);
+  const [selectedPageSize, setSelectedPageSize] = useState(10);
+  const selected = giftProductPage(value, selectedPage, selectedPageSize);
+  useEffect(() => { setSelectedPage(selected.page); }, [selected.page]);
   const [result, setResult] = useState<SearchResult>({ items: [], selected: [], total: 0, limit: 12 });
   const [known, setKnown] = useState<Record<string, Product>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
-  const codesKey = value.join(",");
+  const [insertAt, setInsertAt] = useState<"first" | "last" | "position">("first");
+  const [insertPosition, setInsertPosition] = useState<number | null>(1);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const codesKey = [...value].sort().join(",");
   const trimmed = query.trim();
 
   useEffect(() => {
@@ -68,10 +83,20 @@ export function GiftProductPicker({ value = [], onChange }: {
     return () => { cancelled = true; clearTimeout(timer); };
   }, [trimmed, page, codesKey, reload]);
 
-  const move = (index: number, offset: number) => {
-    const codes = [...value];
-    [codes[index], codes[index + offset]] = [codes[index + offset], codes[index]];
-    onChange?.(codes);
+  const move = (code: string, position: number) => {
+    const next = moveGiftProduct(value, code, position);
+    if (next !== value) {
+      onChange?.(next);
+      setSelectedPage(Math.floor(next.indexOf(code) / selectedPageSize) + 1);
+    }
+  };
+
+  const addProduct = (code: string) => {
+    const next = insertGiftProduct(value, code, insertAt === "first" ? 1 : insertAt === "last" ? value.length + 1 : insertPosition ?? 1);
+    if (next !== value) {
+      onChange?.(next);
+      setSelectedPage(Math.floor(next.indexOf(code) / selectedPageSize) + 1);
+    }
   };
 
   return (
@@ -87,6 +112,16 @@ export function GiftProductPicker({ value = [], onChange }: {
             setPage(1);
           }}
         />
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-stone-600">
+          <span>Vị trí khi thêm:</span>
+          <Select size="small" value={insertAt} onChange={setInsertAt} aria-label="Vị trí khi thêm sản phẩm" className="min-w-36" options={[
+            { value: "first", label: "Thêm lên đầu" },
+            { value: "last", label: "Thêm cuối" },
+            { value: "position", label: "Vị trí cụ thể" },
+          ]} />
+          {insertAt === "position" ? <InputNumber size="small" min={1} max={value.length + 1} precision={0}
+            value={insertPosition} onChange={setInsertPosition} aria-label="Vị trí sản phẩm mới" className="!w-20" /> : null}
+        </div>
         {error ? (
           <Alert
             type="error"
@@ -115,7 +150,7 @@ export function GiftProductPicker({ value = [], onChange }: {
                       size="small"
                       disabled={loading || value.includes(product.ma) || value.length >= 100}
                       icon={<Plus size={14} />}
-                      onClick={() => onChange?.([...value, product.ma])}
+                      onClick={() => addProduct(product.ma)}
                     >
                       {value.includes(product.ma) ? "Đã chọn" : "Thêm"}
                     </Button>
@@ -153,18 +188,23 @@ export function GiftProductPicker({ value = [], onChange }: {
           </span>
           {value.length ? (
             <span className="text-xs text-stone-400">
-              Dùng mũi tên để đổi thứ tự
+              Kéo thả hoặc nhập vị trí
             </span>
           ) : null}
         </div>
 
         {value.length ? (
-          <div className="max-h-72 space-y-2 overflow-y-auto">
-            {value.map((code, index) => {
+          <>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={({ active, over }) => {
+            if (over && active.id !== over.id) move(String(active.id), value.indexOf(String(over.id)) + 1);
+          }}>
+          <SortableContext items={selected.codes} strategy={verticalListSortingStrategy}>
+          <div className="space-y-2">
+            {selected.codes.map((code, pageIndex) => {
+              const index = selected.start + pageIndex;
               const product = known[code];
               return (
-                <div key={code} className="flex items-center gap-2 rounded-lg border bg-white p-2">
-                  <span className="text-xs font-medium text-stone-400">{index + 1}</span>
+                <GiftProductRow key={code} code={code} index={index} count={value.length} onMove={position => move(code, position)} onRemove={() => onChange?.(value.filter(c => c !== code))}>
                   <div className="min-w-0 flex-1">
                     <ProductInfo product={product || { ma: code, ten: code }} />
                     {!loading && !error && (!product || product.visible === false) ? (
@@ -173,31 +213,22 @@ export function GiftProductPicker({ value = [], onChange }: {
                       </p>
                     ) : null}
                   </div>
-                  <Button
-                    size="small"
-                    disabled={index === 0}
-                    icon={<ArrowUp size={14} />}
-                    aria-label={`Đưa ${code} lên`}
-                    onClick={() => move(index, -1)}
-                  />
-                  <Button
-                    size="small"
-                    disabled={index === value.length - 1}
-                    icon={<ArrowDown size={14} />}
-                    aria-label={`Đưa ${code} xuống`}
-                    onClick={() => move(index, 1)}
-                  />
-                  <Button
-                    size="small"
-                    danger
-                    icon={<Trash2 size={14} />}
-                    aria-label={`Bỏ ${code} khỏi hạng mục`}
-                    onClick={() => onChange?.(value.filter((c) => c !== code))}
-                  />
-                </div>
+                </GiftProductRow>
               );
             })}
           </div>
+          </SortableContext>
+          </DndContext>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs text-stone-500">{selected.start + 1}–{selected.start + selected.codes.length} / {value.length} sản phẩm</span>
+            <Pagination size="small" current={selected.page} pageSize={selectedPageSize} total={value.length}
+              showSizeChanger pageSizeOptions={[5, 10, 20]} showLessItems
+              onChange={(nextPage, size) => {
+                setSelectedPage(size === selectedPageSize ? nextPage : 1);
+                setSelectedPageSize(size);
+              }} />
+          </div>
+          </>
         ) : (
           <p className="py-2 text-xs text-stone-500">
             Chưa có sản phẩm nào. Tìm kiếm ở trên để thêm sản phẩm vào gói quà.

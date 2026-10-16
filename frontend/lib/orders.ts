@@ -46,6 +46,8 @@ export type ShopOrder = {
   kvPushStatus?: string;
   shippingFeePending?: boolean;
   backorderStatus?: string;
+  cancelReason?: string;
+  district?: string;
   paidAmount?: number;
   proposal?: { version: string; subtotal: number; total: number; shippingFee: number; depositDue: number; deliveryNote: string };
   id: string;
@@ -173,6 +175,11 @@ async function shopFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
 export async function listAddresses(): Promise<ShopAddress[]> {
   const data = await shopFetch<{ addresses: ShopAddress[] }>("/api/shop/auth/addresses");
+  return data.addresses || [];
+}
+
+export async function ensureWholesaleRegistrationAddress(): Promise<ShopAddress[]> {
+  const data = await shopFetch<{ addresses: ShopAddress[] }>("/api/shop/auth/si/address", { method: "POST" });
   return data.addresses || [];
 }
 

@@ -16,16 +16,18 @@ const { isOrderShippingPending } = load('frontend/lib/orderShippingStatus.ts', (
 function render(view, patch) {
   const order = { code: 'TEST', deliveryMethod: 'giao_tan_noi', orderDetails: [], subtotal: 500000,
     discount: 25000, shippingFee: 40700, total: 515700, shippingEstimate: { status: 'estimated' }, ...patch };
-  const module = load(`frontend/components/order-status/${view}.tsx`, name => {
-    if (name === 'react') return { default: { useMemo: fn => fn() } };
+  const dependencies = name => {
+    if (name === 'react') return { default: { useMemo: fn => fn() }, useState: value => [value, () => {}] };
     if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx };
     if (name === '@/lib/api') return { formatVnd: value => String(value) };
     if (name === '@/lib/orderShippingStatus') return { isOrderShippingPending };
     if (name === '@/lib/orders') return { displayShopOrderCode: o => o.code };
     if (name === './OrderCampaignBits') return { orderListSubtotal: o => o.subtotal };
+    if (name === './OrderOverview') return load('frontend/components/order-status/OrderOverview.tsx', dependencies);
     return {};
-  });
-  const flatten = node => Array.isArray(node) ? node.flatMap(flatten) : node && typeof node === 'object' ? [node, ...flatten(node.props.children)] : [];
+  };
+  const module = load(`frontend/components/order-status/${view}.tsx`, dependencies);
+  const flatten = node => Array.isArray(node) ? node.flatMap(flatten) : node && typeof node === 'object' ? typeof node.type === 'function' ? flatten(node.type(node.props)) : [node, ...flatten(node.props.children)] : [];
   return flatten(module[view]({ order, hero: { Icon: 'hero', tone: 'done', title: 'Success' }, reload: async () => {} }));
 }
 const texts = nodes => nodes.map(n => n.props.children).filter(v => typeof v === 'string');

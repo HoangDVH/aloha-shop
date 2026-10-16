@@ -66,7 +66,7 @@ export function registerWholesaleSyncAdmin(app: Express, getDb: GetDb, getOps: G
       const priced = await applyCatalogPrices(db, order.orderDetails, { account: buyer, allowInactive: true });
       if (!priced.ok || priced.details.some((d, i) => d.price !== order.orderDetails[i].price)) return fail(res);
       const eligibility = await checkWholesalePurchase(db, await getOps(), buyer, priced.details,
-        { deliveryMethod: order.deliveryMethod, province: order.province }, String(order.code));
+        { deliveryMethod: order.deliveryMethod, province: order.province, district: order.district, ward: order.ward }, String(order.code));
       if (!eligibility.canCheckout) return res.status(400).json({ error: eligibility.issues.map(i => i.message).join(" "), eligibility });
       // Expired holds/old consent need the existing proposal flow, not silent renewal.
       if (Date.now() - new Date(order.createdAt).getTime() > 24 * 3600000) return fail(res);

@@ -12,6 +12,7 @@ export type ShopUser = {
   roles: ShopRole[];
   siStatus?: "cho_duyet" | "active" | "khoa" | "tu_choi" | null;
   siRegion?: "HCM" | "TINH" | null;
+  siVerificationStatus?: "pending" | "verified" | null;
   siProfile?: Record<string, unknown> | null;
   zaloVerified?: boolean;
   ctvCode: string | null;

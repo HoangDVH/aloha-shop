@@ -39,6 +39,7 @@ type CartLineLike = {
 };
 
 type ShopUserLike = {
+  id?: string;
   fullName?: string | null;
   phone?: string | null;
 } | null;
@@ -300,6 +301,7 @@ export function usePlaceOrder({
       const orderCode = displayShopOrderCode(res.data) || String(res.data?.code || "").trim();
       orderPlacedRef.current = true;
       try {
+        if (user?.id) sessionStorage.removeItem(`aloha_checkout_draft:${encodeURIComponent(user.id)}`);
         sessionStorage.removeItem("aloha_checkout_draft");
       } catch {
         /* ignore */

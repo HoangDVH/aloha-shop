@@ -66,7 +66,7 @@ export function registerPurchasePolicyRoutes(app: Express, getShop: () => Promis
   app.post("/api/shop/admin/wholesale-policy/check", ...gate, async (req, res) => {
     try {
       const input = z.object({ accountId: z.string().min(1), items: z.array(z.object({ productCode: z.string().min(1), quantity: z.number().int().min(1).max(10000) })).min(1).max(100),
-        deliveryMethod: z.enum(["giao_tan_noi", "nhan_cua_hang"]).optional(), province: z.string().max(120).optional() }).parse(req.body);
+        deliveryMethod: z.enum(["giao_tan_noi", "nhan_cua_hang"]).optional(), province: z.string().max(120).optional(), district: z.string().max(120).optional(), ward: z.string().max(120).optional() }).parse(req.body);
       const shop = await getShop();
       const account = await shop.collection(SHOP_ACCOUNTS).findOne(shopAccountIdQuery(input.accountId));
       if (!account) return res.sendStatus(404);

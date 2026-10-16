@@ -31,7 +31,7 @@ function fixture() {
     await handlers.get(`${method} ${path}`)!.at(-1)(req, res);
     return { status, data };
   }
-  return { call, handlers, product };
+  return { call, handlers, product, account };
 }
 
 test("shop and admin APIs return identical purchase issues for the same priced cart", async () => {
@@ -56,4 +56,16 @@ test("policy saved in admin is immediately used by shop and public policy; stale
   assert.equal((await h.call("GET", "/api/shop/wholesale-policy")).data.finishedQuantity, 6);
   assert.equal((await h.call("POST", "/api/shop/cart/quote", { items: [{ productCode: "P", quantity: 5 }] })).data.canCheckout, false);
   assert.equal((await h.call("PATCH", "/api/shop/admin/wholesale-policy", { version: before.data.version, rules: defaultPurchasePolicy })).status, 409);
+});
+
+test("shop and admin retain full destination and consistently enforce old HCM boundary", async () => {
+  const h = fixture(); h.account.siRegion = "HCM";
+  for (const ward of ["Bến Thành", "Lái Thiêu"]) {
+    const input = { items: [{ productCode: "P", quantity: 5 }], deliveryMethod: "giao_tan_noi", province: "Hồ Chí Minh", ward };
+    const shop = await h.call("POST", "/api/shop/cart/quote", input);
+    const admin = await h.call("POST", "/api/shop/admin/wholesale-policy/check", { ...input, accountId: "buyer" });
+    assert.equal(shop.status, 200); assert.equal(admin.status, 200);
+    assert.equal(shop.data.canCheckout, ward === "Bến Thành");
+    assert.deepEqual(shop.data.issues, admin.data.issues);
+  }
 });

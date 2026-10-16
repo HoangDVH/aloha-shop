@@ -4,7 +4,18 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Drawer, Empty, Input, Popconfirm, Select, Skeleton, Table, Tabs, Tag, message } from "antd";
-import { ArrowUpRight, ChevronRight, RefreshCw, Search, UserPlus, X } from "lucide-react";
+import {
+  ArrowUpRight,
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  FileText,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  UserPlus,
+  X,
+} from "lucide-react";
 import { siRequest } from "@/lib/siQueries";
 import { requireDirectoryResponse } from "@/lib/customerDirectoryResponse";
 import { customerReviewTarget } from "@/lib/customerReviewTarget";
@@ -61,6 +72,10 @@ export default function CustomerDirectory() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [siId, setSiId] = useState<string | null>(null);
   const [addCtv, setAddCtv] = useState(false);
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+  const toggleRow = (id: string) => {
+    setExpandedRowKeys(prev => (prev.includes(id) ? prev.filter(k => k !== id) : [...prev, id]));
+  };
   const reviewCtv = useCtvUiStore(s => s.setReviewAccountId);
   const refresh = () => { void qc.invalidateQueries({ queryKey: ["admin", "directory"] }); };
 
@@ -143,23 +158,61 @@ export default function CustomerDirectory() {
       </div>
       {list.error && <div className="p-4"><Alert type="error" showIcon title="Không tải được danh sách khách hàng" description={list.error.message} action={<Button onClick={() => void list.refetch()}>Thử lại</Button>} /></div>}
       <Table<Account> rowKey="id" loading={list.isFetching} dataSource={list.isError ? [] : list.data?.items || []} scroll={{ x: 1080 }}
+        expandable={{
+          expandedRowKeys,
+          onExpandedRowsChange: keys => setExpandedRowKeys(keys as string[]),
+          showExpandColumn: false,
+          expandedRowRender: row => (
+            <CustomerDetailRow
+              account={row}
+              onPermissions={() => setSelectedId(row.id)}
+              onSi={() => setSiId(row.id)}
+              onCtv={() => reviewCtv(row.id)}
+              onCollapse={() => toggleRow(row.id)}
+            />
+          ),
+        }}
+        onRow={record => ({
+          onClick: e => {
+            const target = e.target as HTMLElement;
+            if (
+              target.closest("button") ||
+              target.closest("a") ||
+              target.closest(".ant-popconfirm") ||
+              target.closest("input") ||
+              target.closest(".ant-select")
+            ) {
+              return;
+            }
+            toggleRow(record.id);
+          },
+          className: `cursor-pointer transition-colors ${
+            expandedRowKeys.includes(record.id) ? "!bg-[#F4F9F2]" : "hover:bg-slate-50/80"
+          }`,
+        })}
         locale={{ emptyText: <div className="py-10"><Empty description={filtered ? "Không có khách phù hợp với bộ lọc" : "Chưa có khách hàng"} />{filtered && <Button className="mt-3" onClick={clear}>Xóa bộ lọc</Button>}</div> }}
         pagination={{ current: page, pageSize, total: list.data?.total || 0, showSizeChanger: true, pageSizeOptions: [15, 30, 50],
           onChange: (next, size) => { setPage(size !== pageSize ? 1 : next); setPageSize(size); }, showTotal: total => `${total.toLocaleString("vi-VN")} khách hàng` }}
         columns={[
-          { title: "Khách hàng", key: "name", width: 260, fixed: "left" as const, render: (_, row) => <button type="button" onClick={() => openCustomer(row)} className="flex w-full items-center gap-3 rounded-lg text-left focus-visible:outline-2 focus-visible:outline-green-700">
+          { title: "Khách hàng", key: "name", width: 260, fixed: "left" as const, render: (_, row) => <div className="flex w-full items-center gap-3 rounded-lg text-left">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#edf4e9] font-semibold text-[#456b3c]">{(row.fullName || row.email || "?").slice(0, 1).toUpperCase()}</span>
             <span className="min-w-0"><span className="block font-semibold text-slate-800">{row.fullName || "Chưa có tên"}</span><span className="block max-w-[210px] truncate text-xs text-slate-500">{row.email || "Chưa có email"}</span></span>
-          </button> },
+          </div> },
           { title: "Số điện thoại", dataIndex: "phone", width: 145, render: value => <span className="whitespace-nowrap text-slate-600">{value || "—"}</span> },
           { title: "Loại khách", key: "type", width: 185, render: (_, row) => <Tag color={category(row).color}>{category(row).label}</Tag> },
           { title: "Cộng tác viên", key: "ctv", width: 155, render: (_, row) => row.roles.includes("ctv") ? <div><StatusTag ctv value={row.ctvStatus} /><span className="mt-1 block font-mono text-xs text-slate-500">{row.ctvCode || "Chưa cấp mã"}</span></div> : <span className="text-xs text-slate-400">Không phải CTV</span> },
-          { title: "Hồ sơ sỉ", key: "si", width: 140, render: (_, row) => row.roles.includes("si") ? <button type="button" aria-label={`Xem hồ sơ sỉ ${row.fullName}`} onClick={() => setSiId(row.id)} className="rounded focus-visible:outline-2 focus-visible:outline-green-700"><StatusTag value={row.siStatus} /></button> : <span className="text-slate-400">—</span> },
+          { title: "Hồ sơ sỉ", key: "si", width: 140, render: (_, row) => row.roles.includes("si") ? <button type="button" aria-label={`Xem hồ sơ sỉ ${row.fullName}`} onClick={e => { e.stopPropagation(); setSiId(row.id); }} className="rounded focus-visible:outline-2 focus-visible:outline-green-700"><StatusTag value={row.siStatus} /></button> : <span className="text-slate-400">—</span> },
           { title: "Tài khoản", key: "state", width: 125, render: (_, row) => <span className={`inline-flex items-center gap-1.5 text-xs ${row.active === false ? "text-red-600" : "text-emerald-700"}`}><span className={`h-1.5 w-1.5 rounded-full ${row.active === false ? "bg-red-500" : "bg-emerald-500"}`} />{row.active === false ? "Đã khóa" : "Đang mở"}</span> },
-          { title: "", key: "action", width: 140, render: (_, row) => <div className="flex flex-col items-start">
-            {customerReviewTarget(row) !== "account" && <Button type="link" aria-label={`Xem hồ sơ ${row.fullName}`} onClick={() => openCustomer(row)}>Xem hồ sơ <ChevronRight size={14} /></Button>}
-            <Button type="text" aria-label={`Phân quyền ${row.fullName}`} onClick={() => setSelectedId(row.id)}>Phân quyền <ChevronRight size={14} /></Button>
-          </div> },
+          { title: "", key: "action", width: 110, align: "right" as const, render: (_, row) => {
+            const isExpanded = expandedRowKeys.includes(row.id);
+            return <div className="flex items-center justify-end">
+              <Button type="text" size="small" className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${isExpanded ? "bg-[#eaf4e7] text-[#2d5224] hover:bg-[#ddead8]" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"}`}
+                onClick={e => { e.stopPropagation(); toggleRow(row.id); }} aria-expanded={isExpanded} aria-label={isExpanded ? `Thu gọn thông tin ${row.fullName}` : `Xem thông tin ${row.fullName}`}>
+                <span>{isExpanded ? "Thu gọn" : "Chi tiết"}</span>
+                {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </Button>
+            </div>;
+          } },
         ]} />
     </section>}
 
@@ -173,6 +226,177 @@ export default function CustomerDirectory() {
     <CtvApplicationModal onDone={refresh} />
     <AddCtvModal open={addCtv} onClose={() => setAddCtv(false)} busy={createCtv.isPending} onSubmit={async values => { await createCtv.mutateAsync(values); }} />
   </div>;
+}
+
+function CustomerDetailRow({
+  account,
+  onPermissions,
+  onSi,
+  onCtv,
+  onCollapse,
+}: {
+  account: Account;
+  onPermissions: () => void;
+  onSi: () => void;
+  onCtv: () => void;
+  onCollapse: () => void;
+}) {
+  const hasWholesaleProfile = account.roles.includes("si") || Boolean(account.siStatus);
+  const hasCtvProfile = account.roles.includes("ctv") || Boolean(account.ctvStatus);
+  const hasProfile = hasWholesaleProfile || hasCtvProfile || customerReviewTarget(account) !== "account";
+
+  return (
+    <div className="rounded-xl border border-[#d6e4d0] bg-gradient-to-b from-[#f9fcf8] to-[#f2f7f0] p-4 sm:p-5 shadow-xs">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e2ede0] pb-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#456b3c] font-bold text-white shadow-xs">
+            {(account.fullName || account.email || "?").slice(0, 1).toUpperCase()}
+          </span>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-base font-bold text-slate-800">
+                {account.fullName || "Chưa có tên"}
+              </h3>
+              <Tag color={category(account).color}>{category(account).label}</Tag>
+              {account.roles.includes("ctv") && <Tag color="cyan">Cộng tác viên</Tag>}
+              {account.active === false ? (
+                <Tag color="red">Tài khoản đã khóa</Tag>
+              ) : (
+                <Tag color="green">Đang mở</Tag>
+              )}
+            </div>
+            <p className="mt-0.5 font-mono text-xs text-slate-400">
+              ID: {account.id}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {hasProfile && (
+            <>
+              {hasWholesaleProfile && (
+                <Button
+                  type="default"
+                  className="!border-[#456b3c] !text-[#456b3c] hover:!bg-[#edf4e9] font-medium"
+                  icon={<FileText size={15} />}
+                  onClick={onSi}
+                >
+                  Xem hồ sơ {hasCtvProfile ? "sỉ" : ""} {account.siStatus === "cho_duyet" ? "(Chờ duyệt)" : ""}
+                </Button>
+              )}
+              {hasCtvProfile && account.ctvStatus === "cho_duyet" && (
+                <Button
+                  type="default"
+                  className="!border-amber-600 !text-amber-800 hover:!bg-amber-50 font-medium"
+                  icon={<FileText size={15} />}
+                  onClick={onCtv}
+                >
+                  Xem hồ sơ CTV (Chờ duyệt)
+                </Button>
+              )}
+              {hasCtvProfile && account.ctvCode && account.ctvStatus !== "cho_duyet" && (
+                <Link
+                  href={`/admin/ctv/danh-sach/${encodeURIComponent(account.ctvCode)}`}
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs"
+                >
+                  Chi tiết hoa hồng CTV <ArrowUpRight size={13} />
+                </Link>
+              )}
+            </>
+          )}
+
+          <Button
+            type="primary"
+            className="!bg-[#456b3c] hover:!bg-[#36552f] font-medium shadow-xs"
+            icon={<ShieldCheck size={15} />}
+            onClick={onPermissions}
+          >
+            Phân quyền
+          </Button>
+
+          <Button
+            type="text"
+            size="small"
+            icon={<ChevronUp size={15} />}
+            onClick={onCollapse}
+            className="text-slate-400 hover:text-slate-700"
+            title="Thu gọn"
+          />
+        </div>
+      </div>
+
+      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-xs">
+        <div className="rounded-lg border border-[#e4ede1] bg-white/80 p-3">
+          <span className="block font-medium text-slate-400">Số điện thoại</span>
+          <span className="mt-1 block text-sm font-semibold text-slate-800">
+            {account.phone || "—"}
+          </span>
+          <span className="mt-2 block font-medium text-slate-400">Email</span>
+          <span className="mt-0.5 block break-all text-slate-700">
+            {account.email || "—"}
+          </span>
+        </div>
+
+        <div className="rounded-lg border border-[#e4ede1] bg-white/80 p-3">
+          <span className="block font-medium text-slate-400">Ngày tham gia</span>
+          <span className="mt-1 block font-medium text-slate-700">
+            {date(account.createdAt)}
+          </span>
+          <span className="mt-2 block font-medium text-slate-400">Đăng nhập gần nhất</span>
+          <span className="mt-0.5 block font-medium text-slate-700">
+            {date(account.lastLoginAt)}
+          </span>
+          <span className="mt-2 block font-medium text-slate-400">Phương thức đăng nhập</span>
+          <span className="mt-0.5 block text-slate-700">
+            {account.authProviders?.join(", ") || "—"}
+          </span>
+        </div>
+
+        <div className="rounded-lg border border-[#e4ede1] bg-white/80 p-3">
+          <span className="block font-medium text-slate-400">Hồ sơ mua sỉ</span>
+          <div className="mt-1 flex items-center gap-2">
+            {account.roles.includes("si") ? (
+              <StatusTag value={account.siStatus} />
+            ) : (
+              <span className="text-slate-500">Chưa đăng ký sỉ</span>
+            )}
+          </div>
+          <span className="mt-2 block font-medium text-slate-400">Vùng khách sỉ</span>
+          <span className="mt-0.5 block text-slate-700">
+            {account.siRegion === "HCM"
+              ? "TP. Hồ Chí Minh"
+              : account.siRegion === "TINH"
+              ? "Sỉ tỉnh"
+              : account.roles.includes("si")
+              ? "Chưa xác nhận vùng"
+              : "—"}
+          </span>
+        </div>
+
+        <div className="rounded-lg border border-[#e4ede1] bg-white/80 p-3">
+          <span className="block font-medium text-slate-400">Cộng tác viên (CTV)</span>
+          <div className="mt-1 flex items-center gap-2">
+            {account.roles.includes("ctv") ? (
+              <StatusTag ctv value={account.ctvStatus} />
+            ) : (
+              <span className="text-slate-500">Không phải CTV</span>
+            )}
+          </div>
+          <span className="mt-2 block font-medium text-slate-400">Mã CTV</span>
+          <span className="mt-0.5 block font-mono text-slate-700">
+            {account.ctvCode || (account.roles.includes("ctv") ? "Chưa cấp mã" : "—")}
+          </span>
+        </div>
+      </div>
+
+      {account.adminNote && (
+        <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200/70 bg-amber-50/80 p-2.5 text-xs text-amber-900">
+          <span className="shrink-0 font-bold">Ghi chú nội bộ:</span>
+          <span className="whitespace-pre-wrap">{account.adminNote}</span>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function Filter({ label, value, options, onChange }: { label: string; value: string; options: { value: string; label: string }[]; onChange: (value: string) => void }) {

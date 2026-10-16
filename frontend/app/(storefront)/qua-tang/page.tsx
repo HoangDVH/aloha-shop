@@ -40,7 +40,7 @@ export default async function GiftsHubPage() {
         {/* Họa tiết lá trang trí mờ tinh tế */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/decor/leaves-top.png"
+          src="/decor/leaves-tr.png"
           alt=""
           aria-hidden
           className="pointer-events-none absolute -right-6 -top-6 z-0 h-40 w-40 opacity-15 sm:h-56 sm:w-56"

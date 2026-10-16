@@ -204,7 +204,7 @@ export function DealsPage() {
 
   return (
     <div style={themeStyle}>
-      <div className="mx-auto max-w-7xl space-y-4 px-3 py-3 sm:space-y-5 sm:px-4 sm:py-5">
+      <div className="mx-auto max-w-7xl space-y-8 px-3 py-3 sm:space-y-12 lg:space-y-14 sm:px-4 sm:py-5">
         <DealsBanner campaign={campaign} />
         <QuickTiles
           variant="tabs"
@@ -221,14 +221,14 @@ export function DealsPage() {
         </div>
 
         {activeTab === "deal-hot" ? (
-          <div className="space-y-4 sm:space-y-5">
+          <div className="space-y-8 sm:space-y-12">
             <DealsProductTabs campaign={campaign} offsetMs={offsetMs} />
             <LazyMount minHeight={400}>
               <DealsMoreFeed campaign={campaign} />
             </LazyMount>
           </div>
         ) : activeTab === "flash-sale" ? (
-          <div className="space-y-4 sm:space-y-5">
+          <div className="space-y-8 sm:space-y-12">
             <LazyMount minHeight={400}>
               <DealsMoreFeed campaign={campaign} />
             </LazyMount>

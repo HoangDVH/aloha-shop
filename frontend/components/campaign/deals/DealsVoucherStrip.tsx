@@ -269,30 +269,32 @@ export function DealsVoucherStrip({
       {/* ========================================================================= */}
       {/* DESKTOP ONLY (>= 640px): GIỮ NGUYÊN GIAO DIỆN HIỆN TẠI                    */}
       {/* ========================================================================= */}
-      <section id="kho-voucher" aria-label="Kho voucher" className="hidden sm:block scroll-mt-24 space-y-3.5 rounded-3xl bg-white p-4 sm:p-6 shadow-sm border border-rose-100/80">
-        {/* Header section - Mobile First layout */}
+      <section id="kho-voucher" aria-label="Kho voucher" className="hidden sm:block scroll-mt-24 space-y-3">
+        {/* Header section - Open canvas header */}
         <div className="flex items-center justify-between gap-1.5 sm:gap-2">
-          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--campaign-primary,#C2185B)]/10 text-[var(--campaign-primary,#C2185B)]">
-              <TicketPercent size={16} strokeWidth={2.5} aria-hidden />
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
+            <span className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-[var(--campaign-primary,#C8102E)] to-[#E11D48] text-white shadow-sm shadow-rose-900/20">
+              <TicketPercent size={18} strokeWidth={2.5} aria-hidden />
             </span>
-            <h2 className="text-sm font-black tracking-tight text-slate-900 whitespace-nowrap sm:text-base">
-              Voucher ưu đãi
-            </h2>
-            <span className="shrink-0 rounded-full bg-rose-100/80 px-1.5 py-0.5 text-[10px] font-extrabold text-[var(--campaign-primary,#C2185B)] whitespace-nowrap">
-              {list.length} mã
-            </span>
+            <div className="min-w-0 flex items-center gap-2">
+              <h2 className="text-sm sm:text-lg font-black uppercase tracking-tight text-slate-900 truncate">
+                Voucher ưu đãi
+              </h2>
+              <span className="shrink-0 rounded-full bg-white/90 border border-rose-200/80 px-2 py-0.5 text-[11px] font-black text-[var(--campaign-primary,#C8102E)] shadow-2xs">
+                {list.length} mã
+              </span>
+            </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
             {claimable >= 2 ? (
               <button
                 type="button"
                 onClick={claims.collectAll}
                 disabled={claims.collecting}
-                className="group inline-flex h-7 shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-[var(--campaign-primary,#C8102E)] via-[#E11D48] to-[#C8102E] bg-[length:200%_auto] px-2.5 sm:px-3 text-[11px] sm:text-xs font-bold text-white shadow-xs transition-all duration-300 hover:bg-right hover:shadow-sm active:scale-95 disabled:opacity-60 select-none cursor-pointer whitespace-nowrap"
+                className="group inline-flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-full bg-gradient-to-r from-[var(--campaign-primary,#C8102E)] via-[#E11D48] to-[#C8102E] bg-[length:200%_auto] px-3.5 sm:px-4 text-xs font-bold text-white shadow-sm shadow-rose-950/15 transition-all duration-300 hover:bg-right hover:shadow-md active:scale-95 disabled:opacity-60 select-none cursor-pointer whitespace-nowrap"
               >
-                <Sparkles size={12} className="text-amber-300 shrink-0 transition-transform duration-300 group-hover:scale-110" aria-hidden />
+                <Sparkles size={13} className="text-amber-300 shrink-0 transition-transform duration-300 group-hover:scale-110" aria-hidden />
                 <span>{claims.collecting ? "Đang lưu…" : "Lưu tất cả"}</span>
               </button>
             ) : null}
@@ -300,10 +302,10 @@ export function DealsVoucherStrip({
             <button
               type="button"
               onClick={() => openVoucherModal()}
-              className="inline-flex h-7 shrink-0 items-center gap-0.5 text-xs font-bold text-[var(--campaign-primary,#C2185B)] hover:underline whitespace-nowrap cursor-pointer"
+              className="inline-flex min-h-[36px] shrink-0 items-center gap-1 rounded-full border border-rose-200/90 bg-white/90 backdrop-blur-xs px-3 sm:px-3.5 text-xs font-bold text-[var(--campaign-primary,#C8102E)] shadow-2xs hover:bg-white hover:shadow-xs transition cursor-pointer whitespace-nowrap"
               title="Xem tất cả voucher"
             >
-              <span className="hidden min-[360px]:inline">Chi tiết</span>
+              <span>Xem tất cả</span>
               <ChevronRight size={14} className="shrink-0" aria-hidden />
             </button>
           </div>

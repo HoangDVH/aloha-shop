@@ -177,27 +177,25 @@ export function DealsProductTabs({
     <section
       id="san-pham"
       ref={sectionRef}
-      className={`relative scroll-mt-[calc(var(--shop-chrome-h,64px)+8px)] space-y-3 sm:space-y-4 rounded-3xl bg-white ${
-        isFlashPage ? "p-3 sm:p-6" : "p-4 sm:p-6"
-      } shadow-sm border border-rose-100/80`}
+      className="relative scroll-mt-[calc(var(--shop-chrome-h,64px)+8px)] space-y-3.5 sm:space-y-4"
     >
       {/* Anchor hỗ trợ link nhảy tới #flash-sale */}
       <span id="flash-sale" className="pointer-events-none absolute -top-24 left-0 block h-1 w-1 opacity-0" aria-hidden />
 
       {/* HEADER HỢP NHẤT: TIÊU ĐỀ + ĐỒNG HỒ ĐẾM NGƯỢC FLASH SALE (GỌN 1 HÀNG TRÊN MOBILE) */}
-      <div className="flex items-center justify-between gap-2 border-b border-rose-100/60 pb-2.5 sm:pb-3">
-        <div className="flex items-center gap-2 min-w-0">
+      <div className="flex items-center justify-between gap-2 pb-1 sm:pb-1.5">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <span
-            className={`flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-xl ${
+            className={`flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl shadow-sm ${
               isFlashPage
-                ? "bg-[#C8102E]/10 text-[#C8102E]"
-                : "bg-[var(--campaign-primary,#C8102E)]/10 text-[var(--campaign-primary,#C8102E)]"
+                ? "bg-gradient-to-br from-[#E53935] to-[#C8102E] text-white shadow-rose-900/20"
+                : "bg-gradient-to-br from-[var(--campaign-primary,#C8102E)] to-[#E11D48] text-white shadow-rose-900/20"
             }`}
           >
             {isFlashPage ? (
-              <Zap size={16} className="fill-[#C8102E] text-[#C8102E] sm:w-[18px] sm:h-[18px]" aria-hidden />
+              <Zap size={18} className="fill-white text-white sm:w-5 sm:h-5" aria-hidden />
             ) : (
-              <Sparkles size={16} strokeWidth={2.5} className="sm:w-[18px] sm:h-[18px]" aria-hidden />
+              <Sparkles size={18} strokeWidth={2.5} className="sm:w-5 sm:h-5" aria-hidden />
             )}
           </span>
           <div className="min-w-0">
@@ -220,10 +218,10 @@ export function DealsProductTabs({
             </div>
             {isFlashPage ? (
               stage.subtitle?.trim() ? (
-                <p className="hidden sm:block text-xs text-slate-500 font-medium">{stage.subtitle}</p>
+                <p className="hidden sm:block text-xs sm:text-[13px] text-slate-500 font-medium">{stage.subtitle}</p>
               ) : null
             ) : (
-              <p className="hidden sm:block text-xs text-slate-500 font-medium">
+              <p className="hidden sm:block text-xs sm:text-[13px] text-slate-500 font-medium">
                 Giảm giá giờ vàng, quà tặng 0Đ và áp dụng thêm voucher
               </p>
             )}
@@ -231,7 +229,7 @@ export function DealsProductTabs({
         </div>
 
         {openSlot && endTarget && !cd.done ? (
-          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 rounded-xl bg-red-50 border border-red-200/80 px-2 sm:px-3 py-1 sm:py-1.5 shadow-2xs">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl bg-white/90 backdrop-blur-xs border border-rose-200/80 px-2.5 sm:px-3.5 py-1 sm:py-1.5 shadow-sm">
             <span className="flex items-center gap-1 text-[10px] sm:text-[11px] font-black uppercase tracking-wide text-[#E53935]">
               <Flame size={13} className="fill-[#E53935] animate-pulse sm:w-[14px] sm:h-[14px]" />
               <span className="hidden sm:inline">Flash Sale kết thúc trong:</span>

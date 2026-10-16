@@ -76,10 +76,10 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
       const q = String(req.query.q || "").trim();
       const nhomList = parseNhomQuery(req);
       const categoryIdList = parseCategoryIdQuery(req);
-      const wholesaleHome = req.query.homeOrder === "wholesale";
+      const wholesaleHome = currentPriceMode() === "si" && req.query.homeOrder === "wholesale";
       const homeOrder = <T extends Parameters<typeof orderWholesaleHomeProducts>[0][number]>(items: T[]) => {
         const ordered = wholesaleStockFirst ? sortWholesaleStockProducts(items, wholesaleRank) : items;
-        return wholesaleHome ? orderWholesaleHomeProducts(ordered, wholesaleStockFirst) : ordered;
+        return wholesaleHome ? orderWholesaleHomeProducts(ordered, wholesaleStockFirst, wholesaleRank) : ordered;
       };
       const homeScope = String(req.query.home || "") === "1";
       const page = Math.max(1, Number(req.query.page) || 1);
@@ -103,7 +103,7 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
               ? "ban_chay"
               : sortRaw;
       const skip = (page - 1) * limit;
-      const wholesaleStockFirst = currentPriceMode() === "si" && sort === "ban_chay";
+      const wholesaleStockFirst = currentPriceMode() === "si" && (wholesaleHome || sort === "ban_chay");
       const wholesaleRank = wholesaleStockFirst ? await loadRevenueRankMap(await ctx.catalogDb()) : undefined;
       const buyerEmail = requestShopBuyerEmail(req);
       const showZeroPrice = isShopTestBuyerEmail(buyerEmail);
@@ -141,7 +141,7 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
         return res.status(400).json({ ok: false, error: "Invalid gift filter" });
       }
       const giftCodes = gift ? await loadGiftFilterCodes(await ctx.catalogDb(), gift) : [];
-      const cacheKey = `shop:products:v44:order=${wholesaleHome ? "wholesale" : "default"}:gift=${gift || ""}:${JSON.stringify(giftCodes)}|${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}${dealMasCacheSuffix(dealMas)}|v=${voucherId}:${JSON.stringify(voucher?.filter || {})}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|maxTon=${maxTon}|${sort}${dealInfoCacheSuffix(deals)}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
+      const cacheKey = `shop:products:v46:order=${wholesaleHome ? "wholesale" : "default"}:gift=${gift || ""}:${JSON.stringify(giftCodes)}|${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}${dealMasCacheSuffix(dealMas)}|v=${voucherId}:${JSON.stringify(voucher?.filter || {})}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|maxTon=${maxTon}|${sort}${dealInfoCacheSuffix(deals)}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
       const pinScope = resolvePinBadgeScope({ sort, badge, maxTon });
 
       const { body, cache } = await cachedJson(cacheKey, async () => {

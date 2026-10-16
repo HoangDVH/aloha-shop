@@ -26,6 +26,7 @@ import { loadActivePromotions } from "./checkoutPromotions.js";
 import { getCurrentCampaign } from "../shopCampaigns/currentCampaign.js";
 import { campaignEnabled, voucherWalletEnabled } from "../shopCampaigns/flags.js";
 import { buildPublicSharePreview } from "./publicSharePreview.js";
+import { isActiveWholesale } from "../shopWholesale/policy.js";
 
 /**
  * Giá tính ưu đãi luôn lấy từ catalog (giá client gửi lên bị bỏ qua).
@@ -52,6 +53,12 @@ export async function withServerPrices(
     if (one.ok && one.details[0]) out.push({ ...it, ma: one.details[0].productCode, price: one.details[0].price, categoryId: one.details[0].categoryId, volumePricing: one.details[0].volumePricing });
   }
   return out;
+}
+
+/** Comparison only: never subtract this from a wholesale payable total again. */
+export function wholesalePriceSavings(items: CartItemToEvaluate[], webItems: CartItemToEvaluate[]): number {
+  const webPrices = new Map(webItems.map(it => [it.ma, it.volumePricing?.basePrice ?? it.price]));
+  return items.reduce((sum, it) => sum + (it.price > 0 ? Math.max(0, (webPrices.get(it.ma) ?? it.price) - it.price) * it.quantity : 0), 0);
 }
 
 export function registerShopPromotionsPublicRoutes(
@@ -211,6 +218,10 @@ export function registerShopPromotionsPublicRoutes(
 
         const now = new Date();
         const items = await withServerPrices(shopDb, clientItems, userAccount);
+        // Display-only comparison; wholesale prices already include this saving.
+        const wholesalePricing = isActiveWholesale(userAccount);
+        const webItems = wholesalePricing ? await withServerPrices(shopDb, clientItems, null) : [];
+        const wholesaleSavings = wholesalePriceSavings(items, webItems);
         const campaign = await quoteWithCampaign(shopDb, items, {
           accountId: buyerUserId,
           account: userAccount,
@@ -247,6 +258,7 @@ export function registerShopPromotionsPublicRoutes(
           () => new Map<string, VoucherReturn>()
         );
         const noticed = withBuyerNotices(quote, buyerPromos, selectedCode);
+        if (wholesalePricing) Object.assign(noticed, { wholesaleSavings });
         res.json({
           ok: true,
           quote: returns.size

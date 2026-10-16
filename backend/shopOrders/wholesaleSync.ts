@@ -7,6 +7,8 @@ import { lookupKvCustomers, verifyCustomerRegion } from "../shopWholesale/kvCust
 import { ensureReviewKvOrder } from "../shopInvoices/invoiceService.js";
 import { fullAddressForKv } from "./orderRouteShared.js";
 import { syncBus } from "../syncBus.js";
+import { checkWholesalePurchase } from "../shopWholesale/purchaseCheck.js";
+import { provisionWholesaleCustomer } from "../shopWholesale/provision.js";
 
 // The order document is the durable outbox. A started POST is never retried
 // automatically: KiotViet does not offer a verified idempotency contract here.
@@ -16,7 +18,7 @@ export function wholesaleSyncBlock(order: any, account: any, now = Date.now()): 
   if (order.kvOrderId) return "already_synced";
   if (!account || account.active === false || account.siStatus !== "active" || !account.roles?.includes("si")) return "account_review";
   if (!["HCM", "TINH"].includes(String(account.siRegion || ""))) return "account_review";
-  if (!account.kvCustomerId) return "awaiting_customer_link";
+  if (order.siRegion !== account.siRegion) return "needs_review";
   if (!order.policyAcceptedAt) return "needs_review";
   if (order.priceMode !== "si") return "needs_review";
   if (order.backorderStatus && order.backorderStatus !== "pending_confirmation") return "needs_review";
@@ -38,10 +40,14 @@ export function wholesaleSyncBlock(order: any, account: any, now = Date.now()): 
   ) {
     return "needs_review";
   }
-  return null;
+  return account.kvCustomerId ? null : "awaiting_customer_link";
 }
 
-export async function syncWholesaleOrder(db: Db, ops: Db, id: unknown, deps = {
+export async function syncWholesaleOrder(db: Db, ops: Db, id: unknown, deps: {
+  lookup: typeof lookupKvCustomers; region: typeof verifyCustomerRegion; send: typeof ensureReviewKvOrder;
+  check?: typeof checkWholesalePurchase;
+  provision?: typeof provisionWholesaleCustomer;
+} = {
   lookup: lookupKvCustomers, region: verifyCustomerRegion, send: ensureReviewKvOrder,
 }) {
   const orders = db.collection(SHOP_ORDERS);
@@ -66,18 +72,33 @@ export async function syncWholesaleOrder(db: Db, ops: Db, id: unknown, deps = {
     return { status };
   };
   try {
-    const account = await db.collection(SHOP_ACCOUNTS).findOne(shopAccountIdQuery(order.shopAccountId));
+    let account = await db.collection(SHOP_ACCOUNTS).findOne(shopAccountIdQuery(order.shopAccountId));
     const block = wholesaleSyncBlock(order, account);
-    if (block) return await stop(block);
+    if (block && block !== "awaiting_customer_link") return await stop(block);
+    const eligibility = await (deps.check || checkWholesalePurchase)(db, ops, account, order.orderDetails,
+      { deliveryMethod: order.deliveryMethod, province: order.province, district: order.district, ward: order.ward }, String(order.code));
+    if (!eligibility.canCheckout) return await stop("needs_review");
+    if (block === "awaiting_customer_link") {
+      await (deps.provision || provisionWholesaleCustomer)(db, ops, account!._id);
+      account = await db.collection(SHOP_ACCOUNTS).findOne(shopAccountIdQuery(order.shopAccountId));
+      const afterProvision = wholesaleSyncBlock(order, account);
+      if (afterProvision) return await stop(afterProvision);
+    }
+    const verificationStatus = account!.siVerification?.status;
+    const pendingVerification = verificationStatus === "pending";
+    const accountVersion = JSON.stringify([String(account!.updatedAt || ""), account!.kvCustomerId,
+      account!.kvRetailer, account!.phoneNorm || account!.phone, verificationStatus]);
     const found = await deps.lookup(ops, account!.phoneNorm || account!.phone);
     if (found.customers.length !== 1 || Number(found.customers[0].id) !== Number(account!.kvCustomerId) || found.retailer !== account!.kvRetailer) return await stop("customer_review");
-    if (await deps.region(ops, found.customers[0]) !== account!.siRegion) return await stop("customer_review");
+    if (!pendingVerification && await deps.region(ops, found.customers[0]) !== account!.siRegion) return await stop("customer_review");
     const latestAccount = await db.collection(SHOP_ACCOUNTS).findOne(shopAccountIdQuery(order.shopAccountId));
-    if (!latestAccount || latestAccount.updatedAt !== account!.updatedAt || latestAccount.kvCustomerId !== account!.kvCustomerId) return await stop("customer_review");
+    if (!latestAccount || wholesaleSyncBlock(order, latestAccount) ||
+      JSON.stringify([String(latestAccount.updatedAt || ""), latestAccount.kvCustomerId, latestAccount.kvRetailer,
+        latestAccount.phoneNorm || latestAccount.phone, latestAccount.siVerification?.status]) !== accountVersion) return await stop("customer_review");
     // Keep the accepted price snapshot, not today's catalog price.
     // The final CAS rejects edits/cancellation while remote customer validation ran.
     const claimed = await orders.updateOne({ ...filter, kvPushStatus: "preparing", orderStatus: order.orderStatus,
-      revision: order.revision ?? null, updatedAt: order.updatedAt ?? null, kvOrderId: null },
+      revision: order.revision ?? null, updatedAt: order.updatedAt ?? null, siRegion: order.siRegion, kvOrderId: null },
       { $set: { kvPushStatus: "sending", kvSyncStartedAt: new Date().toISOString(), kvSyncCustomerId: Number(account!.kvCustomerId),
         kvSyncRetailer: found.retailer, kvSyncMarker: `ALOHA:${String(order._id)}` }, $inc: { kvSyncAttempts: 1 } });
     if (!claimed.modifiedCount) return await stop("needs_review");
@@ -85,7 +106,7 @@ export async function syncWholesaleOrder(db: Db, ops: Db, id: unknown, deps = {
     const result = await deps.send({ mainDb: ops, customerName: order.customerName,
       customerId: Number(account!.kvCustomerId), customerPhone: order.customerPhone,
       address: fullAddressForKv({ deliveryMethod: order.deliveryMethod, shippingAddress: order.shippingAddress, ward: order.ward, district: order.district, province: order.province }), deliveryAddress: kvDeliveryAddressForOrder(order), orderDetails: order.orderDetails,
-      description: `ALOHA:${String(order._id)} | Web ${order.code} | Cho xac nhan anh va thanh toan`.slice(0, 500),
+      description: `ALOHA:${String(order._id)} | Web ${order.code} | ${pendingVerification ? `Khách sỉ mới — chờ xác minh thông tin/nhóm sỉ ${account!.siRegion}, liên hệ xác nhận trước khi giao. | ` : ""}Cho xac nhan anh va thanh toan`.slice(0, 500),
       totalPayment: 0, shippingFee: Number(order.shippingFee) || 0 });
     if (!result.kvOrderCode || String(result.kvOrderCode) === String(result.kvOrderId)) throw new Error("missing_official_code");
     await orders.updateOne(filter, { $set: { kvOrderId: result.kvOrderId, kvOrderCode: result.kvOrderCode,

@@ -1,0 +1,15 @@
+# Wholesale registration: immediate price access
+
+New valid registrations receive role `si` and `siStatus: active` immediately. This grants wholesale catalog pricing after the registration response sets the session; no admin approval is required to browse prices. Contact/address validation, terms acceptance, authenticated identity, phone ownership checks and concurrent-update guards remain enforced.
+
+Verification is separate: `siVerification.status: pending` and `siKvSyncStatus: awaiting_verification`. Region is assigned server-side from the submitted address, using the existing versioned address-migration snapshot. The business boundary is pre-merger HCM: old Binh Duong and Ba Ria–Vung Tau remain TINH even when the current province name is HCM. Exact legacy district/ward matches or unambiguous current ward codes with consistent legacy origins are accepted. Missing, contradictory, duplicate-name or mixed-origin addresses keep `siRegion: null` for review. No fuzzy matching or client-supplied region is trusted. Assignment policy, dataset version and time are retained on the account.
+
+Only an administrator may verify the profile or override its region. The review filter includes active accounts with pending verification alongside legacy `cho_duyet` applications. The public account response exposes only verification status, not verification notes or actor identities. District is included in the lookup/register address binding; changing it requires a fresh lookup.
+
+Once region is assigned, the existing regional purchase rules apply immediately. Customers whose address needs review may browse wholesale prices and select products; checkout reports the missing region without assuming either region's minimum. Provisioning cannot claim accounts without a known region or inactive/locked accounts. Pending admin verification no longer blocks a valid order: the order worker invokes customer provisioning/linking when necessary, then sends a zero-payment review order with a pending-verification note. `siKvSyncStatus: awaiting_verification` on older registrations is not a prerequisite for this order-driven path. Verification stays pending until an administrator completes it. Locked accounts cannot regain access by self-registration.
+
+The wholesale homepage now recognizes active accounts before region assignment so it reloads personalized wholesale products rather than retaining public retail HTML. Existing CartSync reacts to the status/region transition and refreshes cart pricing. Registration updates session data and invalidates campaign/cart quote data.
+
+No existing production accounts are migrated by these code changes. Legacy pending applications retain their previous status and remain in the review queue. No production registration, KiotViet customer creation or deployment was performed during implementation.
+
+Validation includes registration, identity, price, homepage and purchase policy tests; region tests cover current and legacy addresses, all current HCM ward names, ambiguous names, and exclusion of the two merged provinces. Frontend and backend TypeScript checks are executed separately.

@@ -189,24 +189,32 @@ export function TikTokMobileVoucherStrip({
   const sellerVouchers = vouchers.filter((v) => v.benefitType !== "shipping");
 
   return (
-    <div id="kho-voucher-mobile" className="space-y-2 rounded-2xl bg-white p-3 shadow-2xs border border-rose-100/70">
+    <div id="kho-voucher-mobile" className="space-y-2.5">
       {/* 1. Header: Voucher & khuyến mãi > (Mở popup voucher) */}
       <div
         onClick={() => openVoucherModal()}
-        className="flex items-center justify-between py-1 px-1 cursor-pointer select-none active:opacity-75 transition-opacity"
+        className="flex items-center justify-between py-0.5 px-0.5 cursor-pointer select-none active:opacity-75 transition-opacity"
       >
-        <h3 className="text-[15px] font-black tracking-tight text-slate-900">
-          Voucher & khuyến mãi
-        </h3>
-        <div className="flex items-center text-slate-400 hover:text-slate-700">
-          <ChevronRight size={18} strokeWidth={2.2} />
+        <div className="flex items-center gap-2">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--campaign-primary,#C8102E)] to-[#E11D48] text-white shadow-xs">
+            <TicketPercent size={15} strokeWidth={2.5} aria-hidden />
+          </span>
+          <h3 className="text-sm font-black uppercase tracking-tight text-slate-900">
+            Voucher & khuyến mãi
+          </h3>
+          <span className="shrink-0 rounded-full bg-white/90 border border-rose-200/80 px-1.5 py-0.5 text-[10px] font-black text-[var(--campaign-primary,#C8102E)] shadow-2xs">
+            {vouchers.length} mã
+          </span>
+        </div>
+        <div className="flex items-center text-xs font-bold text-[var(--campaign-primary,#C8102E)] gap-0.5">
+          <span>Xem tất cả</span>
+          <ChevronRight size={16} strokeWidth={2.2} />
         </div>
       </div>
 
       {/* 2. Dải cuộn ngang voucher cards chuẩn TikTok Shop (Ảnh 1) */}
       <div className="-mx-3 flex gap-2.5 overflow-x-auto px-3 pb-1 pt-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {vouchers.map(v => <div key={v.id} className="w-[270px] max-w-[calc(100vw-40px)] shrink-0"><CompactVoucherCard voucher={v} state={states.get(v.id)!} pending={claims.pendingId === v.id} onClaim={() => claims.claim(v.id)} /></div>)}
-
       </div>
 
       {/* 3. Bottom Sheet Modal khi bấm vào header / nút > (Ảnh 2 chuẩn TikTok Shop) */}

@@ -8,6 +8,8 @@ import {
   startShopCatalogStream,
 } from "@/lib/catalogSync";
 import { refreshCartPricesFromCatalog } from "@/lib/cartPriceRefresh";
+import { useQueryClient } from "@tanstack/react-query";
+import { PUBLIC_CONTENT_KEY } from "@/lib/publicContentQueries";
 
 function isStorefrontPath(pathname: string) {
   const p = pathname || "/";
@@ -20,6 +22,7 @@ function isStorefrontPath(pathname: string) {
  * SSE catalog + appearance — chỉ storefront (không gắn poll nền lên admin/CTV).
  */
 export function ShopCatalogSync() {
+  const queryClient = useQueryClient();
   const router = useRouter();
   const pathname = usePathname() || "/";
   const enabled = isStorefrontPath(pathname);
@@ -39,9 +42,11 @@ export function ShopCatalogSync() {
   useEffect(() => {
     if (!enabled) return;
     return onShopAppearanceChanged(() => {
+      // One listener for all consumers: one refetch per content key, not per component.
+      void queryClient.invalidateQueries({ queryKey: PUBLIC_CONTENT_KEY });
       router.refresh();
     });
-  }, [enabled, router]);
+  }, [enabled, router, queryClient]);
 
   return null;
 }

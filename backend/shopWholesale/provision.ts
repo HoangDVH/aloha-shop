@@ -5,6 +5,7 @@ import { fetchKvAccessToken, loadKvCreds, kvApiBase } from "../services/kvApiCli
 import { resolveShopKvBranchId } from "../shopOrders/kvPush.js";
 import { lookupKvCustomers, verifyCustomerRegion } from "./kvCustomers.js";
 import { syncBus } from "../syncBus.js";
+import { normalizeWholesalePhone } from "./policy.js";
 
 /** Marker in KV customer.comments — dùng đối soát khi không gửi mã WS cố định. */
 export function wholesaleProvisionMarker(accountId: unknown): string {
@@ -46,11 +47,14 @@ export async function provisionWholesaleCustomer(shopDb: Db, opsDb: Db, accountI
   const owner = randomUUID();
   const now = new Date();
   const accounts = shopDb.collection(SHOP_ACCOUNTS);
-  const account = await accounts.findOneAndUpdate({ _id: accountId as any, siStatus: "active", siIdentity: true, kvCustomerId: null,
+  const account = await accounts.findOneAndUpdate({ _id: accountId as any, siStatus: "active", active: { $ne: false }, roles: "si", siRegion: { $in: ["HCM", "TINH"] },
+    siIdentity: true, kvCustomerId: null,
+    $and: [{ $or: [{ siKvSyncNextAt: { $exists: false } }, { siKvSyncNextAt: { $lte: now.toISOString() } }] }],
     $or: [{ siKvLeaseUntil: { $exists: false } }, { siKvLeaseUntil: { $lte: now } }] },
     { $set: { siKvLeaseOwner: owner, siKvLeaseUntil: new Date(Date.now() + 180000) } }, { returnDocument: "after" });
   if (!account) return { status: "busy_or_synced" };
   const filter = { _id: account._id, siKvLeaseOwner: owner };
+  const pendingVerification = account.siVerification?.status === "pending";
   const marker = wholesaleProvisionMarker(account._id);
   let clearCreateStarted = false;
   try {
@@ -68,10 +72,13 @@ export async function provisionWholesaleCustomer(shopDb: Db, opsDb: Db, accountI
     };
 
     let { marked, unmarked } = await pickMarked(account.phoneNorm);
-    // Phone already used by other KV customers (no our marker) → human review.
-    if (unmarked.length > 0 || marked.length > 1) throw new Error("PHONE_REQUIRES_REVIEW");
+    // A unique exact-phone match may receive a review order before verification.
+    // Never relink an unknown create result to an unrelated phone match.
+    const canLinkExisting = pendingVerification && !account.siKvCreateStartedAt && marked.length === 0 && unmarked.length === 1;
+    if ((unmarked.length > 0 && !canLinkExisting) || marked.length > 1) throw new Error("PHONE_REQUIRES_REVIEW");
 
-    let customer = marked[0] || null;
+    let customer = marked[0] || (canLinkExisting ? unmarked[0] : null);
+    if (canLinkExisting && normalizeWholesalePhone(customer?.contactNumber) !== account.phoneNorm) throw new Error("PHONE_REQUIRES_REVIEW");
 
     // After a started create: re-lookup by phone + marker (KV tự sinh mã KH…).
     if (!customer && account.siKvCreateStartedAt) {
@@ -100,18 +107,19 @@ export async function provisionWholesaleCustomer(shopDb: Db, opsDb: Db, accountI
       const addressParts = [
         String(profile.detail || "").trim(),
         String(profile.ward || "").trim(),
+        String(profile.district || "").trim(),
         String(profile.province || "").trim(),
       ].filter(Boolean);
       // Không gửi `code` — KV tự sinh mã KH…; đối soát bằng comments marker + SĐT.
       const response = await fetch(`${kvApiBase()}/customers`, { method: "POST", headers, signal: AbortSignal.timeout(15000),
         body: JSON.stringify({
-          name: profile.shopName || account.fullName,
+          name: String(profile.fullName || account.fullName || "").trim(),
           contactNumber: account.phoneNorm,
           address: addressParts.join(", ").slice(0, 255),
           email: account.email,
           branchId,
           groupIds: [groupId],
-          comments: marker,
+          comments: `${marker}${profile.shopName ? ` | Cửa hàng: ${String(profile.shopName).trim()}` : ""}${pendingVerification ? ` | Khách sỉ mới — chờ xác minh thông tin/nhóm sỉ ${account.siRegion}` : ""}`,
         }) });
       if (!response.ok) {
         if (response.status >= 400 && response.status < 500) {
@@ -120,18 +128,20 @@ export async function provisionWholesaleCustomer(shopDb: Db, opsDb: Db, accountI
         }
         throw new Error("KV_CREATE_REQUIRES_RECONCILIATION");
       }
-      customer = await response.json();
+      const body: any = await response.json();
+      customer = body?.data ?? body;
     }
 
     if (!isValidKvCustomer(customer)) throw new Error("KV_INVALID_CUSTOMER");
-    const region = await verifyCustomerRegion(opsDb, customer);
-    if (region !== account.siRegion) throw new Error("GROUP_REQUIRES_REVIEW");
+    if (!pendingVerification && await verifyCustomerRegion(opsDb, customer) !== account.siRegion) throw new Error("GROUP_REQUIRES_REVIEW");
     const officialCode = String(customer.code).trim();
-    await accounts.updateOne({ ...filter, siStatus: "active", siRegion: account.siRegion }, { $set: {
+    const linked = await accounts.updateOne({ ...filter, siStatus: "active", active: { $ne: false }, roles: "si", siRegion: account.siRegion,
+      phoneNorm: account.phoneNorm, "siVerification.status": account.siVerification?.status ?? { $exists: false } }, { $set: {
       kvCustomerId: Number(customer.id), kvCustomerCode: officialCode, kvRetailer: creds.retailer,
       siKvSyncStatus: "synced", siKvSyncedAt: new Date().toISOString(),
       siKvProvisionCode: officialCode,
     }, $unset: { siKvLastError: "", siKvCreateStartedAt: "" }, $push: { siAudit: { id: randomUUID(), action: "kv_synced", at: new Date().toISOString(), customerId: Number(customer.id), customerCode: officialCode } } as any });
+    if (!linked.modifiedCount) throw new Error("ACCOUNT_CHANGED");
     syncBus.publish([SHOP_ACCOUNTS], "si_kv_synced", { ids: [String(account._id)] });
     return { status: "synced", code: officialCode };
   } catch (error: any) {

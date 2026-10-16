@@ -11,7 +11,7 @@ import { useShopAuth } from "@/components/ShopAuthProvider";
 import { ShopPageLoader } from "@/components/ShopPageLoader";
 import { useShopLoadingWhile } from "@/lib/useShopLoadingWhile";
 import { refreshCartPricesFromCatalog } from "@/lib/cartPriceRefresh";
-import { listAddresses, type ShopAddress } from "@/lib/orders";
+import { listAddresses, ensureWholesaleRegistrationAddress, type ShopAddress } from "@/lib/orders";
 import type { AddressDraft } from "@/components/GhnAddressFields";
 import { shopShowCheckoutShipping } from "@/lib/checkoutFlags";
 import {
@@ -37,6 +37,7 @@ import {
 } from "@/components/checkout/checkoutTypes";
 import { usePlaceOrder } from "@/components/checkout/usePlaceOrder";
 import { useShippingQuote } from "@/components/checkout/useShippingQuote";
+import { accountCheckoutDraft, checkoutDraftKey, restoreCheckoutDraft } from "@/lib/checkoutDraft";
 
 /** Thiếu thông tin nhận hàng → chặn nút Đặt hàng (khớp validate lúc placeOrder). */
 function checkoutReceiverBlockReason(args: {
@@ -89,7 +90,9 @@ function checkoutReceiverBlockReason(args: {
 }
 
 export default function CheckoutConfirmPage() {
-  return <CheckoutConfirm />;
+  const { user, loading } = useShopAuth();
+  if (loading) return <ShopPageLoader fullscreen={false} />;
+  return <CheckoutConfirm key={user?.id || "guest"} />;
 }
 
 function CheckoutConfirm() {
@@ -128,40 +131,37 @@ function CheckoutConfirm() {
   useShopLoadingWhile(submitting);
 
   const [draft, setDraft] = useState<AddressDraft>(EMPTY_DRAFT);
+  const [draftReady, setDraftReady] = useState(false);
   const [error, setError] = useCheckoutError(JSON.stringify({ cart: checkoutCartKey, delivery, selectedAddrId, showNewForm,
     draft, promoCode, promoAutoMode, userId: user?.id }));
 
   // Khôi phục form địa chỉ từ sessionStorage nếu khách bấm Mua thêm rồi quay lại
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const saved = sessionStorage.getItem("aloha_checkout_draft");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed && typeof parsed === "object") {
-          setDraft((prev) => ({ ...prev, ...parsed }));
-        }
-      }
-    } catch {
-      /* ignore */
-    }
-  }, []);
+    if (typeof window === "undefined" || !user) return;
+    try { setDraft(restoreCheckoutDraft(sessionStorage, user)); }
+    catch { setDraft(accountCheckoutDraft(user)); }
+    setDraftReady(true);
+    // The page is remounted when account ID changes; profile refreshes must not overwrite edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   // Tự động lưu form địa chỉ vào sessionStorage khi người dùng nhập liệu
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !user || !draftReady) return;
     if (draft.fullName || draft.phone || draft.detail || draft.province) {
       try {
-        sessionStorage.setItem("aloha_checkout_draft", JSON.stringify(draft));
+        sessionStorage.setItem(checkoutDraftKey(user.id), JSON.stringify(draft));
       } catch {
         /* ignore */
       }
     }
-  }, [draft]);
+  }, [draft, draftReady, user?.id]);
 
   const selectedAddr = addresses.find((a) => a.id === selectedAddrId);
   const { isSi, quote: siQuote } = useCartQuote({ deliveryMethod: delivery,
-    province: !showNewForm && selectedAddr ? selectedAddr.province : draft.province || "" });
+    province: !showNewForm && selectedAddr ? selectedAddr.province : draft.province || "",
+    district: !showNewForm && selectedAddr ? selectedAddr.district : draft.district || "",
+    ward: !showNewForm && selectedAddr ? selectedAddr.ward : draft.ward || "" });
   // Cùng SĐT với đơn gửi lên: giới hạn suất sale mỗi khách tính theo SĐT người nhận.
   const receiverPhone =
     delivery === "giao_tan_noi" && !showNewForm && selectedAddr
@@ -281,13 +281,10 @@ function CheckoutConfirm() {
     } catch {
       /* ignore */
     }
-    setDraft((d) => ({
-      ...d,
-      fullName: d.fullName || user.fullName || "",
-      phone: d.phone || user.phone || "",
-    }));
-    void listAddresses()
+    let cancelled = false;
+    void (user.roles.includes("si") && user.siStatus === "active" ? ensureWholesaleRegistrationAddress() : listAddresses())
       .then((list) => {
+        if (cancelled) return;
         setAddresses(list);
         const def = list.find((a) => a.isDefault) || list[0];
         if (def) {
@@ -297,7 +294,8 @@ function CheckoutConfirm() {
           setShowNewForm(true);
         }
       })
-      .catch(() => setShowNewForm(true));
+      .catch(() => { if (!cancelled) setShowNewForm(true); });
+    return () => { cancelled = true; };
   }, [user, authLoading, router]);
 
   /** Đã đặt xong → không đá về giỏ khi removeSelected() làm selected = 0 */
@@ -338,6 +336,10 @@ function CheckoutConfirm() {
   });
 
   const requestPlaceOrder = () => {
+    if (minimumNoticeShown) {
+      document.getElementById("wholesale-cart-notice")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
     if (orderBlockedReason) {
       setError(orderBlockedReason);
       if (typeof document !== "undefined") {
@@ -408,6 +410,8 @@ function CheckoutConfirm() {
             : "";
 
   const canSubmit = !submitting && !orderBlockedReason;
+  const minimumNoticeShown = Boolean(isSi && !siQuote.isPending && !siQuote.isError && !siQuote.data?.canCheckout &&
+    siQuote.data?.issues?.length && siQuote.data.issues.every(issue => issue.code === "minimum"));
 
   const patchDraft = (p: Partial<AddressDraft>) => setDraft((d) => ({ ...d, ...p }));
 
@@ -467,6 +471,7 @@ function CheckoutConfirm() {
             flashDiscount={flashSavings}
             volumeDiscount={volumeSavings}
             anchorDiscount={anchorSavings}
+            wholesaleDiscount={promoQuote?.wholesaleSavings}
             appliedTitle={promoQuote?.applied?.title}
             voucherPromo={promoQuote?.applied}
             onOpenPromotion={() => setPromoModalOpen(true)}
@@ -479,6 +484,7 @@ function CheckoutConfirm() {
             grandTotal={grandTotal}
             error={error}
             orderBlockedReason={orderBlockedReason}
+            minimumNoticeShown={minimumNoticeShown}
             canSubmit={canSubmit}
             submitting={submitting}
             onPlaceOrder={requestPlaceOrder}
@@ -531,6 +537,7 @@ function CheckoutConfirm() {
         volumeDiscount={volumeSavings}
         flashDiscount={flashSavings}
         productDiscount={anchorSavings}
+        wholesaleDiscount={promoQuote?.wholesaleSavings}
         grandTotal={grandTotal}
         shippingFee={effectiveShippingFee}
         shippingDiscount={effectiveShippingDiscount}
@@ -539,6 +546,7 @@ function CheckoutConfirm() {
         canSubmit={canSubmit}
         submitting={submitting}
         orderBlockedReason={orderBlockedReason}
+        minimumNoticeShown={minimumNoticeShown}
         onPlaceOrder={requestPlaceOrder}
       />
 

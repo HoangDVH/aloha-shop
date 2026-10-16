@@ -64,7 +64,7 @@ export function ScopedProductCatalog({ products, columns = 4, variant = "default
         </CatalogChipRow>
       </div>} />
     <p className="text-sm text-stone-500">{matched.length} sản phẩm</p>
-    {matched.length ? <ProductGrid products={matched.slice(0, shown)} shopee columns={columns} variant={variant} /> : <p className="rounded-xl bg-stone-50 p-5 text-center text-sm text-stone-600">Không có sản phẩm phù hợp. Hãy đổi khoảng giá hoặc bỏ bớt bộ lọc.</p>}
+    {matched.length ? <ProductGrid products={matched.slice(0, shown)} shopee columns={columns} variant={variant} discountOnImage={giftSelection} largePrice={giftSelection} /> : <p className="rounded-xl bg-stone-50 p-5 text-center text-sm text-stone-600">Không có sản phẩm phù hợp. Hãy đổi khoảng giá hoặc bỏ bớt bộ lọc.</p>}
     {!matched.length ? <div className="flex flex-wrap gap-2">
       {badge.startsWith("badge:") ? <button type="button" className="min-h-11 rounded-lg border px-3 text-sm" onClick={() => { setBadge("ban_chay"); setShown(pageSize); }}>Bỏ lọc nhãn</button> : null}
       {filters.minPrice || filters.maxPrice ? <button type="button" className="min-h-11 rounded-lg border px-3 text-sm" onClick={() => update({ ...filters, minPrice: "", maxPrice: "" })}>Bỏ lọc giá</button> : null}

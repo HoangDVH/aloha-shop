@@ -14,7 +14,7 @@ export function registerShopCartQuote(app: Express, getDb: () => Promise<Db>, ge
     if (!(await shopRateLimitOrReject(req, res, "cart_quote", 60, 60000))) return;
     try {
       const input = z.object({ items: z.array(z.object({ productCode: z.string().trim().min(1).max(100), quantity: z.number().int().min(1).max(10000) })).min(1).max(100),
-        deliveryMethod: z.enum(["giao_tan_noi", "nhan_cua_hang"]).optional(), province: z.string().max(120).optional() }).parse(req.body);
+        deliveryMethod: z.enum(["giao_tan_noi", "nhan_cua_hang"]).optional(), province: z.string().max(120).optional(), district: z.string().max(120).optional(), ward: z.string().max(120).optional() }).parse(req.body);
       const db = await getDb();
       const account = await db.collection(SHOP_ACCOUNTS).findOne(shopAccountIdQuery(req.shopAuth!.userId));
       const priced = await applyCatalogPrices(await getCatalogDb(), parseOrderDetails(input.items), { account, quoteOnly: true });

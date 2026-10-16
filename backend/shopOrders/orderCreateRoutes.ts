@@ -176,10 +176,9 @@ async function createShopOrder(
 
   const hasPreOrder = orderDetails.some((d) => Boolean(d.preOrder));
   const policyAccepted = body.policyAccepted === true;
-  const needsCustomerLink =
-    user?.siStatus === "active" && user?.roles?.includes("si") && !user.kvCustomerId;
-  // Sỉ chưa gắn khách KV vẫn lưu yêu cầu trên web. Đơn còn lại, sau khi đồng ý chính sách, đi tạo đơn đặt hàng KV.
-  if (needsCustomerLink || (hasPreOrder && !policyAccepted)) {
+  // A missing KV customer is handled by the durable wholesale worker after the
+  // normal checkout persists its verified shipping quote and promotion snapshot.
+  if (hasPreOrder && !policyAccepted) {
     const result = await createBackorderRequest(shopDb, {
       userId: accountId,
       account: user,

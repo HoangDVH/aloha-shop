@@ -1,12 +1,15 @@
 import crypto from "node:crypto";
-import { wholesaleApprovalBasis } from "./approvalSource.js";
+import { wholesaleApprovalBasis, wholesaleAdminFilter } from "./approvalSource.js";
+import { assignWholesaleRegion } from "./regionAssignment.js";
 import { provisionWholesaleCustomer } from "./provision.js";
 import bcrypt from "bcryptjs";
 import type { Express, Request, Response } from "express";
 import type { Db } from "mongodb";
 import { ACCESS_COOKIE, verifyShopAccessToken } from "../shopAuth/tokens.js";
 import { SHOP_ACCOUNTS, shopAccountIdQuery, toPublicShopAccount } from "../shopAuth/models.js";
-import { issueShopSession } from "../shopAuth/routes.js";
+import { issueShopSession, requireShopAuth, type ShopAuthRequest } from "../shopAuth/routes.js";
+import { registrationAddressPatch, ensureRegistrationAddress } from "./registrationAddress.js";
+import { addressSnapshotFilter } from "../shopOrders/addressWrite.js";
 import { requireAuth, requireActive, requireManager, type AuthRequest } from "../auth/middleware.js";
 import { applyShopCors, isAllowedShopOrigin } from "../shopCors.js";
 import { shopRateLimitOrReject } from "../shopRateLimit.js";
@@ -61,6 +64,8 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
     db.collection(SHOP_ACCOUNTS).createIndex({ zaloId: 1 }, { unique: true, partialFilterExpression: { zaloId: { $type: "string" } } }),
     db.collection(SHOP_ACCOUNTS).createIndex({ phoneNorm: 1 }, { unique: true, partialFilterExpression: { siIdentity: true, phoneNorm: { $type: "string" } } }),
     db.collection(SHOP_ACCOUNTS).createIndex({ kvRetailer: 1, kvCustomerId: 1 }, { unique: true, partialFilterExpression: { kvCustomerId: { $type: "number" }, siIdentity: true } }),
+    db.collection(SHOP_ACCOUNTS).createIndex({ roles: 1, siStatus: 1, updatedAt: -1 }),
+    db.collection(SHOP_ACCOUNTS).createIndex({ roles: 1, "siVerification.status": 1, siStatus: 1, updatedAt: -1 }),
   ]).catch(error => { indexes = undefined; throw error; });
 
   app.use(["/api/shop/auth/si", "/api/shop/auth/zalo"], async (req, res, next) => {
@@ -253,8 +258,11 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
       }
       const { password, email, lookupId, acceptedTerms, ...profile } = input;
       const now = new Date().toISOString();
-      const patch = { fullName: input.fullName, phone: input.phone, phoneNorm: input.phone, siIdentity: true,
-        siStatus: "cho_duyet", siApplicationSource: "customer", siProfile: { ...profile, acceptedTermsAt: now, termsVersion: SI_TERMS_VERSION },
+      const regionAssignment = assignWholesaleRegion(input);
+      const patch = { ...registrationAddressPatch(account?.addresses, input), fullName: input.fullName, phone: input.phone, phoneNorm: input.phone, siIdentity: true,
+        siStatus: "active", siRegion: regionAssignment.region, siRegionAssignment: { ...regionAssignment, assignedAt: now },
+        siKvSyncStatus: "awaiting_verification",
+        siApplicationSource: "customer", siProfile: { ...profile, acceptedTermsAt: now, termsVersion: SI_TERMS_VERSION },
         siLookupId: lookupId, siLookupResult: lookup.result, siCandidate: lookup.candidate,
         siCandidateRetailer: lookup.retailer, siVerification: { status: "pending" },
         ...(who.zaloId ? { zaloId: who.zaloId, zaloVerifiedAt: now } : {}), updatedAt: now };
@@ -265,7 +273,7 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
         const inserted = await db.collection(SHOP_ACCOUNTS).insertOne(doc);
         account = await db.collection(SHOP_ACCOUNTS).findOne({ _id: inserted.insertedId });
       } else {
-        const result = await db.collection(SHOP_ACCOUNTS).updateOne({ _id: account._id,
+        const result = await db.collection(SHOP_ACCOUNTS).updateOne({ ...addressSnapshotFilter(account),
           siStatus: { $nin: ["active", "cho_duyet", "khoa"] } }, {
           $set: patch, $addToSet: { roles: "si" }, $inc: { applicationRevision: 1 },
         });
@@ -273,17 +281,28 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
         account = await db.collection(SHOP_ACCOUNTS).findOne({ _id: account._id });
       }
       res.clearCookie(COOKIE, { path: "/" });
-      syncBus.publish([SHOP_ACCOUNTS], "si_register_pending", { ids: [String(account!._id)] });
+      syncBus.publish([SHOP_ACCOUNTS], "si_registered_pending_verification", { ids: [String(account!._id)] });
       res.json(await issueShopSession(res, db, account!));
     } catch (error) { sendError(res, error); }
   });
 
   const gate = [requireAuth(getOpsDb), requireActive, requireManager];
+  app.post("/api/shop/auth/si/address", requireShopAuth(getDb), async (req: ShopAuthRequest, res) => {
+    try {
+      const db = await getDb();
+      const account = await db.collection(SHOP_ACCOUNTS).findOne(shopAccountIdQuery(req.shopAuth!.userId));
+      if (!account) return res.sendStatus(401);
+      const addresses = await ensureRegistrationAddress(db.collection(SHOP_ACCOUNTS), account);
+      if (!addresses) return res.status(409).json({ error: "Địa chỉ vừa thay đổi. Vui lòng thử lại." });
+      res.json({ addresses });
+    } catch (error) { sendError(res, error); }
+  });
   app.get("/api/shop/admin/si", ...gate, async (req, res) => {
     try {
       const db = await getDb();
       const status = String(req.query.status || "");
-      const filter = { roles: "si", ...(status ? { siStatus: status } : {}) };
+      await ensure(db);
+      const filter = wholesaleAdminFilter(status);
       const docs = await db.collection(SHOP_ACCOUNTS).find(filter).sort({ updatedAt: -1 }).limit(100).toArray();
       res.json({ items: docs.map(d => ({ ...toPublicShopAccount(d), revision: d.applicationRevision || 0,
         verification: d.siVerification, candidate: d.siCandidate, kvCustomerId: d.kvCustomerId,
