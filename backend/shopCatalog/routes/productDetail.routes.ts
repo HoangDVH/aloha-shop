@@ -228,7 +228,7 @@ export function registerProductDetailRoutes(app: Express, ctx: CatalogCtx) {
       ton = await availableTonAfterHold(db, item.ma, ton);
       res.setHeader("X-Shop-Cache", "BYPASS");
       const [withPromo] = (await withCampaignPromos(db, req, [ton !== item.ton ? { ...item, ton } : item])).items;
-      const attachedProducts = await loadAttachedProducts(db, req, (doc as any).attachedItems);
+      const attachedProducts = await loadAttachedProducts(db, req, item.attachedItems);
       res.json({ item: { ...withPromo, attachedProducts } });
     } catch (e: any) {
       res.status(500).json({ error: e?.message || "product_failed" });
@@ -275,7 +275,7 @@ export function registerProductDetailRoutes(app: Express, ctx: CatalogCtx) {
       const ton = await availableTonAfterHold(db, item.ma, item.ton);
       res.setHeader("X-Shop-Cache", "BYPASS");
       const [withPromo] = (await withCampaignPromos(db, req, [ton !== item.ton ? { ...item, ton } : item])).items;
-      const attachedProducts = await loadAttachedProducts(db, req, (doc as any).attachedItems);
+      const attachedProducts = await loadAttachedProducts(db, req, item.attachedItems);
       res.json({ item: { ...withPromo, attachedProducts } });
     } catch (e: any) {
       res.status(500).json({ error: e?.message || "resolve_failed" });

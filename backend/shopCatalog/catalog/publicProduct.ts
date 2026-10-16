@@ -18,6 +18,7 @@ import {
   resolvePinBadgeScope,
 } from "../pinArrange.js";
 import { productCreatedMs as kvProductCreatedMs } from "../../utils/productCreatedAt.js";
+import { withPackagingRecommendations } from "./packagingRecommendations.js";
 
 export function publicImages(doc: Record<string, unknown>): string[] {
   const imgs = Array.isArray(doc.images)
@@ -126,7 +127,7 @@ export function toPublicProduct(doc: Record<string, unknown>) {
   const categoryName = String(doc.categoryName || "").trim();
   const nhom = deriveNhom(doc);
   const nhomPath = deriveNhomPath(doc) || nhom;
-  const attachedItems = normalizeAttachedCodes(doc.attachedItems);
+  const attachedItems = withPackagingRecommendations(ma, normalizeAttachedCodes(doc.attachedItems));
   return {
     ma,
     ten,
