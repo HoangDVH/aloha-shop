@@ -6,7 +6,7 @@ import { VoucherTicket } from "@/components/voucher/VoucherTicket";
 import { Check, X } from "lucide-react";
 import { ReturnedBadge, type VoucherReturnInfo } from "@/components/voucher/ReturnedBadge";
 import { formatVnd } from "@/lib/api";
-import { pctText, sortVouchersGrouped, type MysteryInfo } from "@/lib/voucherFormat";
+import { pctText, sortVouchersGrouped, voucherCustomerTitle, type MysteryInfo } from "@/lib/voucherFormat";
 import { getAvailablePromotions, type AvailablePromotionUI } from "@/lib/promotions";
 import { PromotionDetailModal } from "./PromotionDetailModal";
 import dayjs from "dayjs";
@@ -479,7 +479,7 @@ export function PromotionModal({
                         stubTopLabel="FREESHIP"
                         stubValue={getStubValue(cand)}
                         stubSubLabel="HỖ TRỢ SHIP"
-                        title={cand.title}
+                        title={voucherCustomerTitle(cand.title, cand)}
                         selected={isShipApplied}
                         action={
                           <div className="flex flex-col items-end gap-1.5">
@@ -545,7 +545,7 @@ export function PromotionModal({
                         stubTopLabel="GIẢM"
                         stubValue={getStubValue(cand)}
                         stubSubLabel={stubMaxLabel(cand)}
-                        title={cand.title}
+                        title={voucherCustomerTitle(cand.title, cand)}
                         selected={isCurrent}
                         action={
                           <div className="flex flex-col items-end gap-1.5">
@@ -629,7 +629,7 @@ export function PromotionModal({
                       stubTopLabel={cand.benefitType === "shipping" ? "FREESHIP" : "GIẢM"}
                       stubValue={getStubValue(cand)}
                       stubSubLabel={cand.benefitType === "shipping" ? "HỖ TRỢ SHIP" : stubMaxLabel(cand)}
-                      title={cand.title}
+                      title={voucherCustomerTitle(cand.title, cand)}
                       action={
                         <div className="flex flex-col items-end gap-1.5">
                           {ineligibleAction ? (

@@ -102,7 +102,7 @@ function TikTokLargeVoucherCard({
         <div className="mt-1 flex items-center justify-between gap-2">
           <div className="min-w-0 flex-1">
             {/* TIÊU ĐỀ VOUCHER */}
-            <h4 className="text-[13px] font-bold text-slate-900 leading-snug line-clamp-1" title={voucherCustomerTitle(v.title) || title}>
+            <h4 className="text-[13px] font-bold text-slate-900 leading-snug line-clamp-2" title={voucherCustomerTitle(v.title, v) || title}>
               {title}
             </h4>
 

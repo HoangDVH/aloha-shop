@@ -316,8 +316,8 @@ export function VoucherVault({
                   {/* HÀNG 1: TIÊU ĐỀ VOUCHER (Trải rộng 100% thân vé, hiển thị trọn vẹn) */}
                   <div className="flex items-center justify-between gap-1">
                     <h4
-                      className="text-[12px] sm:text-[13px] font-bold text-slate-900 leading-tight truncate"
-                      title={voucherCustomerTitle(v.title) || title}
+                      className="text-[12px] sm:text-[13px] font-bold text-slate-900 leading-tight line-clamp-2"
+                      title={voucherCustomerTitle(v.title, v) || title}
                     >
                       {title}
                     </h4>

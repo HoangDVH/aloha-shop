@@ -25,7 +25,7 @@ export function ProductScopedVoucherCard({ voucher: v, state, pending, onClaim, 
       <TicketPercent size={20} aria-hidden /><span className="mt-1 text-center text-[9px] font-semibold">Sản phẩm</span>
     </div>}
     <div className={`min-w-0 flex-1 ${popup ? "" : "px-2.5 py-2"}`}>
-      <h4 title={voucherCustomerTitle(v.title)} className="truncate text-xs font-bold leading-4 text-slate-900">{cleanVoucherTitle(v)}</h4>
+      <h4 title={voucherCustomerTitle(v.title, v)} className="line-clamp-2 text-xs font-bold leading-4 text-slate-900">{cleanVoucherTitle(v)}</h4>
       <p className={`mt-0.5 font-black leading-6 text-[#FE2C55] ${popup ? "text-xl" : "text-lg"}`}>Giảm {v.discountType === "percentage" ? pctText(v) : `${formatCompactVnd(v.discountValue).toUpperCase()}đ`}</p>
       <div className={`mt-1 flex min-h-6 flex-wrap items-center gap-x-2 gap-y-1 ${popup ? "justify-center" : ""}`}>
         {canClaim ? <button type="button" disabled={pending} onClick={onClaim}
@@ -47,7 +47,7 @@ export function CompactVoucherCard({voucher: v, state, pending, onClaim, onProdu
   const usable = state === "claimed" || state === "auto";
   const scope = v.scope === "product";
   const label = ship ? `Hỗ trợ phí ship ${v.discountType === "fixed" ? formatVnd(v.discountValue) : pctText(v)}`
-    : scope && v.title ? voucherCustomerTitle(v.title)
+    : scope && v.title ? voucherCustomerTitle(v.title, v)
     : formatVoucherBadge({ ...v, maxDiscountVnd: undefined, minOrderThreshold: undefined }).label;
   const action = "inline-flex min-h-7 shrink-0 items-center justify-center rounded-full px-2 text-[10px] font-semibold";
   return <article title={label} className={`flex min-h-[68px] min-w-0 shrink-0 items-stretch overflow-hidden rounded-lg border text-left ${ship ? "border-[#bce9df] bg-[#f0fbf8] text-[#087a69]" : "border-[#f4cfc2] bg-[#fff5ef] text-[#b5482d]"}`}>

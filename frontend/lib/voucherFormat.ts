@@ -68,6 +68,10 @@ export function formatVoucherBadge(p: VoucherLike): { label: string; type: "good
     }
     return { label: text, type: "shipping" };
   }
+  if (p.targetCustomer === "returning_web") {
+    const value = p.discountType === "percentage" ? pctText(p) : formatCompactVnd(p.discountValue);
+    return { label: `Giảm ${value} tiền hàng cho khách cũ`, type: "goods" };
+  }
   if (p.targetCustomer === "new_web") {
     if (p.discountType === "percentage") {
       return { label: `Giảm ${pctText(p)} cho khách mới`, type: "goods" };
@@ -100,17 +104,26 @@ export function voucherHeadline(p: VoucherLike): string {
  * - "Giảm 10% Siêu Sale 10/10" -> "Siêu Sale 10/10"
  * - "Hỗ trợ phí ship 30k" -> "Hỗ trợ phí vận chuyển"
  */
-export function voucherCustomerTitle(title?: string): string {
-  return (title || "").replace(/\s*\(\s*3\s+sản\s+phẩm\s*\)/giu, "").trim();
+export function voucherCustomerTitle(title?: string, offer?: Partial<VoucherLike>): string {
+  const cleaned = (title || "").replace(/\s*\(\s*3\s+sản\s+phẩm\s*\)/giu, "").trim();
+  const returning = offer?.targetCustomer ? offer.targetCustomer === "returning_web" : /khách cũ/i.test(cleaned);
+  if (returning && offer?.benefitType !== "shipping" && offer?.discountType &&
+    typeof offer.discountValue === "number" && (offer.discountValue > 0 || offer.mystery)) {
+    return formatVoucherBadge({ ...offer, targetCustomer: "returning_web", discountType: offer.discountType, discountValue: offer.discountValue }).label;
+  }
+  return cleaned;
 }
 
 export function cleanVoucherTitle(v: {
   title?: string;
   benefitType?: "goods" | "shipping";
   targetCustomer?: string;
+  discountType?: VoucherLike["discountType"];
+  discountValue?: number;
   mystery?: MysteryInfo;
 }): string {
-  const raw = voucherCustomerTitle(v.title);
+  const raw = voucherCustomerTitle(v.title, v);
+  if (raw.includes("tiền hàng cho khách cũ")) return raw;
 
   // 1. Voucher vận chuyển
   if (v.benefitType === "shipping") {

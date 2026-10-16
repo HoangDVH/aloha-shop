@@ -28,7 +28,7 @@ export function PromotionDetailModal({ cand, onClose }: Props) {
               Chi tiết điều kiện ưu đãi
             </span>
             <h3 className="text-sm font-bold text-slate-800 mt-1">
-              {voucherCustomerTitle(cand.title)}
+              {voucherCustomerTitle(cand.title, cand)}
             </h3>
           </div>
           <button

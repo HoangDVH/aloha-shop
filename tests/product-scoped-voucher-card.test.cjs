@@ -43,6 +43,35 @@ test('scope is explicit without product counts and campaign ordering promotes th
   assert.equal(list[0].id,'NEW');
 });
 
+test('returning-customer labels consistently identify the amount, goods benefit and audience',()=>{
+  const v={...voucher,title:'Ưu đãi khách cũ',benefitType:'goods',scope:'all',targetCustomer:'returning_web',discountValue:7};
+  const label='Giảm 7% tiền hàng cho khách cũ';
+  assert.equal(format.formatVoucherBadge(v).label,label);
+  assert.equal(format.voucherCustomerTitle(v.title,v),label);
+  assert.equal(format.cleanVoucherTitle(v),label);
+  const compact=CompactVoucherCard({voucher:v,state:'auto',onClaim(){}});
+  assert.equal(compact.props.title,label);
+  assert(nodes(compact).some(n=>n.props?.children===label));
+  const popup=ProductScopedVoucherCard({voucher:v,state:'auto',popup:true,onClaim(){}});
+  assert(nodes(popup).some(n=>n.props?.children===label));
+  assert.equal(v.title,'Ưu đãi khách cũ');
+  assert.equal(format.voucherCustomerTitle(v.title,{...v,discountValue:9}),'Giảm 9% tiền hàng cho khách cũ');
+  assert.equal(format.formatVoucherBadge({...v,discountType:'fixed',discountValue:30000}).label,'Giảm 30k tiền hàng cho khách cũ');
+  assert.equal(format.voucherCustomerTitle(v.title),'Ưu đãi khách cũ');
+  assert.equal(format.formatVoucherBadge({...v,benefitType:'shipping',discountType:'fixed',discountValue:30000}).type,'shipping');
+});
+
+test('header popup no longer replaces returning discount details with a generic title',()=>{
+  const source=fs.readFileSync('frontend/components/campaign/HeaderVoucherModal.tsx','utf8');
+  const ast=ts.createSourceFile('header.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+  const fn=ast.statements.find(n=>ts.isFunctionDeclaration(n)&&n.name?.text==='getVoucherDisplay');
+  assert(fn);
+  const voucher={title:'Ưu đãi khách cũ',targetCustomer:'returning_web',benefitType:'goods',discountType:'percentage',discountValue:7};
+  const compiled=ts.transpileModule(fn.getText(ast)+'\ngetVoucherDisplay(voucher)',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+  const result=vm.runInNewContext(compiled,{...format,voucher});
+  assert.equal(result.primary,'Giảm 7% tiền hàng cho khách cũ');
+});
+
 test('old voucher titles omit the product-count annotation without changing eligibility data',()=>{
   const original={...voucher,title:'Giảm 10% đặt trước 20/10 (3 sản phẩm)'};
   for(const popup of [true,false]){

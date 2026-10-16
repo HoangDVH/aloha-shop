@@ -102,7 +102,7 @@ export function ProductPromotionBadges({
                 type="button"
                 onClick={() => promotion.claimRequired && !claims.claimedIds.has(promotion.id) ? claims.claim(promotion.id) : setSelectedPromo(promotion)}
                 disabled={Boolean(claims.pendingId)}
-                title={`${voucherCustomerTitle(promotion.title)}${isShipping && promotion.minOrderThreshold ? ` · Đơn từ ${formatVnd(promotion.minOrderThreshold)}` : ""} · ${promotion.claimRequired ? "Bấm để lưu voucher" : "Bấm xem điều kiện"}`}
+                title={`${voucherCustomerTitle(promotion.title, promotion)}${isShipping && promotion.minOrderThreshold ? ` · Đơn từ ${formatVnd(promotion.minOrderThreshold)}` : ""} · ${promotion.claimRequired ? "Bấm để lưu voucher" : "Bấm xem điều kiện"}`}
                 className={`flex min-h-14 w-[250px] sm:w-[270px] shrink-0 items-stretch overflow-hidden rounded-lg border text-left transition disabled:opacity-50 ${isShipping ? "border-[#bce9df] bg-[#f0fbf8] text-[#087a69] hover:bg-[#e4f7f1]" : "border-[#f4cfc2] bg-[#fff5ef] text-[#b5482d] hover:bg-[#ffede2]"}`}
               >
                 <span className="flex w-12 shrink-0 flex-col items-center justify-center gap-1 border-r border-dashed border-current/20 px-1 py-1 text-center">
@@ -149,7 +149,7 @@ export function ProductPromotionBadges({
                 )}
                 <div>
                   <h3 className="text-sm font-bold text-slate-800">
-                    {voucherCustomerTitle(selectedPromo.title) || "Ưu đãi giảm giá"}
+                    {voucherCustomerTitle(selectedPromo.title, selectedPromo) || "Ưu đãi giảm giá"}
                   </h3>
                   <span className="text-[11px] font-medium text-slate-500">
                     {selectedPromo.benefitType === "shipping" ? "Hỗ trợ phí vận chuyển" : "Giảm giá tiền hàng"}

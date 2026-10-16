@@ -35,7 +35,7 @@ function vnDate(iso?: string) {
 
 function getVoucherDisplay(v: CampaignVoucherUI) {
   if (v.benefitType !== "shipping") return {
-    primary: voucherCustomerTitle(v.title) || `Giảm ${v.discountType === "percentage" ? pctText(v) : formatCompactVnd(v.discountValue).toUpperCase()}`,
+    primary: voucherCustomerTitle(v.title, v) || `Giảm ${v.discountType === "percentage" ? pctText(v) : formatCompactVnd(v.discountValue).toUpperCase()}`,
     condition: "",
   };
   let primary = "";
@@ -49,7 +49,7 @@ function getVoucherDisplay(v: CampaignVoucherUI) {
       primary += ` (Tối đa ${formatCompactVnd(v.maxDiscountVnd).toUpperCase()})`;
     }
   } else {
-    primary = voucherCustomerTitle(v.title) || "Voucher ưu đãi";
+    primary = voucherCustomerTitle(v.title, v) || "Voucher ưu đãi";
   }
 
   let condition = "";
@@ -59,7 +59,7 @@ function getVoucherDisplay(v: CampaignVoucherUI) {
     condition = `Đơn tối thiểu ${formatCompactVnd(v.minOrderThreshold).toUpperCase()}`;
   }
 
-  const title = voucherCustomerTitle(v.title);
+  const title = voucherCustomerTitle(v.title, v);
   if (title && !v.mystery?.drawnPercent) {
     const cap =
       v.benefitType !== "shipping" && v.discountType === "percentage" && v.maxDiscountVnd && v.maxDiscountVnd > 0
