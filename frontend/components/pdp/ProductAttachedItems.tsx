@@ -7,6 +7,7 @@ import { useCart, formatTonDisplay, isPreOrderTon } from "@/lib/cart";
 import { useToast } from "@/components/Toast";
 import { getGuestCtvCode, isValidCtvCode, normalizeCtvCode } from "@/lib/ctv";
 import { useSearchParams } from "next/navigation";
+import { AttachedProductImage } from "./AttachedProductImage";
 
 /** Mua ngay: chỉ chọn SP chính + các SP đi kèm của nó trong giỏ. */
 export function selectBuyNowLines(mainMa: string, attachedItems?: string[]) {
@@ -96,24 +97,7 @@ export function ProductAttachedItems({
               }`}
             >
               {/* Thumbnail */}
-              <Link
-                href={item.path || `/sp/${item.ma}`}
-                className="relative h-15 w-15 shrink-0 overflow-hidden rounded-lg border border-[#e8e2d8] bg-white sm:h-16 sm:w-16"
-              >
-                {item.anh ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={item.anh}
-                    alt={item.ten}
-                    className="h-full w-full object-cover transition duration-300 hover:scale-105"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">
-                    Ảnh
-                  </div>
-                )}
-              </Link>
+              <AttachedProductImage item={item} />
 
               {/* Info */}
               <div className="min-w-0 flex-1">
