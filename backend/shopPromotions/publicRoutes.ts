@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import type { Db } from "mongodb";
 import { isWholesaleAccount } from "../shopAuth/roles.js";
-import type { GetShopDb } from "../shopAuth/routes.js";
+import { requireShopAuth, type GetShopDb } from "../shopAuth/routes.js";
 import { ACCESS_COOKIE, verifyShopAccessToken } from "../shopAuth/tokens.js";
 import { SHOP_ACCOUNTS, shopAccountIdQuery } from "../shopAuth/models.js";
 import { applyShopCors } from "../shopCors.js";
@@ -14,7 +14,7 @@ import { isShippingPromotion } from "./evaluator.js";
 import { publicMystery } from "./mystery.js";
 import { customerKeyFor, evaluateGoodsPromotions, shipVoucherEnabled } from "./checkoutPromotions.js";
 import { shopRateLimitOrReject } from "../shopRateLimit.js";
-import { requestPromotionReview } from "./reviewService.js";
+import { promotionReviewRequest } from "./reviewRequest.js";
 import { loadVoucherReturns, type VoucherReturn } from "./voucherHistory.js";
 import { loadBuyerPromotions, withBuyerNotices } from "./wallet/walletRules.js";
 import { applyCatalogPrices, parseOrderDetails } from "../shopOrders/orderRouteShared.js";
@@ -274,35 +274,8 @@ export function registerShopPromotionsPublicRoutes(
   // POST /api/shop/promotions/review/request — Khách hàng gửi yêu cầu xem xét lại ưu đãi (mục 8, 9, 10)
   app.post(
     "/api/shop/promotions/review/request",
-    async (req: Request, res: Response) => {
-      applyShopCors(req, res);
-      try {
-        const shopDb = await getShopDb();
-        const body = req.body || {};
-        const orderId = String(body.orderId || "").trim();
-        const accountId = String(body.accountId || "").trim();
-        const buyerPhone = String(body.buyerPhone || "").trim();
-        const reason = String(body.reason || "").trim();
-
-        if (!orderId || !accountId || !buyerPhone) {
-          return res.status(400).json({ ok: false, error: "Thiếu thông tin đơn hàng hoặc số điện thoại" });
-        }
-
-        const result = await requestPromotionReview(shopDb, {
-          orderId,
-          accountId,
-          buyerPhone,
-          reason,
-        });
-
-        if (!result.ok) {
-          return res.status((result as any).code === "rate_limited" ? 429 : 400).json(result);
-        }
-
-        res.json(result);
-      } catch (e: any) {
-        res.status(500).json({ ok: false, error: e?.message || "Lỗi gửi yêu cầu xem xét" });
-      }
-    }
+    (req, res, next) => { applyShopCors(req, res); next(); },
+    requireShopAuth(getShopDb),
+    promotionReviewRequest(getShopDb)
   );
 }

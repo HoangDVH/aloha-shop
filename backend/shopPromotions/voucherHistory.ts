@@ -3,6 +3,7 @@
  * Lượt mới nhất của mỗi voucher quyết định trạng thái: đang giữ / đã dùng / đã hoàn lại (đơn huỷ, hết hạn).
  */
 import type { Db } from "mongodb";
+import { PROMOTION_REVIEWS_COL } from "./reviewService.js";
 import { PROMOTION_REDEMPTIONS_COL } from "./types.js";
 import { SHOP_ORDERS } from "../shopOrders/models.js";
 
@@ -12,6 +13,16 @@ export type VoucherLatest = { orderCode: string; status: "held" | "used" | "rele
 const RETURN_WINDOW_MS = 30 * 24 * 3600_000;
 
 export async function ensureRedemptionIndexes(db: Db): Promise<void> {
+  const redemptions = db.collection(PROMOTION_REDEMPTIONS_COL);
+  await redemptions.createIndex({ orderCode: 1, status: 1 });
+  await redemptions.createIndex({ status: 1, expiresAt: 1 });
+  for (const identity of ["buyerPhone", "buyerEmail", "buyerId"]) {
+    await redemptions.createIndex({ [identity]: 1, promotionId: 1, status: 1 });
+  }
+  const reviews = db.collection(PROMOTION_REVIEWS_COL);
+  await reviews.createIndex({ accountId: 1, createdAt: -1 });
+  await reviews.createIndex({ id: 1 });
+  await reviews.createIndex({ createdAt: -1 });
   await db.collection(PROMOTION_REDEMPTIONS_COL).createIndex({ customerKey: 1, createdAt: -1 });
   await db.collection(PROMOTION_REDEMPTIONS_COL).createIndex({ promotionId: 1, orderCode: 1 });
   await db.collection(PROMOTION_REDEMPTIONS_COL).createIndex({ promotionId: 1, buyerId: 1, idempotencyKey: 1 });

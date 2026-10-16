@@ -1,3 +1,4 @@
+import { configureTrustedProxy } from "./trustedProxy.js";
 import { registerShopAnalyticsRoutes } from "./shopAnalytics/routes.js";
 import { registerOverviewRoutes } from "./shopAnalytics/overviewRoutes.js";
 import { registerWholesaleSyncGuard } from "./shopOrders/wholesaleSyncGuard.js";
@@ -173,6 +174,7 @@ async function getCatalogSourceDb(): Promise<Db> {
 }
 
 const app = express();
+configureTrustedProxy(app);
 app.use(measurePublicRequests);
 
 app.use(compression());

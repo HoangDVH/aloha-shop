@@ -1,3 +1,4 @@
+import { rateLimitAllow, clientIpFromReq as clientIp } from "../shopRateLimit.js";
 import type { Express, Response } from "express";
 import type { Db } from "mongodb";
 import { ObjectId } from "mongodb";
@@ -41,7 +42,6 @@ import {
 } from "./staffAccounts.js";
 
 const REFRESH = "aloha_refresh_tokens";
-const LOGIN_IP = "aloha_login_ip";
 const MAX_FAILS = 5;
 const LOCK_MS = 15 * 60 * 1000;
 const IP_WINDOW_MS = 60 * 1000;
@@ -95,17 +95,9 @@ async function issueSession(res: Response, db: Db, user: any) {
   };
 }
 
-function clientIp(req: AuthRequest): string {
-  const xf = req.headers["x-forwarded-for"];
-  if (typeof xf === "string" && xf.trim()) return xf.split(",")[0].trim();
-  return req.ip || req.socket.remoteAddress || "unknown";
-}
 
-async function rateLimitIp(db: Db, ip: string): Promise<boolean> {
-  const since = new Date(Date.now() - IP_WINDOW_MS);
-  const n = await db.collection(LOGIN_IP).countDocuments({ ip, at: { $gte: since } });
-  await db.collection(LOGIN_IP).insertOne({ ip, at: new Date() });
-  return n < IP_MAX;
+async function rateLimitIp(ip: string): Promise<boolean> {
+  return rateLimitAllow(`staff_login:${ip}`, IP_MAX, IP_WINDOW_MS);
 }
 
 export function registerAuthRoutes(app: Express, getDb: GetDb) {
@@ -121,7 +113,7 @@ export function registerAuthRoutes(app: Express, getDb: GetDb) {
       }
       const db = await getDb();
       const ip = clientIp(req);
-      if (!(await rateLimitIp(db, ip))) {
+      if (!(await rateLimitIp(ip))) {
         return res.status(429).json({ error: "Thử quá nhiều lần. Đợi khoảng 1 phút rồi thử lại." });
       }
 

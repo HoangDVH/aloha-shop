@@ -29,27 +29,14 @@ function memoryAllow(key: string, max: number, windowMs: number): boolean {
   return true;
 }
 
-/**
- * Lấy IP khách hàng.
- * Chỉ tin X-Forwarded-For khi được cấu hình proxy tin cậy (TRUST_PROXY=1) (mục 8, AB28).
- * Nếu không tin proxy, tuyệt đối không dùng header do client tự gửi để tránh né rate limit.
- */
+/** Use only the peer address resolved by Express trust-proxy configuration. */
 export function clientIpFromReq(req: {
   headers: { [k: string]: string | string[] | undefined };
   ip?: string;
   socket?: { remoteAddress?: string };
 }): string {
-  const trustProxy =
-    process.env.TRUST_PROXY === "1" ||
-    process.env.TRUST_PROXY === "true" ||
-    process.env.NODE_ENV === "production_trusted_proxy";
-
-  if (trustProxy) {
-    const xf = req.headers["x-forwarded-for"];
-    if (typeof xf === "string" && xf.trim()) return xf.split(",")[0]!.trim();
-    if (Array.isArray(xf) && xf[0]) return String(xf[0]).split(",")[0]!.trim();
-  }
-
+  // Express resolves the chain from the socket through explicitly trusted proxies.
+  // Never parse client-controlled forwarding headers here, including TRUST_PROXY=1.
   return req.ip || req.socket?.remoteAddress || "unknown";
 }
 

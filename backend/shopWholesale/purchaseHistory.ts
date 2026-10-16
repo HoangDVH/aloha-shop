@@ -6,7 +6,8 @@ export function completedKvPurchase(row: any, customerId: number): boolean {
   return Number(row.customerId) === customerId && Number(row.status) === 1 && Number(row.total) > 0
     && ![4, 5, 6].includes(Number(row.invoiceDelivery?.status));
 }
-export async function purchaseHistory(shopDb: Db, opsDb: Db, account: any, excludeCode?: string): Promise<"returning" | "new" | "unknown"> {
+export async function purchaseHistory(shopDb: Db, opsDb: Db, account: any, excludeCode?: string, signal?: AbortSignal): Promise<"returning" | "new" | "unknown"> {
+  signal ??= AbortSignal.timeout(5_000);
   const previous = await shopDb.collection(SHOP_ORDERS).findOne({ shopAccountId: String(account._id),
     orderStatus: "hoan_thanh", isTest: { $ne: true }, paymentStatus: { $ne: "cancelled" },
     ...(excludeCode ? { code: { $ne: excludeCode } } : {}) });
@@ -16,10 +17,10 @@ export async function purchaseHistory(shopDb: Db, opsDb: Db, account: any, exclu
   try {
     const creds = await loadKvCreds(opsDb);
     if (!creds || !account.kvRetailer || creds.retailer !== account.kvRetailer) return "unknown";
-    const token = await fetchKvAccessToken(creds);
+    const token = await fetchKvAccessToken(creds, signal);
     for (let offset = 0; offset < 1000; offset += 100) {
       const qs = new URLSearchParams({ customerIds: String(customerId), status: "1", includeInvoiceDelivery: "true", pageSize: "100", currentItem: String(offset) });
-      const response = await fetch(`${kvApiBase()}/invoices?${qs}`, { headers: { Authorization: `Bearer ${token}`, Retailer: creds.retailer }, signal: AbortSignal.timeout(8000) });
+      const response = await fetch(`${kvApiBase()}/invoices?${qs}`, { headers: { Authorization: `Bearer ${token}`, Retailer: creds.retailer }, signal });
       if (!response.ok) return "unknown";
       const body: any = await response.json();
       if (!Array.isArray(body.data)) return "unknown";

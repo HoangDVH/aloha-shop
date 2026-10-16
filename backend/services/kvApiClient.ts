@@ -51,7 +51,7 @@ async function fetchJson(
   try {
     res = await fetch(url, {
       ...rest,
-      signal: AbortSignal.timeout(timeout),
+      signal: rest.signal ? AbortSignal.any([rest.signal, AbortSignal.timeout(timeout)]) : AbortSignal.timeout(timeout),
     });
   } catch (e: any) {
     throw new Error(`fetch failed ${url}: ${e?.message || e}`);
@@ -132,7 +132,7 @@ export async function loadKvCreds(db: Db): Promise<KvCreds | null> {
   return null;
 }
 
-export async function fetchKvAccessToken(creds: KvCreds): Promise<string> {
+export async function fetchKvAccessToken(creds: KvCreds, signal?: AbortSignal): Promise<string> {
   const body = new URLSearchParams({
     scopes: "PublicApi.Access",
     scope: "PublicApi.Access",
@@ -145,6 +145,7 @@ export async function fetchKvAccessToken(creds: KvCreds): Promise<string> {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: body.toString(),
     timeout: 60_000,
+    signal,
   });
   if (!json?.access_token) {
     throw new Error("Không lấy được access_token từ KiotViet");

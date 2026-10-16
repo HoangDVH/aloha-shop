@@ -1,3 +1,4 @@
+import { clientIpFromReq as clientIp } from "../shopRateLimit.js";
 import type { Express, Request, Response, NextFunction } from "express";
 import type { Db } from "mongodb";
 import { storedShopRoles, registrationShopRoles } from "./roles.js";
@@ -63,11 +64,6 @@ const LOCK_MS = 15 * 60 * 1000;
 const IP_WINDOW_MS = 60 * 1000;
 const IP_MAX = 40;
 
-function clientIp(req: Request): string {
-  const xf = req.headers["x-forwarded-for"];
-  if (typeof xf === "string" && xf.trim()) return xf.split(",")[0].trim();
-  return req.ip || req.socket.remoteAddress || "unknown";
-}
 
 async function rateLimitIp(ip: string): Promise<boolean> {
   return rateLimitAllow(`login:${ip}`, IP_MAX, IP_WINDOW_MS);

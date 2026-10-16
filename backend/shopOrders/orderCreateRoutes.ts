@@ -1,3 +1,4 @@
+import { prepareWholesaleHistory, preparedWholesaleHistory } from "./wholesalePreflight.js";
 import { createBackorderRequest, serializeShopCheckout } from "./backorder.js";
 import { checkWholesalePurchase } from "../shopWholesale/purchaseCheck.js";
 import { isActiveWholesale } from "../shopWholesale/policy.js";
@@ -13,7 +14,6 @@ import { SHOP_ORDERS, newPaymentCode, newShopOrderCode, transferTtlMinutes } fro
 import { annotatePreOrderDetails, assertStockAvailable } from "./stockApply.js";
 import { resolveShopPaymentQrForOrder } from "./bankConfig.js";
 import { syncBus } from "../syncBus.js";
-import { shopRateLimitOrReject } from "../shopRateLimit.js";
 import {
   type GetMainDb,
   applyCatalogPrices,
@@ -121,7 +121,6 @@ async function createShopOrder(
   getMainDb: GetMainDb,
   ensureIdx: (db: Db) => Promise<void>
 ) {
-  if (!(await shopRateLimitOrReject(req, res, "shop_order_create", 20, 60_000))) return;
   const shopDb = await getShopDb();
   await ensureIdx(shopDb);
   const accountId = req.shopAuth!.userId;
@@ -163,7 +162,9 @@ async function createShopOrder(
   orderDetails = await keepActiveCtvCodes(shopDb, priced.details);
   body.wholesaleEligibility = undefined;
   if (isActiveWholesale(user)) {
-    const eligibility = await checkWholesalePurchase(shopDb, mainDb, user, orderDetails, form);
+    const history = preparedWholesaleHistory(res, user);
+    if (history === null) return res.status(409).json({ code: "account_changed", error: "Thông tin tài khoản đã thay đổi. Vui lòng thử đặt hàng lại." });
+    const eligibility = await checkWholesalePurchase(shopDb, mainDb, user, orderDetails, form, undefined, history);
     if (!eligibility.canCheckout) return res.status(400).json({ code: "wholesale_policy", error: eligibility.issues.map(i => i.message).join(" "), eligibility });
     body.wholesaleEligibility = eligibility;
   }
@@ -433,6 +434,7 @@ export function registerShopOrderCreateRoutes(
       next();
     },
     requireShopAuth(getShopDb),
+    prepareWholesaleHistory(getShopDb, getMainDb),
     serializeShopCheckout(getShopDb),
     async (req: ShopAuthRequest, res) => {
       try {
