@@ -5,6 +5,7 @@ import {
   Alert,
   Button,
   Card,
+  DatePicker,
   Input,
   Select,
   Space,
@@ -12,6 +13,7 @@ import {
   Table,
   Tag,
 } from "antd";
+import dayjs from "dayjs";
 import { useCtvMeConversions } from "../ctvPortalQueries";
 import { useCtvPortalUiStore } from "../ctvPortalUiStore";
 import { exportCsv, formatDt, formatVnd, monthRange, CTV_COMMISSION_UX, resolveCtvCommissionStatus, ctvCommissionHint } from "../shared/format";
@@ -19,7 +21,17 @@ import { visibleRefetchInterval } from "@/lib/visibleRefetchInterval";
 import type { ConversionRow } from "../types";
 import type { CtvCommissionStatusKey } from "../shared/format";
 
+const { RangePicker } = DatePicker;
+
 const PAGE_SIZE = 10;
+
+interface ConversionFilters {
+  from: string;
+  to: string;
+  orderCode: string;
+  orderStatus: string;
+  paymentStatus: string;
+}
 
 function commissionCell(r: ConversionRow) {
   const key = (r.commissionStatusKey
@@ -43,18 +55,15 @@ function commissionCell(r: ConversionRow) {
 export function ConversionsPanel() {
   const { dateRange } = useCtvPortalUiStore();
   const initial = monthRange(0);
-  const [from, setFrom] = useState(dateRange.from || initial.from);
-  const [to, setTo] = useState(dateRange.to || initial.to);
   const [orderCode, setOrderCode] = useState("");
-  const [orderStatus, setOrderStatus] = useState("all");
-  const [paymentStatus, setPaymentStatus] = useState("all");
-  const [applied, setApplied] = useState({
+  const [applied, setApplied] = useState<ConversionFilters>({
     from: dateRange.from || initial.from,
     to: dateRange.to || initial.to,
     orderCode: "",
     orderStatus: "all",
     paymentStatus: "all",
   });
+  const { from, to, orderStatus, paymentStatus } = applied;
   const [page, setPage] = useState(1);
 
   const q = useCtvMeConversions(applied, {
@@ -178,17 +187,21 @@ export function ConversionsPanel() {
   );
 
   function applyFilters() {
-    setApplied({ from, to, orderCode, orderStatus, paymentStatus });
+    setApplied((current: ConversionFilters) => ({ ...current, orderCode }));
+    setPage(1);
+  }
+
+  function changeFilter<K extends keyof ConversionFilters>(
+    key: K,
+    value: ConversionFilters[K]
+  ) {
+    setApplied((current: ConversionFilters) => ({ ...current, [key]: value }));
     setPage(1);
   }
 
   function resetFilters() {
     const r = monthRange(0);
-    setFrom(r.from);
-    setTo(r.to);
     setOrderCode("");
-    setOrderStatus("all");
-    setPaymentStatus("all");
     setApplied({
       from: r.from,
       to: r.to,
@@ -232,102 +245,153 @@ export function ConversionsPanel() {
   }
 
   return (
-    <div className="space-y-5">
-      <h1 className="m-0 text-xl font-extrabold text-[#163A2A]">
-        Báo cáo chuyển đổi
-      </h1>
+    <div className="ctv-page-flow flex flex-col gap-7">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="m-0 text-xl font-extrabold text-[#163A2A]">
+            Báo cáo chuyển đổi
+          </h1>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Theo dõi chi tiết đơn hàng, trạng thái đối soát và hoa hồng phát sinh
+          </p>
+        </div>
+      </div>
 
-      <Card className="shadow-sm">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <label className="block text-xs font-semibold text-slate-600">
-            Thời gian mua hàng
-            <div className="mt-1 flex items-center gap-2">
-              <Input
-                type="date"
-                value={from}
-                onChange={(e) => setFrom(e.target.value)}
-              />
-              <span>–</span>
-              <Input
-                type="date"
-                value={to}
-                onChange={(e) => setTo(e.target.value)}
+      <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
+        {/* Bộ lọc đơn hàng */}
+        <div className="border-b border-slate-100 p-5 bg-white">
+          {/* Hàng 1: 3 bộ lọc chính kích thước cân đối đồng bộ */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                Thời gian mua hàng
+              </label>
+              <RangePicker
+                className="w-full !h-[42px]"
+                format="DD/MM/YYYY"
+                allowClear={false}
+                value={
+                  from && to && dayjs(from).isValid() && dayjs(to).isValid()
+                    ? [dayjs(from), dayjs(to)]
+                    : null
+                }
+                onChange={(dates) => {
+                  if (dates && dates[0] && dates[1]) {
+                    setApplied((current: ConversionFilters) => ({
+                      ...current,
+                      from: dates[0]!.format("YYYY-MM-DD"),
+                      to: dates[1]!.format("YYYY-MM-DD"),
+                    }));
+                  } else {
+                    const r = monthRange(0);
+                    setApplied((current: ConversionFilters) => ({
+                      ...current,
+                      from: r.from,
+                      to: r.to,
+                    }));
+                  }
+                  setPage(1);
+                }}
               />
             </div>
-          </label>
-          <label className="block text-xs font-semibold text-slate-600">
-            Trạng thái đơn hàng
-            <Select
-              className="mt-1 w-full"
-              value={orderStatus}
-              onChange={setOrderStatus}
-              options={[
-                { value: "all", label: "Tất cả" },
-                { value: "cho_xu_ly", label: "Chờ xử lý" },
-                { value: "cho_thanh_toan", label: "Chờ thanh toán" },
-                { value: "dang_giao", label: "Đang giao" },
-                { value: "hoan_thanh", label: "Hoàn thành" },
-                { value: "thieu_hang", label: "Thiếu hàng" },
-                { value: "huy", label: "Đã hủy" },
-              ]}
-            />
-          </label>
-          <label className="block text-xs font-semibold text-slate-600">
-            Trạng thái thanh toán
-            <Select
-              className="mt-1 w-full"
-              value={paymentStatus}
-              onChange={setPaymentStatus}
-              options={[
-                { value: "all", label: "Tất cả" },
-                { value: "pending", label: "Chờ thanh toán" },
-                { value: "paid", label: "Đã thanh toán" },
-                { value: "cod", label: "COD" },
-              ]}
-            />
-          </label>
-          <label className="block text-xs font-semibold text-slate-600 sm:col-span-2 lg:col-span-3">
-            Mã đơn hàng
-            <Space.Compact className="mt-1 w-full">
-              <Input
-                value={orderCode}
-                onChange={(e) => setOrderCode(e.target.value)}
-                onPressEnter={applyFilters}
-                placeholder="Tìm theo mã HĐ / đơn"
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                Trạng thái đơn hàng
+              </label>
+              <Select
+                className="w-full !h-[42px]"
+                value={orderStatus}
+                onChange={(value) => changeFilter("orderStatus", value)}
+                options={[
+                  { value: "all", label: "Tất cả" },
+                  { value: "cho_xu_ly", label: "Chờ xử lý" },
+                  { value: "cho_thanh_toan", label: "Chờ thanh toán" },
+                  { value: "dang_giao", label: "Đang giao" },
+                  { value: "hoan_thanh", label: "Hoàn thành" },
+                  { value: "thieu_hang", label: "Thiếu hàng" },
+                  { value: "huy", label: "Đã hủy" },
+                ]}
               />
-              <Button type="primary" onClick={applyFilters}>
-                Tìm kiếm
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                Trạng thái thanh toán
+              </label>
+              <Select
+                className="w-full !h-[42px]"
+                value={paymentStatus}
+                onChange={(value) => changeFilter("paymentStatus", value)}
+                options={[
+                  { value: "all", label: "Tất cả" },
+                  { value: "pending", label: "Chờ thanh toán" },
+                  { value: "paid", label: "Đã thanh toán" },
+                  { value: "cod", label: "COD" },
+                ]}
+              />
+            </div>
+          </div>
+
+          {/* Hàng 2: Tìm kiếm mã đơn hàng & Các nút thao tác */}
+          <div className="mt-4 flex flex-col sm:flex-row sm:items-end justify-between gap-3 pt-3 border-t border-slate-100">
+            <div className="w-full sm:max-w-md">
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                Mã đơn hàng
+              </label>
+              <Space.Compact className="w-full">
+                <Input
+                  value={orderCode}
+                  onChange={(e) => setOrderCode(e.target.value)}
+                  onPressEnter={applyFilters}
+                  placeholder="Tìm theo mã HĐ / đơn hàng..."
+                  allowClear
+                  className="!h-[42px]"
+                />
+                <Button
+                  type="primary"
+                  onClick={applyFilters}
+                  className="!h-[42px] px-5 font-medium"
+                >
+                  Tìm kiếm
+                </Button>
+              </Space.Compact>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 self-end">
+              <Button
+                onClick={resetFilters}
+                className="!h-[42px] px-4 font-medium"
+              >
+                Thiết lập lại
               </Button>
-            </Space.Compact>
-          </label>
-          <div className="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-3">
-            <Button onClick={resetFilters}>Thiết lập lại</Button>
-            <Button
-              type="primary"
-              ghost
-              disabled={!rows.length}
-              onClick={doExport}
-            >
-              Xuất dữ liệu
-            </Button>
+              <Button
+                type="primary"
+                ghost
+                disabled={!rows.length || q.isFetching}
+                onClick={doExport}
+                className="!h-[42px] px-4 font-medium"
+              >
+                Xuất dữ liệu
+              </Button>
+            </div>
           </div>
         </div>
-      </Card>
 
-      <Alert
-        type="info"
-        showIcon
-        message="Hoa hồng chỉ phát sinh sau khi đơn giao thành công. Đơn đang xử lý / COD chưa giao vẫn hiện nhưng hoa hồng có thể = 0."
-      />
+        {/* Thanh ghi chú nhẹ */}
+        <div className="flex items-center gap-2.5 border-b border-slate-100 bg-[#F4F9F2] px-5 py-3 text-xs font-medium text-[#2D5A27]">
+          <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#2D5A27] text-[10px] font-bold text-white">
+            i
+          </span>
+          <span>
+            Hoa hồng chỉ phát sinh sau khi đơn giao thành công. Đơn đang xử lý / COD chưa giao vẫn hiện nhưng hoa hồng có thể = 0.
+          </span>
+        </div>
 
-      {q.error ? (
-        <Alert type="error" showIcon message={(q.error as Error).message} />
-      ) : null}
+        {q.error ? (
+          <div className="border-b border-slate-100 p-4">
+            <Alert type="error" showIcon message={(q.error as Error).message} />
+          </div>
+        ) : null}
 
-      <Card
-        className="overflow-hidden shadow-sm"
-        styles={{ body: { padding: 0 } }}
-      >
+        {/* Bảng dữ liệu */}
         {q.isLoading && !rows.length ? (
           <div className="flex justify-center py-16">
             <Spin />
@@ -338,6 +402,7 @@ export function ConversionsPanel() {
               rowKey={(r) => r.shopOrderCode || r.orderCode}
               columns={columns}
               dataSource={rows}
+              loading={q.isFetching}
               scroll={{ x: 1530 }}
               pagination={{
                 current: page,
@@ -352,7 +417,7 @@ export function ConversionsPanel() {
             />
           </div>
         )}
-      </Card>
+      </div>
     </div>
   );
 }

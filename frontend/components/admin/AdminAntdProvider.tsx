@@ -14,7 +14,7 @@ export function AdminAntdProvider({ children }: { children: ReactNode }) {
           colorPrimary: "#2D5A27",
           colorInfo: "#2D5A27",
           colorSuccess: "#2D5A27",
-          colorBgLayout: "#F7F8FA",
+          colorBgLayout: "#F1F5F9",
           colorBgContainer: "#ffffff",
           borderRadius: 12,
           fontFamily: "inherit",
@@ -81,6 +81,7 @@ export function AdminAntdProvider({ children }: { children: ReactNode }) {
           },
           Card: {
             borderRadiusLG: 14,
+            paddingLG: 18,
           },
           Tabs: {
             inkBarColor: "#2D5A27",

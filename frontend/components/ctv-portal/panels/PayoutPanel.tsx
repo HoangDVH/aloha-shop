@@ -77,8 +77,8 @@ function PayoutBankFormCard() {
 
   return (
     <Card
-      title="Tài khoản ngân hàng nhận hoa hồng"
-      className="shadow-sm"
+      title={<span className="font-bold text-slate-800">Tài khoản ngân hàng nhận hoa hồng</span>}
+      className="h-full rounded-xl border border-slate-200/80 shadow-sm"
       extra={bankQ.isLoading ? <Spin size="small" /> : null}
     >
       <p className="mb-4 mt-0 text-xs text-slate-500">
@@ -181,9 +181,14 @@ export function PayoutPanel() {
   const err = statsQ.error || billsQ.error;
 
   return (
-    <div className="space-y-4">
+    <div className="ctv-page-flow flex flex-col gap-7">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="m-0 text-xl font-extrabold text-[#163A2A]">Thanh toán</h1>
+        <div>
+          <h1 className="m-0 text-xl font-extrabold text-[#163A2A]">Thanh toán</h1>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Lịch sử chi trả hoa hồng và thông tin tài khoản ngân hàng
+          </p>
+        </div>
         <Select
           className="min-w-[220px]"
           value={`${payRange.from}|${payRange.to}`}
@@ -202,88 +207,91 @@ export function PayoutPanel() {
         <Alert type="error" showIcon message={(err as Error).message} />
       ) : null}
 
-      <PayoutBankFormCard />
-
-      <Card className="shadow-sm">
-        <Row gutter={[24, 16]}>
-          <Col xs={24} lg={10}>
-            <p className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-500">
-              Thu nhập của tôi
-            </p>
-            <p className="mb-2 mt-0 text-sm text-slate-600">
-              Tổng số tiền đã thanh toán
-            </p>
-            <Statistic
-              value={formatVnd(billsQ.isSuccess ? totalPaidOut : stats?.paidOut.amount || 0)}
-            />
-          </Col>
-          <Col xs={24} lg={14}>
-            <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">
-              Chi tiết thu nhập
-            </p>
-            <Row gutter={[12, 12]}>
-              <Col xs={12} sm={6}>
-                <Card size="small" className="bg-[#FFFDF8]">
-                  <div className="text-[11px] text-slate-500">
-                    {CTV_COMMISSION_UX.held.label}
+      <Row gutter={[16, 16]} className="items-stretch">
+        <Col xs={24} lg={13}>
+          <Card className="h-full rounded-xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+            <div>
+              <p className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-500">
+                Thu nhập của tôi
+              </p>
+              <p className="mb-2 mt-0 text-sm text-slate-600">
+                Tổng số tiền đã thanh toán
+              </p>
+              <Statistic
+                value={formatVnd(billsQ.isSuccess ? totalPaidOut : stats?.paidOut.amount || 0)}
+              />
+            </div>
+            <div className="mt-4 border-t border-slate-100 pt-3">
+              <p className="mb-2.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+                Chi tiết thu nhập
+              </p>
+              <Row gutter={[10, 10]}>
+                <Col xs={12} sm={6}>
+                  <div className="flex h-full flex-col justify-between rounded-xl border border-slate-200/80 bg-[#FAFCF9] p-3 transition hover:shadow-sm">
+                    <div className="text-[11px] font-semibold text-slate-500">
+                      {CTV_COMMISSION_UX.held.label}
+                    </div>
+                    <div className="mt-1 text-base font-extrabold text-[#163A2A]">
+                      {formatVnd(stats?.held.amount || 0)}
+                    </div>
+                    <div className="mt-0.5 text-[10px] text-slate-400">
+                      {CTV_COMMISSION_UX.held.explain}
+                    </div>
                   </div>
-                  <div className="font-extrabold">
-                    {formatVnd(stats?.held.amount || 0)}
+                </Col>
+                <Col xs={12} sm={6}>
+                  <div className="flex h-full flex-col justify-between rounded-xl border border-slate-200/80 bg-[#FAFCF9] p-3 transition hover:shadow-sm">
+                    <div className="text-[11px] font-semibold text-slate-500">
+                      {CTV_COMMISSION_UX.eligible.label}
+                    </div>
+                    <div className="mt-1 text-base font-extrabold text-[#163A2A]">
+                      {formatVnd(stats?.eligible.amount || 0)}
+                    </div>
+                    <div className="mt-0.5 text-[10px] text-slate-400">
+                      {CTV_COMMISSION_UX.eligible.explain}
+                    </div>
                   </div>
-                  <div className="mt-0.5 text-[10px] text-slate-400">
-                    {CTV_COMMISSION_UX.held.explain}
+                </Col>
+                <Col xs={12} sm={6}>
+                  <div className="flex h-full flex-col justify-between rounded-xl border border-slate-200/80 bg-[#FAFCF9] p-3 transition hover:shadow-sm">
+                    <div className="text-[11px] font-semibold text-slate-500">
+                      {CTV_COMMISSION_UX.billed.label}
+                    </div>
+                    <div className="mt-1 text-base font-extrabold text-[#163A2A]">
+                      {formatVnd(
+                        billsQ.isSuccess ? totalLocked : stats?.billed.amount || 0
+                      )}
+                    </div>
+                    <div className="mt-0.5 text-[10px] text-slate-400">
+                      {CTV_COMMISSION_UX.billed.explain}
+                    </div>
                   </div>
-                </Card>
-              </Col>
-              <Col xs={12} sm={6}>
-                <Card size="small" className="bg-[#FFFDF8]">
-                  <div className="text-[11px] text-slate-500">
-                    {CTV_COMMISSION_UX.eligible.label}
+                </Col>
+                <Col xs={12} sm={6}>
+                  <div className="flex h-full flex-col justify-between rounded-xl border border-slate-200/80 bg-[#FAFCF9] p-3 transition hover:shadow-sm">
+                    <div className="text-[11px] font-semibold text-slate-500">
+                      {CTV_COMMISSION_UX.paid_out.label}
+                    </div>
+                    <div className="mt-1 text-base font-extrabold text-[#163A2A]">
+                      {formatVnd(billsQ.isSuccess ? totalPaidOut : stats?.paidOut.amount || 0)}
+                    </div>
+                    <div className="mt-0.5 text-[10px] text-slate-400">
+                      {CTV_COMMISSION_UX.paid_out.explain}
+                    </div>
                   </div>
-                  <div className="font-extrabold">
-                    {formatVnd(stats?.eligible.amount || 0)}
-                  </div>
-                  <div className="mt-0.5 text-[10px] text-slate-400">
-                    {CTV_COMMISSION_UX.eligible.explain}
-                  </div>
-                </Card>
-              </Col>
-              <Col xs={12} sm={6}>
-                <Card size="small" className="bg-[#FFFDF8]">
-                  <div className="text-[11px] text-slate-500">
-                    {CTV_COMMISSION_UX.billed.label}
-                  </div>
-                  <div className="font-extrabold">
-                    {formatVnd(
-                      billsQ.isSuccess ? totalLocked : stats?.billed.amount || 0
-                    )}
-                  </div>
-                  <div className="mt-0.5 text-[10px] text-slate-400">
-                    {CTV_COMMISSION_UX.billed.explain}
-                  </div>
-                </Card>
-              </Col>
-              <Col xs={12} sm={6}>
-                <Card size="small" className="bg-[#FFFDF8]">
-                  <div className="text-[11px] text-slate-500">
-                    {CTV_COMMISSION_UX.paid_out.label}
-                  </div>
-                  <div className="font-extrabold">
-                    {formatVnd(billsQ.isSuccess ? totalPaidOut : stats?.paidOut.amount || 0)}
-                  </div>
-                  <div className="mt-0.5 text-[10px] text-slate-400">
-                    {CTV_COMMISSION_UX.paid_out.explain}
-                  </div>
-                </Card>
-              </Col>
-            </Row>
-          </Col>
-        </Row>
-      </Card>
+                </Col>
+              </Row>
+            </div>
+          </Card>
+        </Col>
+        <Col xs={24} lg={11}>
+          <PayoutBankFormCard />
+        </Col>
+      </Row>
 
       <Card
-        title="Lịch sử thanh toán"
-        className="shadow-sm overflow-hidden"
+        title={<span className="font-bold text-slate-800">Lịch sử thanh toán</span>}
+        className="rounded-xl border border-slate-200/80 shadow-sm overflow-hidden"
         styles={{ body: { padding: 0 } }}
       >
         <p className="px-4 pt-3 text-xs leading-5 text-slate-500">Khoản hoàn sau khi đã chi được ghi nhận là nợ và bù trừ vào kỳ tiếp theo. Lịch sử số tiền đã chuyển được giữ nguyên.</p>

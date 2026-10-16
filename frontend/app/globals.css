@@ -12,3 +12,10 @@
 @import "./styles/71-deals-fx.css";
 @import "./styles/80-home-sections.css";
 @import "./styles/90-mobile-fixes.css";
+
+/* CTV Portal: khoảng cách chuẩn 18px giữa các khối card, gọn gàng và không bị Ant Design margin reset */
+.ctv-page-flow {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1.125rem !important; /* 18px chuẩn compact dashboard */
+}

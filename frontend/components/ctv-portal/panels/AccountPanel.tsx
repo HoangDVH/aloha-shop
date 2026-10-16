@@ -68,14 +68,25 @@ export function AccountPanel() {
   if (!user) return null;
 
   return (
-    <div className="space-y-4">
-      <h1 className="m-0 text-xl font-extrabold text-[#163A2A]">
-        Thông tin tài khoản
-      </h1>
+    <div className="ctv-page-flow flex flex-col gap-7">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="m-0 text-xl font-extrabold text-[#163A2A]">
+            Thông tin tài khoản
+          </h1>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Quản lý hồ sơ CTV và thông tin nhận thanh toán hoa hồng
+          </p>
+        </div>
+      </div>
 
-      <Card className="shadow-sm">
+      <Card className="rounded-xl border border-slate-200/80 shadow-sm">
         <div className="flex flex-wrap items-start gap-4">
-          <Avatar size={72} src={user.avatarUrl || undefined}>
+          <Avatar
+            size={72}
+            src={user.avatarUrl || undefined}
+            className="bg-[#2D5A27] text-xl font-bold text-white"
+          >
             {(user.fullName || "?").slice(0, 1).toUpperCase()}
           </Avatar>
           <div className="min-w-0 flex-1">
@@ -85,16 +96,16 @@ export function AccountPanel() {
               </h2>
               <Tag color="green">CTV</Tag>
               {user.ctvCode ? (
-                <Tag>{user.ctvCode}</Tag>
+                <Tag className="font-semibold text-[#2D5A27]">{user.ctvCode}</Tag>
               ) : null}
             </div>
-            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600">
+            <div className="mt-2.5 flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-slate-600">
               <span className="inline-flex items-center gap-1.5">
-                <Mail className="h-3.5 w-3.5" />
+                <Mail className="h-4 w-4 text-slate-400" />
                 {user.email}
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <Phone className="h-3.5 w-3.5" />
+                <Phone className="h-4 w-4 text-slate-400" />
                 {user.phone || "—"}
               </span>
             </div>
@@ -105,8 +116,8 @@ export function AccountPanel() {
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={12}>
           <Card
-            title="Thông tin cá nhân"
-            className="h-full shadow-sm"
+            title={<span className="font-bold text-slate-800">Thông tin cá nhân</span>}
+            className="h-full rounded-xl border border-slate-200/80 shadow-sm"
             extra={<Pencil className="h-4 w-4 text-[#0F9D58]" />}
           >
             <form
@@ -157,7 +168,10 @@ export function AccountPanel() {
         </Col>
 
         <Col xs={24} lg={12}>
-          <Card title="Thông tin ngân hàng" className="h-full shadow-sm">
+          <Card
+            title={<span className="font-bold text-slate-800">Thông tin ngân hàng</span>}
+            className="h-full rounded-xl border border-slate-200/80 shadow-sm"
+          >
             <form
               className="space-y-3"
               onSubmit={bankForm.handleSubmit(async (values) => {

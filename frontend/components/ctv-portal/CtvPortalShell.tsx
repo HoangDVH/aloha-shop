@@ -139,7 +139,7 @@ export function CtvPortalShell({ children }: { children: ReactNode }) {
 
   if (loading || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F7F8FA]">
+      <div className="flex min-h-screen items-center justify-center bg-[#F1F5F9]">
         <Loader2 className="h-8 w-8 animate-spin text-[var(--aloha-green)]" />
       </div>
     );
@@ -151,7 +151,7 @@ export function CtvPortalShell({ children }: { children: ReactNode }) {
     user.ctvStatus !== "active"
   ) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F7F8FA]">
+      <div className="flex min-h-screen items-center justify-center bg-[#F1F5F9]">
         <Loader2 className="h-8 w-8 animate-spin text-[var(--aloha-green)]" />
       </div>
     );
@@ -160,7 +160,7 @@ export function CtvPortalShell({ children }: { children: ReactNode }) {
   return (
     <AdminAntdProvider>
       <CtvMeStreamSync />
-      <div className="flex min-h-screen bg-[#F7F8FA] text-[var(--aloha-ink)]">
+      <div className="flex min-h-screen bg-[#F1F5F9] text-[var(--aloha-ink)]">
         <aside className="sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col border-r border-[#e8eaed] bg-white lg:flex">
           <SidebarNav />
         </aside>
@@ -212,8 +212,8 @@ export function CtvPortalShell({ children }: { children: ReactNode }) {
               </span>
             ) : null}
           </header>
-          <main className="min-w-0 flex-1 bg-[#F7F8FA]">
-            <div className="mx-auto h-full w-full max-w-[1400px] px-4 py-5 sm:px-6 lg:px-8">
+          <main className="min-w-0 flex-1 bg-[#F1F5F9]">
+            <div className="mx-auto h-full w-full max-w-[1400px] px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
               {children}
             </div>
           </main>

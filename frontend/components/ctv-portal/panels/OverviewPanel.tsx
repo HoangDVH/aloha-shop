@@ -1,17 +1,15 @@
 "use client";
 
 import { useMemo } from "react";
-import { Alert, Card, Col, Empty, Row, Select, Spin, Statistic } from "antd";
+import { Alert, Card, Col, Empty, Row, Select, Spin } from "antd";
 import { DailySpark } from "../charts/DailySpark";
 import { ConversionCard } from "../charts/ConversionCard";
-import { useCtvMeOverview, useCtvMeStats } from "../ctvPortalQueries";
+import { useCtvMeOverview } from "../ctvPortalQueries";
 import { useCtvPortalUiStore } from "../ctvPortalUiStore";
 import {
-  CTV_COMMISSION_UX,
   dayKeyFromIso,
   formatCompact,
   formatMoneyCompact,
-  formatVnd,
   monthRange,
 } from "../shared/format";
 import { visibleRefetchInterval } from "@/lib/visibleRefetchInterval";
@@ -43,84 +41,12 @@ function deriveDaily(overview: CtvOverview | undefined) {
 
 export function OverviewPanel() {
   const { dateRange, setDateRange } = useCtvPortalUiStore();
-  const statsQ = useCtvMeStats({ refetchInterval: visibleRefetchInterval(30_000) });
   const overviewQ = useCtvMeOverview(dateRange.from, dateRange.to, {
     refetchInterval: visibleRefetchInterval(30_000),
   });
 
-  const stats = statsQ.data;
   const overview = overviewQ.data;
   const daily = useMemo(() => deriveDaily(overview), [overview]);
-
-  const holdDays = stats?.returnHoldDays ?? 7;
-
-  const statusCards = useMemo(() => {
-    if (!stats) return [];
-    const core = [
-      {
-        key: "held",
-        label: CTV_COMMISSION_UX.held.label,
-        value: formatVnd(stats.held.amount),
-        explain: CTV_COMMISSION_UX.held.explain,
-        hint: `${stats.held.count} dòng · chờ hết ${holdDays} ngày đổi/trả`,
-        always: true,
-      },
-      {
-        key: "eligible",
-        label: CTV_COMMISSION_UX.eligible.label,
-        value: formatVnd(stats.eligible.amount),
-        explain: CTV_COMMISSION_UX.eligible.explain,
-        hint: `${stats.eligible.count} dòng · chờ shop chi`,
-        always: true,
-      },
-      {
-        key: "billed",
-        label: CTV_COMMISSION_UX.billed.label,
-        value: formatVnd(stats.billed.amount),
-        explain: CTV_COMMISSION_UX.billed.explain,
-        hint: `${stats.billed.count} dòng · thuộc đợt thanh toán`,
-        always: true,
-      },
-      {
-        key: "paid",
-        label: CTV_COMMISSION_UX.paid_out.label,
-        value: formatVnd(stats.paidOut.amount),
-        explain: CTV_COMMISSION_UX.paid_out.explain,
-        hint: `${stats.paidOut.count} dòng · shop đã chuyển`,
-        always: true,
-      },
-    ];
-    const extras = [
-      {
-        key: "pending",
-        label: "Chờ hoàn tất đơn",
-        value: formatVnd(stats.pendingOrders?.amount || 0),
-        explain: "Chưa phát sinh hoa hồng",
-        hint: `${stats.pendingOrders?.count || 0} đơn · chưa giao / chưa thanh toán xong`,
-        count: stats.pendingOrders?.count || 0,
-        always: false,
-      },
-      {
-        key: "flagged",
-        label: CTV_COMMISSION_UX.flagged.label,
-        value: formatVnd(stats.flagged?.amount || 0),
-        explain: CTV_COMMISSION_UX.flagged.explain,
-        hint: `${stats.flagged?.count || 0} dòng · tạm chưa chi`,
-        count: stats.flagged?.count || 0,
-        always: false,
-      },
-      {
-        key: "cancelled",
-        label: CTV_COMMISSION_UX.cancelled.label,
-        value: formatVnd(stats.cancelled?.amount || 0),
-        explain: CTV_COMMISSION_UX.cancelled.explain,
-        hint: `${stats.cancelled?.count || 0} dòng`,
-        count: stats.cancelled?.count || 0,
-        always: false,
-      },
-    ].filter((c) => c.count > 0);
-    return [...core, ...extras];
-  }, [stats, holdDays]);
 
   const m = overview?.metrics;
   const kpi = m
@@ -134,8 +60,8 @@ export function OverviewPanel() {
       ]
     : [];
 
-  const err = statsQ.error || overviewQ.error;
-  const loading = (statsQ.isLoading || overviewQ.isLoading) && !stats && !overview;
+  const err = overviewQ.error;
+  const loading = overviewQ.isLoading && !overview;
 
   if (loading) {
     return (
@@ -146,9 +72,12 @@ export function OverviewPanel() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="ctv-page-flow flex flex-col gap-7">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="m-0 text-xl font-extrabold text-[#163A2A]">Tổng quan</h1>
+        <div>
+          <h1 className="m-0 text-xl font-extrabold text-[#163A2A]">Tổng quan</h1>
+          <p className="mt-0.5 text-xs text-slate-500">Hiệu quả bán hàng và hoa hồng CTV</p>
+        </div>
         <Select
           className="min-w-[220px]"
           value={`${dateRange.from}|${dateRange.to}`}
@@ -171,30 +100,40 @@ export function OverviewPanel() {
         />
       ) : null}
 
-      <Card title="Các chỉ số chính" className="shadow-sm">
-        {kpi.length ? (
-          <Row gutter={[12, 12]}>
-            {kpi.map((c) => (
-              <Col key={c.label} xs={12} md={8} lg={4}>
-                <Card size="small" className="h-full bg-[#FFFDF8]">
-                  <Statistic title={c.label} value={c.value} />
-                </Card>
-              </Col>
-            ))}
-          </Row>
-        ) : (
+      {kpi.length ? (
+        <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-6">
+          {kpi.map((c) => (
+            <div
+              key={c.label}
+              className="flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:shadow-md"
+            >
+              <span className="text-xs font-semibold text-slate-500">{c.label}</span>
+              <span className="mt-2 text-xl font-black tracking-tight text-[#163A2A]">
+                {c.value}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <Card className="rounded-xl border border-slate-200/80 shadow-sm">
           <Empty description="Chưa có chỉ số trong kỳ" />
-        )}
-      </Card>
+        </Card>
+      )}
 
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={16}>
-          <Card title="Doanh thu & hoa hồng theo ngày" className="shadow-sm">
+          <Card
+            title={<span className="font-bold text-slate-800">Doanh thu & hoa hồng theo ngày</span>}
+            className="rounded-xl border border-slate-200/80 shadow-sm"
+          >
             <DailySpark data={daily} range={dateRange} />
           </Card>
         </Col>
         <Col xs={24} lg={8}>
-          <Card title="Tỷ lệ chuyển đổi" className="h-full shadow-sm">
+          <Card
+            title={<span className="font-bold text-slate-800">Tỷ lệ chuyển đổi</span>}
+            className="h-full rounded-xl border border-slate-200/80 shadow-sm"
+          >
             <ConversionCard
               clicks={m?.clicks || 0}
               orders={m?.orders || 0}
@@ -202,34 +141,6 @@ export function OverviewPanel() {
           </Card>
         </Col>
       </Row>
-
-      {statusCards.length ? (
-        <div>
-          <h2 className="mb-3 text-sm font-extrabold text-[#163A2A]">
-            Tiền hoa hồng đang ở đâu
-          </h2>
-          <Row gutter={[12, 12]}>
-            {statusCards.map((c) => (
-              <Col key={c.key} xs={24} sm={12} lg={6}>
-                <Card size="small" className="bg-[#FFFDF8] shadow-sm">
-                  <div className="text-[11px] font-bold uppercase tracking-wide text-slate-600">
-                    {c.label}
-                  </div>
-                  <div className="mt-1 text-lg font-black text-[#1a2e1a]">
-                    {c.value}
-                  </div>
-                  <div className="mt-0.5 text-[11px] font-semibold text-[#2E7D32]">
-                    {c.explain}
-                  </div>
-                  <div className="mt-1 text-[11px] leading-snug text-slate-500">
-                    {c.hint}
-                  </div>
-                </Card>
-              </Col>
-            ))}
-          </Row>
-        </div>
-      ) : null}
     </div>
   );
 }

@@ -70,36 +70,39 @@ export function ProductsPanel() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="ctv-page-flow flex flex-col gap-7">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="m-0 text-xl font-extrabold text-[#163A2A]">
-          Danh sách sản phẩm
-        </h1>
-        <span className="text-sm text-slate-500">
-          {total.toLocaleString("vi-VN")} sản phẩm
-        </span>
+        <div>
+          <h1 className="m-0 text-xl font-extrabold text-[#163A2A]">
+            Danh sách sản phẩm
+          </h1>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Lấy link tiếp thị liên kết và chia sẻ sản phẩm nhận hoa hồng
+          </p>
+        </div>
       </div>
 
-      <Card className="shadow-sm">
-        <Input.Search
-          allowClear
-          placeholder="Tìm tên sản phẩm, mã sản phẩm..."
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          onSearch={(v) => {
-            setSearchInput(v);
-            setDebouncedQ(v.trim());
-            setPage(1);
-          }}
-          enterButton="Tìm"
-          className="max-w-md"
-        />
-      </Card>
+      <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
+        {/* Thanh công cụ tìm kiếm */}
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 p-4 sm:px-5">
+          <Input.Search
+            allowClear
+            placeholder="Tìm tên sản phẩm, mã sản phẩm..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onSearch={(v) => {
+              setSearchInput(v);
+              setDebouncedQ(v.trim());
+              setPage(1);
+            }}
+            enterButton="Tìm"
+            className="w-full sm:max-w-md"
+          />
+          <span className="text-xs font-medium text-slate-500">
+            Tìm thấy <span className="font-bold text-[#163A2A]">{total.toLocaleString("vi-VN")}</span> sản phẩm
+          </span>
+        </div>
 
-      <Card
-        className="overflow-hidden shadow-sm"
-        styles={{ body: { padding: 0 } }}
-      >
         <Table
           loading={catalogQ.isFetching}
           rowKey="key"
@@ -177,7 +180,7 @@ export function ProductsPanel() {
             },
           ]}
         />
-      </Card>
+      </div>
     </div>
   );
 }
