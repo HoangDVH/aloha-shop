@@ -14,6 +14,7 @@ export type HomeProductsQuery = Omit<Parameters<typeof fetchProducts>[0], "signa
 export function useWholesaleHomeProducts(products: ShopProduct[], query: HomeProductsQuery | undefined, limit: number) {
   const { user } = useShopAuth();
   const wholesale = isWholesaleHomeViewer(user);
+  const stockFirst = !query?.sort || ["ban_chay", "ban-chay", "bestsellers"].includes(query.sort);
   const qc = useQueryClient();
   useEffect(() => {
     if (!wholesale) return;
@@ -32,11 +33,11 @@ export function useWholesaleHomeProducts(products: ShopProduct[], query: HomePro
         const seen = new Set(items.map(p => p.ma));
         items = [...items, ...fallback.items.filter(p => !seen.has(p.ma))];
       }
-      return orderWholesaleHomeProducts(items).slice(0, limit);
+      return orderWholesaleHomeProducts(items, stockFirst).slice(0, limit);
     },
     staleTime: 30_000,
   });
   return wholesale
-    ? (result.data ?? orderWholesaleHomeProducts(products).slice(0, limit))
+    ? (result.data ?? orderWholesaleHomeProducts(products, stockFirst).slice(0, limit))
     : products.slice(0, limit);
 }

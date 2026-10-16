@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
-import { orderWholesaleHomeProducts } from "../frontend/lib/homeWholesaleOrder.js";
+import { orderWholesaleHomeProducts, sortWholesaleStockProducts } from "../frontend/lib/homeWholesaleOrder.js";
 
 const source = readFileSync(new URL("../backend/shopCatalog/routes/products.routes.ts", import.meta.url), "utf8");
 const ast = ts.createSourceFile("routes.ts", source, ts.ScriptTarget.Latest, true);
@@ -20,13 +20,17 @@ for (const [name, code] of [["standard", standard], ["post-filter", `{${post}}`]
     const docs = [
       { ma: "FIN", ten: "A", nhomPath: "CÂY CẢNH ĐỦ LOẠI >> CÂY THÀNH PHẨM SALE", gia: 100, ton: 5 },
       { ma: "TREE", ten: "B", nhomPath: "CÂY CẢNH ĐỦ LOẠI >> CÂY PHONG THỦY", gia: 100, ton: 5 },
-      { ma: "POT", ten: "Z", nhomPath: "CHẬU TRỒNG CÂY >> CHẬU NHỰA", gia: 100, ton: 5 },
+      { ma: "POT", ten: "Z", nhomPath: "CHẬU TRỒNG CÂY >> CHẬU NHỰA", gia: 100, ton: 90 },
     ];
     const compiled = ts.transpileModule(`(async()=>${code})()`, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
-    async function request(wholesaleHome: boolean, page = 1, limit = 1) {
+    async function request(wholesaleHome: boolean, page = 1, limit = 1, wholesaleStockFirst = false) {
       const cursor = { project() { return this; }, sort() { return this; }, limit() { return this; }, async toArray() { return docs; } };
       return vm.runInNewContext(compiled, {
-        homeAudience: "common", wholesaleHome, homeOrder: wholesaleHome ? orderWholesaleHomeProducts : (items: unknown[]) => items,
+        homeAudience: "common", wholesaleHome, wholesaleStockFirst,
+        homeOrder: (items: typeof docs) => {
+          const ordered = wholesaleStockFirst ? sortWholesaleStockProducts(items) : items;
+          return wholesaleHome ? orderWholesaleHomeProducts(ordered) : ordered;
+        },
         col: { find: () => cursor, countDocuments: async () => docs.length }, db: {}, filter: {}, projection: {},
         page, limit, skip: (page - 1) * limit, badge: "noi_bat", minPrice: 0, maxPrice: 0, inStock: false, maxTon: 0,
         sort: "moi", pinScope: "", deals: new Map(), buyerEmail: "", normalizeMa: (s: string) => s,
@@ -39,6 +43,8 @@ for (const [name, code] of [["standard", standard], ["post-filter", `{${post}}`]
     assert.equal((await request(true, 2)).items[0].ma, "TREE");
     assert.equal((await request(true, 3)).items[0].ma, "FIN");
     assert.equal((await request(false)).items[0].ma, "FIN");
+    assert.equal((await request(false, 1, 1, true)).items[0].ma, "POT");
+    assert.equal((await request(false, 2, 1, true)).items[0].ma, "FIN");
     assert.equal((await request(true)).total, 3);
   });
 }

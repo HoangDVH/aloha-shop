@@ -1,6 +1,6 @@
 import { currentPriceMode } from "../../shopWholesale/priceContext.js";
 import { merchFields, overlaySiMerch } from "../../shopAppearance/merchAudience.js";
-import { orderWholesaleHomeProducts } from "../../../frontend/lib/homeWholesaleOrder.js";
+import { orderWholesaleHomeProducts, sortWholesaleStockProducts } from "../../../frontend/lib/homeWholesaleOrder.js";
 import { parseGiftQuery, loadGiftFilterCodes } from "../../shopGifts/productFilter.js";
 /**
  * Routes:
@@ -77,7 +77,10 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
       const nhomList = parseNhomQuery(req);
       const categoryIdList = parseCategoryIdQuery(req);
       const wholesaleHome = req.query.homeOrder === "wholesale";
-      const homeOrder = <T extends Parameters<typeof orderWholesaleHomeProducts>[0][number]>(items: T[]) => wholesaleHome ? orderWholesaleHomeProducts(items) : items;
+      const homeOrder = <T extends Parameters<typeof orderWholesaleHomeProducts>[0][number]>(items: T[]) => {
+        const ordered = wholesaleStockFirst ? sortWholesaleStockProducts(items, wholesaleRank) : items;
+        return wholesaleHome ? orderWholesaleHomeProducts(ordered, wholesaleStockFirst) : ordered;
+      };
       const homeScope = String(req.query.home || "") === "1";
       const page = Math.max(1, Number(req.query.page) || 1);
       const limit = Math.min(48, Math.max(1, Number(req.query.limit) || 24));
@@ -100,6 +103,8 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
               ? "ban_chay"
               : sortRaw;
       const skip = (page - 1) * limit;
+      const wholesaleStockFirst = currentPriceMode() === "si" && sort === "ban_chay";
+      const wholesaleRank = wholesaleStockFirst ? await loadRevenueRankMap(await ctx.catalogDb()) : undefined;
       const buyerEmail = requestShopBuyerEmail(req);
       const showZeroPrice = isShopTestBuyerEmail(buyerEmail);
       const needPostFilter =
@@ -136,7 +141,7 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
         return res.status(400).json({ ok: false, error: "Invalid gift filter" });
       }
       const giftCodes = gift ? await loadGiftFilterCodes(await ctx.catalogDb(), gift) : [];
-      const cacheKey = `shop:products:v43:order=${wholesaleHome ? "wholesale" : "default"}:gift=${gift || ""}:${JSON.stringify(giftCodes)}|${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}${dealMasCacheSuffix(dealMas)}|v=${voucherId}:${JSON.stringify(voucher?.filter || {})}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|maxTon=${maxTon}|${sort}${dealInfoCacheSuffix(deals)}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
+      const cacheKey = `shop:products:v44:order=${wholesaleHome ? "wholesale" : "default"}:gift=${gift || ""}:${JSON.stringify(giftCodes)}|${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}${dealMasCacheSuffix(dealMas)}|v=${voucherId}:${JSON.stringify(voucher?.filter || {})}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|maxTon=${maxTon}|${sort}${dealInfoCacheSuffix(deals)}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
       const pinScope = resolvePinBadgeScope({ sort, badge, maxTon });
 
       const { body, cache } = await cachedJson(cacheKey, async () => {
@@ -302,7 +307,7 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
 
         if (!needPostFilter) {
           // Khi limit === 1 (ví dụ preview đếm), nếu không có post-filter phức tạp, chỉ count và lấy 1 item
-          if (limit === 1 && page === 1 && !badge && !wholesaleHome) {
+          if (limit === 1 && page === 1 && !badge && !wholesaleHome && !wholesaleStockFirst) {
             const [total, sampleDocs] = await Promise.all([
               col.countDocuments(filter as any),
               col.find(filter as any).project(projection).limit(1).toArray(),
@@ -383,7 +388,7 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
         items = filterRequirePublicImage(items);
 
         // Khi preview đếm (limit: 1), bỏ qua sắp xếp tốn kém
-        if (limit === 1 && page === 1 && !wholesaleHome) {
+        if (limit === 1 && page === 1 && !wholesaleHome && !wholesaleStockFirst) {
           const total = items.length;
           return {
             items: items.slice(0, 1),

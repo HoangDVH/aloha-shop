@@ -1,4 +1,4 @@
-type CategoryProduct = { nhomPath?: string; nhom?: string; categoryName?: string; categorySlug?: string };
+type CategoryProduct = { ma?: string; ton?: number; nhomPath?: string; nhom?: string; categoryName?: string; categorySlug?: string };
 const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\u0111/g, "d").replace(/[-_]/g, " ");
 
 export function isWholesaleHomeViewer(user: { roles: string[]; siStatus?: string | null; siRegion?: string | null } | null | undefined) {
@@ -18,10 +18,17 @@ export function isFinishedPlantCategory(value: string) {
   return text.includes("thanh pham trong san") || text.includes("thanh pham sale");
 }
 
-/** Preserve ranking/pins within each group; repeat two pots then one ordinary plant. */
-export function orderWholesaleHomeProducts<T extends CategoryProduct>(items: T[]): T[] {
+/** Available stock first, then invoice revenue; stable ties preserve the incoming order. */
+export function sortWholesaleStockProducts<T extends CategoryProduct>(items: T[], revenueRank?: ReadonlyMap<string, number>): T[] {
+  const stock = (p: T) => Number.isFinite(p.ton) ? Math.max(0, p.ton!) : 0;
+  const revenue = (p: T) => revenueRank?.get(String(p.ma || "").trim().toUpperCase()) || 0;
+  return items.slice().sort((a, b) => stock(b) - stock(a) || revenue(b) - revenue(a));
+}
+
+/** Repeat two pots then one ordinary plant, with stock priority inside each group. */
+export function orderWholesaleHomeProducts<T extends CategoryProduct>(items: T[], stockFirst = true): T[] {
   const pots: T[] = [], plants: T[] = [], other: T[] = [], finished: T[] = [];
-  for (const item of items) {
+  for (const item of stockFirst ? sortWholesaleStockProducts(items) : items) {
     const category = normalize([item.nhomPath, item.nhom, item.categoryName, item.categorySlug].filter(Boolean).join(" >> "));
     if (isFinishedPlantCategory(category)) finished.push(item);
     else if (category.includes("chau trong cay")) pots.push(item);
