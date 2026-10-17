@@ -8,6 +8,7 @@ import { useCart } from "@/lib/cart";
 import { useDealsNavAccent } from "@/lib/campaign/navAccent";
 
 const OPEN_CATS = "aloha:open-mobile-cats";
+export const SHOP_CLOSE_MOBILE_MENU = "aloha:close-mobile-menu";
 
 function shouldHideTabBar(pathname: string) {
   // Chuẩn TMĐT lớn (Shopee/Tiki/Lazada & AI chat Gemini): ẩn tab bar điều hướng chung khi xem PDP, Giỏ hàng, Checkout, Đơn hàng
@@ -62,6 +63,11 @@ export function ShopMobileTabBar() {
 
   return (
     <nav
+      onClickCapture={(event) => {
+        if ((event.target as Element).closest("a")) {
+          window.dispatchEvent(new CustomEvent(SHOP_CLOSE_MOBILE_MENU));
+        }
+      }}
       className="shop-mobile-tabbar fixed inset-x-0 bottom-0 z-50 border-t border-[var(--aloha-line)] bg-white lg:hidden"
       aria-label="Điều hướng nhanh"
     >

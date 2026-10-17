@@ -11,7 +11,7 @@ export const registerSchema = z
     fullName: z.string().trim().min(1, "Nhập họ tên"),
     email: z.string().trim().email("Email không hợp lệ"),
     phone: z.string().trim().optional(),
-    password: z.string().min(6, "Mật khẩu tối thiểu 6 ký tự"),
+    password: z.string().min(8, "Mật khẩu tối thiểu 8 ký tự"),
     passwordConfirm: z.string().min(1, "Xác nhận mật khẩu"),
     asCustomer: z.boolean(),
     asCtv: z.boolean(),

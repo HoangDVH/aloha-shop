@@ -4,6 +4,8 @@ import { checkWholesalePurchase } from "../shopWholesale/purchaseCheck.js";
 import { isActiveWholesale } from "../shopWholesale/policy.js";
 import type { Express, Response } from "express";
 import type { Db } from "mongodb";
+import { z } from "zod";
+import { isValidCheckoutPhone } from "../../shared/checkoutPhone.js";
 import {
   requireShopAuth,
   type GetShopDb,
@@ -96,8 +98,10 @@ function invalidQuantities(rawDetails: unknown): boolean {
 }
 
 /** Lỗi nhập liệu cơ bản của form checkout; null = hợp lệ. */
+const checkoutPhoneSchema = z.string().refine(isValidCheckoutPhone, "Số điện thoại không hợp lệ");
 function validateForm(form: CheckoutForm): string | null {
   if (!form.customerName || !form.customerPhone) return "Nhập tên và số điện thoại";
+  if (!checkoutPhoneSchema.safeParse(form.customerPhone).success) return "Số điện thoại không hợp lệ";
   if (
     form.deliveryMethod === "giao_tan_noi" &&
     (!form.province || !form.ward || !form.shippingAddress)
@@ -264,6 +268,11 @@ async function createShopOrder(
     customerPhone,
     deliveryMethod,
     shippingAddress,
+    province,
+    district,
+    ward,
+    ghnDistrictId: form.ghnDistrictId,
+    ghnWardCode: form.ghnWardCode,
     subtotal,
   });
   const replay = await findIdempotentReplay(shopDb, accountId, idempotencyKey, bodyHash);

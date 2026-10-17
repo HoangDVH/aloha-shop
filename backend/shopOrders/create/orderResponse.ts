@@ -38,14 +38,22 @@ export function readIdempotencyKey(body: any, headers: Record<string, unknown>):
     .slice(0, 80);
 }
 
-export function orderBodyHash(input: {
+type OrderHashInput = {
   orderDetails: ShopOrderDetail[];
   customerPhone: string;
   deliveryMethod: string;
   shippingAddress: string;
+  province?: string;
+  district?: string;
+  ward?: string;
+  ghnDistrictId?: number;
+  ghnWardCode?: string;
   subtotal: number;
-}): string {
-  return crypto
+};
+
+export function orderBodyHash(input: OrderHashInput): string {
+  const ship = input.deliveryMethod === "giao_tan_noi";
+  return "v2:" + crypto
     .createHash("sha256")
     .update(
       JSON.stringify({
@@ -56,7 +64,12 @@ export function orderBodyHash(input: {
         })),
         customerPhone: input.customerPhone,
         deliveryMethod: input.deliveryMethod,
-        shippingAddress: input.shippingAddress,
+        shippingAddress: ship ? input.shippingAddress : "",
+        province: ship ? input.province || "" : "",
+        district: ship ? input.district || "" : "",
+        ward: ship ? input.ward || "" : "",
+        ghnDistrictId: ship ? input.ghnDistrictId || null : null,
+        ghnWardCode: ship ? input.ghnWardCode || "" : "",
         subtotal: input.subtotal,
       })
     )
@@ -80,7 +93,24 @@ export async function findIdempotentReplay(
     .collection(SHOP_ORDERS)
     .findOne({ shopAccountId: accountId, idempotencyKey });
   if (!existing) return { kind: "none" };
-  if ((existing as any).bodyHash && (existing as any).bodyHash !== bodyHash) {
+  // Orders saved before v2 lack address fields in their hash. Compare their saved
+  // checkout content so unchanged retries remain safe after an upgrade.
+  const storedHash = String(existing.bodyHash || "");
+  const comparableHash = bodyHash.startsWith("v2:") && (!storedHash || /^[a-f0-9]{64}$/.test(storedHash))
+    ? orderBodyHash({
+        orderDetails: existing.orderDetails || [],
+        customerPhone: existing.customerPhone || "",
+        deliveryMethod: existing.deliveryMethod || "",
+        shippingAddress: existing.shippingAddress || "",
+        province: existing.province,
+        district: existing.district,
+        ward: existing.ward,
+        ghnDistrictId: existing.ghnDistrictId,
+        ghnWardCode: existing.ghnWardCode,
+        subtotal: existing.subtotal || 0,
+      })
+    : storedHash;
+  if (comparableHash && comparableHash !== bodyHash) {
     return {
       kind: "conflict",
       body: {

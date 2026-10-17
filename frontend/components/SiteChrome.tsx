@@ -38,7 +38,7 @@ import { applyNavConfig } from "@/lib/navConfig";
 import type { NavConfig, AppearanceTheme } from "@/lib/appearanceTypes";
 import { applyThemeCssVars } from "@/lib/themeCss";
 import { usePublicAppearance } from "@/lib/publicContentQueries";
-import { SHOP_OPEN_MOBILE_CATS } from "@/components/ShopMobileTabBar";
+import { SHOP_OPEN_MOBILE_CATS, SHOP_CLOSE_MOBILE_MENU } from "@/components/ShopMobileTabBar";
 import { SHOP_BRAND, shopBrand } from "@/lib/brand";
 import { AnnouncementBar } from "@/components/campaign/AnnouncementBar";
 import { PreviewBar } from "@/components/campaign/PreviewBar";
@@ -189,8 +189,17 @@ export function SiteHeader({ categoryTree }: { categoryTree?: ShopCategoryNavNod
       setMobileNav(true);
     };
     window.addEventListener(SHOP_OPEN_MOBILE_CATS, onOpen);
-    return () => window.removeEventListener(SHOP_OPEN_MOBILE_CATS, onOpen);
+    const onClose = () => setMobileNav(false);
+    window.addEventListener(SHOP_CLOSE_MOBILE_MENU, onClose);
+    return () => {
+      window.removeEventListener(SHOP_OPEN_MOBILE_CATS, onOpen);
+      window.removeEventListener(SHOP_CLOSE_MOBILE_MENU, onClose);
+    };
   }, []);
+
+  useEffect(() => {
+    setMobileNav(false);
+  }, [pathname, searchParams]);
 
   /** Chiều cao header+nav → banner đầy khung hình (trừ chrome). */
   useEffect(() => {

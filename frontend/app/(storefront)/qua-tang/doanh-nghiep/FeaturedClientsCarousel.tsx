@@ -24,13 +24,20 @@ export function FeaturedClientsCarousel({ clients }: FeaturedClientsCarouselProp
     const el = containerRef.current;
     if (!el || !el.children.length) return;
 
-    const scrollLeft = el.scrollLeft;
-    const card = el.children[0] as HTMLElement;
-    const cardWidth = card.offsetWidth;
-    const gap = 16; // approx gap in px
-    const newIndex = Math.round(scrollLeft / (cardWidth + gap));
-    setActiveIndex(Math.max(0, Math.min(newIndex, clients.length - 1)));
-  }, [clients.length]);
+    const viewport = el.getBoundingClientRect();
+    const center = viewport.left + el.clientWidth / 2;
+    let nearestIndex = 0;
+    let nearestDistance = Infinity;
+    Array.from(el.children).forEach((child, index) => {
+      const card = child.getBoundingClientRect();
+      const distance = Math.abs(card.left + card.width / 2 - center);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = index;
+      }
+    });
+    setActiveIndex(nearestIndex);
+  }, []);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -71,7 +78,7 @@ export function FeaturedClientsCarousel({ clients }: FeaturedClientsCarouselProp
         ref={containerRef}
         className="
           flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-4 pb-2 no-scrollbar
-          -mx-4 px-4 sm:mx-0 sm:px-0
+          -mx-4 px-[max(1rem,calc((100vw_-_min(82vw,328px))_/_2))] sm:mx-0 sm:px-0
           sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-6 sm:overflow-visible sm:pb-0
         "
       >
@@ -79,7 +86,7 @@ export function FeaturedClientsCarousel({ clients }: FeaturedClientsCarouselProp
           <div
             key={idx}
             className="
-              snap-start shrink-0 w-[82vw] max-w-[328px] sm:w-auto sm:max-w-none
+              snap-center snap-always sm:snap-normal shrink-0 w-[82vw] max-w-[328px] sm:w-auto sm:max-w-none
               group relative overflow-hidden rounded-2xl border border-stone-200/90 bg-white
               shadow-xs transition duration-300 hover:shadow-md hover:-translate-y-0.5 flex flex-col
             "

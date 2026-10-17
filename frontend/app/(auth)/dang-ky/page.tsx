@@ -120,7 +120,7 @@ function RegisterForm() {
           id="reg-password"
           label="Mật khẩu"
           autoComplete="new-password"
-          placeholder="Ít nhất 6 ký tự"
+          placeholder="Ít nhất 8 ký tự"
           error={errors.password?.message}
           {...register("password")}
         />

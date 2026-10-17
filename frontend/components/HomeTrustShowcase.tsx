@@ -41,10 +41,6 @@ const CLIENT_METADATA: Record<
     location: string;
     gridCls: string;
     titleCls?: string;
-    /** Thẻ cao hẹp dưới lg nhưng ảnh ngang: hiện trọn ảnh trên nền mờ của chính nó thay vì cắt. */
-    fitTallBelowLg?: boolean;
-    /** Bản ảnh dọc riêng cho thẻ cao dưới lg; chỉ dùng khi ảnh thẻ vẫn là `forImage` (admin chưa thay ảnh). */
-    tallImageBelowLg?: { forImage: string; src: string };
   }
 > = {
   bidv: {
@@ -62,13 +58,8 @@ const CLIENT_METADATA: Record<
     scale: "Bộ quà tặng chậu cây & túi quà in logo đồng bộ",
     rating: "5.0/5.0",
     location: "Bình Dương",
-    gridCls: "col-span-1 row-span-2 lg:col-span-2 lg:row-span-1",
+    gridCls: "col-span-2 row-span-1",
     titleCls: "text-xs sm:text-base md:text-lg",
-    fitTallBelowLg: true,
-    tallImageBelowLg: {
-      forImage: "/banners/trust/don-phan-vu.webp",
-      src: "/banners/trust/don-phan-vu-mobile.webp",
-    },
   },
   "eco-retreat": {
     badge: "Bất động sản",
@@ -477,11 +468,6 @@ export function HomeTrustShowcase({ props }: { props?: Record<string, unknown> }
               titleCls: "text-xs sm:text-base",
             };
             const delay = (idx % 6) * 80;
-            const tallSrc =
-              meta.tallImageBelowLg && meta.tallImageBelowLg.forImage === client.imageUrl
-                ? meta.tallImageBelowLg.src
-                : null;
-            const fitTall = meta.fitTallBelowLg && !tallSrc;
             return (
               <div
                 key={client.id}
@@ -493,26 +479,13 @@ export function HomeTrustShowcase({ props }: { props?: Record<string, unknown> }
                   onClick={() => openLightbox(activeClients, idx, "Dự án doanh nghiệp tiêu biểu")}
                   className="card-sheen group relative size-full rounded-2xl sm:rounded-3xl overflow-hidden bg-stone-900 border border-stone-200/80 hover:border-emerald-500/50 hover:ring-1 hover:ring-emerald-400/30 shadow-[0_4px_20px_rgba(0,0,0,0.06)] hover:shadow-[0_24px_50px_-12px_rgba(28,76,64,0.3),0_12px_24px_-8px_rgba(0,0,0,0.15)] hover:-translate-y-2 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer flex flex-col justify-between"
                 >
-                  {fitTall ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={client.imageUrl}
-                      alt=""
-                      aria-hidden
-                      loading="lazy"
-                      className="absolute inset-0 h-full w-full scale-110 object-cover blur-xl brightness-90 lg:hidden"
-                    />
-                  ) : null}
                   <picture className="absolute inset-0">
-                    {tallSrc ? <source media="(max-width: 1023px)" srcSet={tallSrc} /> : null}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={client.imageUrl}
                       alt={client.title}
                       loading="lazy"
-                      className={`absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04] ${
-                        fitTall ? "max-lg:object-contain max-lg:object-[50%_38%]" : ""
-                      }`}
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
                     />
                   </picture>
 

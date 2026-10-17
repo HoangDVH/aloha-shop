@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isValidCheckoutPhone } from "../../shared/checkoutPhone";
 
 export const checkoutAgreeSchema = z.object({
   agree: z.boolean().refine((v) => v === true, {
@@ -12,8 +13,7 @@ export const checkoutReceiverSchema = z.object({
   customerPhone: z
     .string()
     .trim()
-    .min(8, "Số điện thoại không hợp lệ")
-    .max(20, "Số điện thoại không hợp lệ"),
+    .refine(isValidCheckoutPhone, "Số điện thoại không hợp lệ"),
 });
 
 export const checkoutShipAddressSchema = checkoutReceiverSchema.extend({
