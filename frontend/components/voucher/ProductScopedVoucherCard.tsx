@@ -4,7 +4,7 @@ import Link from "next/link";
 import { formatVnd } from "@/lib/api";
 import { Check, TicketPercent, Truck } from "lucide-react";
 import type { CampaignVoucherUI } from "@/lib/campaign/campaignApi";
-import { cleanVoucherTitle, formatCompactVnd, formatVoucherBadge, pctText, voucherCustomerTitle, voucherScopeHint, voucherUseHref } from "@/lib/voucherFormat";
+import { cleanVoucherTitle, formatCompactVnd, formatVoucherBadge, pctText, shipSupportText, voucherCustomerTitle, voucherScopeHint, voucherUseHref } from "@/lib/voucherFormat";
 import type { ClaimState } from "./ClaimButton";
 
 export function ProductScopedVoucherCard({ voucher: v, state, pending, onClaim, onProducts, popup = false }: {
@@ -46,14 +46,21 @@ export function CompactVoucherCard({voucher: v, state, pending, onClaim, onProdu
   const canClaim = state === "claimable";
   const usable = state === "claimed" || state === "auto";
   const scope = v.scope === "product";
-  const label = ship ? `Hỗ trợ phí ship ${v.discountType === "fixed" ? formatVnd(v.discountValue) : pctText(v)}`
-    : scope && v.title ? voucherCustomerTitle(v.title, v)
-    : formatVoucherBadge({ ...v, maxDiscountVnd: undefined, minOrderThreshold: undefined }).label;
+
+  const rawTitle = v.title ? voucherCustomerTitle(v.title, v) : "";
+  const displayTitle = ship
+    ? (v.title && /ship|vận chuyển/i.test(v.title) ? voucherCustomerTitle(v.title, v) : shipSupportText(v))
+    : (rawTitle || formatVoucherBadge({ ...v, maxDiscountVnd: undefined, minOrderThreshold: undefined }).label);
+
+  const tooltipTitle = ship
+    ? `Hỗ trợ phí ship ${v.discountType === "fixed" ? formatVnd(v.discountValue) : pctText(v)}`
+    : displayTitle;
+
   const action = "inline-flex min-h-[28px] shrink-0 items-center justify-center rounded-full px-3 text-[11px] font-bold tracking-tight transition-all select-none cursor-pointer";
 
   return (
     <article
-      title={label}
+      title={tooltipTitle}
       className="group relative flex min-h-[72px] min-w-0 shrink-0 items-stretch overflow-hidden rounded-xl bg-white text-left shadow-xs ring-1 ring-black/[0.08] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:ring-black/[0.12]"
     >
       {/* CUỐNG VÉ BÊN TRÁI (TICKET STUB) CHUẨN SHOPEE */}
@@ -88,7 +95,7 @@ export function CompactVoucherCard({voucher: v, state, pending, onClaim, onProdu
       {/* THÂN VÉ NỀN TRẮNG TINH KHIẾT (MAIN BODY) */}
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-3 py-2 bg-white">
         <p className="line-clamp-2 text-xs font-bold leading-4 text-slate-900 group-hover:text-[var(--campaign-primary,#C8102E)] transition-colors">
-          {label}
+          {displayTitle}
         </p>
         {ship && (v.minOrderThreshold || 0) > 0 ? (
           <p className="text-[10px] leading-3 font-medium text-slate-500">
