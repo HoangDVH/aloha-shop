@@ -5,7 +5,7 @@
  */
 import { usePathname } from "next/navigation";
 import React, { useEffect, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Settings2, UserPlus } from "lucide-react";
 import ShopCtvAffiliateAdminLegacy from "./ShopCtvAffiliateAdminLegacy";
 import ShopAccountsAdmin from "./ShopAccountsAdmin";
 import CtvDetailPanel from "./CtvDetailPanel";
@@ -41,7 +41,7 @@ export default function CtvAdminShell() {
   return (
     <div className="ctv-admin-shell flex min-h-[70vh] flex-col gap-5">
       {!detailCode ? (
-        <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-200/60 pb-3">
           <div className="min-w-0">
             <h1 className="m-0 text-[22px] font-extrabold tracking-tight text-[#1a2e1a] sm:text-[24px]">
               {TITLE[activeSub]}
@@ -59,16 +59,45 @@ export default function CtvAdminShell() {
                 }}
               />
             ) : null}
-            {activeSub !== "list" && activeSub !== "customers" ? (
-              <button
-                type="button"
-                onClick={() => setLegacyTick((n) => n + 1)}
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dce6da] bg-white px-3 text-[13px] font-semibold text-slate-700 shadow-sm transition hover:bg-[#f5f8f4]"
-              >
-                <RefreshCw size={14} />
-                Làm mới
-              </button>
+
+            {activeSub === "list" ? (
+              <div className="hidden md:flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.dispatchEvent(new Event("aloha-open-add-ctv"));
+                  }}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#2D5A27] px-3.5 text-[13px] font-semibold text-white shadow-xs transition hover:bg-[#244a20] active:scale-95"
+                >
+                  <UserPlus size={14} />
+                  <span>Thêm cộng tác viên</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.dispatchEvent(new Event("aloha-toggle-config-ctv"));
+                  }}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50 active:scale-95"
+                  title="Cấu hình chính sách CTV"
+                >
+                  <Settings2 size={14} />
+                  <span>Cấu hình CTV</span>
+                </button>
+              </div>
             ) : null}
+
+            <button
+              type="button"
+              onClick={() => {
+                setLegacyTick((n) => n + 1);
+                window.dispatchEvent(new Event("aloha-refresh-accounts"));
+              }}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dce6da] bg-white px-3 text-[13px] font-semibold text-slate-700 shadow-sm transition hover:bg-[#f5f8f4] active:scale-95"
+              title="Làm mới dữ liệu"
+            >
+              <RefreshCw size={14} />
+              <span>Làm mới</span>
+            </button>
           </div>
         </div>
       ) : null}

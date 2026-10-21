@@ -139,7 +139,7 @@ export default function ShopCtvAffiliateAdminLegacy({
         ) : null}
         {tab === "ctv-dac-biet" ? <CtvDacBiet /> : null}
         {tab === "duyet-ctv" ? (
-          <div className="-mx-2 md:-mx-4">
+          <div className="w-full">
             <ShopAccountsAdmin
               embedded
               defaultTab="ctv"

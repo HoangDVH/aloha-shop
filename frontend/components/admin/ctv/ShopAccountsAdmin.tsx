@@ -100,6 +100,20 @@ export default function ShopAccountsAdmin({
     void load();
   }, [load]);
 
+  useEffect(() => {
+    const onOpenAdd = () => setAddOpen(true);
+    const onToggleConfig = () => onConfigClick?.();
+    const onRefresh = () => void load();
+    window.addEventListener("aloha-open-add-ctv", onOpenAdd);
+    window.addEventListener("aloha-toggle-config-ctv", onToggleConfig);
+    window.addEventListener("aloha-refresh-accounts", onRefresh);
+    return () => {
+      window.removeEventListener("aloha-open-add-ctv", onOpenAdd);
+      window.removeEventListener("aloha-toggle-config-ctv", onToggleConfig);
+      window.removeEventListener("aloha-refresh-accounts", onRefresh);
+    };
+  }, [load, onConfigClick]);
+
   /** Realtime: CTV đăng ký / duyệt / sửa TK trên máy khác → tự tải lại. */
   useEffect(() => {
     const onAccounts = (ev: Event) => {
@@ -329,7 +343,7 @@ export default function ShopAccountsAdmin({
   return (
     <div
       className={`flex h-full flex-col gap-4 ${
-        embedded ? "min-h-[60vh] p-2 md:p-3" : "min-h-[70vh] p-4 md:p-6"
+        embedded ? "min-h-[60vh]" : "min-h-[70vh] p-4 md:p-6"
       }`}
     >
       {!embedded ? (
@@ -338,16 +352,6 @@ export default function ShopAccountsAdmin({
             <h1 className="text-xl font-bold text-slate-800">{title}</h1>
             <p className="text-sm text-slate-500">{subtitle}</p>
           </div>
-          <button
-            type="button"
-            onClick={() => void load()}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-          >
-            <RefreshCw size={16} className={loading ? "animate-spin" : ""} /> Làm mới
-          </button>
-        </div>
-      ) : scope !== "ctv" ? (
-        <div className="flex items-center justify-end">
           <button
             type="button"
             onClick={() => void load()}
@@ -386,55 +390,59 @@ export default function ShopAccountsAdmin({
         </div>
       ) : null}
 
-      <AccountsToolbar
-        scope={scope}
-        tab={tab}
-        setTab={setTab}
-        tabs={tabs}
-        statusOptions={statusOptions}
-        q={q}
-        setQ={setQ}
-        searchPlaceholder={searchPlaceholder}
-        dateRange={dateRange}
-        setDateRange={setDateRange}
-        onOpenAdd={() => setAddOpen(true)}
-        onConfigClick={onConfigClick}
-        configOpen={configOpen}
-        configPanel={configPanel}
-      />
+      <div className="rounded-2xl border border-slate-200/90 bg-white shadow-2xs overflow-hidden">
+        <div className="p-3.5 pb-2 md:p-4 border-b border-slate-100">
+          <AccountsToolbar
+            scope={scope}
+            tab={tab}
+            setTab={setTab}
+            tabs={tabs}
+            statusOptions={statusOptions}
+            q={q}
+            setQ={setQ}
+            searchPlaceholder={searchPlaceholder}
+            dateRange={dateRange}
+            setDateRange={setDateRange}
+            onOpenAdd={() => setAddOpen(true)}
+            onConfigClick={onConfigClick}
+            configOpen={configOpen}
+            configPanel={configPanel}
+          />
+        </div>
 
-      {scope === "ctv" ? (
-        <AddCtvModal
-          open={addOpen}
-          busy={addBusy}
-          onClose={() => !addBusy && setAddOpen(false)}
-          onSubmit={createCtv}
+        {scope === "ctv" ? (
+          <AddCtvModal
+            open={addOpen}
+            busy={addBusy}
+            onClose={() => !addBusy && setAddOpen(false)}
+            onSubmit={createCtv}
+          />
+        ) : null}
+
+        <AccountsTable
+          items={items}
+          loading={loading}
+          scope={scope}
+          showCtvColumns={showCtvColumns}
+          colSpan={colSpan}
+          expandedId={expandedId}
+          expanded={expanded}
+          toggleExpand={toggleExpand}
+          openCtvDetail={openCtvDetail}
+          busyId={busyId}
+          patchAccount={patchAccount}
+          deleteAccount={deleteAccount}
+          setReviewAccountId={setReviewAccountId}
+          note={note}
+          setNote={setNote}
+          setExpandedId={setExpandedId}
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          setPage={setPage}
+          setPageSize={setPageSize}
         />
-      ) : null}
-
-      <AccountsTable
-        items={items}
-        loading={loading}
-        scope={scope}
-        showCtvColumns={showCtvColumns}
-        colSpan={colSpan}
-        expandedId={expandedId}
-        expanded={expanded}
-        toggleExpand={toggleExpand}
-        openCtvDetail={openCtvDetail}
-        busyId={busyId}
-        patchAccount={patchAccount}
-        deleteAccount={deleteAccount}
-        setReviewAccountId={setReviewAccountId}
-        note={note}
-        setNote={setNote}
-        setExpandedId={setExpandedId}
-        page={page}
-        pageSize={pageSize}
-        total={total}
-        setPage={setPage}
-        setPageSize={setPageSize}
-      />
+      </div>
 
       <CtvApplicationModal
         onDone={() => {

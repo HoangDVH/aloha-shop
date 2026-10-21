@@ -8,6 +8,7 @@ import { AdminSidebar } from "@/components/admin/shell/AdminSidebar";
 import { AdminAntdProvider } from "@/components/admin/AdminAntdProvider";
 import { useAdminSession } from "@/components/admin/auth/useAdminSession";
 import { AdminOpsSync } from "@/components/admin/shell/AdminOpsSync";
+import { AdminMobileTabBar } from "@/components/admin/shell/AdminMobileTabBar";
 import { Loader2, Menu } from "lucide-react";
 
 export function AdminShell({ children }: { children: ReactNode }) {
@@ -50,15 +51,18 @@ export function AdminShell({ children }: { children: ReactNode }) {
             </Suspense>
           </div>
         </Drawer>
-        <main className="min-h-screen min-w-0 flex-1 bg-[#F7F8FA]">
-          <div className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:hidden">
+        <main className="min-h-screen min-w-0 flex-1 bg-[#F7F8FA] pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] lg:pb-0">
+          <div className="flex items-center gap-3 border-b border-slate-200 bg-white px-3 py-2.5 pt-[max(0.65rem,env(safe-area-inset-top))] lg:hidden">
             <Button aria-label="Mở menu quản trị" icon={<Menu size={18} />} onClick={() => setMenuOpen(true)} />
             <span className="text-sm font-semibold text-[#2D5A27]">ALOHA Admin</span>
           </div>
-          <div className="mx-auto h-full w-full max-w-[1400px] px-4 py-5 sm:px-6 lg:px-8">
+          <div className="mx-auto h-full w-full max-w-[1400px] px-2.5 py-2.5 sm:px-6 sm:py-5 lg:px-8">
             {children}
           </div>
         </main>
+        <Suspense fallback={null}>
+          <AdminMobileTabBar menuOpen={menuOpen} onOpenMenu={() => setMenuOpen(true)} />
+        </Suspense>
         <Toaster richColors position="top-right" closeButton />
       </div>
     </AdminAntdProvider>

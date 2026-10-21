@@ -81,15 +81,23 @@ export function OrdersPanel() {
   }
 
   return (
-    <Card
-      bordered={false}
-      className="relative shadow-sm"
-      title="Đơn hàng gắn cộng tác viên"
-      extra={<AdminRefreshingBadge show={Boolean(isFetching && data)} />}
-    >
-      {!rows.length ? (
-        <Empty description="Chưa có đơn hàng gắn cộng tác viên" />
-      ) : (
+    <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-2xs">
+      <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+            Danh sách đơn hàng gắn mã giới thiệu
+          </span>
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">
+            {rows.length} đơn
+          </span>
+        </div>
+        <AdminRefreshingBadge show={Boolean(isFetching && data)} />
+      </div>
+
+      <div className="p-3.5 md:p-4">
+        {!rows.length ? (
+          <Empty description="Chưa có đơn hàng gắn cộng tác viên" />
+        ) : (
         <>
           {/* Mobile Card Feed (< md) */}
           <div className="space-y-3 md:hidden">
@@ -182,6 +190,7 @@ export function OrdersPanel() {
           />
         </>
       )}
-    </Card>
+      </div>
+    </div>
   );
 }
