@@ -39,7 +39,11 @@ export function OrderOverview({ order, hero, addressLine, payLabel, children, pa
             {order.createdAt && <time dateTime={order.createdAt}>{new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(order.createdAt))}</time>}
             <span>· {paid ? "Đã thanh toán" : order.method === "Pending" ? "Chưa yêu cầu thanh toán" : payLabel || (order.method === "Transfer" ? "Chuyển khoản" : "Thanh toán khi nhận hàng")}</span>
           </div>
-          <p className="mt-2 text-sm leading-relaxed text-slate-600">{review ? "Aloha sẽ gửi ảnh qua Zalo/SĐT để bạn xác nhận. Bạn chưa cần thanh toán." : hero.subtitle}</p>
+          <p className="mt-2 text-sm leading-relaxed text-slate-600">
+            {review
+              ? "ALOHA sẽ kiểm tra sản phẩm và gửi hình ảnh thực tế cho bạn qua Zalo xác nhận trước. Sau khi bạn xác nhận hình ảnh thực tế, ALOHA gửi hướng dẫn thanh toán trước toàn bộ đơn hàng hoặc đặt cọc tối thiểu bằng phí ship"
+              : hero.subtitle}
+          </p>
           {syncing && <p className="mt-1 text-xs text-amber-800" role="status">Đang chuyển đơn đến cửa hàng · Bạn không cần đặt lại.</p>}
         </div>
       </div>

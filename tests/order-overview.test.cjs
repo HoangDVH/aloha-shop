@@ -36,7 +36,7 @@ test('retail and wholesale retain all products, gifts, variants, notes and money
   for (const priceMode of ['web', 'si']) {
     const f = fixture({ priceMode });
     const root = f.render(), output = text(root);
-    assert.equal(output.split('Aloha sẽ gửi ảnh').length - 1, 1);
+    assert.equal(output.split('ALOHA sẽ kiểm tra sản phẩm').length - 1, 1);
     for (const value of ['DH001', 'Receiver', '0900000000', 'Deliver carefully', 'Variant 0', 'Note 4', '100000', '40000', '20000', '120000']) assert.ok(output.includes(value), value);
     const hidden = nodes(root).filter(n => n.type === 'li' && n.props.className.includes('hidden'));
     assert.equal(hidden.length, 4);
