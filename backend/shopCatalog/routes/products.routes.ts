@@ -141,7 +141,7 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
         return res.status(400).json({ ok: false, error: "Invalid gift filter" });
       }
       const giftCodes = gift ? await loadGiftFilterCodes(await ctx.catalogDb(), gift) : [];
-      const cacheKey = `shop:products:v46:order=${wholesaleHome ? "wholesale" : "default"}:gift=${gift || ""}:${JSON.stringify(giftCodes)}|${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}${dealMasCacheSuffix(dealMas)}|v=${voucherId}:${JSON.stringify(voucher?.filter || {})}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|maxTon=${maxTon}|${sort}${dealInfoCacheSuffix(deals)}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
+      const cacheKey = `shop:products:v47:order=${wholesaleHome ? "wholesale" : "default"}:gift=${gift || ""}:${JSON.stringify(giftCodes)}|${q}|cid=${categoryIdList.join(",")}|${nhomList.join("||")}|home=${homeScope ? 1 : 0}|badge=${badge}${dealMasCacheSuffix(dealMas)}|v=${voucherId}:${JSON.stringify(voucher?.filter || {})}|${page}|${limit}|${minPrice}|${maxPrice}|${inStock}|maxTon=${maxTon}|${sort}${dealInfoCacheSuffix(deals)}|${attrFilters.map((a) => `${a.attributeName}:${a.attributeValue}`).join(";")}|${dvtFilters.join(",")}|${loai}|z=${showZeroPrice ? 1 : 0}`;
       const pinScope = resolvePinBadgeScope({ sort, badge, maxTon });
 
       const { body, cache } = await cachedJson(cacheKey, async () => {
@@ -269,7 +269,10 @@ export function registerProductListRoutes(app: Express, ctx: CatalogCtx) {
               .project(projection)
               .toArray();
             const mapped = await mapHomeDocs(db, eligibleDocs as any[]);
-            let items = dedupeListItems(mapped.docs, mapped.items);
+            let items = filterZeroPriceUnlessTestBuyer(
+              dedupeListItems(mapped.docs, mapped.items),
+              buyerEmail
+            );
             if (minPrice > 0) items = items.filter((p) => p.gia >= minPrice);
             if (maxPrice > 0) items = items.filter((p) => p.gia <= maxPrice);
             if (inStock) items = items.filter((p) => p.ton > 0);

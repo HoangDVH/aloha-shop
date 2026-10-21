@@ -6,6 +6,7 @@ import ts from "typescript";
 import { orderWholesaleHomeProducts } from "../frontend/lib/homeWholesaleOrder.js";
 import { arrangeByAbsolutePin } from "../backend/shopCatalog/pinArrange.js";
 import { WEB_BADGE_VALUES } from "../backend/shopCatalog/webBadge.js";
+import { filterZeroPriceUnlessTestBuyer } from "../backend/shopCatalog/catalog/priceContext.js";
 
 // Execute the actual revenue route branch, with only DB/pricing adapters mocked.
 // This catches pagination/query mistakes that testing the pin helper alone misses.
@@ -33,9 +34,9 @@ function products(badge: string): Product[] {
   }));
 }
 async function request(docs: Product[], badge: string, options: {
-  page?: number; limit?: number; maxTon?: number; inStock?: boolean; rank?: Map<string, number>; wholesale?: boolean;
+  page?: number; limit?: number; maxTon?: number; inStock?: boolean; rank?: Map<string, number>; wholesale?: boolean; buyerEmail?: string;
 } = {}) {
-  const { page = 1, limit = 20, maxTon = 0, inStock = false } = options;
+  const { page = 1, limit = 20, maxTon = 0, inStock = false, buyerEmail = "" } = options;
   const rank = options.rank ?? new Map(docs.slice(0, 5).map((p, i) => [p.ma, 100 - i]));
   const filter = { webBadge: badge };
   const col = {
@@ -55,6 +56,8 @@ async function request(docs: Product[], badge: string, options: {
     mapHomeDocs: async (_db: unknown, rows: Product[]) => ({ docs: rows, items: rows }),
     dedupeListItems: (_rows: Product[], items: Product[]) => items,
     filterRequirePublicImage: (items: Product[]) => items.filter(p => p.image),
+    filterZeroPriceUnlessTestBuyer,
+    buyerEmail,
   });
   return JSON.parse(JSON.stringify(result));
 }
@@ -136,3 +139,14 @@ test("out-of-range pages return no products with a consistent total", async () =
   assert.deepEqual(result.items, []);
   assert.equal(result.total, 8);
 });
+test("revenue branch excludes zero price products for normal buyers but preserves for test buyers", async () => {
+  const docs = products("noi_bat");
+  docs[0].gia = 0;
+  const normal = await request(docs, "noi_bat");
+  assert.ok(normal.items.every((p: Product) => p.ma !== docs[0].ma));
+  assert.equal(normal.total, 7);
+
+  const testBuyer = await request(docs, "noi_bat", { buyerEmail: "dauvuhoang01@gmail.com" });
+  assert.equal(testBuyer.total, 8);
+});
+
