@@ -82,6 +82,14 @@ function checkCommonEligibility(
     }
   }
 
+  // 3b. Kiểm tra điều kiện chờ giao sau X ngày (đặt trước)
+  if (eligible && promo.minLeadDays != null && promo.minLeadDays > 0) {
+    if (buyer.deliverySpeed !== "delayed_3d") {
+      eligible = false;
+      ineligibleReason = `Chỉ áp dụng khi chọn Chờ giao sau ${promo.minLeadDays} ngày.`;
+    }
+  }
+
   // 4. Lọc sản phẩm trong phạm vi & tính tiền hàng đủ điều kiện
   const eligibleItems = items.filter((it) => isItemInScope(it, promo));
   const eligibleSubtotal = eligibleItems.reduce(
@@ -325,6 +333,7 @@ export function evaluatePromotions(args: {
       maxDiscountVnd: promo.maxDiscountVnd,
       minOrderThreshold: promo.minOrderThreshold,
       thresholdOperator: promo.thresholdOperator,
+      minLeadDays: promo.minLeadDays || 0,
       eligible,
       ineligibleReason: eligible ? undefined : ineligibleReason,
       calculatedDiscount,
@@ -528,6 +537,7 @@ export function evaluatePromotions(args: {
           discountType: appliedPromo.discountType,
           discountValue: appliedPromo.discountValue,
           discountAmount: discountTotal,
+          minLeadDays: appliedPromo.minLeadDays || 0,
         }
       : undefined,
     lineDiscounts,

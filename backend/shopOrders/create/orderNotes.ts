@@ -27,6 +27,9 @@ export function buildOrderNotes(input: {
     (hasZeroPriceTestItem && isShopTestBuyerEmail(buyerEmail));
   const ctvNote = ctvCodes.length > 0 ? `CTV:${ctvCodes.join(",")}` : "";
   let n = customerNote;
+  if (body?.deliverySpeed === "delayed_3d" && !n.toUpperCase().includes("[CHO-GIAO-3-NGAY]")) {
+    n = `[CHO-GIAO-3-NGAY] ${n}`.trim();
+  }
   if (hasPreOrder && !n.toUpperCase().includes("[DAT-TRUOC]")) n = `[DAT-TRUOC] ${n}`.trim();
   if (isTest && !String(n).includes("[TEST-WEB]")) n = `[TEST-WEB] ${n}`.trim();
   const reviewKvDescription = reviewOrderKvDescription(

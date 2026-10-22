@@ -1,5 +1,6 @@
 "use client";
-import { voucherCustomerTitle } from "@/lib/voucherFormat";
+import { useEffect, useState } from "react";
+import { formatAppliedVoucherTitle, voucherCustomerTitle } from "@/lib/voucherFormat";
 import { formatVnd } from "@/lib/api";
 import { useShopAuth } from "@/components/ShopAuthProvider";
 import { usePromotionQuote } from "@/lib/usePromotionQuote";
@@ -10,10 +11,46 @@ export function useProductPricing({ ma, name, qty, price, enabled = true }: { ma
   const { user } = useShopAuth();
   const wallet = useWallet(Boolean(user));
   const campaignKey = useCampaignRequoteKey();
+
+  const [deliverySpeed, setDeliverySpeed] = useState<"standard" | "delayed_3d">(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const s = sessionStorage.getItem("aloha_delivery_speed");
+        if (s === "delayed_3d") return "delayed_3d";
+      } catch {}
+    }
+    return "standard";
+  });
+
+  useEffect(() => {
+    const onSpeedChanged = (e: any) => {
+      const speed = e?.detail?.speed || (typeof window !== "undefined" ? sessionStorage.getItem("aloha_delivery_speed") : null);
+      if (speed === "delayed_3d" || speed === "standard") {
+        setDeliverySpeed(speed);
+      }
+    };
+    window.addEventListener("aloha-delivery-speed-changed", onSpeedChanged);
+    return () => window.removeEventListener("aloha-delivery-speed-changed", onSpeedChanged);
+  }, []);
+
+  // Nếu khách có voucher trong ví mà minLeadDays >= 3 thì tự động áp dụng delayed_3d
+  useEffect(() => {
+    const hasClaimedDelayed = wallet.data?.items?.some(
+      (it) => it.tab === "active" && (it.voucher?.minLeadDays ?? 0) >= 3
+    );
+    if (hasClaimedDelayed) {
+      setDeliverySpeed("delayed_3d");
+      try {
+        sessionStorage.setItem("aloha_delivery_speed", "delayed_3d");
+      } catch {}
+    }
+  }, [wallet.data]);
+
   return usePromotionQuote({
     lines: enabled ? [{ ma, ten: name, gia: price, qty }] : [], selectedCode: "", autoMode: true,
+    deliverySpeed,
     phone: user?.phone, email: user?.email,
-    refreshKey: `${user?.id}:${campaignKey}:${wallet.data?.claimedIds?.join(",")}`,
+    refreshKey: `${user?.id}:${campaignKey}:${wallet.data?.claimedIds?.join(",")}:${deliverySpeed}`,
   });
 }
 export function ProductPricingSummary({ pricing, qty = 1, unit = "sản phẩm" }: { pricing: ReturnType<typeof useProductPricing>; qty?: number; unit?: string }) {
@@ -33,7 +70,7 @@ export function ProductPricingSummary({ pricing, qty = 1, unit = "sản phẩm" 
       {volume > 0 && row("Giảm theo số lượng", volume, true)}
       {anchor > 0 && row("Giảm giá sản phẩm", anchor, true)}
       {flash > 0 && row("Giảm Flash Sale", flash, true)}
-      {voucher > 0 && row(voucherCustomerTitle(quote.applied?.title) || "Voucher tiền hàng", voucher, true)}
+      {voucher > 0 && row(formatAppliedVoucherTitle(quote.applied, quote.applied?.title) || "Voucher tiền hàng", voucher, true)}
       <div className="flex items-start justify-between gap-3 border-t border-slate-200 pt-3">
         <div><p className="font-bold text-slate-800">TẠM TÍNH</p><p className="mt-1 text-[11px] text-slate-500">Chưa bao gồm phí vận chuyển</p></div>
         <div className="text-right"><p className="text-xl font-extrabold tabular-nums text-[#e65343] sm:text-2xl">{formatVnd(quote.finalTotal)}</p>{savings > 0 && <p className="mt-1 text-[11px] text-green-700">Tiết kiệm {formatVnd(savings)}</p>}</div>

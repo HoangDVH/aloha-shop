@@ -13,6 +13,7 @@ export type PromotionQuoteRequest = {
   autoMode?: boolean;
   phone?: string;
   email?: string;
+  deliverySpeed?: "standard" | "delayed_3d";
 };
 
 /** status 0 = mất mạng / bị huỷ; 429 và 5xx là lỗi tạm thời, gọi lại được. */
@@ -79,6 +80,7 @@ export interface AvailablePromotionUI {
   excludeFlash?: boolean;
   startDate?: string;
   endDate?: string;
+  minLeadDays?: number;
   mystery?: MysteryInfo;
 }
 

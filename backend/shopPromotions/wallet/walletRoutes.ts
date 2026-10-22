@@ -116,6 +116,7 @@ async function walletHandler(getDb: GetDb, req: Request, res: Response) {
             targetCustomer: p.targetCustomer,
             startDate: p.startDate,
             endDate: p.endDate,
+            minLeadDays: p.minLeadDays || 0,
             ...(isMystery(p) ? { mystery: publicMystery({ ...p, drawnPercent: r.drawnPercent }) } : {}),
           }
         : null,

@@ -89,6 +89,15 @@ export function PromotionDetailModal({ cand, onClose }: Props) {
             </span>
           </div>
 
+          {cand.minLeadDays && cand.minLeadDays >= 3 ? (
+            <div className="flex justify-between">
+              <span className="text-slate-400">Thời gian nhận hàng:</span>
+              <span className="font-semibold text-emerald-700">
+                Chờ giao sau {cand.minLeadDays} ngày
+              </span>
+            </div>
+          ) : null}
+
           <div className="flex justify-between">
             <span className="text-slate-400">Hạn sử dụng:</span>
             <span className="font-semibold text-slate-800">

@@ -23,9 +23,11 @@ import { CheckoutAddressSection } from "@/components/checkout/CheckoutAddressSec
 import { CheckoutLineItems } from "@/components/checkout/CheckoutLineItems";
 import { CheckoutStickyBar } from "@/components/checkout/CheckoutStickyBar";
 import { CheckoutSummaryAside } from "@/components/checkout/CheckoutSummaryAside";
+import type { DeliverySpeed } from "@/components/checkout/DeliverySpeedSelector";
 import { PromotionModal } from "@/components/checkout/PromotionModal";
 import { useCandidateClaim } from "@/components/checkout/useCandidateClaim";
 import { useManualCodeFallback } from "@/components/checkout/useManualCodeFallback";
+import { useWallet } from "@/lib/campaign/walletQueries";
 import { onShopCampaignChanged } from "@/lib/catalogSync";
 import { usePromotionQuote } from "@/lib/usePromotionQuote";
 import { useCheckoutError } from "@/lib/useCheckoutError";
@@ -183,6 +185,47 @@ function CheckoutConfirm() {
     });
   }, [cartMasKey]);
 
+  const [deliverySpeed, setDeliverySpeed] = useState<DeliverySpeed>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlSpeed = urlParams.get("deliverySpeed");
+        if (urlSpeed === "delayed_3d" || urlSpeed === "standard") return urlSpeed;
+        const saved = sessionStorage.getItem("aloha_delivery_speed");
+        if (saved === "delayed_3d" || saved === "standard") return saved;
+      } catch {
+        /* ignore */
+      }
+    }
+    return "standard";
+  });
+
+  const handleDeliverySpeedChange = (speed: DeliverySpeed) => {
+    setDeliverySpeed(speed);
+    try {
+      sessionStorage.setItem("aloha_delivery_speed", speed);
+      sessionStorage.setItem("aloha_delivery_speed_user_explicit", "true");
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const wallet = useWallet(Boolean(user));
+  useEffect(() => {
+    const hasClaimedDelayed = wallet.data?.items?.some(
+      (it) => it.tab === "active" && (it.voucher?.minLeadDays ?? 0) >= 3
+    );
+    if (hasClaimedDelayed && typeof window !== "undefined") {
+      const explicitChoice = sessionStorage.getItem("aloha_delivery_speed_user_explicit");
+      if (!explicitChoice) {
+        setDeliverySpeed("delayed_3d");
+        try {
+          sessionStorage.setItem("aloha_delivery_speed", "delayed_3d");
+        } catch {}
+      }
+    }
+  }, [wallet.data]);
+
   const {
     quote: promoQuote,
     loading: promoLoading,
@@ -191,6 +234,7 @@ function CheckoutConfirm() {
     lines: selected,
     selectedCode: promoCode,
     autoMode: promoAutoMode,
+    deliverySpeed,
     phone: receiverPhone,
     email: user?.email,
     refreshKey: `${promoNonce}:${requoteKey}`,
@@ -324,6 +368,7 @@ function CheckoutConfirm() {
     promotionCode: promoQuote?.applied?.code,
     promotionId: promoQuote?.applied?.promotionId,
     autoPromotion: promoAutoMode,
+    deliverySpeed,
     expectedSubtotal: promoQuote?.subtotal,
     onCampaignPriceChanged: () => setPromoNonce((n) => n + 1),
     note,
@@ -474,6 +519,9 @@ function CheckoutConfirm() {
             wholesaleDiscount={promoQuote?.wholesaleSavings}
             appliedTitle={promoQuote?.applied?.title}
             voucherPromo={promoQuote?.applied}
+            deliverySpeed={deliverySpeed}
+            onDeliverySpeedChange={handleDeliverySpeedChange}
+            quote={promoQuote}
             onOpenPromotion={() => setPromoModalOpen(true)}
             shippingFee={effectiveShippingFee}
             shippingDiscount={effectiveShippingDiscount}

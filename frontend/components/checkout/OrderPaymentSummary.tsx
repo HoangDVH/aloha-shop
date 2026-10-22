@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { formatVnd } from "@/lib/api";
+import { formatAppliedVoucherTitle } from "@/lib/voucherFormat";
 import { shopShowCheckoutShipping } from "@/lib/checkoutFlags";
 import { SmartFreeshipBar } from "@/components/cart/SmartFreeshipBar";
 import { usePendingValue } from "@/lib/usePendingValue";
@@ -13,6 +14,15 @@ type Props = {
   totalPending?: boolean;
   priceScopeKey?: string;
   discount?: number;
+  voucherTitle?: string;
+  voucherPromo?: {
+    title?: string;
+    discountType?: "percentage" | "fixed";
+    discountValue?: number;
+    discountAmount?: number;
+    code?: string;
+    minLeadDays?: number;
+  } | null;
   flashDiscount?: number;
   volumeDiscount?: number;
   anchorDiscount?: number;
@@ -31,6 +41,7 @@ type Props = {
 
 /** One price breakdown for cart and checkout, at every viewport size. */
 export function OrderPaymentSummary({ total: liveTotal, totalPending = false, discount: liveDiscount = 0,
+  voucherTitle: liveVoucherTitle, voucherPromo: liveVoucherPromo,
   flashDiscount: liveFlash = 0, volumeDiscount: liveVolume = 0, anchorDiscount: liveAnchor = 0, wholesaleDiscount: liveWholesale = 0,
   delivery = "giao_tan_noi", shippingFee: liveShippingFee = null, shippingDiscount: liveShipDiscount = 0,
   shippingPromotionTitle: liveShipTitle, freeShipApplied: liveFreeShip = false, shippingLoading = false,
@@ -39,9 +50,11 @@ export function OrderPaymentSummary({ total: liveTotal, totalPending = false, di
   const shippingPending = !cart && showShip && delivery === "giao_tan_noi" && (shippingLoading || totalPending);
   const pending = totalPending || shippingPending;
   const goods = usePendingValue({ total: liveTotal, discount: liveDiscount, flashDiscount: liveFlash,
-    volumeDiscount: liveVolume, anchorDiscount: liveAnchor, wholesaleDiscount: liveWholesale }, totalPending, priceScopeKey);
-  const { total, discount, flashDiscount, volumeDiscount, anchorDiscount, wholesaleDiscount } = goods || {
+    volumeDiscount: liveVolume, anchorDiscount: liveAnchor, wholesaleDiscount: liveWholesale,
+    voucherTitle: liveVoucherTitle, voucherPromo: liveVoucherPromo }, totalPending, priceScopeKey);
+  const { total, discount, flashDiscount, volumeDiscount, anchorDiscount, wholesaleDiscount, voucherTitle, voucherPromo } = goods || {
     total: 0, discount: 0, flashDiscount: 0, volumeDiscount: 0, anchorDiscount: 0, wholesaleDiscount: 0,
+    voucherTitle: undefined, voucherPromo: null,
   };
   const shipping = usePendingValue({ shippingFee: liveShippingFee, shippingDiscount: liveShipDiscount,
     shippingPromotionTitle: liveShipTitle, freeShipApplied: liveFreeShip, grandTotal: liveGrandTotal },
@@ -52,6 +65,7 @@ export function OrderPaymentSummary({ total: liveTotal, totalPending = false, di
   const goodsBeforeVoucher = Math.max(0, total - flashDiscount);
   const goodsAfter = Math.max(0, goodsBeforeVoucher - discount);
   const amountText = (value: number) => goods ? formatVnd(value) : "—";
+  const appliedVoucherLabel = formatAppliedVoucherTitle(voucherPromo, voucherTitle);
   const savings = wholesaleDiscount + anchorDiscount + volumeDiscount + flashDiscount + discount + (showShip ? shippingDiscount : 0);
   const saved = usePendingValue(savings, pending, priceScopeKey) ?? 0;
   const fading = "transition-opacity duration-150 motion-reduce:transition-none";
@@ -88,7 +102,7 @@ export function OrderPaymentSummary({ total: liveTotal, totalPending = false, di
           ) : null}
           {discount > 0 ? (
             <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold">
-              <span>Voucher shop</span>
+              <span className="min-w-0 truncate" title={appliedVoucherLabel}>{appliedVoucherLabel}</span>
               <span className="tabular-nums">-{amountText(discount)}</span>
             </div>
           ) : null}

@@ -276,6 +276,18 @@ function ConditionSection({ isShipping, scope, discountType, collapsed, toggle }
           </Form.Item>
         </div>
       ) : null}
+      <div className="flex items-center gap-3 pt-1 border-t border-slate-100">
+        <span className={rowLabel}>
+          Thời gian giao hàng
+          <HintIcon title="Giao tiêu chuẩn (áp dụng mọi đơn) hoặc chỉ áp dụng khi khách hàng chọn Chờ giao sau 3 ngày" />
+        </span>
+        <Form.Item name="minLeadDays" noStyle>
+          <Radio.Group>
+            <Radio value={0}>Giao tiêu chuẩn (1 - 2 ngày)</Radio>
+            <Radio value={3}>Chờ giao sau 3 ngày (Nhận ưu đãi)</Radio>
+          </Radio.Group>
+        </Form.Item>
+      </div>
     </CollapsibleCard>
   );
 }

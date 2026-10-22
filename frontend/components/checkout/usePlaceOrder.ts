@@ -62,6 +62,7 @@ type Args = {
   promotionCode?: string;
   promotionId?: string;
   autoPromotion?: boolean;
+  deliverySpeed?: "standard" | "delayed_3d";
   /** Tiền hàng sau giá sale ở lần báo giá gần nhất. */
   expectedSubtotal?: number;
   /** Server báo giá sale đổi (hết khung giờ / hết suất): trang báo giá lại. */
@@ -98,6 +99,7 @@ export function usePlaceOrder({
   promotionCode,
   promotionId,
   autoPromotion = true,
+  deliverySpeed,
   expectedSubtotal,
   onCampaignPriceChanged,
   note,
@@ -282,6 +284,7 @@ export function usePlaceOrder({
         promotionCode: promotionCode || undefined,
         promotionId: promotionId || undefined,
         autoPromotion,
+        deliverySpeed: deliverySpeed === "delayed_3d" ? "delayed_3d" : "standard",
         expectedSubtotal: expectedSubtotal && expectedSubtotal > 0 ? expectedSubtotal : undefined,
         orderDetails: selected.map((l) => {
           const variant = formatVariantLabel(l);

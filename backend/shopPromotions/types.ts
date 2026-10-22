@@ -47,6 +47,7 @@ export interface PromotionDoc {
   isPublic?: boolean; // Hiển thị trong danh sách ưu đãi công khai
   combineWithShip?: boolean; // Dùng chung với voucher hỗ trợ ship (thiếu = có)
   excludeFlash?: boolean; // Không giảm trên dòng đang giá flash (thiếu = có giảm)
+  minLeadDays?: number; // Số ngày đặt trước tối thiểu (ví dụ 3 = Chờ giao sau 3 ngày; thiếu/0 = giao thường)
   claimRequired?: boolean; // Khách phải bấm "Lưu mã" vào ví mới dùng được
   claimLimitTotal?: number | null; // Tổng lượt lưu tối đa; thiếu / 0 = không giới hạn
   claimedCount?: number; // Số lượt đã lưu
@@ -127,6 +128,7 @@ export interface BuyerContext {
   hasSuccessfulWebPurchase?: boolean;
   isWholesale?: boolean;
   isWholesaleTinh?: boolean; isWholesaleHcm?: boolean;
+  deliverySpeed?: "standard" | "delayed_3d";
 }
 
 export interface EvaluatedCandidate {
@@ -138,6 +140,7 @@ export interface EvaluatedCandidate {
   maxDiscountVnd?: number;
   minOrderThreshold?: number;
   thresholdOperator?: ThresholdOperator;
+  minLeadDays?: number;
   eligible: boolean;
   ineligibleReason?: string;
   calculatedDiscount: number;
@@ -165,6 +168,7 @@ export interface PromotionQuoteResult {
     discountType: DiscountType;
     discountValue: number;
     discountAmount: number;
+    minLeadDays?: number;
   };
   lineDiscounts: Record<string, number>; // ma -> discount amount for that line
   subtotal: number;

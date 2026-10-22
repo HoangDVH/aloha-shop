@@ -23,9 +23,10 @@ export function usePromotionQuote(input: {
   autoMode: boolean;
   phone?: string | null;
   email?: string | null;
+  deliverySpeed?: "standard" | "delayed_3d";
   refreshKey: string | number;
 }): { quote: PromotionQuoteUI | null; loading: boolean; stale: boolean } {
-  const { lines, selectedCode, autoMode, phone, email, refreshKey } = input;
+  const { lines, selectedCode, autoMode, phone, email, deliverySpeed, refreshKey } = input;
   const { user, loading: authLoading, authBusy } = useShopAuth();
   const buyerKey = JSON.stringify([user?.id || "guest", phone || "", email || ""]);
   const [quoteBuyerKey, setQuoteBuyerKey] = useState("");
@@ -43,9 +44,10 @@ export function usePromotionQuote(input: {
       autoMode,
       phone: phone || undefined,
       email: email || undefined,
+      deliverySpeed: deliverySpeed || "standard",
     };
     return JSON.stringify(body);
-  }, [lines, selectedCode, autoMode, phone, email]);
+  }, [lines, selectedCode, autoMode, phone, email, deliverySpeed]);
   const inputKey = JSON.stringify([requestKey, refreshKey, buyerKey]);
 
   useEffect(() => {

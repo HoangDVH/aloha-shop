@@ -23,7 +23,8 @@ export function pdpDefaultVouchers(promotions: AvailablePromotionUI[], viewer: {
   const goods = target ? promotions.find(p => p.benefitType !== "shipping" && p.targetCustomer === target) : undefined;
   const ship = promotions.filter(p => p.benefitType === "shipping")
     .sort((a, b) => (a.minOrderThreshold || 0) - (b.minOrderThreshold || 0) || a.id.localeCompare(b.id))[0];
-  return [goods, ship].filter((p): p is AvailablePromotionUI => Boolean(p));
+  const delayed = promotions.find(p => p.benefitType !== "shipping" && (p.minLeadDays || 0) >= 3);
+  return [goods, ship, delayed].filter((p): p is AvailablePromotionUI => Boolean(p));
 }
 
 /** Saved vouchers remain visible with a reason, without becoming applicable previews. */

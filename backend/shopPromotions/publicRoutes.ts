@@ -144,6 +144,7 @@ export function registerShopPromotionsPublicRoutes(
           excludeFlash: p.excludeFlash === true,
           startDate: p.startDate,
           endDate: p.endDate,
+          minLeadDays: p.minLeadDays || 0,
           ...(p.mystery ? { mystery: publicMystery(p) } : {}),
         })),
       });
@@ -246,6 +247,7 @@ export function registerShopPromotionsPublicRoutes(
             isWholesale,
             isWholesaleTinh: isWholesaleTinh(userAccount),
           isWholesaleHcm: isWholesaleHcm(userAccount),
+            deliverySpeed: body.deliverySpeed === "delayed_3d" ? "delayed_3d" : "standard",
           },
           customerKey: customerKeyFor(buyerUserId),
           promotions: buyerPromos.promotions,

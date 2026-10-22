@@ -390,10 +390,14 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
         /* ignore */
       }
       if (!user) {
-        router.push("/dang-nhap?next=/xac-nhan-don-hang");
+        const speed = typeof window !== "undefined" ? sessionStorage.getItem("aloha_delivery_speed") || "standard" : "standard";
+        const nextUrl = speed === "delayed_3d" ? "/xac-nhan-don-hang?deliverySpeed=delayed_3d" : "/xac-nhan-don-hang";
+        router.push(`/dang-nhap?next=${encodeURIComponent(nextUrl)}`);
         return;
       }
-      router.push("/xac-nhan-don-hang");
+      const speed = typeof window !== "undefined" ? sessionStorage.getItem("aloha_delivery_speed") || "standard" : "standard";
+      const targetUrl = speed === "delayed_3d" ? "/xac-nhan-don-hang?deliverySpeed=delayed_3d" : "/xac-nhan-don-hang";
+      router.push(targetUrl);
       return;
     }
 

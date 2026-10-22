@@ -31,6 +31,7 @@ export function PdpVoucherSheet({ items, unavailable = {}, claimed, pendingId, o
           {promos.map(p => <article key={p.id} className={`flex gap-3 rounded-xl border p-3 ${unavailable[p.id] ? "border-stone-200 bg-stone-50 text-stone-500" : shipping ? "border-teal-100 bg-teal-50/60" : "border-orange-100 bg-orange-50/60"}`}>
             <div className={`flex w-12 shrink-0 flex-col items-center justify-center gap-1 text-center text-[9px] ${shipping ? "text-teal-700" : "text-orange-800"}`}>{shipping ? <Truck size={22}/> : <Ticket size={22}/>}<span>{shipping ? "Vận chuyển" : "Sản phẩm"}</span></div>
             <div className="min-w-0 flex-1 space-y-1"><p className="text-sm font-bold">{voucherCustomerTitle(p.title, p)}</p>{shipping && <p className="text-xs">{p.minOrderThreshold ? `Đơn từ ${formatVnd(p.minOrderThreshold)}` : "Không có mức tối thiểu"}</p>}
+              {p.minLeadDays && p.minLeadDays >= 3 ? <p className="text-xs text-emerald-700 font-medium">Áp dụng khi chọn Chờ giao sau {p.minLeadDays} ngày</p> : null}
               {p.endDate && <p className="text-[11px] text-slate-500">HSD: {new Date(p.endDate).toLocaleDateString("vi-VN")}</p>}
               {unavailable[p.id] && <p className="text-xs text-stone-500">{unavailable[p.id]}</p>}
               <div className="flex flex-wrap items-center justify-between gap-2 pt-1"><button type="button" onClick={() => onDetails(p)} className="min-h-9 text-xs text-slate-600 underline">Điều kiện &amp; chi tiết</button>

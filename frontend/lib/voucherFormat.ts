@@ -15,6 +15,7 @@ export type VoucherLike = {
   maxDiscountVnd?: number;
   minOrderThreshold?: number;
   targetCustomer?: string;
+  minLeadDays?: number;
   mystery?: MysteryInfo;
 };
 
@@ -68,6 +69,10 @@ export function formatVoucherBadge(p: VoucherLike): { label: string; type: "good
     }
     return { label: text, type: "shipping" };
   }
+  if (p.minLeadDays && p.minLeadDays >= 3) {
+    const value = p.discountType === "percentage" ? pctText(p) : formatCompactVnd(p.discountValue);
+    return { label: `Giảm ${value} (Chờ giao sau ${p.minLeadDays} ngày)`, type: "goods" };
+  }
   if (p.targetCustomer === "returning_web") {
     const value = p.discountType === "percentage" ? pctText(p) : formatCompactVnd(p.discountValue);
     return { label: `Giảm ${value} tiền hàng cho khách cũ`, type: "goods" };
@@ -104,8 +109,137 @@ export function voucherHeadline(p: VoucherLike): string {
  * - "Giảm 10% Siêu Sale 10/10" -> "Siêu Sale 10/10"
  * - "Hỗ trợ phí ship 30k" -> "Hỗ trợ phí vận chuyển"
  */
+export function formatAppliedVoucherTitle(
+  applied?: {
+    title?: string;
+    discountType?: "percentage" | "fixed";
+    discountValue?: number;
+    discountAmount?: number;
+    code?: string;
+    minLeadDays?: number;
+  } | null,
+  fallbackTitle?: string
+): string {
+  const rawTitle = (applied?.title || fallbackTitle || "").trim();
+  const discountType = applied?.discountType;
+  const discountValue = applied?.discountValue;
+  const minLeadDays = applied?.minLeadDays;
+
+  if (!rawTitle && !discountValue) return "Voucher shop";
+
+  // 0. Voucher đặt trước (minLeadDays >= 3 hoặc tiêu đề nhắc tới chờ giao / đặt trước)
+  const isDelayed = Boolean(
+    (minLeadDays != null && minLeadDays >= 3) ||
+    /chờ.*ngày|đặt trước/i.test(rawTitle)
+  );
+  if (isDelayed) {
+    let val = "";
+    if (discountType === "percentage" && discountValue) {
+      val = ` (Giảm ${discountValue}%)`;
+    } else if (discountType === "fixed" && discountValue) {
+      val = ` (Giảm ${formatCompactVnd(discountValue)})`;
+    } else {
+      const matchPct = rawTitle.match(/(\d+)\s*%/);
+      if (matchPct) {
+        val = ` (Giảm ${matchPct[1]}%)`;
+      }
+    }
+    const days = minLeadDays && minLeadDays >= 3 ? minLeadDays : 3;
+    return `Ưu đãi đặt trước ${days} ngày${val}`;
+  }
+
+  // 1. Voucher khách cũ (chuẩn theo yêu cầu: "Voucher khách cũ giảm 7%")
+  if (/khách cũ/i.test(rawTitle)) {
+    let val = "";
+    if (discountType === "percentage" && discountValue) {
+      val = `${discountValue}%`;
+    } else if (discountType === "fixed" && discountValue) {
+      val = formatCompactVnd(discountValue);
+    } else if (applied?.discountAmount && applied.discountAmount > 0) {
+      val = "7%";
+    } else {
+      val = "7%";
+    }
+    return `Voucher khách cũ giảm ${val}`;
+  }
+
+  // 2. Voucher khách mới
+  if (/khách mới/i.test(rawTitle)) {
+    const val =
+      discountType === "percentage" && discountValue
+        ? `${discountValue}%`
+        : discountType === "fixed" && discountValue
+        ? formatCompactVnd(discountValue)
+        : "5%";
+    return `Voucher khách mới giảm ${val}`;
+  }
+
+  // 3. Nếu title đã có chữ Voucher / Mã ở đầu
+  if (/^(voucher|mã)\b/i.test(rawTitle)) {
+    if (/\d+\s*(%|k|đ|vnd)/i.test(rawTitle)) {
+      return rawTitle;
+    }
+    if (discountType === "percentage" && discountValue) {
+      return `${rawTitle} giảm ${discountValue}%`;
+    }
+    if (discountType === "fixed" && discountValue) {
+      return `${rawTitle} giảm ${formatCompactVnd(discountValue)}`;
+    }
+    return rawTitle;
+  }
+
+  // 4. Nếu title bắt đầu bằng "Giảm" (ví dụ: "Giảm 10% - Tối đa 100.000d")
+  if (/^giảm\b/i.test(rawTitle)) {
+    return `Voucher ${rawTitle.charAt(0).toLowerCase() + rawTitle.slice(1)}`;
+  }
+
+  // 5. Nếu title bắt đầu bằng "Ưu đãi" (ví dụ: "Ưu đãi đặt trước 20/10 10%")
+  if (/^ưu đãi\b/i.test(rawTitle)) {
+    const rest = rawTitle.replace(/^ưu đãi\s*/i, "");
+    if (/\d+\s*(%|k|đ|vnd)/i.test(rest)) {
+      return `Voucher ${rest}`;
+    }
+    if (discountType === "percentage" && discountValue) {
+      return `Voucher ${rest} giảm ${discountValue}%`;
+    }
+    if (discountType === "fixed" && discountValue) {
+      return `Voucher ${rest} giảm ${formatCompactVnd(discountValue)}`;
+    }
+    return `Voucher ${rest}`;
+  }
+
+  // 6. Title đã có chứa thông tin giảm (ví dụ: "Siêu Sale 10/10 – Giảm 10%")
+  if (/\d+\s*(%|k|đ|vnd)/i.test(rawTitle)) {
+    return `Voucher ${rawTitle}`;
+  }
+
+  // 7. Title thường + kèm mức giảm
+  if (discountType === "percentage" && discountValue) {
+    return `Voucher ${rawTitle ? rawTitle + " " : ""}giảm ${discountValue}%`;
+  }
+  if (discountType === "fixed" && discountValue) {
+    return `Voucher ${rawTitle ? rawTitle + " " : ""}giảm ${formatCompactVnd(discountValue)}`;
+  }
+
+  return rawTitle ? `Voucher ${rawTitle}` : "Voucher shop";
+}
+
 export function voucherCustomerTitle(title?: string, offer?: Partial<VoucherLike>): string {
   const cleaned = (title || "").replace(/\s*\(\s*3\s+sản\s+phẩm\s*\)/giu, "").trim();
+
+  // 0. Voucher đặt trước (minLeadDays >= 3 hoặc tiêu đề nhắc tới chờ giao / đặt trước)
+  if ((offer?.minLeadDays != null && offer.minLeadDays >= 3) || /chờ.*ngày|đặt trước/i.test(cleaned)) {
+    const val =
+      offer?.discountType === "percentage" && offer?.discountValue
+        ? pctText(offer as any)
+        : offer?.discountValue
+        ? formatCompactVnd(offer.discountValue)
+        : "10%";
+    const days = offer?.minLeadDays && offer.minLeadDays >= 3 ? offer.minLeadDays : 3;
+    return `Ưu đãi đặt trước: Giảm ${val} khi chọn Chờ giao sau ${days} ngày`;
+  }
+
+  // 1. Voucher khách cũ
   const returning = offer?.targetCustomer ? offer.targetCustomer === "returning_web" : /khách cũ/i.test(cleaned);
   if (returning && offer?.benefitType !== "shipping" && offer?.discountType &&
     typeof offer.discountValue === "number" && (offer.discountValue > 0 || offer.mystery)) {
@@ -120,8 +254,12 @@ export function cleanVoucherTitle(v: {
   targetCustomer?: string;
   discountType?: VoucherLike["discountType"];
   discountValue?: number;
+  minLeadDays?: number;
   mystery?: MysteryInfo;
 }): string {
+  if (v.minLeadDays && v.minLeadDays >= 3) {
+    return `Ưu đãi đặt trước (Chờ giao sau ${v.minLeadDays} ngày)`;
+  }
   const raw = voucherCustomerTitle(v.title, v);
   if (raw.includes("tiền hàng cho khách cũ")) return raw;
 

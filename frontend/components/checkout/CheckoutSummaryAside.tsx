@@ -2,6 +2,9 @@
 
 import { ChevronRight, Ticket } from "lucide-react";
 import { formatVnd } from "@/lib/api";
+import { formatAppliedVoucherTitle } from "@/lib/voucherFormat";
+import { DeliverySpeedSelector, type DeliverySpeed } from "./DeliverySpeedSelector";
+import type { PromotionQuoteUI } from "./PromotionModal";
 import { OrderPaymentSummary } from "./OrderPaymentSummary";
 import type { Delivery } from "./checkoutTypes";
 import { usePendingValue } from "@/lib/usePendingValue";
@@ -19,7 +22,14 @@ type Props = {
   anchorDiscount?: number;
   wholesaleDiscount?: number;
   appliedTitle?: string;
-  voucherPromo?: { discountType?: string; discountValue?: number } | null;
+  voucherPromo?: {
+    title?: string;
+    discountType?: "percentage" | "fixed";
+    discountValue?: number;
+    discountAmount?: number;
+    code?: string;
+    minLeadDays?: number;
+  } | null;
   onOpenPromotion?: () => void;
   shippingFee: number | null;
   shippingDiscount?: number;
@@ -34,6 +44,9 @@ type Props = {
   canSubmit: boolean;
   submitting: boolean;
   onPlaceOrder: () => void;
+  deliverySpeed?: DeliverySpeed;
+  onDeliverySpeedChange?: (speed: DeliverySpeed) => void;
+  quote?: PromotionQuoteUI | null;
 };
 
 /**
@@ -66,15 +79,27 @@ export function CheckoutSummaryAside({
   canSubmit,
   submitting,
   onPlaceOrder,
+  deliverySpeed,
+  onDeliverySpeedChange,
+  quote,
 }: Props) {
-  const promotion = usePendingValue({ discount, appliedTitle }, totalPending, priceScopeKey);
+  const promotion = usePendingValue({ discount, appliedTitle, voucherPromo }, totalPending, priceScopeKey);
   const visibleDiscount = promotion?.discount ?? 0;
   const pricePending = totalPending || (delivery === "giao_tan_noi" && shippingLoading);
   const displayAction = usePendingValue({ canSubmit, orderBlockedReason }, pricePending, priceScopeKey);
   const amountText = formatVnd;
+  const voucherLabel = formatAppliedVoucherTitle(promotion?.voucherPromo, promotion?.appliedTitle);
 
   return (
     <aside className="space-y-2 sm:space-y-4 lg:sticky lg:top-24 lg:self-start">
+      {deliverySpeed && onDeliverySpeedChange ? (
+        <DeliverySpeedSelector
+          value={deliverySpeed}
+          onChange={onDeliverySpeedChange}
+          quote={quote}
+          loading={totalPending}
+        />
+      ) : null}
       <button
         type="button"
         aria-busy={totalPending}
@@ -87,11 +112,13 @@ export function CheckoutSummaryAside({
             </div>
             <div>
               <span className="text-[13px] sm:text-sm font-bold text-stone-900">
-                {visibleDiscount > 0 ? `Đã giảm ${amountText(visibleDiscount)}` : "Ưu đãi từ shop"}
+                Voucher của Shop
               </span>
-                <span className="block min-h-4 text-[11px] text-[var(--aloha-green)] font-semibold truncate max-w-[200px]">
-                  {promotion?.appliedTitle}
+              {visibleDiscount > 0 && voucherLabel ? (
+                <span className="block text-[11px] text-[var(--aloha-green)] font-semibold truncate max-w-[180px] sm:max-w-[240px]" title={voucherLabel}>
+                  {voucherLabel}
                 </span>
+              ) : null}
             </div>
           </div>
         <div className="flex items-center gap-1">
@@ -101,7 +128,7 @@ export function CheckoutSummaryAside({
             </span>
           ) : (
             <span className="text-xs sm:text-sm font-medium text-[var(--aloha-green)]">
-              Nhập ưu đãi
+              Chọn hoặc nhập mã
             </span>
           )}
           <ChevronRight size={16} className="text-stone-400" />
@@ -116,6 +143,7 @@ export function CheckoutSummaryAside({
 
       {/* Chi tiết thanh toán / Tóm tắt đơn hàng dùng chung cho mobile và desktop. */}
       <OrderPaymentSummary total={total} totalPending={totalPending} priceScopeKey={priceScopeKey} discount={discount}
+        voucherTitle={promotion?.appliedTitle} voucherPromo={promotion?.voucherPromo}
         flashDiscount={flashDiscount} volumeDiscount={volumeDiscount} anchorDiscount={anchorDiscount} wholesaleDiscount={wholesaleDiscount}
         delivery={delivery} shippingFee={shippingFee} shippingDiscount={shippingDiscount}
         shippingPromotionTitle={shippingPromotionTitle} freeShipApplied={freeShipApplied}

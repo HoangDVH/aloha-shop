@@ -2,6 +2,7 @@
 
 import { Gift, Zap } from "lucide-react";
 import { formatVnd } from "@/lib/api";
+import { formatAppliedVoucherTitle } from "@/lib/voucherFormat";
 import type { ShopOrder, ShopOrderDetail } from "@/lib/orders";
 import { volumeSavingsForLines } from "../../../shared/orderSavings";
 
@@ -54,7 +55,7 @@ export function OrderGoodsSavings({ order }: { order: ShopOrder }) {
       ) : null}
       {order.discount ? (
         <div className="flex justify-between font-semibold text-[var(--aloha-price)]">
-          <span>Voucher shop</span>
+          <span>{formatAppliedVoucherTitle(order.promotion as any, order.promotion?.title || order.promotionTitle || "Voucher shop")}</span>
           <span>-{formatVnd(order.discount)}</span>
         </div>
       ) : null}

@@ -192,6 +192,7 @@ export function buildNewPromotion(
     isPublic: b.isPublic !== false,
     combineWithShip: b.combineWithShip !== false,
     excludeFlash: b.excludeFlash === true,
+    minLeadDays: b.minLeadDays != null && Number(b.minLeadDays) > 0 ? Number(b.minLeadDays) : 0,
     ...claimFieldsOf(b),
     ...(mystery.value ? { mystery: mystery.value } : {}),
     claimedCount: 0,
@@ -228,6 +229,9 @@ function applyBasicFields(b: Body, set: Partial<PromotionDoc>): void {
   }
   if (b.thresholdOperator !== undefined) {
     set.thresholdOperator = b.thresholdOperator === ">=" ? ">=" : ">";
+  }
+  if (b.minLeadDays !== undefined) {
+    set.minLeadDays = Number(b.minLeadDays) > 0 ? Number(b.minLeadDays) : 0;
   }
 }
 

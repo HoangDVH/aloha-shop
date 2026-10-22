@@ -108,6 +108,7 @@ export async function evaluateOrderPromotions(
     isWholesale: isWholesaleAccount(input.account),
     isWholesaleTinh: isWholesaleTinh(input.account),
     isWholesaleHcm: isWholesaleHcm(input.account),
+    deliverySpeed: (body?.deliverySpeed === "delayed_3d" ? "delayed_3d" : "standard") as "standard" | "delayed_3d",
   };
   const customerKey = customerKeyFor(input.accountId);
   const evalGoods = (promotions: typeof activePromos) =>

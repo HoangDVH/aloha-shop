@@ -14,6 +14,7 @@ export type WalletVoucherUI = {
   targetCustomer?: string;
   startDate?: string;
   endDate?: string;
+  minLeadDays?: number;
   mystery?: MysteryInfo;
 };
 

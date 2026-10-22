@@ -52,6 +52,7 @@ export interface PromotionItem {
   claimLimitTotal?: number | null;
   claimedCount?: number;
   claimStartDate?: string | null;
+  minLeadDays?: number;
   mystery?: {
     tiers: { percent: number; weight: number; limit: number | null; remaining: number; drawn: number }[];
   } | null;
@@ -127,6 +128,7 @@ export function initialFormValues(editingItem?: PromotionItem | null) {
       claimRequired: false,
       claimLimitTotal: undefined,
       claimStartDate: undefined,
+      minLeadDays: 0,
       mysteryOn: false,
       mysteryTiers: MYSTERY_DEFAULT_TIERS,
     };
@@ -167,6 +169,7 @@ export function initialFormValues(editingItem?: PromotionItem | null) {
     allowWholesaleHcm: editingItem.allowWholesaleHcm === true,
     claimLimitTotal: editingItem.claimLimitTotal || undefined,
     claimStartDate: editingItem.claimStartDate ? dayjs(editingItem.claimStartDate) : undefined,
+    minLeadDays: editingItem.minLeadDays || 0,
     mysteryOn: !!editingItem.mystery?.tiers?.length,
     mysteryTiers: editingItem.mystery?.tiers?.length
       ? editingItem.mystery.tiers.map((t) => ({ percent: t.percent, weight: t.weight, limit: t.limit }))
@@ -289,6 +292,7 @@ export function buildPromotionPayload(
         : undefined,
     minOrderThreshold: Number(values.minOrderThreshold) || 0,
     thresholdOperator: ">=",
+    minLeadDays: values.minLeadDays != null ? Number(values.minLeadDays) : 0,
     scope: values.scope || "all",
     productMas: splitMas(values.productMasText),
     excludedProductMas: splitMas(values.excludedProductMasText),

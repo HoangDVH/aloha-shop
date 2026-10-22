@@ -95,6 +95,7 @@ export type ShopOrder = {
   total: number;
   totalPayment?: number;
   discount?: number;
+  promotionTitle?: string;
   promotion?: {
     promotionId: string;
     title: string;
@@ -229,6 +230,7 @@ export type PlaceOrderInput = {
   promotionId?: string;
   /** false = khách đã bỏ ưu đãi tự động; server không tự áp lại. */
   autoPromotion?: boolean;
+  deliverySpeed?: "standard" | "delayed_3d";
   /** Tiền hàng khách đã thấy ở báo giá (sau giá sale); server tính cao hơn thì trả 409 `price_changed`. */
   expectedSubtotal?: number;
   /** Chống đặt trùng khi retry / mất response */

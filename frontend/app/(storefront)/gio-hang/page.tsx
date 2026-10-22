@@ -7,12 +7,15 @@ import { useShopRouter } from "@/lib/useShopRouter";
 import { ShoppingBag, Trash2, Plus, Ticket, ChevronRight } from "lucide-react";
 import { isPreOrderTon, stockMax, useCart } from "@/lib/cart";
 import { formatVnd } from "@/lib/api";
+import { formatAppliedVoucherTitle } from "@/lib/voucherFormat";
 import { formatVariantLabel } from "@/lib/cartVariant";
 import { useShopAuth } from "@/components/ShopAuthProvider";
 import { refreshCartPricesFromCatalog } from "@/lib/cartPriceRefresh";
 import { PromotionModal } from "@/components/checkout/PromotionModal";
 import { useCandidateClaim } from "@/components/checkout/useCandidateClaim";
+import { useWallet } from "@/lib/campaign/walletQueries";
 import { CartVoucherProgress } from "@/components/checkout/CartVoucherProgress";
+import { DeliverySpeedSelector, type DeliverySpeed } from "@/components/checkout/DeliverySpeedSelector";
 import { SmartFreeshipBar, useMoreShoppingHref } from "@/components/cart/SmartFreeshipBar";
 
 import { useManualCodeFallback } from "@/components/checkout/useManualCodeFallback";
@@ -91,6 +94,44 @@ export default function CartPage() {
   const [promoCode, setPromoCode] = useState("");
   const [promoAutoMode, setPromoAutoMode] = useState(true);
   const [promoNonce, setPromoNonce] = useState(0);
+  const [deliverySpeed, setDeliverySpeed] = useState<DeliverySpeed>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = sessionStorage.getItem("aloha_delivery_speed");
+        if (saved === "delayed_3d" || saved === "standard") return saved;
+      } catch {
+        /* ignore */
+      }
+    }
+    return "standard";
+  });
+
+  const handleDeliverySpeedChange = (speed: DeliverySpeed) => {
+    setDeliverySpeed(speed);
+    try {
+      sessionStorage.setItem("aloha_delivery_speed", speed);
+      sessionStorage.setItem("aloha_delivery_speed_user_explicit", "true");
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const wallet = useWallet(Boolean(user));
+  useEffect(() => {
+    const hasClaimedDelayed = wallet.data?.items?.some(
+      (it) => it.tab === "active" && (it.voucher?.minLeadDays ?? 0) >= 3
+    );
+    if (hasClaimedDelayed && typeof window !== "undefined") {
+      const explicitChoice = sessionStorage.getItem("aloha_delivery_speed_user_explicit");
+      if (!explicitChoice) {
+        setDeliverySpeed("delayed_3d");
+        try {
+          sessionStorage.setItem("aloha_delivery_speed", "delayed_3d");
+        } catch {}
+      }
+    }
+  }, [wallet.data]);
+
   const candidateClaim = useCandidateClaim(() => setPromoNonce((n) => n + 1));
   useEffect(
     () => onShopCampaignChanged((kind) => kind === "campaign" && setPromoNonce((n) => n + 1)),
@@ -102,6 +143,7 @@ export default function CartPage() {
     lines: selectedLines,
     selectedCode: promoCode,
     autoMode: promoAutoMode,
+    deliverySpeed,
     phone: user?.phone,
     email: user?.email,
     refreshKey: `${promoNonce}:${requoteKey}`,
@@ -131,16 +173,17 @@ export default function CartPage() {
   const priceScopeKey = user?.id || "guest";
   const confirmedPrice = usePendingValue({ amount: tongSauGiam, subtotal: promoQuote?.subtotal ?? tamTinh,
     saved: discountAmount + flashSavings + anchorSavings + volumeSavings + (promoQuote?.wholesaleSavings || 0),
-    discount: discountAmount, title: promoQuote?.applied?.title, quote: promoQuote }, totalPending, priceScopeKey);
+    discount: discountAmount, title: promoQuote?.applied?.title, quote: promoQuote, applied: promoQuote?.applied }, totalPending, priceScopeKey);
   const displayAmount = confirmedPrice ? formatVnd(confirmedPrice.amount) : "—";
   const displayDiscount = confirmedPrice?.discount ?? 0;
   const handleCheckout = () => {
     if (selectedQty <= 0 || totalPending) return;
+    const dest = deliverySpeed === "delayed_3d" ? "/xac-nhan-don-hang?deliverySpeed=delayed_3d" : "/xac-nhan-don-hang";
     if (!user) {
-      router.push("/dang-nhap?next=/xac-nhan-don-hang");
+      router.push(`/dang-nhap?next=${encodeURIComponent(dest)}`);
       return;
     }
-    router.push("/xac-nhan-don-hang");
+    router.push(dest);
   };
 
   return (
@@ -372,37 +415,37 @@ export default function CartPage() {
         {/* Cột phải — tóm tắt */}
         <aside className="space-y-2 sm:space-y-3">
           {selectedLines.length ? <CartVoucherProgress quote={confirmedPrice?.quote ?? null} onClaim={candidateClaim.claim} /> : null}
+          {selectedLines.length ? (
+            <DeliverySpeedSelector
+              value={deliverySpeed}
+              onChange={handleDeliverySpeedChange}
+              quote={confirmedPrice?.quote ?? promoQuote}
+              loading={totalPending}
+            />
+          ) : null}
           <div
             onClick={() => setPromoModalOpen(true)}
             aria-busy={totalPending}
             className={`flex min-h-[52px] sm:min-h-[64px] items-center justify-between bg-white px-4 py-3 rounded-none sm:rounded-xl shadow-none sm:shadow-sm ring-0 sm:ring-1 sm:ring-[var(--aloha-line)] cursor-pointer hover:bg-slate-50 transition ${totalPending ? "opacity-60" : "opacity-100"}`}
           >
-            {displayDiscount > 0 ? (
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-rose-50 text-[var(--aloha-price)] shrink-0 sm:h-8 sm:w-8 sm:rounded-full sm:bg-[var(--aloha-green-light)] sm:text-[var(--aloha-green)]">
-                  <Ticket size={16} />
-                </div>
-                <div>
-                  <span className="text-[13px] sm:text-sm font-bold text-stone-900">
-                    Đã giảm {formatVnd(displayDiscount)}
-                  </span>
-                  {confirmedPrice?.title ? (
-                    <span className="block text-[11px] text-[var(--aloha-green)] font-semibold truncate max-w-[180px]">
-                      {confirmedPrice.title}
-                    </span>
-                  ) : null}
-                </div>
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-rose-50 text-[var(--aloha-price)] shrink-0 sm:h-8 sm:w-8 sm:rounded-full sm:bg-[var(--aloha-green-light)] sm:text-[var(--aloha-green)]">
+                <Ticket size={16} />
               </div>
-            ) : (
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-rose-50 text-[var(--aloha-price)] shrink-0 sm:h-8 sm:w-8 sm:rounded-full sm:bg-[var(--aloha-green-light)] sm:text-[var(--aloha-green)]">
-                  <Ticket size={16} />
-                </div>
+              <div>
                 <span className="text-[13px] sm:text-sm font-bold text-stone-900">
-                  Ưu đãi từ shop
+                  Voucher của Shop
                 </span>
+                {displayDiscount > 0 && confirmedPrice?.title ? (
+                  <span
+                    className="block text-[11px] text-[var(--aloha-green)] font-semibold truncate max-w-[180px] sm:max-w-[260px]"
+                    title={formatAppliedVoucherTitle(confirmedPrice?.applied, confirmedPrice.title)}
+                  >
+                    {formatAppliedVoucherTitle(confirmedPrice?.applied, confirmedPrice.title)}
+                  </span>
+                ) : null}
               </div>
-            )}
+            </div>
             <div className="flex items-center gap-1">
               {displayDiscount > 0 ? (
                 <span className="rounded bg-rose-50 px-2 py-0.5 text-xs font-bold text-[var(--aloha-price)]">
@@ -410,7 +453,7 @@ export default function CartPage() {
                 </span>
               ) : (
                 <span className="text-xs sm:text-sm font-medium text-[var(--aloha-green)]">
-                  Nhập ưu đãi
+                  Chọn hoặc nhập mã
                 </span>
               )}
               <ChevronRight size={16} className="text-stone-400" />
@@ -418,6 +461,7 @@ export default function CartPage() {
           </div>
 
           <OrderPaymentSummary total={tamTinh} totalPending={totalPending} priceScopeKey={priceScopeKey} discount={discountAmount}
+            voucherTitle={confirmedPrice?.title} voucherPromo={confirmedPrice?.applied}
             flashDiscount={flashSavings} volumeDiscount={volumeSavings} anchorDiscount={anchorSavings} wholesaleDiscount={promoQuote?.wholesaleSavings}
             grandTotal={tongSauGiam} cart showFreeshipProgress={false}>
             <button

@@ -39,6 +39,7 @@ export interface EvaluatedCandidateUI {
   /** Voucher được hoàn về vì đơn dùng nó trước đó đã huỷ / hết hạn thanh toán. */
   returnedFrom?: VoucherReturnInfo;
   mystery?: MysteryInfo;
+  minLeadDays?: number;
 }
 
 export interface PromotionQuoteUI {
@@ -53,6 +54,7 @@ export interface PromotionQuoteUI {
     discountType: "percentage" | "fixed";
     discountValue: number;
     discountAmount: number;
+    minLeadDays?: number;
   };
   lineDiscounts: Record<string, number>;
   subtotal: number;
