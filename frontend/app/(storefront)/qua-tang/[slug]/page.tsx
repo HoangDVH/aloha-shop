@@ -131,7 +131,7 @@ export default async function GiftDetailPage({
               {/* Nút Tư vấn qua Zalo */}
               <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 <a
-                  href="https://zalo.me/0394107309"
+                  href={`https://zalo.me/0794901233?text=${encodeURIComponent(`Chào Aloha, mình cần tư vấn đóng gói theo yêu cầu cho: ${gift.title}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex min-h-11 w-full sm:w-auto items-center justify-center gap-2 rounded-full bg-[#0E5242] px-6 text-sm font-bold text-white shadow-md transition hover:bg-[#156e59] text-center"
@@ -194,7 +194,7 @@ export default async function GiftDetailPage({
             </p>
             <div className="mt-4">
               <a
-                href="https://zalo.me/0394107309"
+                href="https://zalo.me/0794901233"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 rounded-full bg-[#0E5242] px-5 py-2 text-xs font-bold text-white shadow-sm"

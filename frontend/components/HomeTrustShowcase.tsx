@@ -444,7 +444,7 @@ export function HomeTrustShowcase({ props }: { props?: Record<string, unknown> }
               <span>100% Ảnh thật đã bàn giao &amp; Hóa đơn VAT</span>
             </span>
             <a
-              href={data.cta?.href || "https://zalo.me/0394107309"}
+              href={data.cta?.href || "https://zalo.me/0794901233"}
               target="_blank"
               rel="noopener noreferrer"
               className="group inline-flex items-center gap-2 rounded-full border border-[#1C4C40]/25 bg-white/70 hover:bg-white hover:border-[#1C4C40]/60 px-5 py-2.5 text-xs sm:text-sm font-semibold text-[#1C4C40] shadow-2xs transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sm"
