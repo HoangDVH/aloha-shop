@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  ArrowDown,
   ArrowRight,
   Check,
   Leaf,
@@ -49,6 +50,27 @@ export function SiRegisterWizard() {
   const [errorCode, setErrorCode] = useState("");
   const [ghnLoc, setGhnLoc] = useState({ ghnProvinceId: 0, ghnDistrictId: 0, ghnWardCode: "" });
   const [showTermsModal, setShowTermsModal] = useState(false);
+  const [showStickyBar, setShowStickyBar] = useState(false);
+
+  useEffect(() => {
+    const checkFormInView = () => {
+      const el = document.getElementById("form-dang-ky");
+      if (!el) {
+        setShowStickyBar(false);
+        return;
+      }
+      // Chỉ hiện sticky pill khi người dùng đã cuộn xuống đọc nội dung (tránh che màn hình ban đầu)
+      const isScrolled = window.scrollY > 280;
+      const rect = el.getBoundingClientRect();
+      const isAboveForm = rect.top > window.innerHeight * 0.7;
+      const isPastForm = rect.bottom < 100;
+      setShowStickyBar(isScrolled && isAboveForm && !isPastForm);
+    };
+
+    checkFormInView();
+    window.addEventListener("scroll", checkFormInView, { passive: true });
+    return () => window.removeEventListener("scroll", checkFormInView);
+  }, []);
   const form = useForm<SiRegisterInput>({ resolver: zodResolver(siRegisterSchema), defaultValues: defaults });
   const account = me.data;
   const status = account?.siStatus;
@@ -97,26 +119,32 @@ export function SiRegisterWizard() {
   const busy = register.isPending;
 
   return (
-    <div className="min-h-[75vh] bg-[var(--aloha-cream)] px-4 py-8 sm:py-16">
+    <div className="min-h-[75vh] bg-[var(--aloha-cream)] px-3 sm:px-4 py-4 sm:py-6">
       <div className="mx-auto max-w-5xl">
 
-        {/* TẦNG 1: CHÍNH SÁCH BÁN SỈ (Rộng rãi, thoáng mắt, dễ đọc) */}
-        <section className="space-y-6">
-          {/* Header trung tâm */}
-          <div className="text-center">
-            <h1 className="text-3xl font-black tracking-tight text-[#0f3822] sm:text-4xl lg:text-5xl">
-              CHÍNH SÁCH BÁN SỈ
-            </h1>
-          </div>
-
-          {/* Banner quy định bắt buộc */}
-          <div className="mx-auto max-w-3xl overflow-hidden rounded-2xl bg-[#0f3822] p-4 text-center text-white shadow-md sm:p-5">
-            <h2 className="text-sm font-black uppercase tracking-wide text-white sm:text-base">
-              CHỈ ÁP DỤNG CHO KHÁCH MUA HÀNG ĐỂ KINH DOANH, BÁN LẠI
-            </h2>
-            <p className="mt-1 text-xs font-medium text-emerald-100 sm:text-sm">
-              Chính sách giá sỉ áp dụng theo khu vực và số lượng từng mẫu sản phẩm
-            </p>
+        {/* TẦNG 1: CHÍNH SÁCH BÁN SỈ */}
+        <section className="space-y-4">
+          {/* Header tóm tắt ngắn gọn & súc tích (Chuẩn phong cách các công ty lớn) */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-emerald-900/10">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-[#0f3822]">
+                CHÍNH SÁCH BÁN SỈ
+              </h1>
+              <p className="mt-1 text-xs sm:text-sm text-slate-600">
+                Chỉ áp dụng khách mua kinh doanh, bán lại · Chiết khấu giá sỉ theo khu vực & số lượng
+              </p>
+            </div>
+            <a
+              href="#form-dang-ky"
+              onClick={(e) => {
+                e.preventDefault();
+                document.getElementById("form-dang-ky")?.scrollIntoView({ behavior: "smooth" });
+              }}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[var(--aloha-green)] px-4 py-2.5 text-xs sm:text-sm font-bold text-white shadow-sm hover:bg-[var(--aloha-green-dark)] transition active:scale-95 shrink-0 cursor-pointer"
+            >
+              <span>Điền form đăng ký sỉ</span>
+              <ArrowDown size={14} />
+            </a>
           </div>
 
           {/* Lưới 2 khối chính sách: 01 TP.HCM & 02 Đi Tỉnh (Chia 2 cột song song trên màn hình lớn) */}
@@ -227,21 +255,37 @@ export function SiRegisterWizard() {
             </div>
           </div>
 
-          {/* Footer Tag & Hỗ trợ nhanh */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-            <div className="rounded-full border border-emerald-200/80 bg-[#e8f5e9]/80 py-2 px-5 text-center text-xs font-black uppercase tracking-widest text-[#1b5e20] shadow-sm">
-              BÁN SỈ & BÁN LẺ CHẬU - CÂY - TIỂU CẢNH
-            </div>
-            <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-600">
-              <Leaf size={15} className="text-[var(--aloha-green)]" />
-              <span>Cần hỗ trợ sỉ nhanh?</span>
+          {/* Khối Hỗ trợ tư vấn Zalo nổi bật, bắt mắt */}
+          <div className="mt-4 overflow-hidden rounded-2xl border border-blue-200/90 bg-gradient-to-r from-blue-50/90 via-sky-50/80 to-emerald-50/90 p-3.5 sm:p-4 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0068FF] text-white font-black text-xs shadow-md">
+                  Zalo
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-extrabold text-[#0f3822] text-sm sm:text-base">
+                      Cần tư vấn sỉ nhanh hoặc xem ảnh thực tế tại vườn?
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
+                      Trực tuyến 24/7
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    Nhân viên Aloha hỗ trợ trực tiếp 1:1, báo giá số lượng lớn và giải đáp ngay.
+                  </p>
+                </div>
+              </div>
+
               <a
-                href="https://zalo.me"
+                href="https://zalo.me/0794901233"
                 target="_blank"
                 rel="noreferrer"
-                className="font-bold text-[var(--aloha-green)] hover:underline"
+                className="shrink-0 inline-flex items-center justify-center gap-2 rounded-xl bg-[#0068FF] hover:bg-[#0057D9] px-4 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md transition hover:shadow-lg active:scale-95 cursor-pointer"
               >
-                Nhắn Zalo 24/7 →
+                <span>Nhắn Zalo: 0794.901.233</span>
+                <ArrowRight size={14} />
               </a>
             </div>
           </div>
@@ -251,7 +295,7 @@ export function SiRegisterWizard() {
         {/* TẦNG 2: FORM ĐĂNG KÝ SỈ (Căn giữa, độc lập, tối ưu tập trung) */}
         <section
           id="form-dang-ky"
-          className="mt-12 sm:mt-16 scroll-mt-10 mx-auto max-w-2xl rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-10 shadow-[var(--aloha-shadow)]"
+          className="mt-8 sm:mt-10 scroll-mt-10 mx-auto max-w-2xl rounded-2xl sm:rounded-3xl border border-slate-200/90 bg-white p-5 sm:p-8 shadow-[var(--aloha-shadow)]"
         >
           {/* Header trong Form */}
           <div className="mb-6 border-b border-slate-100 pb-5 text-center">
@@ -328,7 +372,6 @@ export function SiRegisterWizard() {
               {field("businessType","Loại hình kinh doanh","text",true)}
               {!account && <>{field("email","Email","email")}{field("password","Mật khẩu (ít nhất 8 ký tự)","password")}</>}
               <details className="rounded-xl border border-slate-200 p-4"><summary className="cursor-pointer text-sm font-semibold">Thông tin bổ sung</summary><div className="mt-4 space-y-4">{field("taxCode","Mã số thuế","text",true)}{field("note","Ghi chú / quy mô / fanpage","text",true)}</div></details>
-              <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Sỉ HCM: đơn đầu từ {formatVnd(policy.hcmFirstMinimum)}. Sỉ tỉnh: mỗi đơn từ {formatVnd(policy.tinhMinimum)} và đủ số lượng từng mẫu. Mỗi mã sản phẩm là một mẫu; màu/kích thước khác mã tính riêng. Hệ thống tự phân nhóm theo địa chỉ: chỉ phạm vi TP.HCM cũ là sỉ HCM; Bình Dương và Bà Rịa–Vũng Tàu cũ vẫn là sỉ tỉnh. Aloha kiểm tra thông tin sau đăng ký.</p>
               <label className="flex items-start gap-3 text-sm">
                 <input
                   type="checkbox"
@@ -357,6 +400,22 @@ export function SiRegisterWizard() {
           </div>}
         </>}
         </section>
+
+        {/* Floating Button: Nhắc nhở người dùng khi đang cuộn xem chính sách */}
+        {showStickyBar && (
+          <div className="fixed bottom-4 right-4 z-40 animate-fade-in transition-all">
+            <button
+              type="button"
+              onClick={() => {
+                document.getElementById("form-dang-ky")?.scrollIntoView({ behavior: "smooth" });
+              }}
+              className="inline-flex items-center gap-1.5 rounded-full bg-[var(--aloha-green)] px-4 py-2 text-xs font-bold text-white shadow-lg hover:bg-[var(--aloha-green-dark)] transition active:scale-95 cursor-pointer"
+            >
+              <span>Điền form sỉ</span>
+              <ArrowDown size={13} />
+            </button>
+          </div>
+        )}
 
         {/* Modal hiển thị chi tiết Điều khoản mua sỉ và chính sách giao nhận */}
         <WholesaleTermsModal

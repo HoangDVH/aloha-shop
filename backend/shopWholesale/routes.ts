@@ -27,6 +27,7 @@ import {
   putSiOauthSession,
   takeSiOauthSession,
 } from "./siEphemeral.js";
+import { zaloNotifyService, NOTIFY_PHONE_TARGET } from "./zaloNotifyService.js";
 
 type GetDb = () => Promise<Db>;
 const COOKIE = "shop_si_onboarding";
@@ -282,6 +283,17 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
       }
       res.clearCookie(COOKIE, { path: "/" });
       syncBus.publish([SHOP_ACCOUNTS], "si_registered_pending_verification", { ids: [String(account!._id)] });
+      // Gửi thông báo tự động vào mục Cloud của tôi trên Zalo số test (0337095980) theo Cách 1
+      void zaloNotifyService.sendWholesaleRegistrationNotice({
+        fullName: input.fullName,
+        phone: input.phone,
+        region: regionAssignment.region,
+        shopName: input.shopName,
+        businessType: input.businessType,
+        note: input.note,
+      }).catch((err) => {
+        console.error("[ZaloNotify] Auto notice error:", err?.message || err);
+      });
       res.json(await issueShopSession(res, db, account!));
     } catch (error) { sendError(res, error); }
   });
@@ -378,4 +390,166 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
       res.json({ ok: true });
     } catch (error) { sendError(res, error); }
   });
+
+  // Endpoints kết nối và kiểm tra thông báo Zalo cho số 0337095980
+  app.get("/api/shop/zalo-notify/status", (_req, res) => {
+    res.json(zaloNotifyService.getStatus());
+  });
+
+  app.post("/api/shop/zalo-notify/qr", async (_req, res) => {
+    try {
+      const qr = await zaloNotifyService.generateQR();
+      res.json({ success: true, qr, ...zaloNotifyService.getStatus() });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Lỗi tạo mã QR Zalo" });
+    }
+  });
+
+  app.post("/api/shop/zalo-notify/test-send", async (_req, res) => {
+    try {
+      const result = await zaloNotifyService.sendWholesaleRegistrationNotice({
+        fullName: "Khách Thử Nghiệm",
+        phone: "0912345678",
+        region: "HCM",
+        shopName: "Tiệm Cây Xanh Test",
+        businessType: "Đại lý bán lẻ",
+        note: "Tin nhắn kiểm tra tính năng thông báo Zalo đến số " + NOTIFY_PHONE_TARGET,
+      });
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Lỗi gửi tin nhắn" });
+    }
+  });
+
+  app.get("/zalo-connect", (_req, res) => {
+    res.send(renderZaloConnectHtml());
+  });
 }
+
+function renderZaloConnectHtml() {
+  return `<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kết Nối Zalo Thông Báo Sỉ (0337095980) - Aloha</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; background: #F1F8EF; }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+  <div class="max-w-md w-full bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-emerald-900/10 text-center">
+    <div class="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-800 mb-3">
+      Test Thông Báo Zalo (Số: ${NOTIFY_PHONE_TARGET})
+    </div>
+    <h1 class="text-2xl font-black text-[#0f3822]">KẾT NỐI ZALO THÔNG BÁO SỈ</h1>
+    <p class="text-xs text-slate-500 mt-1">
+      Quét mã QR bằng ứng dụng Zalo trên số <strong class="text-emerald-800">${NOTIFY_PHONE_TARGET}</strong> để nhận thông báo tức thì vào nhóm Zalo "Aloha - Thông Báo Sỉ" (gồm số test ${NOTIFY_PHONE_TARGET} và số shop 0794901233).
+    </p>
+
+    <div id="statusBadge" class="mt-4 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700">
+      Đang kiểm tra trạng thái...
+    </div>
+
+    <div class="my-5 flex flex-col items-center justify-center min-h-[260px] bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 p-4">
+      <div id="qrLoading" class="text-xs text-slate-400">Bấm nút bên dưới để tạo mã QR</div>
+      <img id="qrImage" class="hidden w-56 h-56 object-contain rounded-xl shadow-md border border-slate-200" alt="Zalo QR" />
+    </div>
+
+    <div class="space-y-2.5">
+      <button id="btnGenerate" onclick="generateQR()" class="w-full rounded-xl bg-[#0068FF] hover:bg-[#0057D9] text-white py-3 px-4 text-sm font-bold shadow-md transition active:scale-95 cursor-pointer">
+        Tạo mã QR kết nối Zalo
+      </button>
+
+      <button id="btnTestSend" onclick="testSend()" class="w-full rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white py-2.5 px-4 text-xs font-bold shadow transition active:scale-95 cursor-pointer">
+        Gửi tin nhắn thử nghiệm vào Nhóm Zalo
+      </button>
+    </div>
+
+    <div class="mt-5 text-[11px] text-slate-500 text-left bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-100 leading-relaxed">
+      <strong>Hướng dẫn kiểm tra:</strong><br />
+      1. Bấm <strong>"Tạo mã QR kết nối Zalo"</strong>.<br />
+      2. Mở app Zalo trên điện thoại <strong>${NOTIFY_PHONE_TARGET}</strong> &gt; Chọn Quét mã QR.<br />
+      3. Bấm <strong>"Xác nhận đăng nhập"</strong> trên điện thoại.<br />
+      4. Bấm <strong>"Gửi tin nhắn thử nghiệm vào Nhóm Zalo"</strong> > Nhóm <strong>"Aloha - Thông Báo Sỉ"</strong> sẽ nhận tin nhắn ngay lập tức!
+    </div>
+  </div>
+
+  <script>
+    async function checkStatus() {
+      try {
+        const res = await fetch('/api/shop/zalo-notify/status');
+        const data = await res.json();
+        const badge = document.getElementById('statusBadge');
+        const img = document.getElementById('qrImage');
+        const loading = document.getElementById('qrLoading');
+
+        if (data.connected) {
+          badge.className = 'mt-4 p-2.5 rounded-xl bg-emerald-100 border border-emerald-300 text-xs font-bold text-emerald-800';
+          badge.innerHTML = '✅ ĐÃ KẾT NỐI ZALO (Số: ' + data.targetPhone + ')';
+          img.classList.add('hidden');
+          loading.classList.remove('hidden');
+          loading.innerHTML = '<span class="text-emerald-700 font-bold">Hệ thống đã sẵn sàng gửi thông báo vào nhóm Zalo <strong>Aloha - Thông Báo Sỉ</strong>!</span>';
+        } else {
+          if (data.status === 'cho_quet' && data.qrImage) {
+            badge.className = 'mt-4 p-2.5 rounded-xl bg-amber-100 border border-amber-300 text-xs font-bold text-amber-800 animate-pulse';
+            badge.innerText = '📱 Đã có mã QR! Mở Zalo số ' + data.targetPhone + ' quét mã bên dưới';
+            img.src = data.qrImage;
+            img.classList.remove('hidden');
+            loading.classList.add('hidden');
+          } else if (data.status === 'da_quet_cho_xac_nhan') {
+            badge.className = 'mt-4 p-2.5 rounded-xl bg-blue-100 border border-blue-300 text-xs font-bold text-blue-800 animate-pulse';
+            badge.innerText = '⏳ Đã quét mã! Bấm Xác nhận đăng nhập trên điện thoại...';
+          } else {
+            badge.className = 'mt-4 p-2.5 rounded-xl bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-600';
+            badge.innerText = 'Chưa kết nối. Bấm nút bên dưới để tạo mã QR.';
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function generateQR() {
+      const btn = document.getElementById('btnGenerate');
+      btn.innerText = 'Đang khởi tạo mã QR...';
+      btn.disabled = true;
+      try {
+        await fetch('/api/shop/zalo-notify/qr', { method: 'POST' });
+        setTimeout(checkStatus, 1000);
+      } catch (e) {
+        alert('Lỗi tạo mã QR: ' + e.message);
+      } finally {
+        btn.innerText = 'Tạo lại mã QR kết nối Zalo';
+        btn.disabled = false;
+      }
+    }
+
+    async function testSend() {
+      const btn = document.getElementById('btnTestSend');
+      btn.innerText = 'Đang gửi...';
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/shop/zalo-notify/test-send', { method: 'POST' });
+        const result = await res.json();
+        if (result.success) {
+          alert('✅ Đã gửi thông báo test thành công vào nhóm Zalo "Aloha - Thông Báo Sỉ"! Mở Zalo kiểm tra ting ting nhé.');
+        } else {
+          alert('⚠️ Chưa thể gửi: ' + (result.reason || result.error || 'Vui lòng quét mã QR trước'));
+        }
+      } catch (e) {
+        alert('Lỗi: ' + e.message);
+      } finally {
+        btn.innerText = 'Gửi tin nhắn thử nghiệm vào Nhóm Zalo';
+        btn.disabled = false;
+      }
+    }
+
+    setInterval(checkStatus, 3000);
+    checkStatus();
+  </script>
+</body>
+</html>`;
+}
+
