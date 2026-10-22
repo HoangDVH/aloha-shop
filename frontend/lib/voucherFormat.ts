@@ -127,10 +127,10 @@ export function formatAppliedVoucherTitle(
 
   if (!rawTitle && !discountValue) return "Voucher shop";
 
-  // 0. Voucher đặt trước (minLeadDays >= 3 hoặc tiêu đề nhắc tới chờ giao / đặt trước)
+  // 0. Voucher đặt trước (minLeadDays >= 3 hoặc có chữ chờ...ngày)
   const isDelayed = Boolean(
     (minLeadDays != null && minLeadDays >= 3) ||
-    /chờ.*ngày|đặt trước/i.test(rawTitle)
+    /chờ.*ngày/i.test(rawTitle)
   );
   if (isDelayed) {
     let val = "";
@@ -227,8 +227,8 @@ export function formatAppliedVoucherTitle(
 export function voucherCustomerTitle(title?: string, offer?: Partial<VoucherLike>): string {
   const cleaned = (title || "").replace(/\s*\(\s*3\s+sản\s+phẩm\s*\)/giu, "").trim();
 
-  // 0. Voucher đặt trước (minLeadDays >= 3 hoặc tiêu đề nhắc tới chờ giao / đặt trước)
-  if ((offer?.minLeadDays != null && offer.minLeadDays >= 3) || /chờ.*ngày|đặt trước/i.test(cleaned)) {
+  // 0. Voucher đặt trước (minLeadDays >= 3 hoặc có chữ chờ...ngày)
+  if ((offer?.minLeadDays != null && offer.minLeadDays >= 3) || /chờ.*ngày/i.test(cleaned)) {
     const val =
       offer?.discountType === "percentage" && offer?.discountValue
         ? pctText(offer as any)
