@@ -127,6 +127,21 @@
   animation: fade-up 0.45s ease-out both;
 }
 
+@keyframes fade-down {
+  from {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-down {
+  animation: fade-down 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 /* Cột nút nổi góc phải (Zalo dưới cùng, bong bóng voucher / lên đầu trang xếp trên): đứng trên tab bar + thanh dính đáy của trang. */
 :root {
   --shop-float-bottom: calc(

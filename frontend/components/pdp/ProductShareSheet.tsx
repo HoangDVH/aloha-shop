@@ -209,21 +209,30 @@ function ProductShareSheet({ ma, name, path, images, videos, ctvCode, onClose }:
       await shareWithDevice(target);
       return;
     }
-    if (pickedItems.length) {
-      toast.push("Trình duyệt chưa hỗ trợ gửi file trực tiếp. Bấm «Lưu ảnh & video», chọn file trong Facebook/Zalo rồi sao chép và dán nội dung, link.");
-      return;
-    }
+
+    const fullCaption = shareCaptionWithLink(caption, url);
+    await copyText(fullCaption);
+
     if (target === "facebook") {
       window.open(
         `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
         "_blank",
         "noopener,noreferrer,width=640,height=600"
       );
+      toast.push(
+        pickedItems.length > 0
+          ? "Đã mở Facebook & sao chép nội dung. Bạn có thể nhấn Ctrl+V để dán bài viết hoặc tải thêm ảnh."
+          : "Đã mở cửa sổ chia sẻ Facebook."
+      );
       return;
     }
-    if (!await copyText(shareCaptionWithLink(caption, url))) { toast.push("Không sao chép được nội dung. Hãy chọn nội dung để sao chép."); return; }
+
     window.open("https://chat.zalo.me/", "_blank", "noopener,noreferrer");
-    toast.push("Đã sao chép link SP — dán (Ctrl+V) vào khung chat Zalo");
+    toast.push(
+      pickedItems.length > 0
+        ? "Đã sao chép nội dung & link SP. Nhấn dán (Ctrl+V) vào khung chat Zalo để gửi ngay!"
+        : "Đã sao chép link SP — dán (Ctrl+V) vào khung chat Zalo."
+    );
   };
 
   const copyLink = async () => {
@@ -378,7 +387,7 @@ function ProductShareSheet({ ma, name, path, images, videos, ctvCode, onClose }:
               <p className="mt-1.5 text-xs leading-relaxed text-stone-500">
                 {deviceShare
                   ? "Chọn ứng dụng nhận trong bảng chia sẻ của máy. Facebook nhận riêng ảnh/video; bấm «Sao chép nội dung & link» để dán vào bài viết. Nếu không có ứng dụng bạn cần hoặc không nhận đủ file, hãy lưu file để đăng trực tiếp."
-                  : "Bấm «Lưu ảnh & video», chọn file trong Facebook/Zalo rồi dán nội dung và link. Bỏ chọn tất cả ảnh/video nếu chỉ muốn chia sẻ link."}
+                  : "Trên máy tính: Bấm Facebook hoặc Zalo để chia sẻ link kèm ảnh xem trước tự động. Bấm «Lưu ảnh & video» nếu muốn tải trọn bộ file về máy."}
               </p>
               {Object.values(loadState).includes("error") && <button type="button" onClick={() => setLoadState(s => Object.fromEntries(Object.entries(s).filter(([, state]) => state !== "error")))} className="mt-2 text-sm font-semibold text-rose-700 underline">Thử tải lại ảnh/video lỗi</button>}
             </div>

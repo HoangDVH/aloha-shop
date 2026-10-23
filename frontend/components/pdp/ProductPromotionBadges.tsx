@@ -278,7 +278,7 @@ export function ProductPromotionBadges({
           </button>
         </div>
 
-        <div className="flex items-stretch gap-2.5 overflow-x-auto no-scrollbar [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex-nowrap py-0.5">
+        <div className="flex sm:grid sm:grid-cols-2 items-stretch gap-2.5 overflow-x-auto sm:overflow-visible no-scrollbar [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex-nowrap sm:flex-wrap py-0.5 sm:py-0">
           {applicableBadges.map(({ promotion, headline, subline, type }) => {
             const isShipping = type === "shipping";
             const isDelayed = (promotion.minLeadDays || 0) >= 3;
@@ -313,7 +313,7 @@ export function ProductPromotionBadges({
             return (
               <div
                 key={promotion.id}
-                className={`relative inline-flex shrink-0 items-stretch rounded-xl border text-xs overflow-hidden transition select-none ${
+                className={`relative inline-flex sm:flex shrink-0 sm:shrink sm:w-full items-stretch rounded-xl border text-xs overflow-hidden transition select-none ${
                   isActive
                     ? `ring-2 ring-rose-500 border-rose-500 ${theme.cardBg} shadow-xs`
                     : `${theme.border} ${theme.cardBg} shadow-2xs hover:shadow-xs`
@@ -336,7 +336,7 @@ export function ProductPromotionBadges({
                     }
                   }}
                   disabled={isPending}
-                  className="flex flex-col justify-center px-3.5 py-1.5 hover:opacity-90 text-left cursor-pointer min-w-[130px] sm:min-w-[145px]"
+                  className="flex flex-1 flex-col justify-center px-3.5 py-1.5 hover:opacity-90 text-left cursor-pointer min-w-[130px] sm:min-w-0"
                   title={`${voucherCustomerTitle(promotion.title, promotion)} · ${isActive ? "Đang áp dụng · Bấm để xem điều kiện" : "Bấm để áp dụng voucher này"}`}
                 >
                   <div className="flex items-center gap-1 font-bold text-xs leading-tight">
@@ -347,16 +347,16 @@ export function ProductPromotionBadges({
                     ) : (
                       <TicketPercent size={13} className={`shrink-0 ${theme.iconColor}`} />
                     )}
-                    <span className={`whitespace-nowrap ${theme.headline}`}>{headline}</span>
+                    <span className={`whitespace-nowrap sm:truncate ${theme.headline}`}>{headline}</span>
                   </div>
                   <div className="mt-0.5 text-[11px] text-slate-500 font-medium whitespace-nowrap flex items-center justify-between gap-1">
-                    <span>{subline}</span>
+                    <span className="sm:truncate">{subline}</span>
                     <span
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedPromo(promotion);
                       }}
-                      className="text-[10px] text-slate-400 hover:text-slate-600 underline font-normal ml-1"
+                      className="text-[10px] text-slate-400 hover:text-slate-600 underline font-normal ml-1 shrink-0 whitespace-nowrap"
                       title="Xem điều kiện"
                     >
                       Chi tiết ›
@@ -380,7 +380,7 @@ export function ProductPromotionBadges({
 
                     {isActive ? (
                       <span
-                        className={`relative px-3 text-[11px] font-extrabold border-l border-dashed ${theme.divider} flex items-center justify-center shrink-0 select-none bg-white/80 ${theme.activeText}`}
+                        className={`relative px-3 text-[11px] font-extrabold border-l border-dashed ${theme.divider} flex items-center justify-center shrink-0 select-none bg-white/80 ${theme.activeText} whitespace-nowrap`}
                       >
                         ✓ Đang dùng
                       </span>
@@ -389,7 +389,7 @@ export function ProductPromotionBadges({
                         type="button"
                         disabled={isPending}
                         onClick={() => handleSelectVoucher(promotion)}
-                        className={`relative px-3 text-[11px] font-bold border-l border-dashed ${theme.divider} flex items-center justify-center transition shrink-0 select-none ${theme.btnBg} cursor-pointer active:scale-95`}
+                        className={`relative px-3 text-[11px] font-bold border-l border-dashed ${theme.divider} flex items-center justify-center transition shrink-0 select-none ${theme.btnBg} cursor-pointer active:scale-95 whitespace-nowrap`}
                       >
                         {isPending ? "..." : "Dùng mã"}
                       </button>
@@ -398,7 +398,7 @@ export function ProductPromotionBadges({
                         type="button"
                         disabled={isPending}
                         onClick={() => handleSelectVoucher(promotion)}
-                        className={`relative px-3 text-[11px] font-bold border-l border-dashed ${theme.divider} flex items-center justify-center transition shrink-0 select-none ${theme.btnBg} cursor-pointer active:scale-95`}
+                        className={`relative px-3 text-[11px] font-bold border-l border-dashed ${theme.divider} flex items-center justify-center transition shrink-0 select-none ${theme.btnBg} cursor-pointer active:scale-95 whitespace-nowrap`}
                       >
                         {isPending ? "..." : "Lưu"}
                       </button>
@@ -417,7 +417,7 @@ export function ProductPromotionBadges({
                     />
                     {isActive ? (
                       <span
-                        className={`relative px-2.5 text-[11px] font-extrabold border-l border-dashed ${theme.divider} flex items-center justify-center shrink-0 select-none bg-white/80 ${theme.activeText}`}
+                        className={`relative px-2.5 text-[11px] font-extrabold border-l border-dashed ${theme.divider} flex items-center justify-center shrink-0 select-none bg-white/80 ${theme.activeText} whitespace-nowrap`}
                       >
                         ✓ Đang dùng
                       </span>
@@ -425,7 +425,7 @@ export function ProductPromotionBadges({
                       <button
                         type="button"
                         onClick={() => handleSelectVoucher(promotion)}
-                        className={`relative px-2.5 text-[11px] font-bold border-l border-dashed ${theme.divider} flex items-center justify-center transition shrink-0 select-none ${theme.btnBg} cursor-pointer active:scale-95`}
+                        className={`relative px-2.5 text-[11px] font-bold border-l border-dashed ${theme.divider} flex items-center justify-center transition shrink-0 select-none ${theme.btnBg} cursor-pointer active:scale-95 whitespace-nowrap`}
                       >
                         Dùng mã
                       </button>

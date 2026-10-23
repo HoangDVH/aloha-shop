@@ -58,20 +58,22 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastCtx.Provider value={api}>
       {children}
-      <div className="pointer-events-none fixed left-1/2 top-[calc(0.75rem+env(safe-area-inset-top,0px))] z-[200] flex w-[min(92vw,360px)] -translate-x-1/2 flex-col gap-2 md:left-auto md:right-4 md:top-auto md:bottom-4 md:translate-x-0">
+      <div className="pointer-events-none fixed left-1/2 top-[calc(1rem+env(safe-area-inset-top,0px))] z-[9999] flex w-[min(92vw,440px)] -translate-x-1/2 flex-col items-center gap-2.5">
         {items.map((t) => (
           <div
             key={t.id}
-            className="pointer-events-auto flex items-start gap-3 rounded-xl bg-white p-3 shadow-lg ring-1 ring-[#D5E3D0] animate-fade-up"
+            className="pointer-events-auto flex w-full items-center gap-3 rounded-2xl bg-slate-900/95 text-white px-4 py-3 shadow-2xl shadow-black/35 backdrop-blur-md ring-1 ring-white/15 animate-fade-down select-none"
             role="status"
           >
-            <CheckCircle2 className="mt-0.5 shrink-0 text-[var(--aloha-green)]" size={20} />
-            <div className="min-w-0 flex-1 text-sm text-[var(--aloha-ink)]">
-              <p className="font-semibold">{t.message}</p>
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/30">
+              <CheckCircle2 size={18} strokeWidth={2.5} />
+            </div>
+            <div className="min-w-0 flex-1 text-sm leading-snug">
+              <p className="font-semibold text-white/95">{t.message}</p>
               {t.href ? (
                 <Link
                   href={t.href}
-                  className="mt-1 inline-block text-xs font-bold text-[var(--aloha-green)] underline-offset-2 hover:underline"
+                  className="mt-1 inline-block text-xs font-bold text-emerald-400 hover:text-emerald-300 underline underline-offset-2 transition-colors"
                 >
                   {t.hrefLabel || "Xem giỏ hàng"}
                 </Link>
@@ -79,7 +81,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             </div>
             <button
               type="button"
-              className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              className="rounded-lg p-1 text-white/50 hover:bg-white/15 hover:text-white transition cursor-pointer"
               onClick={() => setItems((prev) => prev.filter((x) => x.id !== t.id))}
               aria-label="Đóng"
             >
