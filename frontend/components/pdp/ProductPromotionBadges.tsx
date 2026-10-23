@@ -2,7 +2,7 @@
 import { voucherCustomerTitle } from "@/lib/voucherFormat";
 
 import { useEffect, useState, useMemo } from "react";
-import { Ticket, Truck, X, ChevronRight } from "lucide-react";
+import { Ticket, TicketPercent, Truck, X, ChevronRight } from "lucide-react";
 import { getAvailablePromotions, type AvailablePromotionUI } from "@/lib/promotions";
 import type { ShopProduct } from "@/lib/api";
 import { formatVnd } from "@/lib/api";
@@ -15,10 +15,22 @@ import { PdpVoucherSheet } from "./PdpVoucherSheet";
 import { useCampaignView } from "@/lib/campaign/useCampaignView";
 import { pdpApplicableVouchers, pdpDefaultVouchers, pdpVoucherSheetEntries } from "@/lib/pdpVouchers";
 
+interface AppliedVoucherSummary {
+  promotionId: string;
+  title: string;
+  type?: "auto" | "code";
+  code?: string;
+  discountType?: "percentage" | "fixed";
+  discountValue?: number;
+  discountAmount?: number;
+  minLeadDays?: number;
+}
+
 interface ProductPromotionBadgesProps {
   product: ShopProduct;
   livePrice?: number;
   isWholesale?: boolean;
+  appliedVoucher?: AppliedVoucherSummary;
 }
 
 interface FormattedTwoLineBadge {
@@ -89,6 +101,7 @@ function formatTwoLineBadge(p: AvailablePromotionUI): FormattedTwoLineBadge {
 export function ProductPromotionBadges({
   product,
   isWholesale = false,
+  appliedVoucher,
 }: ProductPromotionBadgesProps) {
   const [promotions, setPromotions] = useState<AvailablePromotionUI[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -98,6 +111,28 @@ export function ProductPromotionBadges({
   const toast = useToast();
   const { user } = useShopAuth();
   const { viewer } = useCampaignView();
+
+  const [deliverySpeed, setDeliverySpeed] = useState<"standard" | "delayed_3d">(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const s = sessionStorage.getItem("aloha_delivery_speed");
+        if (s === "delayed_3d") return "delayed_3d";
+      } catch {}
+    }
+    return "standard";
+  });
+
+  useEffect(() => {
+    const onSpeedChanged = (e: any) => {
+      const speed = e?.detail?.speed || (typeof window !== "undefined" ? sessionStorage.getItem("aloha_delivery_speed") : null);
+      if (speed === "delayed_3d" || speed === "standard") {
+        setDeliverySpeed(speed);
+      }
+    };
+    window.addEventListener("aloha-delivery-speed-changed", onSpeedChanged);
+    return () => window.removeEventListener("aloha-delivery-speed-changed", onSpeedChanged);
+  }, []);
+
   useEffect(() => {
     if (!claims.claimedVoucherId) return;
     toast.push("Đã lưu voucher vào ví. Mã sẽ được kiểm tra và áp dụng khi thanh toán.");
@@ -138,23 +173,54 @@ export function ProductPromotionBadges({
     [applicablePromotions]
   );
 
+  const activePromoId = useMemo(() => {
+    if (deliverySpeed === "delayed_3d") {
+      return delayedPromo?.id || null;
+    }
+    if (appliedVoucher?.promotionId) {
+      return appliedVoucher.promotionId;
+    }
+    const firstStandard = applicableBadges.find(
+      (b) => b.type === "goods" && (b.promotion.minLeadDays || 0) < 3
+    );
+    return firstStandard?.promotion.id || null;
+  }, [deliverySpeed, delayedPromo, appliedVoucher, applicableBadges]);
+
+  const handleSelectVoucher = (promo: AvailablePromotionUI) => {
+    const isShipping = promo.benefitType === "shipping";
+    const isDelayed = (promo.minLeadDays || 0) >= 3;
+    const isClaimed = claims.claimedIds.has(promo.id);
+
+    if (promo.claimRequired && !isClaimed) {
+      claims.claim(promo.id);
+    }
+
+    if (isShipping) {
+      toast.push("Voucher vận chuyển được áp dụng và trừ vào phí ship tại bước thanh toán");
+      return;
+    }
+
+    if (isDelayed) {
+      try {
+        sessionStorage.setItem("aloha_delivery_speed", "delayed_3d");
+        sessionStorage.setItem("aloha_delivery_speed_user_explicit", "true");
+        window.dispatchEvent(new CustomEvent("aloha-delivery-speed-changed", { detail: { speed: "delayed_3d" } }));
+      } catch {}
+      setDeliverySpeed("delayed_3d");
+      toast.push(`Đã áp dụng ${voucherCustomerTitle(promo.title, promo)} (Chờ giao sau ${promo.minLeadDays || 3} ngày)`);
+    } else {
+      try {
+        sessionStorage.setItem("aloha_delivery_speed", "standard");
+        sessionStorage.setItem("aloha_delivery_speed_user_explicit", "true");
+        window.dispatchEvent(new CustomEvent("aloha-delivery-speed-changed", { detail: { speed: "standard" } }));
+      } catch {}
+      setDeliverySpeed("standard");
+      toast.push(`Đã áp dụng ${voucherCustomerTitle(promo.title, promo)} (Giao ngay tiêu chuẩn)`);
+    }
+  };
+
   const sheetEntries = pdpVoucherSheetEntries(promotions, product, viewer, claims.claimedIds, isWholesale);
   const unavailable = Object.fromEntries(sheetEntries.filter(e => e.reason).map(e => [e.promotion.id, e.reason!]));
-
-  useEffect(() => {
-    if (!loaded) return;
-    const hasClaimedLeadPromo = promotions.some(
-      (p) => claims.claimedIds.has(p.id) && (p.minLeadDays || 0) >= 3
-    );
-    if (hasClaimedLeadPromo) {
-      try {
-        if (sessionStorage.getItem("aloha_delivery_speed") !== "delayed_3d") {
-          sessionStorage.setItem("aloha_delivery_speed", "delayed_3d");
-          window.dispatchEvent(new CustomEvent("aloha-delivery-speed-changed", { detail: { speed: "delayed_3d" } }));
-        }
-      } catch {}
-    }
-  }, [loaded, promotions, claims.claimedIds]);
 
   if (!loaded || sheetEntries.length === 0) {
     return null;
@@ -163,26 +229,45 @@ export function ProductPromotionBadges({
   return (
     <>
       <section
-        className="my-3.5 rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50/60 to-white p-3 sm:p-3.5 space-y-2.5 shadow-xs"
+        className="my-3.5 rounded-2xl border border-stone-200/80 bg-white p-3 sm:p-3.5 space-y-2.5 shadow-xs"
         aria-label="Voucher và khuyến mãi"
       >
         {delayedPromo ? (
-          <div className="flex items-center gap-2 py-2 px-2.5 rounded-xl bg-emerald-50/90 border border-emerald-200/80 text-xs text-emerald-900">
-            <span className="shrink-0 text-base leading-none">🎁</span>
-            <div className="flex-1 min-w-0">
-              <span className="font-bold text-emerald-800 leading-snug">
-                Ưu đãi đặt trước: Giảm {pctText(delayedPromo)} khi chọn Chờ giao sau {delayedPromo.minLeadDays || 3} ngày tại giỏ hàng
-              </span>
+          <div className={`flex items-center justify-between gap-2 py-2 px-3 rounded-xl border text-xs transition ${
+            deliverySpeed === "delayed_3d"
+              ? "bg-rose-50/80 border-rose-200 text-slate-800"
+              : "bg-stone-50/90 border-stone-200/90 text-slate-700"
+          }`}>
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="shrink-0 text-base leading-none">🎁</span>
+              <div className="min-w-0">
+                <span className="text-slate-600 leading-snug">
+                  <span className="font-bold text-slate-900">Ưu đãi đặt trước:</span> Giảm <span className="font-extrabold text-rose-600">{pctText(delayedPromo)}</span> khi chọn voucher Chờ giao sau {delayedPromo.minLeadDays || 3} ngày
+                </span>
+              </div>
             </div>
+            {deliverySpeed === "delayed_3d" ? (
+              <span className="shrink-0 rounded-md bg-rose-600 px-2.5 py-1 text-[11px] font-bold text-white shadow-2xs">
+                ✓ Đang áp dụng
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleSelectVoucher(delayedPromo)}
+                className="shrink-0 rounded-md bg-rose-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-rose-700 transition active:scale-95 cursor-pointer"
+              >
+                Chọn ngay
+              </button>
+            )}
           </div>
         ) : null}
 
         <div className="flex items-center justify-between pt-0.5">
-          <span className="text-sm font-bold text-slate-800">Voucher &amp; khuyến mãi</span>
+          <span className="text-sm font-bold text-slate-900">Voucher &amp; khuyến mãi</span>
           <button
             type="button"
             onClick={() => setVoucherOpen(true)}
-            className="inline-flex items-center gap-0.5 text-xs font-semibold text-[var(--aloha-green,#15803d)] hover:underline cursor-pointer"
+            className="inline-flex items-center gap-0.5 text-xs font-semibold text-slate-500 hover:text-rose-600 transition-colors cursor-pointer"
             aria-haspopup="dialog"
           >
             <span>Xem tất cả ({sheetEntries.length})</span>
@@ -196,77 +281,153 @@ export function ProductPromotionBadges({
             const isDelayed = (promotion.minLeadDays || 0) >= 3;
             const isClaimed = claims.claimedIds.has(promotion.id);
             const isPending = claims.pendingId === promotion.id;
+            const isActive = !isShipping && promotion.id === activePromoId;
+
+            const theme = isShipping
+              ? {
+                  cardBg: "bg-teal-50/70",
+                  border: "border-teal-200",
+                  notchBorder: "border-teal-200",
+                  divider: "border-teal-200",
+                  headline: "text-teal-700",
+                  iconColor: "text-teal-600",
+                  btnBg: "bg-teal-600 hover:bg-teal-700 text-white",
+                  claimedBg: "bg-teal-50 text-teal-700",
+                  activeText: "text-teal-700",
+                }
+              : {
+                  cardBg: "bg-rose-50/70",
+                  border: "border-rose-200",
+                  notchBorder: "border-rose-200",
+                  divider: "border-rose-200",
+                  headline: "text-rose-600",
+                  iconColor: "text-rose-600",
+                  btnBg: "bg-rose-600 hover:bg-rose-700 text-white",
+                  claimedBg: "bg-rose-50 text-rose-700",
+                  activeText: "text-rose-600",
+                };
 
             return (
               <div
                 key={promotion.id}
-                className={`inline-flex shrink-0 items-stretch rounded-xl border text-xs overflow-hidden transition select-none shadow-2xs ${
-                  isShipping
-                    ? "border-teal-200 bg-teal-50/70 text-teal-900"
-                    : isDelayed
-                    ? "border-emerald-200 bg-emerald-50/80 text-emerald-900"
-                    : "border-orange-200 bg-orange-50/70 text-orange-950"
+                className={`relative inline-flex shrink-0 items-stretch rounded-xl border text-xs overflow-hidden transition select-none ${
+                  isActive
+                    ? `ring-2 ring-rose-500 border-rose-500 ${theme.cardBg} shadow-xs`
+                    : `${theme.border} ${theme.cardBg} shadow-2xs hover:shadow-xs`
                 }`}
               >
+                {/* Rãnh khuyết vé bán nguyệt mép trái */}
+                <span
+                  className={`pointer-events-none absolute -left-1.5 top-1/2 -translate-y-1/2 z-10 h-3 w-3 rounded-full bg-white border ${theme.notchBorder}`}
+                  aria-hidden="true"
+                />
+
+                {/* Thân voucher (nội dung chính) */}
                 <button
                   type="button"
                   onClick={() => {
-                    if (promotion.claimRequired && !isClaimed) {
-                      claims.claim(promotion.id);
-                      if (isDelayed) {
-                        try {
-                          sessionStorage.setItem("aloha_delivery_speed", "delayed_3d");
-                          window.dispatchEvent(new CustomEvent("aloha-delivery-speed-changed", { detail: { speed: "delayed_3d" } }));
-                        } catch {}
-                      }
-                    } else {
+                    if (isActive) {
                       setSelectedPromo(promotion);
+                    } else {
+                      handleSelectVoucher(promotion);
                     }
                   }}
                   disabled={isPending}
-                  className="flex flex-col justify-center px-3 py-1.5 hover:opacity-85 text-left cursor-pointer min-w-[130px] sm:min-w-[145px]"
-                  title={`${voucherCustomerTitle(promotion.title, promotion)} · Bấm để xem điều kiện`}
+                  className="flex flex-col justify-center px-3.5 py-1.5 hover:opacity-90 text-left cursor-pointer min-w-[130px] sm:min-w-[145px]"
+                  title={`${voucherCustomerTitle(promotion.title, promotion)} · ${isActive ? "Đang áp dụng · Bấm để xem điều kiện" : "Bấm để áp dụng voucher này"}`}
                 >
                   <div className="flex items-center gap-1 font-bold text-xs leading-tight">
                     {isShipping ? (
-                      <Truck size={13} className="shrink-0 text-teal-600" />
+                      <Truck size={13} className={`shrink-0 ${theme.iconColor}`} />
                     ) : isDelayed ? (
                       <span className="shrink-0 text-xs leading-none">🎁</span>
                     ) : (
-                      <Ticket size={13} className="shrink-0 text-orange-600" />
+                      <TicketPercent size={13} className={`shrink-0 ${theme.iconColor}`} />
                     )}
-                    <span className="whitespace-nowrap">{headline}</span>
+                    <span className={`whitespace-nowrap ${theme.headline}`}>{headline}</span>
                   </div>
-                  <div className="mt-0.5 text-[11px] text-slate-500 font-medium whitespace-nowrap">
-                    {subline}
+                  <div className="mt-0.5 text-[11px] text-slate-500 font-medium whitespace-nowrap flex items-center justify-between gap-1">
+                    <span>{subline}</span>
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedPromo(promotion);
+                      }}
+                      className="text-[10px] text-slate-400 hover:text-slate-600 underline font-normal ml-1"
+                      title="Xem điều kiện"
+                    >
+                      Chi tiết ›
+                    </span>
                   </div>
                 </button>
 
-                {promotion.claimRequired && (
-                  <button
-                    type="button"
-                    disabled={isPending || isClaimed}
-                    onClick={() => {
-                      claims.claim(promotion.id);
-                      if (isDelayed) {
-                        try {
-                          sessionStorage.setItem("aloha_delivery_speed", "delayed_3d");
-                          window.dispatchEvent(new CustomEvent("aloha-delivery-speed-changed", { detail: { speed: "delayed_3d" } }));
-                        } catch {}
-                      }
-                    }}
-                    className={`px-2.5 text-[11px] font-bold border-l border-dashed border-current/20 flex items-center justify-center transition shrink-0 ${
-                      isClaimed
-                        ? "bg-black/5 opacity-60 cursor-default"
-                        : isShipping
-                        ? "bg-teal-700 text-white hover:bg-teal-800 cursor-pointer"
-                        : isDelayed
-                        ? "bg-emerald-700 text-white hover:bg-emerald-800 cursor-pointer"
-                        : "bg-orange-600 text-white hover:bg-orange-700 cursor-pointer"
-                    }`}
-                  >
-                    {isPending ? "..." : isClaimed ? "Đã lưu" : "Lưu"}
-                  </button>
+                {/* Nút hành động Lưu / Đang dùng / Dùng mã */}
+                {promotion.claimRequired ? (
+                  <div className="relative flex shrink-0 items-stretch">
+                    {/* Rãnh khuyết trên tại đường đứt đoạn */}
+                    <span
+                      className={`pointer-events-none absolute -top-1.5 left-0 -translate-x-1/2 z-10 h-3 w-3 rounded-full bg-white border ${theme.notchBorder}`}
+                      aria-hidden="true"
+                    />
+                    {/* Rãnh khuyết dưới tại đường đứt đoạn */}
+                    <span
+                      className={`pointer-events-none absolute -bottom-1.5 left-0 -translate-x-1/2 z-10 h-3 w-3 rounded-full bg-white border ${theme.notchBorder}`}
+                      aria-hidden="true"
+                    />
+
+                    {isActive ? (
+                      <span
+                        className={`relative px-3 text-[11px] font-extrabold border-l border-dashed ${theme.divider} flex items-center justify-center shrink-0 select-none bg-white/80 ${theme.activeText}`}
+                      >
+                        ✓ Đang dùng
+                      </span>
+                    ) : isClaimed ? (
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => handleSelectVoucher(promotion)}
+                        className={`relative px-3 text-[11px] font-bold border-l border-dashed ${theme.divider} flex items-center justify-center transition shrink-0 select-none ${theme.btnBg} cursor-pointer active:scale-95`}
+                      >
+                        {isPending ? "..." : "Dùng mã"}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => handleSelectVoucher(promotion)}
+                        className={`relative px-3 text-[11px] font-bold border-l border-dashed ${theme.divider} flex items-center justify-center transition shrink-0 select-none ${theme.btnBg} cursor-pointer active:scale-95`}
+                      >
+                        {isPending ? "..." : "Lưu"}
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  /* Mã không cần lưu (như Khách hàng mới / Khách hàng cũ) */
+                  <div className="relative flex shrink-0 items-stretch">
+                    <span
+                      className={`pointer-events-none absolute -top-1.5 left-0 -translate-x-1/2 z-10 h-3 w-3 rounded-full bg-white border ${theme.notchBorder}`}
+                      aria-hidden="true"
+                    />
+                    <span
+                      className={`pointer-events-none absolute -bottom-1.5 left-0 -translate-x-1/2 z-10 h-3 w-3 rounded-full bg-white border ${theme.notchBorder}`}
+                      aria-hidden="true"
+                    />
+                    {isActive ? (
+                      <span
+                        className={`relative px-2.5 text-[11px] font-extrabold border-l border-dashed ${theme.divider} flex items-center justify-center shrink-0 select-none bg-white/80 ${theme.activeText}`}
+                      >
+                        ✓ Đang dùng
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleSelectVoucher(promotion)}
+                        className={`relative px-2.5 text-[11px] font-bold border-l border-dashed ${theme.divider} flex items-center justify-center transition shrink-0 select-none ${theme.btnBg} cursor-pointer active:scale-95`}
+                      >
+                        Dùng mã
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             );
@@ -275,18 +436,28 @@ export function ProductPromotionBadges({
       </section>
 
       <LoginSheet open={claims.loginOpen} onClose={claims.cancelLogin} onDone={claims.loginDone} />
-      {voucherOpen && <PdpVoucherSheet items={sheetEntries.map(e => e.promotion)} unavailable={unavailable} claimed={claims.claimedIds} pendingId={claims.pendingId}
-        onClose={() => setVoucherOpen(false)} onDetails={p => { setVoucherOpen(false); setSelectedPromo(p); }}
-        onClaim={(p) => {
-          if (!user) setVoucherOpen(false);
-          claims.claim(p.id);
-          if ((p.minLeadDays || 0) >= 3) {
-            try {
-              sessionStorage.setItem("aloha_delivery_speed", "delayed_3d");
-              window.dispatchEvent(new CustomEvent("aloha-delivery-speed-changed", { detail: { speed: "delayed_3d" } }));
-            } catch {}
-          }
-        }} />}
+      {voucherOpen && (
+        <PdpVoucherSheet
+          items={sheetEntries.map(e => e.promotion)}
+          unavailable={unavailable}
+          claimed={claims.claimedIds}
+          pendingId={claims.pendingId}
+          activePromoId={activePromoId}
+          onClose={() => setVoucherOpen(false)}
+          onDetails={p => {
+            setVoucherOpen(false);
+            setSelectedPromo(p);
+          }}
+          onClaim={(p) => {
+            if (!user) setVoucherOpen(false);
+            claims.claim(p.id);
+          }}
+          onSelectVoucher={(p) => {
+            handleSelectVoucher(p);
+            setVoucherOpen(false);
+          }}
+        />
+      )}
       {/* Modal chi tiết điều kiện voucher */}
       {selectedPromo && (
         <div

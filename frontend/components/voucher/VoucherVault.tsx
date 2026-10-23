@@ -347,6 +347,11 @@ export function VoucherVault({
                           · {minOrderText}
                         </span>
                       </div>
+                      {v.minLeadDays && v.minLeadDays >= 3 ? (
+                        <p className="text-[10px] font-semibold text-emerald-700 leading-tight mt-0.5">
+                          Áp dụng khi chọn Chờ giao sau {v.minLeadDays} ngày
+                        </p>
+                      ) : null}
                       <div className="flex items-center gap-1.5 mt-0.5 text-[9px] sm:text-[10px] text-slate-400 leading-none">
                         {v.endDate ? <span>HSD: {vnDate(v.endDate)}</span> : null}
                         {claimedPct != null && left != null && left <= 20 ? (

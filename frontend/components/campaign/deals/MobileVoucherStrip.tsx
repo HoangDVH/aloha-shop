@@ -119,9 +119,15 @@ function TikTokLargeVoucherCard({
                 · {minOrderText}
               </span>
             </div>
-            <p className="text-[10px] text-slate-400 leading-tight mt-0.5">
-              Cho sản phẩm đủ điều kiện
-            </p>
+            {v.minLeadDays && v.minLeadDays >= 3 ? (
+              <p className="text-[10.5px] font-semibold text-[#047857] leading-tight mt-0.5">
+                Áp dụng khi chọn Chờ giao sau {v.minLeadDays} ngày
+              </p>
+            ) : (
+              <p className="text-[10px] text-slate-400 leading-tight mt-0.5">
+                Cho sản phẩm đủ điều kiện
+              </p>
+            )}
           </div>
 
           <div className="shrink-0">

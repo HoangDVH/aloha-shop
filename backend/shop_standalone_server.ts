@@ -56,6 +56,7 @@ import { registerKvOrderWebhookRoutes, startKvOrderEditSync } from './shopOrders
 import { startCampaignWorker } from './shopCampaigns/worker/campaignWorker.js';
 import { registerShopCtvApiDocs } from './shopOrders/ctvApiDocs.js';
 import { registerPlantDoctorRoutes } from './plantDoctor/routes.js';
+import { registerShopChatbotRoutes } from './shopChatbot/routes.js';
 import { registerShopCatalogSyncFromOpsRoutes } from './shopCatalog/syncCatalogFromOps.js';
 import { registerAuthRoutes } from './auth/routes.js';
 import { applyShopCors } from './shopCors.js';
@@ -253,6 +254,7 @@ registerShopAppearanceRoutes(app, getOpsDb, getDb);
 registerShopArticlesRoutes(app, getOpsDb, getDb);
 registerShopRecruitmentRoutes(app, getOpsDb, getDb);
 registerPlantDoctorRoutes(app, getOpsDb, getDb);
+registerShopChatbotRoutes(app, getDb);
 registerShopProductsAdminRoutes(app, getOpsDb, getDb, getCatalogSourceDb);
 registerShopCatalogSyncFromOpsRoutes(app, getOpsDb, getDb, getCatalogSourceDb);
 registerShopSeoRedirectRoutes(app, getOpsDb, getDb);

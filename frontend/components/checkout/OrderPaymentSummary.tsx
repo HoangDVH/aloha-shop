@@ -86,24 +86,34 @@ export function OrderPaymentSummary({ total: liveTotal, totalPending = false, di
             <span>Giá gốc sản phẩm</span>
             <span className="tabular-nums">{amountText(total + anchorDiscount + volumeDiscount + wholesaleDiscount)}</span>
           </div>
-          {wholesaleDiscount > 0 && <div className="flex justify-between gap-3 font-semibold text-[var(--aloha-price)]"><span>Ưu đãi giá sỉ so với giá web</span><span className="tabular-nums">-{amountText(wholesaleDiscount)}</span></div>}
+          {wholesaleDiscount > 0 && (
+            <div className="flex justify-between gap-3">
+              <span className="text-slate-600 font-medium">Ưu đãi giá sỉ so với giá web</span>
+              <span className="tabular-nums font-semibold text-emerald-700">-{amountText(wholesaleDiscount)}</span>
+            </div>
+          )}
           {anchorDiscount > 0 ? (
-            <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold">
-              <span>Giảm giá sản phẩm</span>
-              <span className="tabular-nums">-{amountText(anchorDiscount)}</span>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-slate-600 font-medium">Giảm giá sản phẩm</span>
+              <span className="tabular-nums font-semibold text-emerald-700">-{amountText(anchorDiscount)}</span>
             </div>
           ) : null}
-          {volumeDiscount > 0 ? <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold"><span>Giảm theo số lượng</span><span>-{amountText(volumeDiscount)}</span></div> : null}
+          {volumeDiscount > 0 ? (
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-slate-600 font-medium">Giảm theo số lượng</span>
+              <span className="tabular-nums font-semibold text-emerald-700">-{amountText(volumeDiscount)}</span>
+            </div>
+          ) : null}
           {flashDiscount > 0 ? (
-            <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold">
-              <span>Giảm Flash Sale</span>
-              <span className="tabular-nums">-{amountText(flashDiscount)}</span>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-slate-600 font-medium">Giảm Flash Sale</span>
+              <span className="tabular-nums font-semibold text-emerald-700">-{amountText(flashDiscount)}</span>
             </div>
           ) : null}
           {discount > 0 ? (
-            <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold">
-              <span className="min-w-0 truncate" title={appliedVoucherLabel}>{appliedVoucherLabel}</span>
-              <span className="tabular-nums">-{amountText(discount)}</span>
+            <div className="flex items-center justify-between gap-3">
+              <span className="min-w-0 truncate text-slate-600 font-medium" title={appliedVoucherLabel}>{appliedVoucherLabel}</span>
+              <span className="tabular-nums font-semibold text-emerald-700">-{amountText(discount)}</span>
             </div>
           ) : null}
           <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-3 font-bold text-slate-800"><span>Tiền hàng sau ưu đãi</span><span className="tabular-nums">{amountText(goodsAfter)}</span></div>
@@ -131,18 +141,18 @@ export function OrderPaymentSummary({ total: liveTotal, totalPending = false, di
                   )}
                 </div>
                 {shippingDiscount > 0 ? (
-                  <div className="flex items-center justify-between gap-3 text-[var(--aloha-price)] font-semibold">
-                    <span className="min-w-0 truncate" title={shippingPromotionTitle}>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="min-w-0 truncate text-slate-600 font-medium" title={shippingPromotionTitle}>
                       {shippingPromotionTitle || "Hỗ trợ phí ship"}
                     </span>
-                    <span className="tabular-nums">-{amountText(shippingDiscount)}</span>
+                    <span className="tabular-nums font-semibold text-emerald-700">-{amountText(shippingDiscount)}</span>
                   </div>
                 ) : null}
               </>
             ) : (
               <div className="flex items-center justify-between gap-3">
                 <span>Phí vận chuyển</span>
-                <span className="tabular-nums font-medium text-amber-700">Chờ xác nhận</span>
+                <span className="tabular-nums font-medium text-slate-500">Chờ xác nhận</span>
               </div>
             )
           ) : null}

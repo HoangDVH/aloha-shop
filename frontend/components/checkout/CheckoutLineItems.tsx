@@ -229,7 +229,6 @@ export function CheckoutLineItems({
                 </p>
               </div>
 
-              {savings > 0 ? <p className="hidden lg:block mt-2 rounded-lg bg-rose-50 px-3 py-2 text-right text-xs font-semibold text-[var(--aloha-price)]">Tiết kiệm {formatVnd(savings)} <span className="ml-1 rounded bg-rose-100 px-1.5 py-0.5">-{Math.round(savings / referenceTotal * 100)}%</span></p> : null}
               {editing ? (
                 <div className="mt-2 rounded-lg border border-[var(--aloha-line)] bg-[var(--aloha-cream)]/40 p-2.5 lg:ml-[4.25rem]">
                   <textarea

@@ -56,7 +56,7 @@ export function SiRegisterWizard() {
     const checkFormInView = () => {
       const el = document.getElementById("form-dang-ky");
       if (!el) {
-        setShowStickyBar(false);
+        setShowStickyBar((prev) => (prev ? false : prev));
         return;
       }
       // Chỉ hiện sticky pill khi người dùng đã cuộn xuống đọc nội dung (tránh che màn hình ban đầu)
@@ -64,7 +64,8 @@ export function SiRegisterWizard() {
       const rect = el.getBoundingClientRect();
       const isAboveForm = rect.top > window.innerHeight * 0.7;
       const isPastForm = rect.bottom < 100;
-      setShowStickyBar(isScrolled && isAboveForm && !isPastForm);
+      const shouldShow = isScrolled && isAboveForm && !isPastForm;
+      setShowStickyBar((prev) => (prev !== shouldShow ? shouldShow : prev));
     };
 
     checkFormInView();
@@ -110,12 +111,22 @@ export function SiRegisterWizard() {
     await shopLogout();
     window.location.href = shopLoginHref(registrationReturnPath);
   };
-  const field = (name: keyof SiRegisterInput, label: string, type = "text", optional = false) => <label className="block text-sm font-semibold text-slate-700" key={name}>
-    {label} {optional && <span className="font-normal text-slate-400">(không bắt buộc)</span>}
-    <input {...form.register(name)} type={type} autoComplete={name === "password" ? "new-password" : undefined} aria-invalid={Boolean(form.formState.errors[name])}
-      className="mt-2 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-base font-normal outline-none transition focus:border-[var(--aloha-green)] focus:ring-2 focus:ring-[var(--aloha-green-light)]" />
-    {form.formState.errors[name] && <span role="alert" className="mt-1 block text-xs text-red-700">{form.formState.errors[name]?.message}</span>}
-  </label>;
+  const field = (name: keyof SiRegisterInput, label: string, type = "text", optional = false) => (
+    <div className="block" key={name}>
+      <label htmlFor={`si-${name}`} className="block text-sm font-semibold text-slate-700">
+        {label} {optional && <span className="font-normal text-slate-400">(không bắt buộc)</span>}
+      </label>
+      <input
+        id={`si-${name}`}
+        {...form.register(name)}
+        type={type}
+        autoComplete={name === "password" ? "new-password" : undefined}
+        aria-invalid={Boolean(form.formState.errors[name])}
+        className="mt-2 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-base font-normal outline-none focus:border-[var(--aloha-green)] focus:ring-2 focus:ring-[var(--aloha-green-light)]"
+      />
+      {form.formState.errors[name] && <span role="alert" className="mt-1 block text-xs text-red-700">{form.formState.errors[name]?.message}</span>}
+    </div>
+  );
   const busy = register.isPending;
 
   return (
@@ -327,19 +338,22 @@ export function SiRegisterWizard() {
           </div> : <form onSubmit={form.handleSubmit(values=>register.mutate(values))} onBlur={saveDraft} className="mt-5 space-y-5">
               <>
                 {field("fullName","Họ tên người liên hệ")}
-                <label className="block text-sm font-semibold text-slate-700">
-                  Số điện thoại {linkedPhone && <span className="font-normal text-xs text-slate-500">(đã gắn với tài khoản)</span>}
+                <div className="block">
+                  <label htmlFor="si-phone" className="block text-sm font-semibold text-slate-700">
+                    Số điện thoại {linkedPhone && <span className="font-normal text-xs text-slate-500">(đã gắn với tài khoản)</span>}
+                  </label>
                   <input
+                    id="si-phone"
                     {...form.register("phone")}
                     type="tel"
                     readOnly={Boolean(linkedPhone)}
                     aria-invalid={Boolean(form.formState.errors.phone)}
-                    className={`mt-2 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-base font-normal outline-none transition focus:border-[var(--aloha-green)] focus:ring-2 focus:ring-[var(--aloha-green-light)] ${
+                    className={`mt-2 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-base font-normal outline-none focus:border-[var(--aloha-green)] focus:ring-2 focus:ring-[var(--aloha-green-light)] ${
                       linkedPhone ? "bg-slate-100 cursor-not-allowed text-slate-600" : ""
                     }`}
                   />
                   {form.formState.errors.phone && <span role="alert" className="mt-1 block text-xs text-red-700">{form.formState.errors.phone.message}</span>}
-                </label>
+                </div>
                 <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
                   <p className="mb-3 text-sm font-semibold text-slate-700">Địa chỉ kinh doanh / kho hàng</p>
                   <GhnAddressFields

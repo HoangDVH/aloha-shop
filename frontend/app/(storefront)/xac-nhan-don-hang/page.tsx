@@ -191,8 +191,11 @@ function CheckoutConfirm() {
         const urlParams = new URLSearchParams(window.location.search);
         const urlSpeed = urlParams.get("deliverySpeed");
         if (urlSpeed === "delayed_3d" || urlSpeed === "standard") return urlSpeed;
-        const saved = sessionStorage.getItem("aloha_delivery_speed");
-        if (saved === "delayed_3d" || saved === "standard") return saved;
+        const explicit = sessionStorage.getItem("aloha_delivery_speed_user_explicit");
+        if (explicit) {
+          const saved = sessionStorage.getItem("aloha_delivery_speed");
+          if (saved === "delayed_3d" || saved === "standard") return saved;
+        }
       } catch {
         /* ignore */
       }
@@ -209,22 +212,6 @@ function CheckoutConfirm() {
       /* ignore */
     }
   };
-
-  const wallet = useWallet(Boolean(user));
-  useEffect(() => {
-    const hasClaimedDelayed = wallet.data?.items?.some(
-      (it) => it.tab === "active" && (it.voucher?.minLeadDays ?? 0) >= 3
-    );
-    if (hasClaimedDelayed && typeof window !== "undefined") {
-      const explicitChoice = sessionStorage.getItem("aloha_delivery_speed_user_explicit");
-      if (!explicitChoice) {
-        setDeliverySpeed("delayed_3d");
-        try {
-          sessionStorage.setItem("aloha_delivery_speed", "delayed_3d");
-        } catch {}
-      }
-    }
-  }, [wallet.data]);
 
   const {
     quote: promoQuote,
@@ -605,6 +592,8 @@ function CheckoutConfirm() {
         loading={promoLoading}
         selectedCode={promoCode}
         autoMode={promoAutoMode}
+        deliverySpeed={deliverySpeed}
+        onDeliverySpeedChange={handleDeliverySpeedChange}
         onApplyCode={(c) => {
           setPromoCode(c);
           setPromoAutoMode(false);

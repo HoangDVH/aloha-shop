@@ -97,6 +97,11 @@ export function CompactVoucherCard({voucher: v, state, pending, onClaim, onProdu
         <p className="line-clamp-2 text-xs font-bold leading-4 text-slate-900 group-hover:text-[var(--campaign-primary,#C8102E)] transition-colors">
           {displayTitle}
         </p>
+        {v.minLeadDays && v.minLeadDays >= 3 ? (
+          <p className="text-[10px] leading-3 font-semibold text-emerald-700">
+            Áp dụng khi chọn Chờ giao sau {v.minLeadDays} ngày
+          </p>
+        ) : null}
         {ship && (v.minOrderThreshold || 0) > 0 ? (
           <p className="text-[10px] leading-3 font-medium text-slate-500">
             Đơn từ {formatVnd(v.minOrderThreshold!)}

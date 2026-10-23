@@ -227,7 +227,9 @@ class ZaloNotifyService {
     region?: string;
     shopName?: string;
     businessType?: string;
+    address?: string;
     note?: string;
+    registeredAt?: string | Date;
   }): Promise<{ success: boolean; reason?: string }> {
     if (!this.api || !this.ownUid) {
       const restored = await this.restoreSession();
@@ -238,7 +240,11 @@ class ZaloNotifyService {
     }
 
     try {
-      const regionText = data.region === "HCM" ? "Sỉ TP.HCM (Nội thành)" : "Sỉ Tỉnh (Chành xe)";
+      const regionText = data.region === "HCM" ? "Sỉ TP.HCM" : "Sỉ Tỉnh";
+      const timeStr = data.registeredAt
+        ? new Date(data.registeredAt).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })
+        : new Date().toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+
       const messageText = [
         `🌿 [ALOHA] CÓ KHÁCH ĐĂNG KÝ MUA SỈ MỚI:`,
         `👤 Khách hàng: ${data.fullName}`,
@@ -246,9 +252,10 @@ class ZaloNotifyService {
         `📍 Phân vùng: ${regionText}`,
         `🏪 Cửa hàng: ${data.shopName || "Chưa cập nhật"}`,
         `🏢 Mô hình: ${data.businessType || "Chưa cập nhật"}`,
+        data.address ? `🏠 Địa chỉ: ${data.address}` : "",
         data.note ? `📝 Ghi chú: ${data.note}` : "",
         `💬 Nhắn Zalo khách ngay: https://zalo.me/${data.phone}`,
-        `⏰ Thời gian: ${new Date().toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })}`,
+        `⏰ Thời gian: ${timeStr}`,
       ]
         .filter(Boolean)
         .join("\n");

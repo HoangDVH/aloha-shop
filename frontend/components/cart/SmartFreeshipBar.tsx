@@ -126,7 +126,7 @@ export function SmartFreeshipBar({
                   <Truck size={13} strokeWidth={2.4} aria-hidden />
                 </span>
                 <p className="text-xs font-semibold text-slate-800 leading-tight">
-                  Mua thêm <strong className="text-[#C8102E] font-black">{formatVnd(shortfall)}</strong>
+                  Mua thêm <strong className="text-slate-900 font-extrabold">{formatVnd(shortfall)}</strong>
                 </p>
               </div>
 
@@ -216,13 +216,13 @@ export function SmartFreeshipBar({
             ) : currentTier ? (
               <p className="text-xs sm:text-[13px] font-medium text-slate-700 leading-snug">
                 Đã đạt <strong className="text-emerald-700 font-bold">{currentTier.label}</strong>! Mua thêm{" "}
-                <strong className="text-[#C8102E] font-black">{formatVnd(shortfall)}</strong> để được{" "}
-                <strong className="text-[#0D9488] font-bold uppercase">{nextTier?.label}</strong>
+                <strong className="text-slate-900 font-extrabold">{formatVnd(shortfall)}</strong> để được{" "}
+                <strong className="text-teal-700 font-bold uppercase">{nextTier?.label}</strong>
               </p>
             ) : (
               <p className="text-xs sm:text-[13px] font-medium text-slate-700 leading-snug">
-                Mua thêm <strong className="text-[#C8102E] font-black">{formatVnd(shortfall)}</strong> để được{" "}
-                <strong className="text-[#0D9488] font-bold uppercase">{nextTier?.label}</strong>
+                Mua thêm <strong className="text-slate-900 font-extrabold">{formatVnd(shortfall)}</strong> để được{" "}
+                <strong className="text-teal-700 font-bold uppercase">{nextTier?.label}</strong>
               </p>
             )}
           </div>

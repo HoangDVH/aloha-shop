@@ -186,29 +186,31 @@ export function GhnAddressFields({
     <div className="space-y-3">
       {!hideContactFields && (
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block">
-            <span className="mb-1.5 block text-xs font-semibold text-slate-600">
+          <div className="block">
+            <label htmlFor="ghn-fullname" className="mb-1.5 block text-xs font-semibold text-slate-600">
               Tên khách hàng <span className="text-red-500">*</span>
-            </span>
+            </label>
             <input
+              id="ghn-fullname"
               className="auth-field"
               value={value.fullName}
               onChange={(e) => onChange({ fullName: e.target.value })}
               placeholder="Họ và tên"
             />
-          </label>
-          <label className="block">
-            <span className="mb-1.5 block text-xs font-semibold text-slate-600">
+          </div>
+          <div className="block">
+            <label htmlFor="ghn-phone" className="mb-1.5 block text-xs font-semibold text-slate-600">
               Số điện thoại <span className="text-red-500">*</span>
-            </span>
+            </label>
             <input
+              id="ghn-phone"
               className="auth-field"
               value={value.phone}
               onChange={(e) => onChange({ phone: e.target.value })}
               placeholder="09..."
               inputMode="tel"
             />
-          </label>
+          </div>
         </div>
       )}
 
@@ -350,17 +352,18 @@ export function GhnAddressFields({
         </div>
       )}
 
-      <label className="block">
-        <span className="mb-1.5 block text-xs font-semibold text-slate-600">
+      <div className="block">
+        <label htmlFor="ghn-detail" className="mb-1.5 block text-xs font-semibold text-slate-600">
           {addressLabel} <span className="text-red-500">*</span>
-        </span>
+        </label>
         <input
+          id="ghn-detail"
           className="auth-field"
           value={value.detail}
           onChange={(e) => onChange({ detail: e.target.value })}
           placeholder="Số nhà, tên đường..."
         />
-      </label>
+      </div>
 
       {showMergerAlert && (
         <AddressMergerAlert

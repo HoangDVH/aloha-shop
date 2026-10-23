@@ -60,26 +60,21 @@ export function ProductAttachedItems({
 
   return (
     <section
-      aria-label="Sản phẩm đính kèm & phụ kiện"
-      className="relative overflow-hidden rounded-[var(--aloha-radius,1rem)] border border-[#e8e2d8] bg-white p-4 shadow-[var(--aloha-shadow,0_2px_8px_rgba(0,0,0,0.04))] transition sm:p-5"
+      aria-label="Gợi ý mua kèm phù hợp"
+      className="my-3 rounded-2xl border border-stone-200/90 bg-stone-50/50 p-2.5 sm:p-3 space-y-2 shadow-2xs"
     >
-      {/* Header */}
-      <div className="flex items-center gap-2 border-b border-[#f0ece4] pb-3">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--aloha-green-light,#e8f5e9)] text-[var(--aloha-green,#2e7d32)]">
-          <Layers className="h-4 w-4" />
+      {/* Header gọn gàng */}
+      <div className="flex items-center gap-1.5">
+        <span className="flex h-5 w-5 items-center justify-center rounded-md bg-[var(--aloha-green-light,#e8f5e9)] text-[var(--aloha-green,#2e7d32)]">
+          <Layers className="h-3 w-3" />
         </span>
-        <div>
-          <h2 className="text-base font-bold text-slate-800 sm:text-lg">
-            Gợi ý mua kèm phù hợp
-          </h2>
-          <p className="text-xs text-slate-500">
-            Bấm &ldquo;Mua kèm&rdquo; để mua cùng sản phẩm chính trong một đơn hàng
-          </p>
-        </div>
+        <h3 className="text-xs font-bold text-slate-800 sm:text-sm">
+          Gợi ý mua kèm phù hợp
+        </h3>
       </div>
 
-      {/* Grid 2 sản phẩm mỗi dòng */}
-      <div className="mt-3.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3">
+      {/* Grid 2 sản phẩm hoặc 1 cột gọn gàng */}
+      <div className={items.length > 1 ? "grid grid-cols-1 sm:grid-cols-2 gap-2" : "space-y-2"}>
         {items.map((item) => {
           const inCart = cartLines.find((l) => l.ma.toUpperCase() === item.ma.toUpperCase());
           const inCartQty = inCart?.qty || 0;
@@ -90,40 +85,40 @@ export function ProductAttachedItems({
           return (
             <div
               key={item.ma}
-              className={`flex items-center justify-between gap-3 rounded-xl border p-2.5 transition sm:p-3 ${
+              className={`flex items-center justify-between gap-2.5 rounded-xl border p-2 transition ${
                 inCartQty > 0
-                  ? "border-emerald-300 bg-emerald-50/40 shadow-2xs"
-                  : "border-[#ede7de] bg-[#fdfcf9] hover:border-[var(--aloha-green,#2e7d32)]/40 hover:bg-white"
+                  ? "border-emerald-300 bg-emerald-50/60 shadow-2xs"
+                  : "border-stone-200/90 bg-white hover:border-[var(--aloha-green,#2e7d32)]/50"
               }`}
             >
-              {/* Thumbnail */}
-              <AttachedProductImage item={item} />
+              {/* Thumbnail 44x44px */}
+              <AttachedProductImage item={item} compact />
 
               {/* Info */}
               <div className="min-w-0 flex-1">
                 <Link
                   href={item.path || `/sp/${item.ma}`}
-                  className="line-clamp-1 text-xs font-semibold text-slate-800 hover:text-[var(--aloha-green,#2e7d32)] sm:text-sm"
+                  className="line-clamp-2 text-xs font-bold text-slate-800 hover:text-[var(--aloha-green,#2e7d32)] leading-tight"
                   title={item.ten}
                 >
                   {item.ten}
                 </Link>
 
                 <div className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5 text-xs">
-                  <span className="font-bold text-[var(--aloha-price,#b72a2a)] sm:text-sm">
+                  <span className="font-extrabold text-[var(--aloha-price,#b72a2a)]">
                     {formatVnd(price)}
                   </span>
                   {item.dvt ? (
-                    <span className="text-[11px] text-slate-400">/ {item.dvt}</span>
+                    <span className="text-[10px] text-slate-400">/ {item.dvt.toLowerCase()}</span>
                   ) : null}
                   {originalPrice ? (
-                    <span className="text-[11px] text-slate-400 line-through">
+                    <span className="text-[10px] text-slate-400 line-through">
                       {formatVnd(originalPrice)}
                     </span>
                   ) : null}
                 </div>
 
-                <div className="mt-0.5 flex items-center gap-1.5 text-[11px]">
+                <div className="mt-0.5 flex items-center gap-1.5 text-[10px]">
                   <span
                     className={`inline-block h-1.5 w-1.5 rounded-full ${
                       isPreOrder ? "bg-amber-500" : "bg-emerald-500"
@@ -142,7 +137,7 @@ export function ProductAttachedItems({
                 <button
                   type="button"
                   onClick={() => handleAddSingle(item)}
-                  className={`flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-bold transition active:scale-95 sm:px-2.5 ${
+                  className={`flex h-7.5 items-center gap-1 rounded-lg px-2 text-[11px] font-bold transition active:scale-95 cursor-pointer sm:px-2.5 ${
                     inCartQty > 0
                       ? "border border-emerald-400 bg-emerald-600 text-white hover:bg-emerald-700 shadow-2xs"
                       : "border border-[var(--aloha-green,#2e7d32)]/30 bg-[var(--aloha-green-light,#e8f5e9)] text-[var(--aloha-green-mid,#236327)] hover:bg-[var(--aloha-green,#2e7d32)] hover:text-white"
@@ -151,12 +146,12 @@ export function ProductAttachedItems({
                 >
                   {inCartQty > 0 ? (
                     <>
-                      <Check className="h-3.5 w-3.5 stroke-[2.5]" />
+                      <Check className="h-3 w-3 stroke-[2.5]" />
                       <span>Đã thêm ({inCartQty})</span>
                     </>
                   ) : (
                     <>
-                      <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
+                      <Plus className="h-3 w-3 stroke-[2.5]" />
                       <span>Mua kèm</span>
                     </>
                   )}

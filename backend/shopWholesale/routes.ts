@@ -284,12 +284,18 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
       res.clearCookie(COOKIE, { path: "/" });
       syncBus.publish([SHOP_ACCOUNTS], "si_registered_pending_verification", { ids: [String(account!._id)] });
       // Gửi thông báo tự động vào mục Cloud của tôi trên Zalo số test (0337095980) theo Cách 1
+      const fullAddress = [input.detail, input.ward, input.district, input.province]
+        .map((s) => String(s || "").trim())
+        .filter(Boolean)
+        .join(", ");
+
       void zaloNotifyService.sendWholesaleRegistrationNotice({
         fullName: input.fullName,
         phone: input.phone,
         region: regionAssignment.region,
         shopName: input.shopName,
         businessType: input.businessType,
+        address: fullAddress,
         note: input.note,
       }).catch((err) => {
         console.error("[ZaloNotify] Auto notice error:", err?.message || err);
@@ -413,11 +419,66 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
         region: "HCM",
         shopName: "Tiệm Cây Xanh Test",
         businessType: "Đại lý bán lẻ",
+        address: "123 Nguyễn Thị Thập, Phường Tân Phú, Quận 7, TP. Hồ Chí Minh",
         note: "Tin nhắn kiểm tra tính năng thông báo Zalo đến số " + NOTIFY_PHONE_TARGET,
       });
       res.json(result);
     } catch (err: any) {
       res.status(500).json({ error: err?.message || "Lỗi gửi tin nhắn" });
+    }
+  });
+
+  app.post("/api/shop/zalo-notify/resend-registration", async (req, res) => {
+    try {
+      const { phone, accountId } = req.body || {};
+      const db = await getDb();
+      let query: any = null;
+      if (accountId) {
+        query = shopAccountIdQuery(String(accountId));
+      } else if (phone) {
+        const p = String(phone).trim();
+        query = { $or: [{ phone: p }, { "siProfile.phone": p }] };
+      } else {
+        return res.status(400).json({ error: "Thiếu phone hoặc accountId" });
+      }
+
+      const account = await db.collection(SHOP_ACCOUNTS).findOne(query);
+      if (!account) {
+        return res.status(404).json({ error: "Không tìm thấy tài khoản khách sỉ trong hệ thống" });
+      }
+
+      const profile = (account.siProfile as any) || {};
+      const addr = (Array.isArray(account.addresses) && account.addresses[0]) || {};
+      const fullAddress = [
+        profile.detail || addr.detail,
+        profile.ward || addr.ward,
+        profile.district || addr.district,
+        profile.province || addr.province,
+      ]
+        .map((s) => String(s || "").trim())
+        .filter(Boolean)
+        .join(", ");
+
+      const result = await zaloNotifyService.sendWholesaleRegistrationNotice({
+        fullName: profile.fullName || account.fullName || "Khách sỉ",
+        phone: profile.phone || account.phone || "",
+        region: account.siRegion || "TINH",
+        shopName: profile.shopName || "",
+        businessType: profile.businessType || "",
+        address: fullAddress,
+        note: profile.note || "",
+        registeredAt: profile.acceptedTermsAt || account.updatedAt || account.createdAt,
+      });
+
+      res.json({
+        success: result.success,
+        accountId: account._id,
+        customer: profile.fullName || account.fullName,
+        phone: profile.phone || account.phone,
+        result,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Lỗi gửi lại thông báo Zalo" });
     }
   });
 

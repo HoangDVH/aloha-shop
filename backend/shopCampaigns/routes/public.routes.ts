@@ -52,6 +52,7 @@ export async function publicVouchers(db: Db, ids: string[], nowIso: string, newB
       claimLimitTotal: (p as any).claimLimitTotal ?? null,
       claimedCount: (p as any).claimedCount ?? 0,
       claimStartDate: (p as any).claimStartDate ?? null,
+      minLeadDays: (p as any).minLeadDays ?? undefined,
       ...(p.mystery ? { mystery: publicMystery(p) } : {}),
     }));
 }

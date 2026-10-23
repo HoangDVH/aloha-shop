@@ -73,6 +73,7 @@ export type CampaignVoucherUI = {
   claimedCount: number;
   claimStartDate: string | null;
   mystery?: MysteryInfo;
+  minLeadDays?: number;
 };
 
 export type CampaignViewerUI = {

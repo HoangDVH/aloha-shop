@@ -97,8 +97,11 @@ export default function CartPage() {
   const [deliverySpeed, setDeliverySpeed] = useState<DeliverySpeed>(() => {
     if (typeof window !== "undefined") {
       try {
-        const saved = sessionStorage.getItem("aloha_delivery_speed");
-        if (saved === "delayed_3d" || saved === "standard") return saved;
+        const explicit = sessionStorage.getItem("aloha_delivery_speed_user_explicit");
+        if (explicit) {
+          const saved = sessionStorage.getItem("aloha_delivery_speed");
+          if (saved === "delayed_3d" || saved === "standard") return saved;
+        }
       } catch {
         /* ignore */
       }
@@ -115,22 +118,6 @@ export default function CartPage() {
       /* ignore */
     }
   };
-
-  const wallet = useWallet(Boolean(user));
-  useEffect(() => {
-    const hasClaimedDelayed = wallet.data?.items?.some(
-      (it) => it.tab === "active" && (it.voucher?.minLeadDays ?? 0) >= 3
-    );
-    if (hasClaimedDelayed && typeof window !== "undefined") {
-      const explicitChoice = sessionStorage.getItem("aloha_delivery_speed_user_explicit");
-      if (!explicitChoice) {
-        setDeliverySpeed("delayed_3d");
-        try {
-          sessionStorage.setItem("aloha_delivery_speed", "delayed_3d");
-        } catch {}
-      }
-    }
-  }, [wallet.data]);
 
   const candidateClaim = useCandidateClaim(() => setPromoNonce((n) => n + 1));
   useEffect(
@@ -526,6 +513,8 @@ export default function CartPage() {
         loading={promoLoading}
         selectedCode={promoCode}
         autoMode={promoAutoMode}
+        deliverySpeed={deliverySpeed}
+        onDeliverySpeedChange={handleDeliverySpeedChange}
         onApplyCode={(c) => {
           setPromoCode(c);
           setPromoAutoMode(false);

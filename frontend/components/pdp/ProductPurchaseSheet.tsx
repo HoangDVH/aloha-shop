@@ -112,19 +112,19 @@ export function ProductPurchaseSheet({
             {/* Dòng giá & badge giảm giá */}
             <div className="flex items-center gap-1.5 flex-wrap">
               {discountPercent > 0 ? (
-                <span className="rounded bg-[#FE2C55] px-1.5 py-0.5 text-xs font-black text-white">
+                <span className="rounded bg-rose-600 px-1.5 py-0.5 text-xs font-black text-white">
                   -{discountPercent}%
                 </span>
               ) : null}
               <p
                 aria-live="polite"
-                className="text-xl sm:text-2xl font-black tracking-tight text-[#FE2C55]"
+                className="text-xl sm:text-2xl font-black tracking-tight text-rose-600"
               >
                 {pending ? "Đang cập nhật…" : formatVnd(price)}
               </p>
               {/* Ticket icon chuẩn TikTok Shop */}
               {campaignSale?.isSale ? (
-                <span className="inline-flex shrink-0 items-center text-[#FE2C55]" title="Ưu đãi áp dụng">
+                <span className="inline-flex shrink-0 items-center text-rose-600" title="Ưu đãi áp dụng">
                   <svg
                     className="h-3.5 w-4.5 shrink-0"
                     viewBox="0 0 18 14"
@@ -156,7 +156,7 @@ export function ProductPurchaseSheet({
                     className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold border ${
                       v.type === "shipping"
                         ? "bg-emerald-50 text-emerald-700 border-emerald-200/70"
-                        : "bg-rose-50 text-[#ff2442] border-rose-200/70"
+                        : "bg-rose-50 text-rose-600 border-rose-200/70"
                     }`}
                   >
                     {v.type === "shipping" ? (
@@ -168,7 +168,7 @@ export function ProductPurchaseSheet({
                   </span>
                 ))
               ) : voucherBadge ? (
-                <span className="inline-flex items-center gap-1 rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-[#ff2442] border border-rose-200/70">
+                <span className="inline-flex items-center gap-1 rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-600 border border-rose-200/70">
                   <Ticket size={10} strokeWidth={2.5} />
                   <span>{voucherBadge}</span>
                 </span>
@@ -280,7 +280,7 @@ export function ProductPurchaseSheet({
               submitted.current = true;
               onBuy();
             }}
-            className="flex min-h-[50px] w-full flex-col items-center justify-center rounded-full bg-[#ff2442] hover:bg-[#e01e38] px-5 py-2 text-white shadow-md transition disabled:cursor-not-allowed disabled:opacity-40 active:scale-[0.99]"
+            className="flex min-h-[50px] w-full flex-col items-center justify-center rounded-full bg-rose-600 hover:bg-rose-700 px-5 py-2 text-white shadow-md transition disabled:cursor-not-allowed disabled:opacity-40 active:scale-[0.99]"
           >
             <span className="text-base font-extrabold leading-tight">
               {preOrder ? "Đặt trước ngay" : "Mua ngay"}

@@ -297,6 +297,11 @@ export function HeaderVoucherModal({
                   <p className="mt-1 text-xs font-semibold text-slate-700">
                     {condition}
                   </p>
+                  {v.minLeadDays && v.minLeadDays >= 3 ? (
+                    <p className="text-[11px] font-semibold text-emerald-600">
+                      Áp dụng khi chọn Chờ giao sau {v.minLeadDays} ngày
+                    </p>
+                  ) : null}
 
                   {/* Dòng 3: Điều khoản / Trạng thái */}
                   <div className="mt-1 flex items-center justify-center gap-1.5 text-[11px] font-medium text-slate-400">

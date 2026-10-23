@@ -48,10 +48,10 @@ export function DeliverySpeedSelector({ value, onChange, quote, loading }: Props
       <button
         type="button"
         onClick={() => onChange("standard")}
-        className={`flex items-center justify-center py-2 px-2 rounded-lg font-bold transition text-center cursor-pointer ${
+        className={`flex items-center justify-center py-2 px-2 rounded-lg transition text-center cursor-pointer ${
           value === "standard"
-            ? "bg-white text-slate-800 shadow-sm border border-slate-200/80"
-            : "text-slate-500 hover:text-slate-800"
+            ? "bg-white text-slate-900 shadow-xs border border-slate-200/90 font-bold"
+            : "text-slate-600 hover:text-slate-900 font-medium"
         }`}
       >
         <span>Giao tiêu chuẩn (1-2 ngày)</span>
@@ -61,13 +61,18 @@ export function DeliverySpeedSelector({ value, onChange, quote, loading }: Props
       <button
         type="button"
         onClick={() => onChange("delayed_3d")}
-        className={`flex items-center justify-center py-2 px-2 rounded-lg font-bold transition text-center cursor-pointer ${
+        className={`flex items-center justify-center py-2 px-2 rounded-lg transition text-center cursor-pointer ${
           value === "delayed_3d"
-            ? "bg-white text-emerald-700 shadow-sm border border-emerald-400 ring-1 ring-emerald-400/20"
-            : "text-emerald-700 hover:text-emerald-800"
+            ? "bg-white text-emerald-800 shadow-xs border border-emerald-500 ring-1 ring-emerald-500/20 font-bold"
+            : "text-slate-600 hover:text-slate-900 font-medium"
         }`}
       >
-        <span>Chờ 3 ngày ({discountLabel} 🎁)</span>
+        <span>
+          Chờ 3 ngày{" "}
+          <span className={value === "delayed_3d" ? "text-emerald-700 font-bold" : "text-emerald-700 font-semibold"}>
+            ({discountLabel} 🎁)
+          </span>
+        </span>
       </button>
     </div>
   );

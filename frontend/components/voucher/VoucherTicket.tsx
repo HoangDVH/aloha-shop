@@ -7,20 +7,20 @@ export type TicketTone = "green" | "peach" | "cream" | "gray" | "red" | "bronze"
 
 const STUB_BG: Record<TicketTone, string> = {
   green: "bg-[#0D9488] text-white",
-  red: "bg-[#C8102E] text-white",
-  bronze: "bg-[#C8102E] text-white",
-  peach: "bg-[#C8102E] text-white",
-  cream: "bg-[#C8102E] text-white",
+  red: "bg-rose-600 text-white",
+  bronze: "bg-rose-600 text-white",
+  peach: "bg-rose-600 text-white",
+  cream: "bg-rose-600 text-white",
   gray: "bg-slate-200 text-slate-500",
 };
 
 /** Cuống vé cỡ lớn (kho voucher trang chủ / trang ưu đãi): nền chuyển sắc cao cấp chuẩn TMĐT. */
 const STUB_BG_LG: Record<TicketTone, string> = {
   green: "bg-gradient-to-br from-[#0D9488] via-[#0F766E] to-[#115E59] text-white",
-  red: "bg-gradient-to-br from-[#C8102E] via-[#E11D48] to-[#9F1239] text-white",
-  bronze: "bg-gradient-to-br from-[#C8102E] via-[#E11D48] to-[#9F1239] text-white",
-  peach: "bg-gradient-to-br from-[#C8102E] via-[#E11D48] to-[#9F1239] text-white",
-  cream: "bg-gradient-to-br from-[#C8102E] via-[#E11D48] to-[#9F1239] text-white",
+  red: "bg-gradient-to-br from-rose-600 via-rose-500 to-rose-700 text-white",
+  bronze: "bg-gradient-to-br from-rose-600 via-rose-500 to-rose-700 text-white",
+  peach: "bg-gradient-to-br from-rose-600 via-rose-500 to-rose-700 text-white",
+  cream: "bg-gradient-to-br from-rose-600 via-rose-500 to-rose-700 text-white",
   gray: "bg-slate-200 text-slate-500",
 };
 

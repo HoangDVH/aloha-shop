@@ -82,6 +82,9 @@ type Props = {
   shippingPromotionTitle?: string;
   shippingPromotionId?: string;
   shippingFee?: number | null;
+  /** Hình thức giao hàng hiện tại để đồng bộ 2 chiều với voucher. */
+  deliverySpeed?: "standard" | "delayed_3d";
+  onDeliverySpeedChange?: (speed: "standard" | "delayed_3d") => void;
 };
 
 function stubMaxLabel(c: EvaluatedCandidateUI): string | undefined {
@@ -113,6 +116,8 @@ export function PromotionModal({
   shippingPromotionTitle,
   shippingPromotionId,
   shippingFee,
+  deliverySpeed = "standard",
+  onDeliverySpeedChange,
 }: Props) {
   const { viewer: campaignViewer } = useCampaignView();
   const voucherViewer = loading ? null : quote?.buyerAudience ?? campaignViewer;
@@ -278,12 +283,20 @@ export function PromotionModal({
     return quoteCandidates.filter((c) => c.benefitType !== "shipping");
   }, [quoteCandidates]);
 
+  // Voucher tiền hàng khả dụng (bao gồm cả voucher đang eligible lẫn voucher chờ 3 ngày có thể kích hoạt bằng 1 click)
+  const isActionableLeadDays = (c: EvaluatedCandidateUI) =>
+    Boolean(c.minLeadDays && c.minLeadDays >= 3 && (!c.shortfall || c.shortfall <= 0) && !c.needsClaim);
+
   const eligibleGoods = useMemo(() => {
-    return sortVouchersGrouped(goodsCandidates.filter((c) => c.eligible));
+    return sortVouchersGrouped(
+      goodsCandidates.filter((c) => c.eligible || isActionableLeadDays(c))
+    );
   }, [goodsCandidates]);
 
   const ineligibleGoods = useMemo(() => {
-    return sortVouchersGrouped(goodsCandidates.filter((c) => !c.eligible));
+    return sortVouchersGrouped(
+      goodsCandidates.filter((c) => !c.eligible && !isActionableLeadDays(c))
+    );
   }, [goodsCandidates]);
 
   const eligibleShips = useMemo(() => {
@@ -556,8 +569,13 @@ export function PromotionModal({
                             {isCurrent ? (
                               <button
                                 type="button"
-                                onClick={onRemoveDiscount}
-                                className="inline-flex items-center gap-1 rounded-full bg-rose-100 text-[#C8102E] px-2.5 py-1 text-xs font-bold hover:bg-rose-200 transition cursor-pointer group"
+                                onClick={() => {
+                                  onRemoveDiscount();
+                                  if (cand.minLeadDays && cand.minLeadDays >= 3) {
+                                    onDeliverySpeedChange?.("standard");
+                                  }
+                                }}
+                                className="inline-flex items-center gap-1 rounded-full bg-rose-50 text-rose-600 border border-rose-200 px-2.5 py-1 text-xs font-bold hover:bg-rose-100 transition cursor-pointer group"
                                 title="Bấm để bỏ chọn ưu đãi này"
                               >
                                 <Check size={12} strokeWidth={3} className="group-hover:hidden" />
@@ -568,15 +586,28 @@ export function PromotionModal({
                               <button
                                 type="button"
                                 onClick={() => {
+                                  if (cand.minLeadDays && cand.minLeadDays >= 3) {
+                                    onDeliverySpeedChange?.("delayed_3d");
+                                  } else if (deliverySpeed === "delayed_3d") {
+                                    onDeliverySpeedChange?.("standard");
+                                  }
                                   if (cand.code) {
                                     onApplyCode(cand.code);
                                   } else {
                                     onSelectAutoMode();
                                   }
                                 }}
-                                className="rounded-full bg-[#C8102E] hover:bg-[#A00C24] active:scale-95 px-3 py-1 text-xs font-bold text-white transition shadow-2xs cursor-pointer"
+                                className={`rounded-full active:scale-95 px-3 py-1 text-xs font-bold text-white transition shadow-2xs cursor-pointer ${
+                                  cand.minLeadDays && cand.minLeadDays >= 3 && deliverySpeed !== "delayed_3d"
+                                    ? "bg-emerald-700 hover:bg-emerald-800"
+                                    : "bg-rose-600 hover:bg-rose-700"
+                                }`}
                               >
-                                Áp dụng
+                                {cand.minLeadDays && cand.minLeadDays >= 3 && deliverySpeed !== "delayed_3d"
+                                  ? "Chọn Chờ 3 ngày"
+                                  : deliverySpeed === "delayed_3d" && (!cand.minLeadDays || cand.minLeadDays < 3)
+                                  ? "Áp dụng (Giao ngay)"
+                                  : "Áp dụng"}
                               </button>
                             )}
                             <button
@@ -592,6 +623,11 @@ export function PromotionModal({
                         <p className="text-[11px] text-slate-600 leading-tight">
                           {minOrderText(cand)}
                         </p>
+                        {cand.minLeadDays && cand.minLeadDays >= 3 ? (
+                          <p className="text-[11px] font-semibold text-emerald-700 leading-tight">
+                            Áp dụng khi chọn Chờ giao sau {cand.minLeadDays} ngày
+                          </p>
+                        ) : null}
                         <p className="text-[11px] text-slate-400 leading-tight">
                           HSD: {formatHsd(cand.endDate)}
                         </p>
@@ -636,7 +672,23 @@ export function PromotionModal({
                       title={voucherCustomerTitle(cand.title, cand)}
                       action={
                         <div className="flex flex-col items-end gap-1.5">
-                          {ineligibleAction ? (
+                          {cand.minLeadDays && cand.minLeadDays >= 3 && cand.ineligibleReason?.includes("Chờ giao sau") && (!cand.shortfall || cand.shortfall <= 0) ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onDeliverySpeedChange?.("delayed_3d");
+                                if (cand.code) {
+                                  onApplyCode(cand.code);
+                                } else {
+                                  onSelectAutoMode();
+                                }
+                              }}
+                              className="rounded-full bg-emerald-700 hover:bg-emerald-800 active:scale-95 px-2.5 py-1 text-xs font-bold text-white transition shadow-2xs cursor-pointer whitespace-nowrap"
+                              title="Bấm để chuyển sang Chờ giao sau 3 ngày và dùng ưu đãi này"
+                            >
+                              Chọn Chờ 3 ngày
+                            </button>
+                          ) : ineligibleAction ? (
                             ineligibleAction(cand)
                           ) : (
                             <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-400">

@@ -24,6 +24,20 @@ export function SiAccountsPanel({ initialAccount, onClose }: { initialAccount?: 
   const form=useForm<z.infer<typeof schema>>({ resolver:zodResolver(schema),defaultValues:{region:initialAccount?.siRegion || "",verified:false,reason:""} });
   const query=useQuery({queryKey:["admin","si",status],queryFn:()=>siRequest<{items:Row[]}>(`/api/shop/admin/si?status=${status}`),refetchInterval:15000,enabled:!initialAccount});
   const patch=useMutation({mutationFn:({status:next,values}:{status:string;values:z.infer<typeof schema>})=>siRequest(`/api/shop/admin/si/${selected!.id}`,{...values,status:next,revision:selected!.revision},"PATCH"),onSuccess:()=>{void qc.invalidateQueries({queryKey:["admin","si"]});void qc.invalidateQueries({queryKey:["admin","directory"]});close();void message.success("Đã cập nhật hồ sơ");}});
+  const resendZalo = useMutation({
+    mutationFn: (accountId: string) =>
+      siRequest<{ success: boolean; customer?: string }>("/api/shop/zalo-notify/resend-registration", { accountId }, "POST"),
+    onSuccess: (data) => {
+      if (data?.success) {
+        void message.success(`Đã bắn thông báo Zalo cho khách ${data.customer || "sỉ"} thành công!`);
+      } else {
+        void message.warning("Không thể gửi thông báo Zalo. Vui lòng kiểm tra kết nối bot Zalo.");
+      }
+    },
+    onError: (err: any) => {
+      void message.error(err?.message || "Lỗi khi gửi thông báo Zalo");
+    },
+  });
   const act=(next:string)=>form.handleSubmit(values=>patch.mutate({status:next,values}))();
   return <div className="space-y-5">
     {!initialAccount && <PurchasePolicyPanel />}
@@ -44,9 +58,20 @@ export function SiAccountsPanel({ initialAccount, onClose }: { initialAccount?: 
           <section className="space-y-3 rounded-xl border border-slate-200/80 bg-slate-50/40 p-4 sm:p-5">
             <div className="flex items-center justify-between">
               <h2 className="font-bold text-slate-800">Thông tin đã khai</h2>
-              <Button size="small" onClick={() => void navigator.clipboard.writeText(selected.phone)}>
-                Copy SĐT
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="small"
+                  loading={resendZalo.isPending}
+                  onClick={() => resendZalo.mutate(selected.id)}
+                  title="Gửi lại thông báo đăng ký sỉ của khách này vào nhóm Zalo"
+                  className="!border-emerald-600 !text-emerald-700 hover:!bg-emerald-50"
+                >
+                  Bắn lại Zalo
+                </Button>
+                <Button size="small" onClick={() => void navigator.clipboard.writeText(selected.phone)}>
+                  Copy SĐT
+                </Button>
+              </div>
             </div>
             <dl className="grid grid-cols-[minmax(110px,.4fr)_1fr] gap-x-4 gap-y-2 text-sm">
               {Object.entries(selected.siProfile || {}).map(([key, value]) => (

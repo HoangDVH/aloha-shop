@@ -389,14 +389,13 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
       } catch {
         /* ignore */
       }
+      const explicitChoice = typeof window !== "undefined" ? sessionStorage.getItem("aloha_delivery_speed_user_explicit") : null;
+      const speed = explicitChoice ? (sessionStorage.getItem("aloha_delivery_speed") || "standard") : "standard";
+      const targetUrl = speed === "delayed_3d" ? "/xac-nhan-don-hang?deliverySpeed=delayed_3d" : "/xac-nhan-don-hang";
       if (!user) {
-        const speed = typeof window !== "undefined" ? sessionStorage.getItem("aloha_delivery_speed") || "standard" : "standard";
-        const nextUrl = speed === "delayed_3d" ? "/xac-nhan-don-hang?deliverySpeed=delayed_3d" : "/xac-nhan-don-hang";
-        router.push(`/dang-nhap?next=${encodeURIComponent(nextUrl)}`);
+        router.push(`/dang-nhap?next=${encodeURIComponent(targetUrl)}`);
         return;
       }
-      const speed = typeof window !== "undefined" ? sessionStorage.getItem("aloha_delivery_speed") || "standard" : "standard";
-      const targetUrl = speed === "delayed_3d" ? "/xac-nhan-don-hang?deliverySpeed=delayed_3d" : "/xac-nhan-don-hang";
       router.push(targetUrl);
       return;
     }
@@ -683,20 +682,15 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
                   </div>
                 ) : null}
 
-                <div>
-                  <ProductQuantityPicker purchaseDisabled={purchaseDisabled} qty={qty} setQty={setQty}
-                    allowBackorder={activeProduct.allowBackorder} liveTon={liveTon} />
-                  {stockMax(liveTon) === 0 ? (
-                    <p className="mt-2 text-sm font-medium text-amber-800">
-                      Sản phẩm đã hết hàng, cần đặt trước.
-                    </p>
-                  ) : null}
-                  {!purchaseDisabled && !isPreOrder && liveTon > 0 ? (
-                    <p className="mt-1 text-xs text-slate-500">
-                      Còn {formatTonDisplay(liveTon)} {activeProduct.dvt || ""}
-                    </p>
-                  ) : null}
-                </div>
+                <ProductQuantityPicker
+                  purchaseDisabled={purchaseDisabled}
+                  qty={qty}
+                  setQty={setQty}
+                  allowBackorder={activeProduct.allowBackorder}
+                  liveTon={liveTon}
+                  unit={activeProduct.dvt || ""}
+                  isPreOrder={isPreOrder}
+                />
               </div>
 
                 {!expectsSi ? (
@@ -704,8 +698,18 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
                     product={voucherProduct}
                     livePrice={liveGia}
                     isWholesale={false}
+                    appliedVoucher={productPricing.quote?.applied}
                   />
                 ) : null}
+
+                <ProductAttachedItems
+                  mainProduct={activeProduct}
+                  attachedProducts={product.attachedProducts}
+                  mainQty={qty}
+                  mainLivePrice={liveGia}
+                  mainLiveTon={liveTon}
+                />
+
               {!purchaseDisabled && <div className="mt-4"><ProductPricingSummary pricing={productPricing} qty={qty} unit={activeProduct.dvt} /></div>}
               <div id="product-buy-actions" className="mt-2 hidden shrink-0 gap-3 lg:flex">
                 <button
@@ -747,16 +751,11 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
         </div>
       </div>
 
-      <div className="px-4 sm:px-0 space-y-2">
-        <ProductAttachedItems
-          mainProduct={activeProduct}
-          attachedProducts={product.attachedProducts}
-          mainQty={qty}
-          mainLivePrice={liveGia}
-          mainLiveTon={liveTon}
-        />
-        {desc ? <ProductDescription text={desc} /> : null}
-      </div>
+      {desc ? (
+        <div className="px-4 sm:px-0 space-y-2">
+          <ProductDescription text={desc} />
+        </div>
+      ) : null}
 
       <ProductStickyCta
         price={effectiveGia}
@@ -773,15 +772,7 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
         }}
         buyDisabled={mobileAction === "blocked"}
         onBuyNow={() => {
-          if (hasPromo && !expectsSi) {
-            setPurchaseSheetOpen(true);
-          } else if (variantAxes.length > 0) {
-            setPurchaseSheetOpen(true);
-          } else if (mobileAction === "choose") {
-            setPurchaseSheetOpen(true);
-          } else if (mobileAction === "buy") {
-            addCart(true);
-          }
+          setPurchaseSheetOpen(true);
         }}
         isCampaignSale={campaignBuyInBox}
         campaignBuyLabel={isCampaignSaleOpen ? "Mua Giờ Vàng" : isPreOrder ? "Đặt ngay" : "Mua ngay"}
