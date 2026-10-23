@@ -16,8 +16,8 @@ test("PDP voucher badge claims the exact voucher; automatic promotions open deta
     }).outputText;
     vm.runInNewContext(source, { exports, require(name: string) {
       if (name === "react/jsx-runtime") return { jsx, jsxs: jsx };
-      if (name === "react") return { useEffect() {}, useMemo: (fn: any) => fn(), useState() {
-        const i = index++; return [i === 0 ? [voucher] : i === 1 ? true : null, (v: any) => selected.push(v)];
+      if (name === "react") return { useEffect() {}, useMemo: (fn: any) => fn(), useState(init: any) {
+        const i = index++; return [i === 0 ? [voucher] : i === 1 ? true : typeof init === "function" ? init() : init, (v: any) => { if (i === 2) selected.push(v); }];
       } };
       if (name === "lucide-react") return {};
       if (name === "@/lib/promotions") return {};

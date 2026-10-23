@@ -120,7 +120,9 @@ export function formatAppliedVoucherTitle(
   } | null,
   fallbackTitle?: string
 ): string {
-  const rawTitle = (applied?.title || fallbackTitle || "").trim();
+  const rawTitle = (applied?.title || fallbackTitle || "")
+    .replace(/\s*\(\s*\d+\s+sản\s+phẩm\s*\)/giu, "")
+    .trim();
   const discountType = applied?.discountType;
   const discountValue = applied?.discountValue;
   const minLeadDays = applied?.minLeadDays;
@@ -190,7 +192,7 @@ export function formatAppliedVoucherTitle(
 
   // 4. Nếu title bắt đầu bằng "Giảm" (ví dụ: "Giảm 10% - Tối đa 100.000d")
   if (/^giảm\b/i.test(rawTitle)) {
-    return `Voucher ${rawTitle.charAt(0).toLowerCase() + rawTitle.slice(1)}`;
+    return rawTitle;
   }
 
   // 5. Nếu title bắt đầu bằng "Ưu đãi" (ví dụ: "Ưu đãi đặt trước 20/10 10%")

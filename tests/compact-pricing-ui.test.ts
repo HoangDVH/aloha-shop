@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
-import { voucherCustomerTitle } from "../frontend/lib/voucherFormat.js";
+import { formatAppliedVoucherTitle, voucherCustomerTitle } from "../frontend/lib/voucherFormat.js";
 function render(expanded = false, loading = false, title = "Voucher 5%") {
   const exports: any = {};
   const jsx = (type: any, props: any) => ({ type, props });
@@ -12,7 +12,7 @@ function render(expanded = false, loading = false, title = "Voucher 5%") {
   }).outputText, { exports, require(name: string) {
     if (name === "react/jsx-runtime") return { jsx, jsxs: jsx };
     if (name === "@/lib/api") return { formatVnd: (n: number) => `${n}đ` };
-    if (name === "@/lib/voucherFormat") return { voucherCustomerTitle };
+    if (name === "@/lib/voucherFormat") return { formatAppliedVoucherTitle, voucherCustomerTitle };
     return {};
   } });
   return exports.ProductPricingSummary({ expanded, pricing: { loading, stale: false, quote: {

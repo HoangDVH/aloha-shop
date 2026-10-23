@@ -181,10 +181,13 @@ export function ProductPromotionBadges({
       return appliedVoucher.promotionId;
     }
     const firstStandard = applicableBadges.find(
-      (b) => b.type === "goods" && (b.promotion.minLeadDays || 0) < 3
+      (b) =>
+        b.type === "goods" &&
+        (b.promotion.minLeadDays || 0) < 3 &&
+        (!b.promotion.claimRequired || claims.claimedIds.has(b.promotion.id))
     );
     return firstStandard?.promotion.id || null;
-  }, [deliverySpeed, delayedPromo, appliedVoucher, applicableBadges]);
+  }, [deliverySpeed, delayedPromo, appliedVoucher, applicableBadges, claims.claimedIds]);
 
   const handleSelectVoucher = (promo: AvailablePromotionUI) => {
     const isShipping = promo.benefitType === "shipping";
