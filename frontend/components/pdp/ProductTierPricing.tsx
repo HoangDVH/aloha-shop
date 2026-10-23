@@ -26,11 +26,10 @@ export function ProductTierPricing({
 
   return (
     <section aria-label="Giá theo số lượng">
-      <div className="grid grid-cols-3 gap-1.5 sm:gap-2 pt-1.5">
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
         {DEFAULT_VOLUME_TIERS.map((t) => {
           const selected = t.minQty === tier.minQty;
           const price = Math.round(basePrice * (1 - t.discountPercent / 100));
-          const isBest = t.highlight || t.discountPercent >= 10;
 
           return (
             <button
@@ -39,36 +38,30 @@ export function ProductTierPricing({
               aria-pressed={selected}
               disabled={disabled || t.minQty > maxQty}
               onClick={() => onSelectQty(t.minQty)}
-              className={`relative flex min-h-[46px] min-w-0 flex-col items-center justify-center rounded-xl border px-1 py-1.5 text-center transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 sm:py-2 sm:px-2 ${
+              className={`relative flex min-h-[46px] min-w-0 flex-col items-center justify-center rounded-xl border px-1 py-1.5 text-center transition cursor-pointer overflow-hidden disabled:cursor-not-allowed disabled:opacity-40 sm:py-2 sm:px-2 ${
                 selected
-                  ? "border-emerald-600 bg-emerald-50/60 text-emerald-950 ring-1 ring-emerald-600 shadow-2xs"
+                  ? "border-emerald-600 bg-emerald-50/50 text-emerald-950 ring-1.5 ring-emerald-600 shadow-2xs"
                   : "border-stone-200 bg-white hover:border-stone-400 hover:bg-stone-50/60 text-slate-700"
               }`}
             >
-              {/* Badge ưu đãi % giảm đồng bộ họ màu Rose thanh lịch */}
+              {/* Badge % giảm góc trên phải chuẩn 1688 / Shopee — nằm gọn trong thẻ, không đội chiều cao */}
               {t.discountPercent > 0 && (
-                <span
-                  className={`absolute -top-2.5 right-1.5 flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-black leading-none shadow-xs tracking-tight ${
-                    isBest
-                      ? "bg-rose-600 text-white"
-                      : "bg-rose-50 text-rose-600 border border-rose-200"
-                  }`}
-                >
-                  {isBest ? "🔥 -10%" : `-${t.discountPercent}%`}
+                <span className="absolute top-0 right-0 rounded-bl-md bg-rose-50 border-b border-l border-rose-200/90 px-1.5 py-0.5 text-[9px] font-extrabold text-rose-600 leading-none">
+                  -{t.discountPercent}%
                 </span>
               )}
 
-              {/* Chấm tick xác nhận ô đang chọn */}
+              {/* Tick xác nhận góc dưới phải chuẩn Shopee — nằm gọn trong thẻ, không tràn ra ngoài */}
               {selected && (
-                <span className="absolute -top-2 -left-1 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-emerald-600 text-white shadow-xs">
-                  <Check size={11} className="stroke-[3]" />
+                <span className="absolute bottom-0 right-0 flex h-3.5 w-3.5 items-center justify-center rounded-tl-md bg-emerald-600 text-white">
+                  <Check size={9} className="stroke-[3.5]" />
                 </span>
               )}
 
               {/* Dòng 1: Khoảng số lượng */}
               <span
                 className={`text-[11px] font-semibold leading-tight sm:text-xs ${
-                  selected ? "text-emerald-800" : "text-slate-600"
+                  selected ? "text-emerald-900" : "text-slate-600"
                 }`}
               >
                 {t.label} {unit ? unit.toLowerCase() : ""}

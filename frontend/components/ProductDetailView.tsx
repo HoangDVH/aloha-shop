@@ -146,7 +146,8 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
   }, [variantSelected, selectedModel, product.ten]);
   const [qty, setQty] = useState(1);
   const [purchaseSheetOpen, setPurchaseSheetOpen] = useState(false);
-  const cartQty = useCart(s => s.lines.find(l => l.ma === activeProduct.ma)?.qty || 0);
+  const cartLines = useCart(s => s.lines);
+  const cartQty = useMemo(() => cartLines.find(l => l.ma === activeProduct.ma)?.qty || 0, [cartLines, activeProduct.ma]);
   const [affiliateCtv, setAffiliateCtv] = useState(() => getAffiliateCtvCode());
   const reportedKeyRef = useRef<string>("");
   const [liveGia, setLiveGia] = useState(product.gia);
@@ -357,7 +358,47 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
   }, [expectsSi, livePromo, liveGia, pricePending, qty]);
 
   const effectiveGia = tierInfo?.unitPrice ?? liveGia;
-  const productPricing = useProductPricing({ ma: activeProduct.ma, name: activeProduct.ten, qty, price: liveGia, enabled: !purchaseDisabled });
+
+  const attachedProductsList = useMemo(
+    () => product.attachedProducts || activeProduct.attachedProducts || [],
+    [product.attachedProducts, activeProduct.attachedProducts]
+  );
+
+  const attachedCartLines = useMemo(() => {
+    const codes = [
+      ...(product.attachedItems || []),
+      ...attachedProductsList.map((p) => p.ma),
+      ...(activeProduct.attachedItems || []),
+    ];
+    if (!codes.length) return [];
+    const attachedCodeSet = new Set(codes.map((c) => String(c).toUpperCase()));
+    attachedCodeSet.delete(activeProduct.ma.toUpperCase());
+
+    const attachedProductMap = new Map(
+      attachedProductsList.map((p) => [p.ma.toUpperCase(), p])
+    );
+
+    return cartLines
+      .filter((l) => attachedCodeSet.has(l.ma.toUpperCase()) && l.qty > 0)
+      .map((l) => {
+        const p = attachedProductMap.get(l.ma.toUpperCase());
+        return {
+          ma: l.ma,
+          ten: l.ten || p?.ten,
+          gia: l.gia,
+          qty: l.qty,
+        };
+      });
+  }, [product.attachedItems, product.attachedProducts, activeProduct.attachedItems, activeProduct.attachedProducts, activeProduct.ma, attachedProductsList, cartLines]);
+
+  const productPricing = useProductPricing({
+    ma: activeProduct.ma,
+    name: activeProduct.ten,
+    qty,
+    price: liveGia,
+    enabled: !purchaseDisabled,
+    extraLines: attachedCartLines,
+  });
 
   const addCart = (buyNow = false) => {
     if (purchaseDisabled) {
@@ -380,7 +421,12 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
     }
 
     if (buyNow) {
-      selectBuyNowLines(activeProduct.ma, product.attachedItems);
+      const allAttachedCodes = [
+        ...(product.attachedItems || []),
+        ...attachedProductsList.map((p) => p.ma),
+        ...(activeProduct.attachedItems || []),
+      ];
+      selectBuyNowLines(activeProduct.ma, allAttachedCodes);
       // Giữ trang SP trong cache trình duyệt để Back không chờ fetch lại lâu
       try {
         const stay = `${window.location.pathname}${window.location.search || ""}`;
@@ -508,26 +554,17 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
                   />
                 </div>
 
-                <p className="text-xs text-slate-400">
-                  Mã:{" "}
-                  <span className="font-medium text-slate-700">
-                    {activeProduct.ma}
-                  </span>
-                  {variantsLoading ? (
-                    <>
-                      {" · "}
-                      <span className="text-slate-400">Đang tải biến thể…</span>
-                    </>
-                  ) : null}
-                  {needPick ? (
-                    <>
-                      {" · "}
+                {variantsLoading || needPick ? (
+                  <p className="text-xs text-slate-400">
+                    {variantsLoading ? (
+                      <span>Đang tải biến thể…</span>
+                    ) : needPick ? (
                       <span className="font-semibold text-amber-700">
                         Chọn thuộc tính / đơn vị
                       </span>
-                    </>
-                  ) : null}
-                </p>
+                    ) : null}
+                  </p>
+                ) : null}
                 {/* Tài khoản sỉ luôn dùng giá sỉ và giá web thực tế, độc lập với chiến dịch khách lẻ. */}
                 {!hasPromo || expectsSi ? (
                   <div className="w-full">
@@ -710,7 +747,16 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
                   mainLiveTon={liveTon}
                 />
 
-              {!purchaseDisabled && <div className="mt-4"><ProductPricingSummary pricing={productPricing} qty={qty} unit={activeProduct.dvt} /></div>}
+              {!purchaseDisabled && (
+                <div className="mt-4">
+                  <ProductPricingSummary
+                    pricing={productPricing}
+                    qty={qty}
+                    unit={activeProduct.dvt}
+                    attachedLines={attachedCartLines}
+                  />
+                </div>
+              )}
               <div id="product-buy-actions" className="mt-2 hidden shrink-0 gap-3 lg:flex">
                 <button
                   type="button"
@@ -751,11 +797,22 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
         </div>
       </div>
 
-      {desc ? (
-        <div className="px-4 sm:px-0 space-y-2">
-          <ProductDescription text={desc} />
-        </div>
-      ) : null}
+      <div className="px-0 sm:px-0 space-y-0 sm:space-y-2">
+        <ProductDescription
+          text={desc}
+          productInfo={{
+            ma: activeProduct.ma,
+            categoryName:
+              activeProduct.categoryName ||
+              product.nhom ||
+              (product.nhomPath
+                ? product.nhomPath.split(/\s*[▸>\/|]\s*/).filter(Boolean).pop()
+                : ""),
+            dvt: activeProduct.dvt,
+            trongLuong: activeProduct.trongLuong,
+          }}
+        />
+      </div>
 
       <ProductStickyCta
         price={effectiveGia}
@@ -841,7 +898,16 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
             onClose={() => setPurchaseSheetOpen(false)}
             onBuy={() => { setPurchaseSheetOpen(false); addCart(true); }}
             preOrder={isPreOrder}
-            summary={!purchaseDisabled ? <ProductPricingSummary pricing={productPricing} qty={qty} unit={activeProduct.dvt} /> : undefined}
+            summary={
+              !purchaseDisabled ? (
+                <ProductPricingSummary
+                  pricing={productPricing}
+                  qty={qty}
+                  unit={activeProduct.dvt}
+                  attachedLines={attachedCartLines}
+                />
+              ) : undefined
+            }
           >
             <ProductVariantPicker
               axes={variantAxes}

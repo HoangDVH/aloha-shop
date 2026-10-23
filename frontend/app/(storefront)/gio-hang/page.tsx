@@ -14,7 +14,6 @@ import { refreshCartPricesFromCatalog } from "@/lib/cartPriceRefresh";
 import { PromotionModal } from "@/components/checkout/PromotionModal";
 import { useCandidateClaim } from "@/components/checkout/useCandidateClaim";
 import { useWallet } from "@/lib/campaign/walletQueries";
-import { CartVoucherProgress } from "@/components/checkout/CartVoucherProgress";
 import { DeliverySpeedSelector, type DeliverySpeed } from "@/components/checkout/DeliverySpeedSelector";
 import { SmartFreeshipBar, useMoreShoppingHref } from "@/components/cart/SmartFreeshipBar";
 
@@ -203,7 +202,7 @@ export default function CartPage() {
         </div>
       ) : null}
 
-      <div className="grid gap-2 sm:gap-4 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-2 sm:gap-4 lg:grid-cols-[1fr_360px]">
         {/* Cột trái */}
         <section className="w-full bg-white rounded-none sm:rounded-xl shadow-none sm:shadow-sm ring-0 sm:ring-1 sm:ring-[var(--aloha-line)] overflow-hidden">
           {!lines.length ? (
@@ -401,7 +400,6 @@ export default function CartPage() {
 
         {/* Cột phải — tóm tắt */}
         <aside className="space-y-2 sm:space-y-3">
-          {selectedLines.length ? <CartVoucherProgress quote={confirmedPrice?.quote ?? null} onClaim={candidateClaim.claim} /> : null}
           {selectedLines.length ? (
             <DeliverySpeedSelector
               value={deliverySpeed}

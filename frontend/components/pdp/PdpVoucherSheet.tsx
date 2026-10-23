@@ -83,7 +83,7 @@ export function PdpVoucherSheet({
                     {pendingId === p.id
                       ? "Đang lưu…"
                       : (p.minLeadDays || 0) >= 3
-                      ? "Chọn Chờ 3 ngày"
+                      ? "Chọn Đặt trước 3 ngày"
                       : "Áp dụng (Giao ngay)"}
                   </button>
                 )}

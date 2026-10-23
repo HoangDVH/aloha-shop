@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Plus, Check, Layers } from "lucide-react";
+import { Plus, Check, Minus, Layers } from "lucide-react";
 import { formatVnd, type ShopProduct } from "@/lib/api";
 import { useCart, formatTonDisplay, isPreOrderTon } from "@/lib/cart";
 import { useToast } from "@/components/Toast";
@@ -31,6 +31,8 @@ export function ProductAttachedItems({
   const searchParams = useSearchParams();
   const ctvFromLink = searchParams.get("ctv") || "";
   const add = useCart((s) => s.add);
+  const remove = useCart((s) => s.remove);
+  const setQty = useCart((s) => s.setQty);
   const cartLines = useCart((s) => s.lines);
 
   const items = attachedProducts || mainProduct.attachedProducts || [];
@@ -52,16 +54,26 @@ export function ProductAttachedItems({
       );
       return;
     }
-    toast.push(`Đã thêm “${item.ten}” vào đơn mua kèm`, {
-      href: "/gio-hang",
-      hrefLabel: "Xem giỏ hàng",
-    });
+    toast.push(`Đã thêm “${item.ten}” vào đơn mua kèm`);
+  };
+
+  const handleDecrease = (item: ShopProduct, inCartQty: number) => {
+    if (inCartQty <= 1) {
+      remove(item.ma);
+      toast.push(`Đã bỏ “${item.ten}” khỏi mua kèm`);
+    } else {
+      setQty(item.ma, inCartQty - 1);
+    }
+  };
+
+  const handleIncrease = (item: ShopProduct) => {
+    handleAddSingle(item);
   };
 
   return (
     <section
       aria-label="Gợi ý mua kèm phù hợp"
-      className="my-3 rounded-2xl border border-stone-200/90 bg-stone-50/50 p-2.5 sm:p-3 space-y-2 shadow-2xs"
+      className="-mx-4 border-t-8 border-stone-100 bg-stone-50/50 px-4 py-3 sm:mx-0 sm:my-3 sm:rounded-2xl sm:border sm:border-stone-200/90 sm:p-3 space-y-2 sm:shadow-2xs"
     >
       {/* Header gọn gàng */}
       <div className="flex items-center gap-1.5">
@@ -134,28 +146,39 @@ export function ProductAttachedItems({
 
               {/* Button Mua kèm */}
               <div className="shrink-0">
-                <button
-                  type="button"
-                  onClick={() => handleAddSingle(item)}
-                  className={`flex h-7.5 items-center gap-1 rounded-lg px-2 text-[11px] font-bold transition active:scale-95 cursor-pointer sm:px-2.5 ${
-                    inCartQty > 0
-                      ? "border border-emerald-400 bg-emerald-600 text-white hover:bg-emerald-700 shadow-2xs"
-                      : "border border-[var(--aloha-green,#2e7d32)]/30 bg-[var(--aloha-green-light,#e8f5e9)] text-[var(--aloha-green-mid,#236327)] hover:bg-[var(--aloha-green,#2e7d32)] hover:text-white"
-                  }`}
-                  title={inCartQty > 0 ? `Bấm để thêm tiếp ${item.ten}` : `Mua kèm ${item.ten}`}
-                >
-                  {inCartQty > 0 ? (
-                    <>
-                      <Check className="h-3 w-3 stroke-[2.5]" />
-                      <span>Đã thêm ({inCartQty})</span>
-                    </>
-                  ) : (
-                    <>
+                {inCartQty > 0 ? (
+                  <div className="flex items-center rounded-lg border border-emerald-400 bg-emerald-50 overflow-hidden shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={() => handleDecrease(item, inCartQty)}
+                      className="flex h-7.5 w-7 items-center justify-center text-emerald-800 hover:bg-emerald-100 transition active:scale-90 cursor-pointer"
+                      title={inCartQty === 1 ? `Bỏ mua kèm ${item.ten}` : `Giảm số lượng ${item.ten}`}
+                    >
+                      <Minus className="h-3 w-3 stroke-[2.5]" />
+                    </button>
+                    <span className="min-w-6 px-1 text-center text-xs font-bold text-emerald-900 select-none">
+                      {inCartQty}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleIncrease(item)}
+                      className="flex h-7.5 w-7 items-center justify-center text-emerald-800 hover:bg-emerald-100 transition active:scale-90 cursor-pointer"
+                      title={`Thêm 1 ${item.ten}`}
+                    >
                       <Plus className="h-3 w-3 stroke-[2.5]" />
-                      <span>Mua kèm</span>
-                    </>
-                  )}
-                </button>
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleAddSingle(item)}
+                    className="flex h-7.5 items-center gap-1 rounded-lg border border-[var(--aloha-green,#2e7d32)]/30 bg-[var(--aloha-green-light,#e8f5e9)] px-2 text-[11px] font-bold text-[var(--aloha-green-mid,#236327)] hover:bg-[var(--aloha-green,#2e7d32)] hover:text-white transition active:scale-95 cursor-pointer sm:px-2.5"
+                    title={`Mua kèm ${item.ten}`}
+                  >
+                    <Plus className="h-3 w-3 stroke-[2.5]" />
+                    <span>Mua kèm</span>
+                  </button>
+                )}
               </div>
             </div>
           );

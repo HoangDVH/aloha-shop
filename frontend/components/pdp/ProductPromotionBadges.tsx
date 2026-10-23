@@ -2,7 +2,7 @@
 import { voucherCustomerTitle } from "@/lib/voucherFormat";
 
 import { useEffect, useState, useMemo } from "react";
-import { Ticket, TicketPercent, Truck, X, ChevronRight } from "lucide-react";
+import { ChevronRight, Truck, Ticket, X } from "lucide-react";
 import { getAvailablePromotions, type AvailablePromotionUI } from "@/lib/promotions";
 import type { ShopProduct } from "@/lib/api";
 import { formatVnd } from "@/lib/api";
@@ -63,7 +63,7 @@ function formatTwoLineBadge(p: AvailablePromotionUI): FormattedTwoLineBadge {
     const val = p.discountType === "percentage" ? pctText(p) : formatVnd(p.discountValue);
     return {
       promotion: p,
-      headline: `Giảm ${val}`,
+      headline: `Đặt trước tiết kiệm ${val}`,
       subline: `Chờ giao sau ${p.minLeadDays || 3} ngày`,
       type: "goods",
     };
@@ -232,45 +232,15 @@ export function ProductPromotionBadges({
   return (
     <>
       <section
-        className="my-3.5 rounded-2xl border border-stone-200/80 bg-white p-3 sm:p-3.5 space-y-2.5 shadow-xs"
+        className="-mx-4 border-t-8 border-stone-100 bg-white px-4 py-3.5 sm:mx-0 sm:my-3.5 sm:rounded-2xl sm:border sm:border-stone-200/80 sm:p-3.5 space-y-2.5 sm:shadow-xs"
         aria-label="Voucher và khuyến mãi"
       >
-        {delayedPromo ? (
-          <div className={`flex items-center justify-between gap-2 py-2 px-3 rounded-xl border text-xs transition ${
-            deliverySpeed === "delayed_3d"
-              ? "bg-rose-50/80 border-rose-200 text-slate-800"
-              : "bg-stone-50/90 border-stone-200/90 text-slate-700"
-          }`}>
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="shrink-0 text-base leading-none">🎁</span>
-              <div className="min-w-0">
-                <span className="text-slate-600 leading-snug">
-                  <span className="font-bold text-slate-900">Ưu đãi đặt trước:</span> Giảm <span className="font-extrabold text-rose-600">{pctText(delayedPromo)}</span> khi chọn voucher Chờ giao sau {delayedPromo.minLeadDays || 3} ngày
-                </span>
-              </div>
-            </div>
-            {deliverySpeed === "delayed_3d" ? (
-              <span className="shrink-0 rounded-md bg-rose-600 px-2.5 py-1 text-[11px] font-bold text-white shadow-2xs">
-                ✓ Đang áp dụng
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={() => handleSelectVoucher(delayedPromo)}
-                className="shrink-0 rounded-md bg-rose-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-rose-700 transition active:scale-95 cursor-pointer"
-              >
-                Chọn ngay
-              </button>
-            )}
-          </div>
-        ) : null}
-
-        <div className="flex items-center justify-between pt-0.5">
+        <div className="flex items-center justify-between">
           <span className="text-sm font-bold text-slate-900">Voucher &amp; khuyến mãi</span>
           <button
             type="button"
             onClick={() => setVoucherOpen(true)}
-            className="inline-flex items-center gap-0.5 text-xs font-semibold text-slate-500 hover:text-rose-600 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-0.5 text-xs font-semibold text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
             aria-haspopup="dialog"
           >
             <span>Xem tất cả ({sheetEntries.length})</span>
@@ -278,54 +248,32 @@ export function ProductPromotionBadges({
           </button>
         </div>
 
-        <div className="flex sm:grid sm:grid-cols-2 items-stretch gap-2.5 overflow-x-auto sm:overflow-visible no-scrollbar [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex-nowrap sm:flex-wrap py-0.5 sm:py-0">
+        {/* Thanh thẻ voucher trượt ngang hiển thị 100% đầy đủ chữ như ảnh 2 */}
+        <div className="flex items-stretch gap-2.5 overflow-x-auto pb-1 scrollbar-none snap-x -mx-4 px-4 sm:mx-0 sm:px-0">
           {applicableBadges.map(({ promotion, headline, subline, type }) => {
             const isShipping = type === "shipping";
-            const isDelayed = (promotion.minLeadDays || 0) >= 3;
             const isClaimed = claims.claimedIds.has(promotion.id);
             const isPending = claims.pendingId === promotion.id;
             const isActive = !isShipping && promotion.id === activePromoId;
 
-            const theme = isShipping
-              ? {
-                  cardBg: "bg-teal-50/70",
-                  border: "border-teal-200",
-                  notchBorder: "border-teal-200",
-                  divider: "border-teal-200",
-                  headline: "text-teal-700",
-                  iconColor: "text-teal-600",
-                  btnBg: "bg-teal-600 hover:bg-teal-700 text-white",
-                  claimedBg: "bg-teal-50 text-teal-700",
-                  activeText: "text-teal-700",
-                }
-              : {
-                  cardBg: "bg-rose-50/70",
-                  border: "border-rose-200",
-                  notchBorder: "border-rose-200",
-                  divider: "border-rose-200",
-                  headline: "text-rose-600",
-                  iconColor: "text-rose-600",
-                  btnBg: "bg-rose-600 hover:bg-rose-700 text-white",
-                  claimedBg: "bg-rose-50 text-rose-700",
-                  activeText: "text-rose-600",
-                };
-
             return (
               <div
                 key={promotion.id}
-                className={`relative inline-flex sm:flex shrink-0 sm:shrink sm:w-full items-stretch rounded-xl border text-xs overflow-hidden transition select-none ${
+                className={`relative inline-flex shrink-0 snap-start items-stretch rounded-xl border text-xs overflow-hidden transition select-none ${
                   isActive
-                    ? `ring-2 ring-rose-500 border-rose-500 ${theme.cardBg} shadow-xs`
-                    : `${theme.border} ${theme.cardBg} shadow-2xs hover:shadow-xs`
+                    ? "ring-1.5 ring-rose-500 border-rose-400 bg-rose-50/20 shadow-2xs"
+                    : isShipping
+                    ? "border-teal-300/80 bg-teal-50/15 shadow-2xs hover:border-teal-400"
+                    : "border-rose-300/80 bg-rose-50/15 shadow-2xs hover:border-rose-400"
                 }`}
               >
                 {/* Rãnh khuyết vé bán nguyệt mép trái */}
                 <span
-                  className={`pointer-events-none absolute -left-1.5 top-1/2 -translate-y-1/2 z-10 h-3 w-3 rounded-full bg-white border ${theme.notchBorder}`}
+                  className="pointer-events-none absolute -left-1.5 top-1/2 -translate-y-1/2 z-10 h-3 w-3 rounded-full bg-white border border-stone-200"
                   aria-hidden="true"
                 />
 
-                {/* Thân voucher (nội dung chính) */}
+                {/* Thân voucher (nội dung chính chuẩn ảnh 2): Hiển thị 100% đầy đủ chữ không bị cắt */}
                 <button
                   type="button"
                   onClick={() => {
@@ -336,27 +284,29 @@ export function ProductPromotionBadges({
                     }
                   }}
                   disabled={isPending}
-                  className="flex flex-1 flex-col justify-center px-3.5 py-1.5 hover:opacity-90 text-left cursor-pointer min-w-[130px] sm:min-w-0"
-                  title={`${voucherCustomerTitle(promotion.title, promotion)} · ${isActive ? "Đang áp dụng · Bấm để xem điều kiện" : "Bấm để áp dụng voucher này"}`}
+                  className="flex flex-col justify-center px-3.5 py-2 hover:opacity-95 text-left cursor-pointer whitespace-nowrap"
+                  title={`${voucherCustomerTitle(promotion.title, promotion)} · ${
+                    isActive ? "Đang áp dụng · Bấm để xem điều kiện" : "Bấm để áp dụng voucher này"
+                  }`}
                 >
-                  <div className="flex items-center gap-1 font-bold text-xs leading-tight">
+                  <div className="flex items-center gap-1.5 font-bold text-xs leading-tight">
                     {isShipping ? (
-                      <Truck size={13} className={`shrink-0 ${theme.iconColor}`} />
-                    ) : isDelayed ? (
-                      <span className="shrink-0 text-xs leading-none">🎁</span>
+                      <Truck size={14} className="shrink-0 text-teal-600" />
                     ) : (
-                      <TicketPercent size={13} className={`shrink-0 ${theme.iconColor}`} />
+                      <Ticket size={14} className="shrink-0 text-rose-600" />
                     )}
-                    <span className={`whitespace-nowrap sm:truncate ${theme.headline}`}>{headline}</span>
+                    <span className={isShipping ? "text-slate-800" : "text-rose-600"}>
+                      {headline}
+                    </span>
                   </div>
-                  <div className="mt-0.5 text-[11px] text-slate-500 font-medium whitespace-nowrap flex items-center justify-between gap-1">
-                    <span className="sm:truncate">{subline}</span>
+                  <div className="mt-0.5 flex items-center justify-between gap-3 text-[11px] text-slate-500 font-medium whitespace-nowrap">
+                    <span>{subline}</span>
                     <span
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedPromo(promotion);
                       }}
-                      className="text-[10px] text-slate-400 hover:text-slate-600 underline font-normal ml-1 shrink-0 whitespace-nowrap"
+                      className="text-[10px] text-slate-400 hover:text-slate-600 underline font-normal shrink-0"
                       title="Xem điều kiện"
                     >
                       Chi tiết ›
@@ -365,73 +315,48 @@ export function ProductPromotionBadges({
                 </button>
 
                 {/* Nút hành động Lưu / Đang dùng / Dùng mã */}
-                {promotion.claimRequired ? (
-                  <div className="relative flex shrink-0 items-stretch">
-                    {/* Rãnh khuyết trên tại đường đứt đoạn */}
-                    <span
-                      className={`pointer-events-none absolute -top-1.5 left-0 -translate-x-1/2 z-10 h-3 w-3 rounded-full bg-white border ${theme.notchBorder}`}
-                      aria-hidden="true"
-                    />
-                    {/* Rãnh khuyết dưới tại đường đứt đoạn */}
-                    <span
-                      className={`pointer-events-none absolute -bottom-1.5 left-0 -translate-x-1/2 z-10 h-3 w-3 rounded-full bg-white border ${theme.notchBorder}`}
-                      aria-hidden="true"
-                    />
+                <div className="relative flex shrink-0 items-stretch">
+                  {/* Rãnh khuyết trên tại đường đứt đoạn */}
+                  <span
+                    className="pointer-events-none absolute -top-1.5 left-0 -translate-x-1/2 z-10 h-3 w-3 rounded-full bg-white border border-stone-200"
+                    aria-hidden="true"
+                  />
+                  {/* Rãnh khuyết dưới tại đường đứt đoạn */}
+                  <span
+                    className="pointer-events-none absolute -bottom-1.5 left-0 -translate-x-1/2 z-10 h-3 w-3 rounded-full bg-white border border-stone-200"
+                    aria-hidden="true"
+                  />
 
-                    {isActive ? (
-                      <span
-                        className={`relative px-3 text-[11px] font-extrabold border-l border-dashed ${theme.divider} flex items-center justify-center shrink-0 select-none bg-white/80 ${theme.activeText} whitespace-nowrap`}
-                      >
-                        ✓ Đang dùng
-                      </span>
-                    ) : isClaimed ? (
-                      <button
-                        type="button"
-                        disabled={isPending}
-                        onClick={() => handleSelectVoucher(promotion)}
-                        className={`relative px-3 text-[11px] font-bold border-l border-dashed ${theme.divider} flex items-center justify-center transition shrink-0 select-none ${theme.btnBg} cursor-pointer active:scale-95 whitespace-nowrap`}
-                      >
-                        {isPending ? "..." : "Dùng mã"}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled={isPending}
-                        onClick={() => handleSelectVoucher(promotion)}
-                        className={`relative px-3 text-[11px] font-bold border-l border-dashed ${theme.divider} flex items-center justify-center transition shrink-0 select-none ${theme.btnBg} cursor-pointer active:scale-95 whitespace-nowrap`}
-                      >
-                        {isPending ? "..." : "Lưu"}
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  /* Mã không cần lưu (như Khách hàng mới / Khách hàng cũ) */
-                  <div className="relative flex shrink-0 items-stretch">
+                  {isActive ? (
                     <span
-                      className={`pointer-events-none absolute -top-1.5 left-0 -translate-x-1/2 z-10 h-3 w-3 rounded-full bg-white border ${theme.notchBorder}`}
-                      aria-hidden="true"
-                    />
-                    <span
-                      className={`pointer-events-none absolute -bottom-1.5 left-0 -translate-x-1/2 z-10 h-3 w-3 rounded-full bg-white border ${theme.notchBorder}`}
-                      aria-hidden="true"
-                    />
-                    {isActive ? (
-                      <span
-                        className={`relative px-2.5 text-[11px] font-extrabold border-l border-dashed ${theme.divider} flex items-center justify-center shrink-0 select-none bg-white/80 ${theme.activeText} whitespace-nowrap`}
-                      >
-                        ✓ Đang dùng
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleSelectVoucher(promotion)}
-                        className={`relative px-2.5 text-[11px] font-bold border-l border-dashed ${theme.divider} flex items-center justify-center transition shrink-0 select-none ${theme.btnBg} cursor-pointer active:scale-95 whitespace-nowrap`}
-                      >
-                        Dùng mã
-                      </button>
-                    )}
-                  </div>
-                )}
+                      className={`relative px-3.5 text-[11px] font-extrabold border-l border-dashed ${
+                        isShipping ? "border-teal-200 text-teal-700" : "border-rose-200 text-rose-600"
+                      } flex items-center justify-center shrink-0 select-none bg-white/80 whitespace-nowrap`}
+                    >
+                      ✓ Đang dùng
+                    </span>
+                  ) : isClaimed || !promotion.claimRequired ? (
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => handleSelectVoucher(promotion)}
+                      className={`relative px-3.5 text-[11px] font-bold border-l border-dashed ${
+                        isShipping ? "border-teal-200 bg-teal-600 hover:bg-teal-700" : "border-rose-200 bg-rose-600 hover:bg-rose-700"
+                      } text-white flex items-center justify-center transition shrink-0 select-none cursor-pointer active:scale-95 whitespace-nowrap`}
+                    >
+                      {isPending ? "..." : "Dùng mã"}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => claims.claim(promotion.id)}
+                      className="relative px-3.5 text-[11px] font-bold border-l border-dashed border-rose-200 bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center transition shrink-0 select-none cursor-pointer active:scale-95 whitespace-nowrap"
+                    >
+                      {isPending ? "..." : "Lưu"}
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}

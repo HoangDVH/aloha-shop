@@ -111,9 +111,9 @@ export function OrderPaymentSummary({ total: liveTotal, totalPending = false, di
             </div>
           ) : null}
           {discount > 0 ? (
-            <div className="flex items-center justify-between gap-3">
-              <span className="min-w-0 truncate text-slate-600 font-medium" title={appliedVoucherLabel}>{appliedVoucherLabel}</span>
-              <span className="tabular-nums font-semibold text-emerald-700">-{amountText(discount)}</span>
+            <div className="flex items-start justify-between gap-3">
+              <span className="min-w-0 text-slate-600 font-medium leading-snug" title={appliedVoucherLabel}>{appliedVoucherLabel}</span>
+              <span className="shrink-0 tabular-nums font-semibold text-emerald-700">-{amountText(discount)}</span>
             </div>
           ) : null}
           <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-3 font-bold text-slate-800"><span>Tiền hàng sau ưu đãi</span><span className="tabular-nums">{amountText(goodsAfter)}</span></div>

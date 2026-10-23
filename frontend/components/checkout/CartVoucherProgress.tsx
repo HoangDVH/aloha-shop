@@ -17,12 +17,7 @@ export function CartVoucherProgress({
   if (!goal) return null;
 
   if (goal.kind === "reached") {
-    return (
-      <div className="flex items-center gap-2 rounded-none sm:rounded-xl bg-emerald-50 px-4 py-2.5 sm:px-3 text-sm font-semibold text-emerald-700" role="status">
-        <CheckCircle2 size={16} aria-hidden />
-        <span className="min-w-0 truncate">Đã đủ điều kiện · {goal.label}</span>
-      </div>
-    );
+    return null;
   }
 
   if (goal.kind === "claim") {

@@ -16,7 +16,7 @@ function load(file) {
     if (name === '@/lib/api') return { formatVnd: String };
     if (name === '@/lib/checkoutFlags') return { shopShowCheckoutShipping: () => false };
     if (name === '@/lib/usePendingValue') return { usePendingValue: value => value };
-    if (name === '@/lib/voucherFormat') return { voucherCustomerTitle: title => title };
+    if (name === '@/lib/voucherFormat') return { voucherCustomerTitle: title => title, formatAppliedVoucherTitle: (applied, title) => title };
     return {};
   }});
   return exports;
