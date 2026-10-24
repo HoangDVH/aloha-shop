@@ -41,7 +41,7 @@ jobs:
       - if: matrix.check == 'api'
         run: python3 tests/release-nginx.test.py && python3 tests/release-rollback.test.py
       - if: matrix.check == 'api'
-        run: bash -n scripts/deploy-production.sh
+        run: bash -n scripts/deploy-production.sh && bash -n scripts/prune-releases.sh
   deploy:
     name: Deploy to VPS
     runs-on: ubuntu-latest
@@ -65,7 +65,7 @@ jobs:
             git fetch origin
             deploy_ref="${{ github.sha }}"
             runner=$(mktemp -d /tmp/aloha-deploy.XXXXXX)
-            for file in deploy-production.sh release-processes.cjs release-nginx.py; do
+            for file in deploy-production.sh release-processes.cjs release-nginx.py prune-releases.sh; do
               git show "$deploy_ref:scripts/$file" > "$runner/$file"
             done
             DEPLOY_REF="$deploy_ref" bash "$runner/deploy-production.sh"

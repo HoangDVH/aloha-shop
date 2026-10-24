@@ -101,4 +101,8 @@ pm2 save >/dev/null
 ln -s "$RELEASE" "$RELEASE_ROOT/current.new"
 mv -Tf "$RELEASE_ROOT/current.new" "$RELEASE_ROOT/current"
 trap - ERR INT TERM
+KEEP_COUNT="${KEEP_RELEASES:-5}"
+if [ -f "${TOOLS_DIR:-}/prune-releases.sh" ]; then
+  bash "$TOOLS_DIR/prune-releases.sh" "$RELEASE_ROOT" "$KEEP_COUNT" || echo "Warning: Release pruning failed" >&2
+fi
 echo "DEPLOY_OK release=$ID slot=$SLOT port=$PORT"
