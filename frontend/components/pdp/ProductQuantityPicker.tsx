@@ -4,27 +4,12 @@ import { Check } from "lucide-react";
 import { formatTonDisplay, stockMax } from "@/lib/cart";
 import { useToast } from "@/components/Toast";
 
-export function ProductQuantityPicker({
+export function ProductPreOrderDiscountBar({
   purchaseDisabled,
-  qty,
-  setQty,
-  allowBackorder,
-  liveTon,
-  unit = "",
-  isPreOrder = false,
 }: {
   purchaseDisabled: boolean;
-  qty: number;
-  setQty: Dispatch<SetStateAction<number>>;
-  allowBackorder?: boolean;
-  liveTon: number;
-  unit?: string;
-  isPreOrder?: boolean;
 }) {
-  const maxStock = stockMax(liveTon);
-  const isOutOfStock = maxStock === 0;
   const toast = useToast();
-
   const [deliverySpeed, setDeliverySpeed] = useState<"standard" | "delayed_3d">(() => {
     if (typeof window !== "undefined") {
       try {
@@ -60,6 +45,91 @@ export function ProductQuantityPicker({
       toast.push("Đã chuyển về giao ngay tiêu chuẩn");
     }
   };
+
+  if (purchaseDisabled) return null;
+
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={deliverySpeed === "delayed_3d"}
+      onClick={handleTogglePreOrderDiscount}
+      className={`group w-full flex items-center justify-between rounded-xl px-3.5 py-2.5 transition cursor-pointer select-none active:scale-[0.99] border ${
+        deliverySpeed === "delayed_3d"
+          ? "border-emerald-600 bg-emerald-50/50 text-emerald-950 ring-1 ring-emerald-600/25 shadow-2xs"
+          : "border-stone-200 bg-white hover:border-emerald-500 text-slate-800 shadow-2xs"
+      }`}
+      title={
+        deliverySpeed === "delayed_3d"
+          ? "Đang chọn ưu đãi giảm 10% đặt trước · Bấm để hủy"
+          : "Bấm tick chọn để nhận ưu đãi giảm 10% khi nhận hàng sau 3 ngày"
+      }
+    >
+      <div className="flex items-center gap-2.5 min-w-0">
+        {/* Ô vuông Checkbox chuẩn */}
+        <span
+          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-md transition border ${
+            deliverySpeed === "delayed_3d"
+              ? "border-emerald-600 bg-emerald-600 text-white shadow-2xs"
+              : "border-stone-300 bg-white group-hover:border-emerald-500 shadow-2xs"
+          }`}
+        >
+          {deliverySpeed === "delayed_3d" && (
+            <Check size={11} className="stroke-[3.5]" />
+          )}
+        </span>
+
+        {/* Nội dung thanh ưu đãi */}
+        <div className="leading-tight truncate text-xs sm:text-sm">
+          {deliverySpeed === "delayed_3d" ? (
+            <span className="font-bold text-emerald-900 truncate">
+              Đặt hàng trước nhận hàng sau 3 ngày:{" "}
+              <span className="font-semibold text-emerald-700">(Đã giảm 10%)</span>
+            </span>
+          ) : (
+            <span className="font-medium text-slate-700 truncate">
+              Đặt hàng trước nhận hàng sau 3 ngày:{" "}
+              <span className="font-bold text-rose-600">Giảm ngay 10%</span>
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Tag trạng thái bên phải */}
+      <span
+        className={`shrink-0 ml-2 text-xs font-semibold transition leading-none ${
+          deliverySpeed === "delayed_3d"
+            ? "text-emerald-700 font-bold"
+            : "text-slate-400 group-hover:text-emerald-700"
+        }`}
+      >
+        {deliverySpeed === "delayed_3d" ? "✓ Đã áp dụng" : "Bấm chọn ›"}
+      </span>
+    </button>
+  );
+}
+
+export function ProductQuantityPicker({
+  purchaseDisabled,
+  qty,
+  setQty,
+  allowBackorder,
+  liveTon,
+  unit = "",
+  isPreOrder = false,
+  hidePreorderBar = false,
+}: {
+  purchaseDisabled: boolean;
+  qty: number;
+  setQty: Dispatch<SetStateAction<number>>;
+  allowBackorder?: boolean;
+  liveTon: number;
+  unit?: string;
+  isPreOrder?: boolean;
+  hidePreorderBar?: boolean;
+}) {
+  const maxStock = stockMax(liveTon);
+  const isOutOfStock = maxStock === 0;
 
   return (
     <div className="space-y-2.5">
@@ -138,66 +208,11 @@ export function ProductQuantityPicker({
         ) : null}
       </div>
 
-      {/* Dòng 2: Thanh Ưu Đãi Đặt Trước 10% tràn chiều ngang (Full-Width Promo Bar) */}
-      {!purchaseDisabled && (
-        <button
-          type="button"
-          role="checkbox"
-          aria-checked={deliverySpeed === "delayed_3d"}
-          onClick={handleTogglePreOrderDiscount}
-          className={`group w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs transition cursor-pointer select-none active:scale-[0.99] border ${
-            deliverySpeed === "delayed_3d"
-              ? "border-emerald-500/90 bg-emerald-50/80 text-emerald-950 ring-1 ring-emerald-500/20 shadow-xs"
-              : "border-amber-300/80 bg-gradient-to-r from-amber-50/90 via-orange-50/40 to-amber-50/80 hover:border-amber-400 hover:from-amber-100/70 text-amber-950 shadow-2xs"
-          }`}
-          title={
-            deliverySpeed === "delayed_3d"
-              ? "Đang chọn ưu đãi giảm 10% đặt trước · Bấm để hủy"
-              : "Bấm tick chọn để nhận ưu đãi giảm 10% khi nhận hàng sau 3 ngày"
-          }
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            {/* Ô vuông Checkbox chuẩn */}
-            <span
-              className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-md transition border ${
-                deliverySpeed === "delayed_3d"
-                  ? "border-emerald-600 bg-emerald-600 text-white shadow-2xs"
-                  : "border-amber-400 bg-white group-hover:border-amber-500 shadow-2xs"
-              }`}
-            >
-              {deliverySpeed === "delayed_3d" && (
-                <Check size={11} className="stroke-[3.5]" />
-              )}
-            </span>
-
-            {/* Nội dung thanh ưu đãi */}
-            <div className="flex items-center gap-1.5 leading-tight truncate">
-              <span className="text-amber-500 font-black text-sm">⚡</span>
-              {deliverySpeed === "delayed_3d" ? (
-                <span className="font-bold text-emerald-800 truncate">
-                  Đã áp dụng giảm 10% đặt trước{" "}
-                  <span className="font-medium text-emerald-600 text-[11px]">(Nhận sau 3 ngày)</span>
-                </span>
-              ) : (
-                <span className="font-semibold text-slate-800 truncate">
-                  Đặt trước nhận sau 3 ngày:{" "}
-                  <span className="font-extrabold text-rose-600">Giảm ngay 10%</span>
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Tag trạng thái bên phải */}
-          <span
-            className={`shrink-0 ml-2 rounded-full px-2 py-0.5 text-[10px] font-bold border transition leading-none ${
-              deliverySpeed === "delayed_3d"
-                ? "border-emerald-300 bg-emerald-100/70 text-emerald-800"
-                : "border-amber-300 bg-white text-amber-800 shadow-2xs group-hover:bg-amber-50"
-            }`}
-          >
-            {deliverySpeed === "delayed_3d" ? "✓ Đã chọn" : "Bấm chọn"}
-          </span>
-        </button>
+      {/* Dòng 2: Thanh Ưu Đãi Đặt Trước 10% (trên mobile hiển thị dưới picker, trên desktop đưa vào Hộp Ưu Đãi Hợp Nhất) */}
+      {!hidePreorderBar && (
+        <div className="lg:hidden">
+          <ProductPreOrderDiscountBar purchaseDisabled={purchaseDisabled} />
+        </div>
       )}
     </div>
   );

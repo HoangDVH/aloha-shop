@@ -72,11 +72,13 @@ export function ProductPricingSummary({
   qty = 1,
   unit = "sản phẩm",
   attachedLines = [],
+  flat = false,
 }: {
   pricing: ReturnType<typeof useProductPricing>;
   qty?: number;
   unit?: string;
   attachedLines?: Array<{ ma: string; ten?: string; gia: number; qty: number }>;
+  flat?: boolean;
 }) {
   const { quote, loading, stale } = pricing;
   const volume = quote?.campaign?.volumeSavings || 0;
@@ -91,13 +93,71 @@ export function ProductPricingSummary({
   const mainProductRaw = Math.max(0, totalRaw - attachedTotal);
 
   const row = (label: string, amount: number, saving = false, plus = false) => (
-    <div className="flex justify-between gap-4">
-      <span className="min-w-0 truncate text-slate-500" title={label}>{label}</span>
-      <span className={`shrink-0 tabular-nums ${saving ? "font-semibold text-green-800" : plus ? "font-semibold text-slate-700" : "text-slate-700"}`}>
+    <div className="flex justify-between gap-4 text-sm sm:text-[15px]">
+      <span className="min-w-0 truncate text-slate-700 font-medium" title={label}>{label}</span>
+      <span className={`shrink-0 tabular-nums ${saving ? "font-bold text-emerald-700" : plus ? "font-bold text-slate-800" : "font-semibold text-slate-800"}`}>
         {saving ? "−" : plus ? "+" : ""}{formatVnd(amount)}
       </span>
     </div>
   );
+
+  if (flat) {
+    return (
+      <section className="text-sm pt-3 border-t border-slate-200/90 space-y-3.5" aria-live="polite">
+        <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500 font-medium">
+          <span className="text-sm sm:text-base font-bold text-slate-900">Chi tiết tính tiền</span>
+          <span className="text-xs sm:text-sm text-slate-500">
+            {qty} {unit.toLowerCase()}
+            {attachedQty > 0 ? ` + ${attachedQty} mua kèm` : ""}
+          </span>
+        </div>
+
+        {loading || stale || !quote ? (
+          <p className="py-2 text-sm text-slate-400">Đang cập nhật giá và voucher…</p>
+        ) : (
+          <div className="space-y-2">
+            {attachedLines && attachedLines.length > 0 ? (
+              <>
+                {row("Giá gốc sản phẩm", mainProductRaw)}
+                {attachedLines.map((l) =>
+                  row(
+                    `Sản phẩm đi kèm: ${l.ten || l.ma}${l.qty > 1 ? ` (x${l.qty})` : ""}`,
+                    l.gia * (l.qty || 1),
+                    false,
+                    true
+                  )
+                )}
+              </>
+            ) : (
+              row("Giá gốc sản phẩm", totalRaw)
+            )}
+            {wholesale > 0 && row("Ưu đãi giá sỉ so với giá web", wholesale, true)}
+            {volume > 0 && row("Giảm theo số lượng", volume, true)}
+            {anchor > 0 && row("Giảm giá sản phẩm", anchor, true)}
+            {flash > 0 && row("Giảm Flash Sale", flash, true)}
+            {voucher > 0 && row(formatAppliedVoucherTitle(quote.applied, quote.applied?.title) || "Voucher tiền hàng", voucher, true)}
+
+            <div className="flex items-start justify-between gap-3 pt-3.5 border-t border-slate-200">
+              <div className="pt-0.5">
+                <p className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-700">TẠM TÍNH</p>
+                <p className="mt-0.5 text-xs text-slate-400">Chưa bao gồm phí vận chuyển</p>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl sm:text-[32px] font-black tabular-nums text-rose-600 leading-tight">
+                  {formatVnd(quote.finalTotal)}
+                </p>
+                {savings > 0 && (
+                  <p className="mt-1 inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2.5 py-1 text-xs sm:text-[13px] font-bold text-emerald-800 border border-emerald-200/80">
+                    <span>✓ Tiết kiệm {formatVnd(savings)}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+    );
+  }
 
   return (
     <section className="overflow-hidden rounded-xl border border-slate-100 bg-slate-50/80 text-sm" aria-live="polite">

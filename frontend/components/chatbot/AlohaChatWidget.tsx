@@ -23,6 +23,8 @@ type ProductCard = {
   giaBan: number;
   image?: string;
   url: string;
+  ton?: number;
+  webBadge?: string;
 };
 
 type OrderCard = {
@@ -34,12 +36,31 @@ type OrderCard = {
   createdAt?: string;
 };
 
+type GiftCard = {
+  slug: string;
+  title: string;
+  tag: string;
+  subtitle: string;
+  url: string;
+  buttonText: string;
+  image?: string;
+};
+
+type SearchLink = {
+  title?: string;
+  label?: string;
+  url: string;
+  query?: string;
+};
+
 type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: string;
   productCards?: ProductCard[];
+  giftCard?: GiftCard;
+  searchLink?: SearchLink;
   orderCard?: OrderCard;
   showZaloAction?: boolean;
 };
@@ -179,6 +200,8 @@ export function AlohaChatWidget({
             content: data.reply,
             timestamp: new Intl.DateTimeFormat("vi-VN", { hour: "2-digit", minute: "2-digit" }).format(new Date()),
             productCards: data.productCards,
+            giftCard: data.giftCard,
+            searchLink: data.searchLink,
             orderCard: data.orderCard,
             showZaloAction: true,
           };
@@ -473,15 +496,91 @@ export function AlohaChatWidget({
                       </div>
                     )}
 
+                    {/* Thẻ gợi ý Bộ Sưu Tập Quà Tặng (Gift Collection Card) */}
+                    {msg.giftCard && (
+                      <div className="overflow-hidden rounded-2xl border border-emerald-600/30 bg-gradient-to-br from-emerald-50/90 via-white to-amber-50/40 p-3 shadow-xs transition-all hover:shadow-sm">
+                        <div className="flex items-start gap-3">
+                          {msg.giftCard.image ? (
+                            <img
+                              src={msg.giftCard.image}
+                              alt={msg.giftCard.title}
+                              className="h-16 w-16 shrink-0 rounded-xl object-cover ring-1 ring-emerald-900/10 shadow-2xs"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#2D5A27] to-emerald-700 text-2xl text-white shadow-2xs">
+                              🎁
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-[#2D5A27] px-2 py-0.5 text-[9px] font-bold text-white uppercase tracking-wider">
+                                <span>🎁</span>
+                                <span>Bộ sưu tập quà tặng</span>
+                              </span>
+                              {msg.giftCard.tag && (
+                                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-semibold text-amber-900">
+                                  {msg.giftCard.tag}
+                                </span>
+                              )}
+                            </div>
+                            <h4 className="mt-1 text-xs font-black text-slate-900 leading-snug">
+                              {msg.giftCard.title}
+                            </h4>
+                            <p className="mt-0.5 text-[11px] text-slate-600 line-clamp-2 leading-relaxed">
+                              {msg.giftCard.subtitle}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-2.5 pt-2 border-t border-emerald-100/90 flex items-center justify-between gap-2">
+                          <Link
+                            href={msg.giftCard.url}
+                            onClick={() => {
+                              if (typeof window !== "undefined" && window.innerWidth < 640) setIsOpen(false);
+                            }}
+                            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#2D5A27] px-3 py-2 text-xs font-bold text-white shadow-xs hover:bg-[#23481f] active:scale-98 transition-all"
+                          >
+                            <span>{msg.giftCard.buttonText || "Khám phá bộ sưu tập quà tặng →"}</span>
+                            <ArrowRight size={13} />
+                          </Link>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Thẻ gợi ý sản phẩm cùng loại dạng trượt ngang (Horizontal Carousel) */}
                     {msg.productCards && msg.productCards.length > 0 && (
                       <div className="space-y-1.5 pt-1.5">
                         <div className="flex items-center justify-between px-0.5">
                           <p className="text-[11.5px] font-bold text-slate-800 flex items-center gap-1.5">
                             <Sparkles size={13} className="text-amber-500 shrink-0" />
-                            <span>Gợi ý mẫu phù hợp có sẵn tại vườn ({msg.productCards.length})</span>
+                            <span>Gợi ý mẫu phù hợp ({msg.productCards.length})</span>
                           </p>
-                          <span className="text-[10px] text-slate-400 font-medium">Vuốt sang để xem →</span>
+                          {msg.searchLink ? (
+                            <Link
+                              href={msg.searchLink.url}
+                              onClick={() => {
+                                if (typeof window !== "undefined" && window.innerWidth < 640) setIsOpen(false);
+                              }}
+                              className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline"
+                            >
+                              <span>Xem tất cả</span>
+                              <ArrowRight size={11} />
+                            </Link>
+                          ) : msg.giftCard ? (
+                            <Link
+                              href={msg.giftCard.url}
+                              onClick={() => {
+                                if (typeof window !== "undefined" && window.innerWidth < 640) setIsOpen(false);
+                              }}
+                              className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline"
+                            >
+                              <span>Xem toàn bộ</span>
+                              <ArrowRight size={11} />
+                            </Link>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 font-medium">Vuốt sang để xem →</span>
+                          )}
                         </div>
 
                         {/* Thanh trượt ngang snap-x mượt mà */}
@@ -508,9 +607,15 @@ export function AlohaChatWidget({
                                   <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.2 text-[8px] font-medium text-white backdrop-blur-xs">
                                     {p.ma}
                                   </span>
-                                  <span className="absolute top-1 right-1 rounded-full bg-emerald-600/90 px-1.5 py-0.2 text-[8px] font-bold text-white shadow-2xs">
-                                    Sẵn hàng
-                                  </span>
+                                  {Number(p.ton || 0) > 0 ? (
+                                    <span className="absolute top-1 right-1 rounded-full bg-emerald-600/90 px-1.5 py-0.2 text-[8px] font-bold text-white shadow-2xs">
+                                      Sẵn hàng
+                                    </span>
+                                  ) : (
+                                    <span className="absolute top-1 right-1 rounded-full bg-amber-600/90 px-1.5 py-0.2 text-[8px] font-bold text-white shadow-2xs">
+                                      Đặt trước
+                                    </span>
+                                  )}
                                 </Link>
 
                                 <Link href={p.url} className="mt-1.5 block">
@@ -545,6 +650,52 @@ export function AlohaChatWidget({
                               </div>
                             </div>
                           ))}
+
+                          {/* THẺ "XEM TẤT CẢ" Ở CUỐI CAROUSEL DẪN ĐẾN TRANG TÌM KIẾM HOẶC QUÀ TẶNG */}
+                          {(msg.searchLink || msg.giftCard) && (
+                            <div className="w-[145px] sm:w-[155px] shrink-0 snap-start flex flex-col items-center justify-center text-center rounded-2xl border-2 border-dashed border-emerald-300/80 bg-gradient-to-b from-emerald-50/70 to-white p-3 hover:border-emerald-600 hover:bg-emerald-50 transition-all shadow-2xs">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-[#2D5A27] shadow-2xs mb-2">
+                                <ArrowRight size={17} />
+                              </div>
+                              <p className="text-xs font-bold text-slate-900 line-clamp-2 leading-tight">
+                                {msg.searchLink ? (msg.searchLink.label || msg.searchLink.title) : msg.giftCard?.title}
+                              </p>
+                              <p className="mt-1 text-[10px] text-slate-500">
+                                Khám phá thêm nhiều mẫu khác
+                              </p>
+                              <Link
+                                href={msg.searchLink ? msg.searchLink.url : msg.giftCard!.url}
+                                onClick={() => {
+                                  if (typeof window !== "undefined" && window.innerWidth < 640) setIsOpen(false);
+                                }}
+                                className="mt-2.5 inline-flex items-center gap-1 rounded-full bg-[#2D5A27] px-3 py-1.5 text-[10.5px] font-bold text-white shadow-xs hover:bg-[#23481f] transition-all"
+                              >
+                                <span>Xem tất cả</span>
+                                <ArrowRight size={11} />
+                              </Link>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* NẾU KHÔNG CÓ PRODUCT CARDS NHƯNG CÓ SEARCHLINK (VD TÌM KIẾM TỪ KHÓA) */}
+                    {msg.searchLink && (!msg.productCards || msg.productCards.length === 0) && (
+                      <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3 shadow-xs">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-bold text-emerald-950 truncate">
+                            🔍 {msg.searchLink.label || msg.searchLink.title}
+                          </span>
+                          <Link
+                            href={msg.searchLink.url}
+                            onClick={() => {
+                              if (typeof window !== "undefined" && window.innerWidth < 640) setIsOpen(false);
+                            }}
+                            className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-[#2D5A27] px-2.5 py-1 text-xs font-bold text-white hover:bg-[#23481f] transition-colors"
+                          >
+                            <span>Xem ngay</span>
+                            <ArrowRight size={11} />
+                          </Link>
                         </div>
                       </div>
                     )}

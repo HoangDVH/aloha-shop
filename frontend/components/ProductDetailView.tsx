@@ -25,7 +25,7 @@ import { calculateTierPrice } from "@/lib/volumePricing";
 import { useCampaignRequoteKey } from "@/lib/campaign/campaignQuote";
 import { useCampaignView } from "@/lib/campaign/useCampaignView";
 import { mobilePurchaseAction } from "@/components/pdp/purchaseAction";
-import { ProductQuantityPicker } from "@/components/pdp/ProductQuantityPicker";
+import { ProductQuantityPicker, ProductPreOrderDiscountBar } from "@/components/pdp/ProductQuantityPicker";
 import { ProductPurchaseSheet } from "@/components/pdp/ProductPurchaseSheet";
 import {
   ProductMobileVariantSelector,
@@ -730,68 +730,116 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
                 />
               </div>
 
-                {!expectsSi ? (
-                  <ProductPromotionBadges
-                    product={voucherProduct}
-                    livePrice={liveGia}
-                    isWholesale={false}
-                    appliedVoucher={productPricing.quote?.applied}
-                  />
-                ) : null}
+                {/* 1. KHỐI ƯU ĐÃI TRÊN DESKTOP: Hộp Hợp Nhất Chuẩn Thế Giới Di Động (Unified Incentive Card) */}
+                {/* 1. KHỐI ƯU ĐÃI TRÊN DESKTOP: Bố cục tinh giản chuẩn sàn TMĐT lớn */}
+                <div className="hidden lg:block mt-3.5 rounded-2xl border border-stone-200/90 bg-stone-50/40 p-3.5 space-y-3">
+                  {/* 1.1 Ưu đãi đặt trước 10% */}
+                  {!purchaseDisabled && (
+                    <ProductPreOrderDiscountBar purchaseDisabled={purchaseDisabled} />
+                  )}
 
-                <ProductAttachedItems
-                  mainProduct={activeProduct}
-                  attachedProducts={product.attachedProducts}
-                  mainQty={qty}
-                  mainLivePrice={liveGia}
-                  mainLiveTon={liveTon}
-                />
+                  {/* 1.2 Voucher & Khuyến mãi */}
+                  {!expectsSi && (
+                    <ProductPromotionBadges
+                      product={voucherProduct}
+                      livePrice={liveGia}
+                      isWholesale={false}
+                      appliedVoucher={productPricing.quote?.applied}
+                      embedded={true}
+                    />
+                  )}
 
-              {!purchaseDisabled && (
-                <div className="mt-4">
-                  <ProductPricingSummary
-                    pricing={productPricing}
-                    qty={qty}
-                    unit={activeProduct.dvt}
-                    attachedLines={attachedCartLines}
+                  {/* 1.3 Sản phẩm mua kèm trợ giá */}
+                  <ProductAttachedItems
+                    mainProduct={activeProduct}
+                    attachedProducts={product.attachedProducts}
+                    mainQty={qty}
+                    mainLivePrice={liveGia}
+                    mainLiveTon={liveTon}
+                    embedded={true}
                   />
                 </div>
-              )}
-              <div id="product-buy-actions" className="mt-2 hidden shrink-0 gap-3 lg:flex">
-                <button
-                  type="button"
-                  disabled={purchaseDisabled}
-                  onClick={() => addCart(false)}
-                  className={`flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-40 active:scale-98 ${
-                    "border border-[var(--aloha-green)] bg-white text-[var(--aloha-green-mid)] hover:bg-[var(--aloha-green-light)]"
-                  }`}
-                >
-                  <ShoppingCart size={17} />
-                  <span>Thêm giỏ hàng</span>
-                </button>
-                <button
-                  type="button"
-                  disabled={purchaseDisabled}
-                  onClick={() => addCart(true)}
-                  className={`flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black text-white transition disabled:cursor-not-allowed disabled:opacity-40 active:scale-98 shadow-sm ${
-                    "bg-[var(--aloha-green)] hover:bg-[var(--aloha-green-hover)]"
-                  }`}
-                >
-                  {campaignBuyInBox ? (
-                    <>
-                      <Zap size={16} className="fill-white" />
-                      <span>{isCampaignSaleOpen ? "Mua Ngay Giờ Vàng" : isPreOrder ? "Đặt trước ngay" : "Mua ngay"}</span>
-                    </>
-                  ) : qty >= 10 && !expectsSi ? (
-                    <>
-                      <Zap size={16} className="fill-white animate-pulse" />
-                      <span>{isPreOrder ? `Đặt trước ${qty} ${activeProduct.dvt || "sản phẩm"} (Giảm 10%)` : `MUA NGAY ${qty} ${activeProduct.dvt?.toUpperCase() || "SẢN PHẨM"} (GIẢM 10%)`}</span>
-                    </>
-                  ) : (
-                    <span>{isPreOrder ? "Đặt trước ngay" : "Mua ngay"}</span>
+
+                {/* 2. KHỐI ƯU ĐÃI TRÊN MOBILE (< 1024px): Giữ nguyên phân mục chuẩn Shopee mobile */}
+                <div className="lg:hidden space-y-1">
+                  {!expectsSi && (
+                    <ProductPromotionBadges
+                      product={voucherProduct}
+                      livePrice={liveGia}
+                      isWholesale={false}
+                      appliedVoucher={productPricing.quote?.applied}
+                    />
                   )}
-                </button>
-              </div>
+
+                  <ProductAttachedItems
+                    mainProduct={activeProduct}
+                    attachedProducts={product.attachedProducts}
+                    mainQty={qty}
+                    mainLivePrice={liveGia}
+                    mainLiveTon={liveTon}
+                  />
+                </div>
+
+                {/* 3. TẠM TÍNH: Desktop dùng flat layout không đóng khung xám, Mobile dùng layout chuẩn */}
+                {!purchaseDisabled && (
+                  <>
+                    <div className="hidden lg:block mt-3">
+                      <ProductPricingSummary
+                        pricing={productPricing}
+                        qty={qty}
+                        unit={activeProduct.dvt}
+                        attachedLines={attachedCartLines}
+                        flat={true}
+                      />
+                    </div>
+                    <div className="lg:hidden mt-4">
+                      <ProductPricingSummary
+                        pricing={productPricing}
+                        qty={qty}
+                        unit={activeProduct.dvt}
+                        attachedLines={attachedCartLines}
+                        flat={false}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* 4. Nút mua hàng Desktop */}
+                <div id="product-buy-actions" className="mt-2 hidden shrink-0 gap-3 lg:flex">
+                  <button
+                    type="button"
+                    disabled={purchaseDisabled}
+                    onClick={() => addCart(false)}
+                    className={`flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-40 active:scale-98 ${
+                      "border border-[var(--aloha-green)] bg-white text-[var(--aloha-green-mid)] hover:bg-[var(--aloha-green-light)]"
+                    }`}
+                  >
+                    <ShoppingCart size={17} />
+                    <span>Thêm giỏ hàng</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={purchaseDisabled}
+                    onClick={() => addCart(true)}
+                    className={`flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black text-white transition disabled:cursor-not-allowed disabled:opacity-40 active:scale-98 shadow-sm ${
+                      "bg-[var(--aloha-green)] hover:bg-[var(--aloha-green-hover)]"
+                    }`}
+                  >
+                    {campaignBuyInBox ? (
+                      <>
+                        <Zap size={16} className="fill-white" />
+                        <span>{isCampaignSaleOpen ? "Mua Ngay Giờ Vàng" : isPreOrder ? "Đặt trước ngay" : "Mua ngay"}</span>
+                      </>
+                    ) : qty >= 10 && !expectsSi ? (
+                      <>
+                        <Zap size={16} className="fill-white animate-pulse" />
+                        <span>{isPreOrder ? `Đặt trước ${qty} ${activeProduct.dvt || "sản phẩm"} (Giảm 10%)` : `MUA NGAY ${qty} ${activeProduct.dvt?.toUpperCase() || "SẢN PHẨM"} (GIẢM 10%)`}</span>
+                      </>
+                    ) : (
+                      <span>{isPreOrder ? "Đặt trước ngay" : "Mua ngay"}</span>
+                    )}
+                  </button>
+                </div>
             </div>
           </div>
         </div>

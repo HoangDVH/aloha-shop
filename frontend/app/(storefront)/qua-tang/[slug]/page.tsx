@@ -5,6 +5,7 @@ import { Sparkles, Check, ArrowLeft, Heart, MessageCircle, Gift, ShieldCheck } f
 import { ScopedProductCatalog } from "@/components/catalog/ScopedProductCatalog";
 import type { ShopProduct } from "@/lib/api";
 import { GiftImage } from "@/components/gift/GiftImage";
+import { GiftHashScroller } from "@/components/gift/GiftHashScroller";
 
 interface GiftDetailData {
   _id?: string;
@@ -168,7 +169,8 @@ export default async function GiftDetailPage({
       {/* ─────────────────────────────────────────────────────────────
           DANH SÁCH CÂY THẬT CÓ THỂ ĐẶT MUA NGAY
       ───────────────────────────────────────────────────────────── */}
-      <section className="py-14 sm:py-18 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <GiftHashScroller />
+      <section id="san-pham" className="py-14 sm:py-18 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-20">
         <div className="text-center max-w-2xl mx-auto mb-10">
           <span className="text-xs font-bold uppercase tracking-wider text-[#0E5242]">
             Các gợi ý cây phù hợp

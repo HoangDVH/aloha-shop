@@ -31,6 +31,8 @@ interface ProductPromotionBadgesProps {
   livePrice?: number;
   isWholesale?: boolean;
   appliedVoucher?: AppliedVoucherSummary;
+  embedded?: boolean;
+  hideHeader?: boolean;
 }
 
 interface FormattedTwoLineBadge {
@@ -102,6 +104,8 @@ export function ProductPromotionBadges({
   product,
   isWholesale = false,
   appliedVoucher,
+  embedded = false,
+  hideHeader = false,
 }: ProductPromotionBadgesProps) {
   const [promotions, setPromotions] = useState<AvailablePromotionUI[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -231,25 +235,39 @@ export function ProductPromotionBadges({
 
   return (
     <>
-      <section
-        className="-mx-4 border-t-8 border-stone-100 bg-white px-4 py-3.5 sm:mx-0 sm:my-3.5 sm:rounded-2xl sm:border sm:border-stone-200/80 sm:p-3.5 space-y-2.5 sm:shadow-xs"
+      <div
+        className={
+          embedded
+            ? "space-y-2"
+            : "-mx-4 border-t-8 border-stone-100 bg-white px-4 py-3.5 sm:mx-0 sm:my-3.5 sm:rounded-2xl sm:border sm:border-stone-200/80 sm:p-3.5 space-y-2.5 sm:shadow-xs"
+        }
         aria-label="Voucher và khuyến mãi"
       >
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-bold text-slate-900">Voucher &amp; khuyến mãi</span>
-          <button
-            type="button"
-            onClick={() => setVoucherOpen(true)}
-            className="inline-flex items-center gap-0.5 text-xs font-semibold text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-            aria-haspopup="dialog"
-          >
-            <span>Xem tất cả ({sheetEntries.length})</span>
-            <ChevronRight size={14} />
-          </button>
-        </div>
+        {!hideHeader && (
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-bold text-slate-900">
+              {embedded ? "Mã giảm giá" : "Voucher & khuyến mãi"}
+            </span>
+            <button
+              type="button"
+              onClick={() => setVoucherOpen(true)}
+              className={`inline-flex items-center gap-0.5 text-xs font-bold transition-colors cursor-pointer ${
+                embedded ? "text-emerald-700 hover:text-emerald-850" : "text-slate-400 hover:text-slate-600"
+              }`}
+              aria-haspopup="dialog"
+            >
+              <span>Xem tất cả ({sheetEntries.length})</span>
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        )}
 
-        {/* Thanh thẻ voucher trượt ngang hiển thị 100% đầy đủ chữ như ảnh 2 */}
-        <div className="flex items-stretch gap-2.5 overflow-x-auto pb-1 scrollbar-none snap-x -mx-4 px-4 sm:mx-0 sm:px-0">
+        {/* Thanh thẻ voucher trượt ngang hiển thị 100% đầy đủ chữ */}
+        <div
+          className={`flex items-stretch gap-2.5 overflow-x-auto pb-1 scrollbar-none snap-x ${
+            embedded ? "" : "-mx-4 px-4 sm:mx-0 sm:px-0"
+          }`}
+        >
           {applicableBadges.map(({ promotion, headline, subline, type }) => {
             const isShipping = type === "shipping";
             const isClaimed = claims.claimedIds.has(promotion.id);
@@ -259,21 +277,23 @@ export function ProductPromotionBadges({
             return (
               <div
                 key={promotion.id}
-                className={`relative inline-flex shrink-0 snap-start items-stretch rounded-xl border text-xs overflow-hidden transition select-none ${
+                className={`relative inline-flex shrink-0 snap-start items-stretch rounded-xl border text-xs overflow-hidden transition select-none bg-white ${
                   isActive
-                    ? "ring-1.5 ring-rose-500 border-rose-400 bg-rose-50/20 shadow-2xs"
+                    ? "ring-1.5 ring-rose-500 border-rose-400 shadow-2xs"
                     : isShipping
-                    ? "border-teal-300/80 bg-teal-50/15 shadow-2xs hover:border-teal-400"
-                    : "border-rose-300/80 bg-rose-50/15 shadow-2xs hover:border-rose-400"
+                    ? "border-stone-200 hover:border-teal-400 shadow-2xs"
+                    : "border-stone-200 hover:border-rose-400 shadow-2xs"
                 }`}
               >
                 {/* Rãnh khuyết vé bán nguyệt mép trái */}
                 <span
-                  className="pointer-events-none absolute -left-1.5 top-1/2 -translate-y-1/2 z-10 h-3 w-3 rounded-full bg-white border border-stone-200"
+                  className={`pointer-events-none absolute -left-1.5 top-1/2 -translate-y-1/2 z-10 h-3 w-3 rounded-full border border-stone-200 ${
+                    embedded ? "bg-stone-50" : "bg-white"
+                  }`}
                   aria-hidden="true"
                 />
 
-                {/* Thân voucher (nội dung chính chuẩn ảnh 2): Hiển thị 100% đầy đủ chữ không bị cắt */}
+                {/* Thân voucher: Hiển thị đầy đủ chữ */}
                 <button
                   type="button"
                   onClick={() => {
@@ -284,7 +304,7 @@ export function ProductPromotionBadges({
                     }
                   }}
                   disabled={isPending}
-                  className="flex flex-col justify-center px-3.5 py-2 hover:opacity-95 text-left cursor-pointer whitespace-nowrap"
+                  className="flex flex-col justify-center px-3.5 py-1.5 hover:opacity-95 text-left cursor-pointer whitespace-nowrap"
                   title={`${voucherCustomerTitle(promotion.title, promotion)} · ${
                     isActive ? "Đang áp dụng · Bấm để xem điều kiện" : "Bấm để áp dụng voucher này"
                   }`}
@@ -318,18 +338,22 @@ export function ProductPromotionBadges({
                 <div className="relative flex shrink-0 items-stretch">
                   {/* Rãnh khuyết trên tại đường đứt đoạn */}
                   <span
-                    className="pointer-events-none absolute -top-1.5 left-0 -translate-x-1/2 z-10 h-3 w-3 rounded-full bg-white border border-stone-200"
+                    className={`pointer-events-none absolute -top-1.5 left-0 -translate-x-1/2 z-10 h-3 w-3 rounded-full border border-stone-200 ${
+                      embedded ? "bg-stone-50" : "bg-white"
+                    }`}
                     aria-hidden="true"
                   />
                   {/* Rãnh khuyết dưới tại đường đứt đoạn */}
                   <span
-                    className="pointer-events-none absolute -bottom-1.5 left-0 -translate-x-1/2 z-10 h-3 w-3 rounded-full bg-white border border-stone-200"
+                    className={`pointer-events-none absolute -bottom-1.5 left-0 -translate-x-1/2 z-10 h-3 w-3 rounded-full border border-stone-200 ${
+                      embedded ? "bg-stone-50" : "bg-white"
+                    }`}
                     aria-hidden="true"
                   />
 
                   {isActive ? (
                     <span
-                      className={`relative px-3.5 text-[11px] font-extrabold border-l border-dashed ${
+                      className={`relative px-3 text-[11px] font-bold border-l border-dashed ${
                         isShipping ? "border-teal-200 text-teal-700" : "border-rose-200 text-rose-600"
                       } flex items-center justify-center shrink-0 select-none bg-white/80 whitespace-nowrap`}
                     >
@@ -340,7 +364,7 @@ export function ProductPromotionBadges({
                       type="button"
                       disabled={isPending}
                       onClick={() => handleSelectVoucher(promotion)}
-                      className={`relative px-3.5 text-[11px] font-bold border-l border-dashed ${
+                      className={`relative px-3 text-[11px] font-bold border-l border-dashed ${
                         isShipping ? "border-teal-200 bg-teal-600 hover:bg-teal-700" : "border-rose-200 bg-rose-600 hover:bg-rose-700"
                       } text-white flex items-center justify-center transition shrink-0 select-none cursor-pointer active:scale-95 whitespace-nowrap`}
                     >
@@ -351,7 +375,7 @@ export function ProductPromotionBadges({
                       type="button"
                       disabled={isPending}
                       onClick={() => claims.claim(promotion.id)}
-                      className="relative px-3.5 text-[11px] font-bold border-l border-dashed border-rose-200 bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center transition shrink-0 select-none cursor-pointer active:scale-95 whitespace-nowrap"
+                      className="relative px-3 text-[11px] font-bold border-l border-dashed border-rose-200 bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center transition shrink-0 select-none cursor-pointer active:scale-95 whitespace-nowrap"
                     >
                       {isPending ? "..." : "Lưu"}
                     </button>
@@ -361,7 +385,7 @@ export function ProductPromotionBadges({
             );
           })}
         </div>
-      </section>
+      </div>
 
       <LoginSheet open={claims.loginOpen} onClose={claims.cancelLogin} onDone={claims.loginDone} />
       {voucherOpen && (
