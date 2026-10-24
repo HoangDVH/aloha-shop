@@ -80,15 +80,15 @@ export function ProductPreOrderDiscountBar({
         </span>
 
         {/* Nội dung thanh ưu đãi */}
-        <div className="leading-tight truncate text-xs sm:text-sm">
+        <div className="leading-snug text-xs sm:text-sm">
           {deliverySpeed === "delayed_3d" ? (
-            <span className="font-bold text-emerald-900 truncate">
-              Đặt hàng trước nhận hàng sau 3 ngày:{" "}
+            <span className="font-bold text-emerald-900">
+              Đặt trước nhận sau 3 ngày:{" "}
               <span className="font-semibold text-emerald-700">(Đã giảm 10%)</span>
             </span>
           ) : (
-            <span className="font-medium text-slate-700 truncate">
-              Đặt hàng trước nhận hàng sau 3 ngày:{" "}
+            <span className="font-medium text-slate-700">
+              Đặt trước nhận sau 3 ngày:{" "}
               <span className="font-bold text-rose-600">Giảm ngay 10%</span>
             </span>
           )}
@@ -210,7 +210,7 @@ export function ProductQuantityPicker({
 
       {/* Dòng 2: Thanh Ưu Đãi Đặt Trước 10% (trên mobile hiển thị dưới picker, trên desktop đưa vào Hộp Ưu Đãi Hợp Nhất) */}
       {!hidePreorderBar && (
-        <div className="lg:hidden">
+        <div className="lg:hidden mt-3.5 mb-5">
           <ProductPreOrderDiscountBar purchaseDisabled={purchaseDisabled} />
         </div>
       )}

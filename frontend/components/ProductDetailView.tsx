@@ -730,9 +730,8 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
                 />
               </div>
 
-                {/* 1. KHỐI ƯU ĐÃI TRÊN DESKTOP: Hộp Hợp Nhất Chuẩn Thế Giới Di Động (Unified Incentive Card) */}
-                {/* 1. KHỐI ƯU ĐÃI TRÊN DESKTOP: Bố cục tinh giản chuẩn sàn TMĐT lớn */}
-                <div className="hidden lg:block mt-3.5 rounded-2xl border border-stone-200/90 bg-stone-50/40 p-3.5 space-y-3">
+                {/* 1. KHỐI ƯU ĐÃI TRÊN DESKTOP: Bố cục tinh giản chuẩn Shopee (không viền hộp rời rạc) */}
+                <div className="hidden lg:block mt-3.5 space-y-3.5 pt-3 border-t border-stone-200/70">
                   {/* 1.1 Ưu đãi đặt trước 10% */}
                   {!purchaseDisabled && (
                     <ProductPreOrderDiscountBar purchaseDisabled={purchaseDisabled} />
@@ -780,28 +779,17 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
                   />
                 </div>
 
-                {/* 3. TẠM TÍNH: Desktop dùng flat layout không đóng khung xám, Mobile dùng layout chuẩn */}
+                {/* 3. TẠM TÍNH: Bố cục phẳng liền mạch chuẩn sàn TMĐT (không đóng khung xám rời rạc cả trên mobile và desktop) */}
                 {!purchaseDisabled && (
-                  <>
-                    <div className="hidden lg:block mt-3">
-                      <ProductPricingSummary
-                        pricing={productPricing}
-                        qty={qty}
-                        unit={activeProduct.dvt}
-                        attachedLines={attachedCartLines}
-                        flat={true}
-                      />
-                    </div>
-                    <div className="lg:hidden mt-4">
-                      <ProductPricingSummary
-                        pricing={productPricing}
-                        qty={qty}
-                        unit={activeProduct.dvt}
-                        attachedLines={attachedCartLines}
-                        flat={false}
-                      />
-                    </div>
-                  </>
+                  <div className="mt-3.5">
+                    <ProductPricingSummary
+                      pricing={productPricing}
+                      qty={qty}
+                      unit={activeProduct.dvt}
+                      attachedLines={attachedCartLines}
+                      flat={true}
+                    />
+                  </div>
                 )}
 
                 {/* 4. Nút mua hàng Desktop */}
@@ -858,6 +846,7 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
                 : ""),
             dvt: activeProduct.dvt,
             trongLuong: activeProduct.trongLuong,
+            attributes: activeProduct.attributes,
           }}
         />
       </div>

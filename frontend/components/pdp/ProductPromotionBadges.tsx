@@ -263,11 +263,7 @@ export function ProductPromotionBadges({
         )}
 
         {/* Thanh thẻ voucher trượt ngang hiển thị 100% đầy đủ chữ */}
-        <div
-          className={`flex items-stretch gap-2.5 overflow-x-auto pb-1 scrollbar-none snap-x ${
-            embedded ? "" : "-mx-4 px-4 sm:mx-0 sm:px-0"
-          }`}
-        >
+        <div className="flex items-stretch gap-2.5 overflow-x-auto pb-1 scrollbar-none snap-x pl-1 sm:pl-0">
           {applicableBadges.map(({ promotion, headline, subline, type }) => {
             const isShipping = type === "shipping";
             const isClaimed = claims.claimedIds.has(promotion.id);

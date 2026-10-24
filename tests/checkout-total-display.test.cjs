@@ -27,6 +27,7 @@ function render(file, component, props, hooks = {}) {
     if (name === '@/lib/campaign/campaignQuote') return { giftLinesOf: () => [], flashLineFor: () => null };
     if (name === './CampaignLineBits') return {};
     if (name === '@/lib/voucherFormat') return { formatAppliedVoucherTitle: (promo, title) => title || 'Voucher shop' };
+    if (name === '@/components/Toast') return { useToast: () => ({ push() {} }) };
     if (name === './DeliverySpeedSelector') return { DeliverySpeedSelector: () => null };
     if (name === './CheckoutOrderNoteSheet') return { CheckoutOrderNoteSheet: 'note-sheet' };
     if (name === './OrderPaymentSummary') {

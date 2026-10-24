@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Minus, Plus, SquarePen, Store } from "lucide-react";
+import { Minus, Plus, SquarePen, Store, Trash2 } from "lucide-react";
 import { formatVnd } from "@/lib/api";
 import type { CartLine } from "@/lib/cart";
 import { stockMax, useCart } from "@/lib/cart";
 import { formatVariantLabel } from "@/lib/cartVariant";
 import { flashLineFor, giftLinesOf, type CampaignQuoteUI } from "@/lib/campaign/campaignQuote";
 import { CampaignGiftRows, CartUnitPrice, MobileCartPrice } from "./CampaignLineBits";
+import { useToast } from "@/components/Toast";
 
 import { CheckoutOrderNoteSheet } from "./CheckoutOrderNoteSheet";
 
@@ -31,9 +32,16 @@ export function CheckoutLineItems({
   pricesPending = false,
 }: Props) {
   const setQty = useCart((s) => s.setQty);
+  const remove = useCart((s) => s.remove);
   const setLineNote = useCart((s) => s.setLineNote);
+  const toast = useToast();
   const [editingMa, setEditingMa] = useState<string | null>(null);
   const [editingOrderNote, setEditingOrderNote] = useState(false);
+
+  const handleRemove = (ma: string, ten: string) => {
+    remove(ma);
+    toast.push(`Đã xóa "${ten}" khỏi đơn hàng.`);
+  };
 
   return (
     <section className="w-full bg-white sm:rounded-[var(--aloha-radius-lg)] sm:shadow-[var(--aloha-shadow)] sm:ring-1 sm:ring-black/[0.04] overflow-hidden">
@@ -59,11 +67,12 @@ export function CheckoutLineItems({
       </button>}
 
       {/* Desktop header */}
-      <div className="hidden grid-cols-[minmax(0,1fr)_100px_100px_110px] gap-3 border-b border-[var(--aloha-line)] bg-[#f8f7f4] px-4 py-2.5 text-xs font-semibold text-slate-500 lg:grid">
+      <div className="hidden grid-cols-[minmax(0,1fr)_100px_100px_110px_36px] gap-3 border-b border-[var(--aloha-line)] bg-[#f8f7f4] px-4 py-2.5 text-xs font-semibold text-slate-500 lg:grid">
         <span>Sản phẩm</span>
         <span className="text-right">Đơn giá</span>
         <span className="text-center">Số lượng</span>
         <span className="text-right">Thành tiền</span>
+        <span className="text-center sr-only">Thao tác</span>
       </div>
 
       <ul className="divide-y divide-[var(--aloha-line)]">
@@ -84,7 +93,7 @@ export function CheckoutLineItems({
           const hasLineNote = Boolean(l.lineNote?.trim());
 
           return (
-            <li key={l.ma} className="px-4 py-3 sm:px-4">
+            <li key={l.ma} className="relative px-4 py-3 sm:px-4">
               {/* Mobile */}
               <div className="flex gap-3 lg:hidden">
                 <Link
@@ -100,7 +109,7 @@ export function CheckoutLineItems({
                     />
                   ) : null}
                 </Link>
-                <div className="flex min-w-0 flex-1 flex-col">
+                <div className="flex min-w-0 flex-1 flex-col pr-8">
                   <Link
                     href={l.path || `/sp/${encodeURIComponent(l.ma)}`}
                     className="line-clamp-2 text-[13px] font-semibold leading-snug text-stone-900 hover:underline"
@@ -131,7 +140,7 @@ export function CheckoutLineItems({
                         aria-label="Giảm số lượng"
                         disabled={l.qty <= 1}
                         onClick={() => setQty(l.ma, l.qty - 1)}
-                        className="flex h-11 w-11 items-center justify-center rounded-full text-slate-600 disabled:opacity-30"
+                        className="flex h-11 w-11 items-center justify-center rounded-full text-slate-600 disabled:opacity-30 active:bg-stone-200"
                       >
                         <Minus size={14} />
                       </button>
@@ -143,7 +152,7 @@ export function CheckoutLineItems({
                         aria-label="Tăng số lượng"
                         disabled={atMax}
                         onClick={() => setQty(l.ma, l.qty + 1)}
-                        className="flex h-11 w-11 items-center justify-center rounded-full text-slate-600 disabled:opacity-30"
+                        className="flex h-11 w-11 items-center justify-center rounded-full text-slate-600 disabled:opacity-30 active:bg-stone-200"
                       >
                         <Plus size={14} />
                       </button>
@@ -152,8 +161,19 @@ export function CheckoutLineItems({
                 </div>
               </div>
 
-              {/* Desktop — cột như ảnh 2 */}
-              <div className="hidden grid-cols-[minmax(0,1fr)_100px_100px_110px] items-center gap-3 lg:grid">
+              {/* Nút xóa nhanh trên Mobile ở góc trên phải */}
+              <button
+                type="button"
+                onClick={() => handleRemove(l.ma, l.ten)}
+                className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full text-stone-400 hover:bg-rose-50 hover:text-rose-600 transition-colors lg:hidden cursor-pointer"
+                aria-label={`Xóa ${l.ten}`}
+                title="Xóa sản phẩm"
+              >
+                <Trash2 size={16} />
+              </button>
+
+              {/* Desktop — 5 cột: Sản phẩm, Đơn giá, Số lượng, Thành tiền, Thao tác xóa */}
+              <div className="hidden grid-cols-[minmax(0,1fr)_100px_100px_110px_36px] items-center gap-3 lg:grid">
                 <div className="flex min-w-0 gap-3">
                   <Link
                     href={l.path || `/sp/${encodeURIComponent(l.ma)}`}
@@ -205,7 +225,7 @@ export function CheckoutLineItems({
                       aria-label="Giảm số lượng"
                       disabled={l.qty <= 1}
                       onClick={() => setQty(l.ma, l.qty - 1)}
-                      className="flex h-7 w-7 items-center justify-center rounded text-slate-600 disabled:opacity-30"
+                      className="flex h-7 w-7 items-center justify-center rounded text-slate-600 disabled:opacity-30 hover:bg-stone-200 transition-colors"
                     >
                       <Minus size={13} />
                     </button>
@@ -217,7 +237,7 @@ export function CheckoutLineItems({
                       aria-label="Tăng số lượng"
                       disabled={atMax}
                       onClick={() => setQty(l.ma, l.qty + 1)}
-                      className="flex h-7 w-7 items-center justify-center rounded text-slate-600 disabled:opacity-30"
+                      className="flex h-7 w-7 items-center justify-center rounded text-slate-600 disabled:opacity-30 hover:bg-stone-200 transition-colors"
                     >
                       <Plus size={13} />
                     </button>
@@ -227,6 +247,17 @@ export function CheckoutLineItems({
                   {formatVnd(lineTotal)}
                   {originalTotal}
                 </p>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => handleRemove(l.ma, l.ten)}
+                    title="Xóa sản phẩm này"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-400 hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer"
+                    aria-label={`Xóa ${l.ten}`}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
 
               {editing ? (

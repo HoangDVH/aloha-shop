@@ -604,7 +604,7 @@ export function PromotionModal({
                                 }`}
                               >
                                 {cand.minLeadDays && cand.minLeadDays >= 3 && deliverySpeed !== "delayed_3d"
-                                  ? "Chọn Đặt trước 3 ngày"
+                                  ? "Chọn Đặt trước nhận sau 3 ngày"
                                   : deliverySpeed === "delayed_3d" && (!cand.minLeadDays || cand.minLeadDays < 3)
                                   ? "Áp dụng (Giao ngay)"
                                   : "Áp dụng"}
@@ -625,7 +625,7 @@ export function PromotionModal({
                         </p>
                         {cand.minLeadDays && cand.minLeadDays >= 3 ? (
                           <p className="text-[11px] font-semibold text-emerald-700 leading-tight">
-                            Áp dụng khi chọn Chờ giao sau {cand.minLeadDays} ngày
+                            Áp dụng khi chọn Đặt trước nhận sau {cand.minLeadDays} ngày
                           </p>
                         ) : null}
                         <p className="text-[11px] text-slate-400 leading-tight">
@@ -672,7 +672,7 @@ export function PromotionModal({
                       title={voucherCustomerTitle(cand.title, cand)}
                       action={
                         <div className="flex flex-col items-end gap-1.5">
-                          {cand.minLeadDays && cand.minLeadDays >= 3 && cand.ineligibleReason?.includes("Chờ giao sau") && (!cand.shortfall || cand.shortfall <= 0) ? (
+                          {cand.minLeadDays && cand.minLeadDays >= 3 && (cand.ineligibleReason?.includes("Chờ giao sau") || cand.ineligibleReason?.includes("Đặt trước nhận sau")) && (!cand.shortfall || cand.shortfall <= 0) ? (
                             <button
                               type="button"
                               onClick={() => {
@@ -684,9 +684,9 @@ export function PromotionModal({
                                 }
                               }}
                               className="rounded-full bg-emerald-700 hover:bg-emerald-800 active:scale-95 px-2.5 py-1 text-xs font-bold text-white transition shadow-2xs cursor-pointer whitespace-nowrap"
-                              title="Bấm để chuyển sang Đặt trước 3 ngày và dùng ưu đãi này"
+                              title="Bấm để chuyển sang Đặt trước nhận sau 3 ngày và dùng ưu đãi này"
                             >
-                              Chọn Đặt trước 3 ngày
+                              Chọn Đặt trước nhận sau 3 ngày
                             </button>
                           ) : ineligibleAction ? (
                             ineligibleAction(cand)

@@ -88,7 +88,8 @@ export function applyBuyerRules(
   const allowed = ctx.status.retail && !ctx.status.locked;
   for (const p of promotions) {
     if (!voucherMatchesBuyer(p.targetCustomer, ctx)) continue;
-    const needsWallet = ctx.walletOn && Boolean(p.claimRequired);
+    const isLeadTimePromo = (p.minLeadDays || 0) >= 3;
+    const needsWallet = ctx.walletOn && Boolean(p.claimRequired) && !isLeadTimePromo;
     const campaignOnly = ctx.campaignVoucherIds.has(p.id) || needsWallet;
     const visible = p.isPublic !== false;
     if (p.targetCustomer === "new_web" && ctx.newVoucherBlockReason) {

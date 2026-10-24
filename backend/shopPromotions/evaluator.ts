@@ -86,7 +86,7 @@ function checkCommonEligibility(
   if (eligible && promo.minLeadDays != null && promo.minLeadDays > 0) {
     if (buyer.deliverySpeed !== "delayed_3d") {
       eligible = false;
-      ineligibleReason = `Chỉ áp dụng khi chọn Chờ giao sau ${promo.minLeadDays} ngày.`;
+      ineligibleReason = `Chỉ áp dụng khi chọn Đặt trước nhận sau ${promo.minLeadDays} ngày.`;
     }
   }
 

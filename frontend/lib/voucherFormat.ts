@@ -71,7 +71,7 @@ export function formatVoucherBadge(p: VoucherLike): { label: string; type: "good
   }
   if (p.minLeadDays && p.minLeadDays >= 3) {
     const value = p.discountType === "percentage" ? pctText(p) : formatCompactVnd(p.discountValue);
-    return { label: `Giảm ${value} (Chờ giao sau ${p.minLeadDays} ngày)`, type: "goods" };
+    return { label: `Đặt trước nhận sau ${p.minLeadDays} ngày (Giảm ${value})`, type: "goods" };
   }
   if (p.targetCustomer === "returning_web") {
     const value = p.discountType === "percentage" ? pctText(p) : formatCompactVnd(p.discountValue);
@@ -129,10 +129,11 @@ export function formatAppliedVoucherTitle(
 
   if (!rawTitle && !discountValue) return "Voucher shop";
 
-  // 0. Voucher đặt trước (minLeadDays >= 3 hoặc có chữ chờ...ngày)
+  // 0. Voucher đặt trước (minLeadDays >= 3 hoặc có chữ chờ/nhận sau...ngày)
   const isDelayed = Boolean(
     (minLeadDays != null && minLeadDays >= 3) ||
-    /chờ.*ngày/i.test(rawTitle)
+    /chờ.*ngày/i.test(rawTitle) ||
+    /đặt trước nhận sau/i.test(rawTitle)
   );
   if (isDelayed) {
     let val = "";
@@ -147,7 +148,7 @@ export function formatAppliedVoucherTitle(
       }
     }
     const days = minLeadDays && minLeadDays >= 3 ? minLeadDays : 3;
-    return `Ưu đãi đặt trước ${days} ngày${val}`;
+    return `Đặt trước nhận sau ${days} ngày${val}`;
   }
 
   // 1. Voucher khách cũ (chuẩn theo yêu cầu: "Voucher khách cũ giảm 7%")
@@ -229,8 +230,8 @@ export function formatAppliedVoucherTitle(
 export function voucherCustomerTitle(title?: string, offer?: Partial<VoucherLike>): string {
   const cleaned = (title || "").replace(/\s*\(\s*3\s+sản\s+phẩm\s*\)/giu, "").trim();
 
-  // 0. Voucher đặt trước (minLeadDays >= 3 hoặc có chữ chờ...ngày)
-  if ((offer?.minLeadDays != null && offer.minLeadDays >= 3) || /chờ.*ngày/i.test(cleaned)) {
+  // 0. Voucher đặt trước (minLeadDays >= 3 hoặc có chữ chờ/nhận sau...ngày)
+  if ((offer?.minLeadDays != null && offer.minLeadDays >= 3) || /chờ.*ngày/i.test(cleaned) || /đặt trước nhận sau/i.test(cleaned)) {
     const val =
       offer?.discountType === "percentage" && offer?.discountValue
         ? pctText(offer as any)
@@ -238,7 +239,7 @@ export function voucherCustomerTitle(title?: string, offer?: Partial<VoucherLike
         ? formatCompactVnd(offer.discountValue)
         : "10%";
     const days = offer?.minLeadDays && offer.minLeadDays >= 3 ? offer.minLeadDays : 3;
-    return `Ưu đãi đặt trước: Giảm ${val} khi chọn Chờ giao sau ${days} ngày`;
+    return `Đặt trước nhận sau ${days} ngày: Giảm ngay ${val}`;
   }
 
   // 1. Voucher khách cũ
@@ -260,7 +261,7 @@ export function cleanVoucherTitle(v: {
   mystery?: MysteryInfo;
 }): string {
   if (v.minLeadDays && v.minLeadDays >= 3) {
-    return `Ưu đãi đặt trước (Chờ giao sau ${v.minLeadDays} ngày)`;
+    return `Đặt trước nhận sau ${v.minLeadDays} ngày`;
   }
   const raw = voucherCustomerTitle(v.title, v);
   if (raw.includes("tiền hàng cho khách cũ")) return raw;

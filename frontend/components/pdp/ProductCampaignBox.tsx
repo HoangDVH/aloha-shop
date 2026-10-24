@@ -149,7 +149,7 @@ export function ProductCampaignBox({
   const upcomingSale = !selling && hasSale;
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-rose-200/80 shadow-xs" aria-label="Ưu đãi chiến dịch">
+    <section className="overflow-hidden rounded-xl border border-stone-200/80 shadow-2xs" aria-label="Ưu đãi chiến dịch">
       {/* 1. DẢI RIBBON HEADER (CHUẨN TMĐT: SHOPEE / LAZADA / TIKTOK SHOP) */}
       <div className="flex items-center justify-between gap-2 bg-gradient-to-r from-[#C8102E] via-[#D32F2F] to-[#E53935] px-3.5 sm:px-4 py-2 sm:py-2.5 text-white">
         <span className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-black uppercase tracking-wider">
@@ -172,8 +172,8 @@ export function ProductCampaignBox({
         ) : null}
       </div>
 
-      {/* 2. THÂN KHỐI GIÁ & QUÀ TẶNG: NỀN HỮU CƠ TỰ NHIÊN, KHÔNG CHỨA NÚT MUA TRÙNG LẶP */}
-      <div className="space-y-2.5 bg-gradient-to-b from-[#FFF5F3] to-[#FFFBF9] p-3 sm:p-4">
+      {/* 2. THÂN KHỐI GIÁ & QUÀ TẶNG: NỀN TRUNG TÍNH PHẲNG CHUẨN SHOPEE, KHÔNG CÓ VIỀN ĐỎ */}
+      <div className="space-y-2.5 bg-stone-50/70 p-3 sm:p-4">
         {/* Dòng giá ưu đãi */}
         <div className="flex flex-wrap items-baseline gap-2 sm:gap-3">
           <span className="text-2xl sm:text-[1.85rem] font-black tracking-tight text-[#C8102E]">
@@ -190,7 +190,7 @@ export function ProductCampaignBox({
             </span>
           ) : null}
           {discountPct > 0 ? (
-            <span className="inline-flex items-center rounded-lg bg-[#FFE4E4] px-2 py-0.5 text-xs sm:text-sm font-black text-[#C8102E] border border-rose-200">
+            <span className="inline-flex items-center rounded-lg bg-rose-100 px-2 py-0.5 text-xs sm:text-sm font-black text-[#C8102E] border border-rose-200/60">
               -{discountPct}%
             </span>
           ) : null}
