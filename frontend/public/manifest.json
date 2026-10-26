@@ -1,0 +1,25 @@
+{
+  "name": "ALOHA Shop - Hệ Thống Bán Hàng & Quản Trị",
+  "short_name": "ALOHA Shop",
+  "description": "Thế giới chậu cây & cây cảnh ALOHA Shop",
+  "start_url": "/admin",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F7F8FA",
+  "theme_color": "#2D5A27",
+  "icons": [
+    {
+      "src": "/brand/logo-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/brand/logo-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

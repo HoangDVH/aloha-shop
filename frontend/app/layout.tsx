@@ -42,6 +42,7 @@ export async function generateMetadata(): Promise<Metadata> {
       apple: [{ url: favicon, type: "image/png" }],
       shortcut: favicon,
     },
+    manifest: "/manifest.json",
     verification: {
       ...(verification ? { google: verification } : {}),
       other: {

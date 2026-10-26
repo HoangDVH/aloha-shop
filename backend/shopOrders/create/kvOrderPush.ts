@@ -18,6 +18,7 @@ import {
 import { renameRedemptionOrderCode } from "../../shopPromotions/redemptionService.js";
 import { fullAddressForKv } from "../orderRouteShared.js";
 import { releaseOrderPromotions } from "./promotionHolds.js";
+import { resolveKvCustomerIdForAccount } from "../kvCustomerResolver.js";
 
 export type KvPushContext = {
   shopDb: Db;
@@ -102,10 +103,28 @@ function kvAddress(ctx: KvPushContext): string {
 async function pushCodOrReviewOrder(ctx: KvPushContext, code: string): Promise<KvPushResult> {
   const { reviewFirst, isTest, customerNote, kvPreOrderHint, ctvNote } = ctx;
   try {
+    let customerId = ctx.user?.kvCustomerId ? Number(ctx.user.kvCustomerId) : undefined;
+    if (!customerId && ctx.customerPhone) {
+      customerId =
+        (await resolveKvCustomerIdForAccount({
+          shopDb: ctx.shopDb,
+          opsDb: ctx.mainDb,
+          accountId: ctx.user?._id ? String(ctx.user._id) : null,
+          phone: ctx.customerPhone,
+          fullName: ctx.customerName,
+          address: kvAddress(ctx),
+          timeoutMs: 2500,
+        }).catch(() => null)) ?? undefined;
+      if (customerId) {
+        if (ctx.user) ctx.user.kvCustomerId = customerId;
+        await patchOrder(ctx, { kvCustomerId: customerId });
+      }
+    }
+
     const ord = await (reviewFirst ? ensureReviewKvOrder : ensureCodKvOrder)({
       mainDb: ctx.mainDb,
       customerName: ctx.customerName,
-      customerId: ctx.user?.kvCustomerId ? Number(ctx.user.kvCustomerId) : undefined,
+      customerId,
       customerPhone: ctx.customerPhone,
       address: kvAddress(ctx), deliveryAddress: kvDeliveryAddressForOrder(ctx.address),
       orderDetails: ctx.orderDetails,
@@ -163,9 +182,28 @@ async function pushAwaitingInvoice(ctx: KvPushContext, code: string): Promise<Kv
   ctx.doc.kvInvoiceMode = null;
   if (!shopKiotQrAwaitingEnabled()) return { ok: true, code };
   try {
+    let customerId = ctx.user?.kvCustomerId ? Number(ctx.user.kvCustomerId) : undefined;
+    if (!customerId && ctx.customerPhone) {
+      customerId =
+        (await resolveKvCustomerIdForAccount({
+          shopDb: ctx.shopDb,
+          opsDb: ctx.mainDb,
+          accountId: ctx.user?._id ? String(ctx.user._id) : null,
+          phone: ctx.customerPhone,
+          fullName: ctx.customerName,
+          address: kvAddress(ctx),
+          timeoutMs: 2500,
+        }).catch(() => null)) ?? undefined;
+      if (customerId) {
+        if (ctx.user) ctx.user.kvCustomerId = customerId;
+        await patchOrder(ctx, { kvCustomerId: customerId });
+      }
+    }
+
     const inv = await ensureAwaitingInvoice({
       mainDb: ctx.mainDb,
       customerName: ctx.customerName,
+      customerId,
       customerPhone: ctx.customerPhone,
       address: kvAddress(ctx), deliveryAddress: kvDeliveryAddressForOrder(ctx.address),
       orderDetails: ctx.orderDetails,

@@ -1168,7 +1168,7 @@ export function ShopWebProductsAdmin() {
         placement="bottom"
         onClose={() => setMobileFilterOpen(false)}
         open={mobileFilterOpen}
-        height="auto"
+        size="auto"
         className="rounded-t-2xl [&_.ant-drawer-header]:border-b-0 [&_.ant-drawer-header]:px-4 [&_.ant-drawer-header]:pt-4 [&_.ant-drawer-header]:pb-2 [&_.ant-drawer-body]:px-4 [&_.ant-drawer-body]:py-2"
         footer={
           <div className="p-3">

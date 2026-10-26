@@ -10,9 +10,38 @@ export class AdminApiError extends Error {
   }
 }
 
+let refreshPromise: Promise<boolean> | null = null;
+
+/**
+ * Tự động làm mới access token bằng refresh token (14 ngày).
+ * Sử dụng chung 1 Promise cho mọi request đồng thời để tránh tình trạng race-condition (thùng nước / thundering herd).
+ */
+export async function refreshAdminSession(): Promise<boolean> {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = (async () => {
+    try {
+      const res = await fetch("/api/auth/refresh", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+      });
+      return res.ok;
+    } catch {
+      return false;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+  return refreshPromise;
+}
+
 export async function adminFetch<T = unknown>(
   path: string,
-  init?: RequestInit
+  init?: RequestInit,
+  _isRetry = false
 ): Promise<T> {
   const url = path.startsWith("/") ? path : `/${path}`;
   const res = await fetch(url, {
@@ -24,6 +53,21 @@ export async function adminFetch<T = unknown>(
       ...init?.headers,
     },
   });
+
+  const isAuthRoute =
+    url === "/api/auth/login" ||
+    url === "/api/auth/refresh" ||
+    url === "/api/auth/logout";
+
+  // Khi gặp 401 (Access token hết hạn 1h), tự động silent refresh qua refresh token (14 ngày)
+  if (res.status === 401 && !isAuthRoute && !_isRetry) {
+    const ok = await refreshAdminSession();
+    if (ok) {
+      // Refresh thành công -> Thử lại request gốc một cách hoàn toàn trong suốt với người dùng
+      return adminFetch<T>(path, init, true);
+    }
+  }
+
   const text = await res.text();
   let data: unknown = null;
   if (text) {

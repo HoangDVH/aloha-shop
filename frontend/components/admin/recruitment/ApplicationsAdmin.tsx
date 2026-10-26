@@ -24,18 +24,21 @@ const filterSelect =
 
 export function ApplicationsAdmin() {
   const sp = useSearchParams();
+  const paramId = sp?.get("id") || "";
+  const paramCode = sp?.get("code") || sp?.get("q") || "";
+
   const [jobId, setJobId] = useState(sp?.get("jobId") || "");
   const [status, setStatus] = useState<"" | ApplicationStatus>("");
   const [submissionType, setSubmissionType] = useState("");
   const [source, setSource] = useState("");
   const [hasCv, setHasCv] = useState("");
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(paramCode);
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState<AdminApplicationListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [jobs, setJobs] = useState<AdminJob[]>([]);
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(paramId || null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -69,6 +72,21 @@ export function ApplicationsAdmin() {
       .then((r) => setJobs(r.items || []))
       .catch(() => setJobs([]));
   }, []);
+
+  useEffect(() => {
+    if (openId || !rows.length) return;
+    const target = paramId || paramCode;
+    if (!target) return;
+    const matched = rows.find(
+      (r) =>
+        r.id === target ||
+        r.publicCode?.toUpperCase() === target.toUpperCase() ||
+        r.contact?.phone === target
+    );
+    if (matched) {
+      setOpenId(matched.id);
+    }
+  }, [rows, paramId, paramCode, openId]);
 
   const pages = Math.max(1, Math.ceil(total / LIMIT));
   const resetPage = <T,>(fn: (v: T) => void) => (v: T) => {

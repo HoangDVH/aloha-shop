@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Drawer, Empty, Input, Popconfirm, Select, Skeleton, Table, Tabs, Tag, message } from "antd";
@@ -63,21 +64,35 @@ function date(value?: string | null) { return value ? new Date(value).toLocaleSt
 
 export default function CustomerDirectory() {
   const qc = useQueryClient();
+  const searchParams = useSearchParams();
+  const paramQ = searchParams?.get("q") || searchParams?.get("phone") || "";
+  const paramId = searchParams?.get("id") || "";
+
   const [view, setView] = useState("customers");
   const [filters, setFilters] = useState<Filters>(defaults);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [search, setSearch] = useState(paramQ);
+  const [debouncedSearch, setDebouncedSearch] = useState(paramQ);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [siId, setSiId] = useState<string | null>(null);
   const [addCtv, setAddCtv] = useState(false);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+  const openedRef = useRef(false);
+
   const toggleRow = (id: string) => {
     setExpandedRowKeys(prev => (prev.includes(id) ? prev.filter(k => k !== id) : [...prev, id]));
   };
   const reviewCtv = useCtvUiStore(s => s.setReviewAccountId);
   const refresh = () => { void qc.invalidateQueries({ queryKey: ["admin", "directory"] }); };
+
+  useEffect(() => {
+    if (paramQ && paramQ !== search) {
+      setSearch(paramQ);
+      setDebouncedSearch(paramQ);
+      setPage(1);
+    }
+  }, [paramQ, search]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { setDebouncedSearch(search.trim()); setPage(1); }, 300);
@@ -95,6 +110,28 @@ export default function CustomerDirectory() {
     queryFn: async () => requireDirectoryResponse(await siRequest<{ items: Account[]; total: number; directoryVersion?: number }>(`/api/shop/admin/accounts?${new URLSearchParams({
       scope: "directory", ...filters, q: debouncedSearch, page: String(page), limit: String(pageSize),
     })}`)), enabled: view === "customers", refetchInterval: 30000, retry: false });
+
+  // Tự động mở chi tiết hồ sơ sỉ / CTV khi điều hướng từ thông báo
+  useEffect(() => {
+    if (openedRef.current || !list.data?.items?.length) return;
+    if (!paramId && !paramQ) return;
+    const match = list.data.items.find(
+      (it) =>
+        it.id === paramId ||
+        (paramQ &&
+          (it.phone === paramQ ||
+            it.email === paramQ ||
+            it.fullName?.toLowerCase().includes(paramQ.toLowerCase())))
+    );
+    if (match) {
+      openedRef.current = true;
+      const target = customerReviewTarget(match);
+      if (target === "si") setSiId(match.id);
+      else if (target === "ctv") reviewCtv(match.id);
+      else setSelectedId(match.id);
+    }
+  }, [list.data?.items, paramId, paramQ, reviewCtv]);
+
   useEffect(() => {
     if (list.data) setPage(current => Math.min(current, Math.max(1, Math.ceil(list.data.total / pageSize))));
   }, [list.data, pageSize]);
@@ -120,7 +157,7 @@ export default function CustomerDirectory() {
     else setSelectedId(row.id);
   };
 
-  return <div className="mx-auto max-w-[1600px] space-y-3 pb-8">
+  return <div className="w-full space-y-4 pb-8">
     {stats.error && <Alert type="warning" showIcon title="Chưa tải được thống kê" action={<Button onClick={() => void stats.refetch()}>Thử lại</Button>} />}
     <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
       <Tabs className="min-w-0 max-w-full [&_.ant-tabs-nav]:!mb-0" activeKey={view} onChange={setView} items={[

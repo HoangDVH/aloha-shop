@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useHydratedQuery } from "@/lib/useHydratedQuery";
-import { adminFetch, adminKeys, AdminApiError } from "@/components/admin/api/adminFetch";
+import { adminFetch, adminKeys, AdminApiError, refreshAdminSession } from "@/components/admin/api/adminFetch";
 import type { AdminUser, StaffLoginInput } from "@/components/admin/auth/schemas";
 
 type MeRes = { user: AdminUser };
@@ -19,13 +19,29 @@ export function useAdminSession(opts?: { requireManager?: boolean }) {
   const me = useHydratedQuery(useQuery({
     queryKey: adminKeys.me,
     queryFn: () => adminFetch<MeRes>("/api/auth/me"),
-    retry: false,
+    retry: (failureCount, error) => {
+      // Nếu là 401/403 (sau khi silent refresh đã thử và thất bại) thì dừng ngay
+      if (error instanceof AdminApiError && (error.status === 401 || error.status === 403)) {
+        return false;
+      }
+      return failureCount < 2;
+    },
     staleTime: 60_000,
     enabled: pathname.startsWith("/admin"),
   }));
 
   const user = me.data?.user ?? null;
   const isManager = user?.role === "manager" || user?.username === "aloha" || user?.username === "admin";
+
+  // Proactive silent refresh mỗi 25 phút giúp access token (60p) luôn mới, admin không bao giờ bị gián đoạn
+  useEffect(() => {
+    if (!pathname.startsWith("/admin") || isLoginPage || !user) return;
+    const INTERVAL_MS = 25 * 60 * 1000;
+    const timer = setInterval(() => {
+      refreshAdminSession().catch(() => {});
+    }, INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [pathname, isLoginPage, user]);
 
   useEffect(() => {
     if (!pathname.startsWith("/admin") || isLoginPage) return;

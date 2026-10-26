@@ -341,6 +341,14 @@ export function registerRecruitmentPublicRoutes(app: Express, getShopDb: GetShop
         try {
           await col.insertOne(doc);
           savedCvKey = null;
+          try {
+            const { syncBus } = await import("../syncBus.js");
+            syncBus.publish([APPLICATIONS_COL, "recruitment_applications"], "recruitment_apply", {
+              ids: [doc.publicCode],
+            });
+          } catch {
+            /* non-fatal */
+          }
           res.status(201).json({ ok: true, publicCode: doc.publicCode, submissionType: doc.submissionType });
           return;
         } catch (e) {

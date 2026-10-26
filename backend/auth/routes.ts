@@ -174,7 +174,7 @@ export function registerAuthRoutes(app: Express, getDb: GetDb) {
       const payload = verifyRefreshToken(token);
       const db = await getDb();
       const row = await db.collection(REFRESH).findOne({ jti: payload.jti });
-      if (!row || row.revokedAt || row.tokenHash !== hashToken(token)) {
+      if (!row || row.tokenHash !== hashToken(token)) {
         clearAuthCookies(res);
         return res.status(401).json({ error: "Refresh không hợp lệ" });
       }
@@ -194,8 +194,22 @@ export function registerAuthRoutes(app: Express, getDb: GetDb) {
           code: "REJECTED",
         });
       }
+      // Hỗ trợ grace period 60s cho refresh token vừa xoay (hỗ trợ nhiều tab mở cùng lúc theo RFC 9700 §4.14)
+      if (row.revokedAt) {
+        const revokedAt = new Date(row.revokedAt).getTime();
+        const isGrace = Date.now() - revokedAt <= 60_000 && row.revokedReason === "rotated";
+        if (isGrace) {
+          const body = await issueSession(res, db, user);
+          return res.json(body);
+        }
+        clearAuthCookies(res);
+        return res.status(401).json({ error: "Refresh đã bị thu hồi" });
+      }
       // thu hồi refresh cũ, cấp cặp mới (kể cả chờ duyệt — để xem màn chờ)
-      await db.collection(REFRESH).updateOne({ jti: payload.jti }, { $set: { revokedAt: new Date() } });
+      await db.collection(REFRESH).updateOne(
+        { jti: payload.jti },
+        { $set: { revokedAt: new Date(), revokedReason: "rotated" } }
+      );
       const body = await issueSession(res, db, user);
       return res.json(body);
     } catch {
@@ -213,7 +227,7 @@ export function registerAuthRoutes(app: Express, getDb: GetDb) {
           const db = await getDb();
           await db.collection(REFRESH).updateOne(
             { jti: payload.jti },
-            { $set: { revokedAt: new Date() } }
+            { $set: { revokedAt: new Date(), revokedReason: "logout" } }
           );
         } catch {
           /* ignore */

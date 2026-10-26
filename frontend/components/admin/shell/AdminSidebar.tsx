@@ -3,18 +3,20 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useId, useState } from "react";
+import { Tooltip } from "antd";
 import {
   Activity,
-  BarChart3,
   Briefcase,
   CalendarHeart,
-  Inbox,
   ChevronDown,
   Coins,
   FileText,
   Globe,
+  Inbox,
   LayoutDashboard,
   LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
   Percent,
   Search,
   Shield,
@@ -25,6 +27,7 @@ import {
   Ticket,
   UserRound,
   Users,
+  Volume2,
 } from "lucide-react";
 import { useAdminSession } from "@/components/admin/auth/useAdminSession";
 import { useAdminBadgeCounts } from "@/components/admin/shell/AdminOpsSync";
@@ -66,21 +69,15 @@ const activeNavStyle: React.CSSProperties = {
   color: "#ffffff",
 };
 
-function linkClass(active: boolean, nested = false) {
-  const base = nested
-    ? "group flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold transition"
-    : "group flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition";
-  if (active) {
-    return nested
-      ? `${base} !bg-[#2D5A27] !text-white shadow-sm ring-1 ring-[#2D5A27]/40 [&_svg]:!text-white`
-      : `${base} !bg-[#2D5A27] !text-white shadow-sm [&_svg]:!text-white`;
-  }
-  return nested
-    ? `${base} text-slate-600 hover:!bg-[#F0F5EE] hover:!text-slate-900 [&_svg]:text-slate-400 group-hover:[&_svg]:!text-slate-700`
-    : `${base} text-slate-600 hover:!bg-[#F0F5EE] hover:!text-slate-900 [&_svg]:text-slate-400 group-hover:[&_svg]:!text-slate-700`;
-}
-
-export function AdminSidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
+export function AdminSidebar({
+  onNavigate,
+  collapsed = false,
+  onToggleCollapse,
+}: {
+  onNavigate?: () => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
+} = {}) {
   const pathname = normalizePath(usePathname() || "");
   const { user, logout } = useAdminSession();
   const badges = useAdminBadgeCounts(true);
@@ -100,22 +97,37 @@ export function AdminSidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
 
   const searchParams = useSearchParams();
   const requestedTab = searchParams?.get("tab");
-  const currentTab = PROMOTIONS_SUB.some(item => item.tab === requestedTab) ? requestedTab : "campaigns";
+  const currentTab = PROMOTIONS_SUB.some((item) => item.tab === requestedTab)
+    ? requestedTab
+    : "campaigns";
   const onWebsite = pathname === "/admin/website";
   const [websiteOpen, setWebsiteOpen] = useState(onWebsite);
   const websiteMenuId = useId();
   const [newQuotes, setNewQuotes] = useState(0);
   const websiteTab = websiteSection(searchParams?.get("tab")).tab;
-  useEffect(() => { if (onWebsite) setWebsiteOpen(true); }, [onWebsite]);
+
+  useEffect(() => {
+    if (onWebsite) setWebsiteOpen(true);
+  }, [onWebsite]);
+
   useEffect(() => {
     let active = true;
     const refresh = async () => {
-      try { const data = await adminFetch<{ newCount: number }>("/api/shop/admin/quote-requests/counts"); if (active) setNewQuotes(data.newCount); } catch { /* retry on next refresh */ }
+      try {
+        const data = await adminFetch<{ newCount: number }>("/api/shop/admin/quote-requests/counts");
+        if (active) setNewQuotes(data.newCount);
+      } catch {
+        /* */
+      }
     };
     void refresh();
     const timer = setInterval(refresh, 60_000);
     window.addEventListener(QUOTE_COUNT_EVENT, refresh);
-    return () => { active = false; clearInterval(timer); window.removeEventListener(QUOTE_COUNT_EVENT, refresh); };
+    return () => {
+      active = false;
+      clearInterval(timer);
+      window.removeEventListener(QUOTE_COUNT_EVENT, refresh);
+    };
   }, []);
 
   useEffect(() => {
@@ -137,239 +149,398 @@ export function AdminSidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
     return 0;
   };
 
+  const totalCtvBadge = badges.ctvPending + badges.ordersNeedAction + badges.fraudOpen;
+
+  const renderSingleItem = (
+    href: string,
+    label: string,
+    Icon: any,
+    active: boolean,
+    badgeCount?: number
+  ) => {
+    const linkEl = (
+      <Link
+        href={href}
+        aria-current={active ? "page" : undefined}
+        className={`group relative flex items-center rounded-xl transition ${
+          collapsed
+            ? "mx-auto h-10 w-10 justify-center"
+            : "gap-2.5 px-3 py-2.5 text-sm font-semibold"
+        } ${
+          active
+            ? "!bg-[#2D5A27] !text-white shadow-sm [&_svg]:!text-white"
+            : "text-slate-600 hover:!bg-[#F0F5EE] hover:!text-slate-900 [&_svg]:text-slate-400 group-hover:[&_svg]:!text-slate-700"
+        }`}
+        style={active ? activeNavStyle : undefined}
+      >
+        <span className="relative flex items-center justify-center">
+          <Icon className={`${collapsed ? "h-5 w-5" : "h-4 w-4"} shrink-0`} />
+          {collapsed && badgeCount && badgeCount > 0 ? (
+            <span className="absolute -top-1.5 -right-2 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#C62828] px-1 text-[9px] font-black text-white ring-2 ring-white">
+              {badgeCount > 99 ? "99+" : badgeCount}
+            </span>
+          ) : null}
+        </span>
+        {!collapsed && <span className="min-w-0 flex-1 truncate">{label}</span>}
+        {!collapsed && badgeCount && badgeCount > 0 ? (
+          <span
+            className={`ml-1 shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${
+              active ? "bg-white/25 text-white" : "bg-[#C62828] text-white"
+            }`}
+          >
+            {badgeCount > 99 ? "99+" : badgeCount}
+          </span>
+        ) : null}
+      </Link>
+    );
+
+    if (collapsed) {
+      return (
+        <Tooltip placement="right" title={badgeCount ? `${label} (${badgeCount})` : label} mouseEnterDelay={0.08}>
+          <div>{linkEl}</div>
+        </Tooltip>
+      );
+    }
+    return linkEl;
+  };
+
   return (
-    <aside className="sticky top-0 flex h-screen w-[248px] shrink-0 flex-col border-r border-[#e8eaed] bg-white">
-      <div className="border-b border-[#eef0f3] px-4 py-4">
-        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--aloha-green)]">
-          ALOHA Admin
-        </p>
-        <p className="mt-0.5 text-sm font-bold text-[var(--aloha-ink)]">
-          ALOHA — THẾ GIỚI CHẬU CÂY
-        </p>
+    <aside
+      className={`sticky top-0 flex h-screen shrink-0 flex-col border-r border-[#e8eaed] bg-white transition-[width] duration-200 ease-in-out ${
+        collapsed ? "w-[68px]" : "w-[248px]"
+      }`}
+    >
+      {/* Header Sidebar */}
+      <div
+        className={`flex h-14 items-center border-b border-[#eef0f3] ${
+          collapsed ? "justify-center p-2" : "justify-between px-4"
+        }`}
+      >
+        {collapsed ? (
+          <Tooltip placement="right" title="Mở rộng menu (248px)" mouseEnterDelay={0.1}>
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#2D5A27] text-white font-bold text-sm shadow-sm transition hover:opacity-90"
+            >
+              A
+            </button>
+          </Tooltip>
+        ) : (
+          <>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--aloha-green)]">
+                ALOHA Admin
+              </p>
+              <p className="truncate text-xs font-bold text-[var(--aloha-ink)]">
+                THẾ GIỚI CHẬU CÂY
+              </p>
+            </div>
+            {onToggleCollapse && (
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                title="Thu gọn menu (68px)"
+                className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
+              >
+                <PanelLeftClose className="h-4 w-4" />
+              </button>
+            )}
+          </>
+        )}
       </div>
-      <nav className="flex-1 space-y-0.5 overflow-y-auto p-2" onClick={event => { if ((event.target as HTMLElement).closest("a")) onNavigate?.(); }}>
-        <Link
-          href="/admin"
-          className={linkClass(pathname === "/admin")}
-          style={pathname === "/admin" ? activeNavStyle : undefined}
-        >
-          <LayoutDashboard className="h-4 w-4 shrink-0" />
-          Tổng quan
-        </Link>
 
-        <div className="pt-0.5">
-          <button
-            type="button"
-            onClick={() => setCtvOpen((v) => !v)}
-            className={`group flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
-              onCtv
-                ? "!bg-[#EAF3E8] !text-[#2D5A27] font-bold ring-1 ring-[#2D5A27]/20 [&_svg]:!text-[#2D5A27]"
-                : "text-slate-600 hover:!bg-[#F0F5EE] hover:!text-slate-900 [&_svg]:text-slate-400 group-hover:[&_svg]:!text-slate-700"
-            }`}
-          >
-            <Users className="h-4 w-4 shrink-0" />
-            <span className="min-w-0 flex-1">Quản lý CTV</span>
-            <ChevronDown
-              className={`h-4 w-4 shrink-0 transition ${
-                ctvOpen ? "rotate-0 text-[#2D5A27]" : "-rotate-90 text-slate-400"
+      {/* Navigation */}
+      <nav
+        className={`flex-1 space-y-1 overflow-y-auto ${collapsed ? "p-1.5" : "p-2"}`}
+        onClick={(event) => {
+          if ((event.target as HTMLElement).closest("a")) onNavigate?.();
+        }}
+      >
+        {/* 1. Tổng quan */}
+        {renderSingleItem("/admin", "Tổng quan", LayoutDashboard, pathname === "/admin")}
+
+        {/* 2. Quản lý CTV */}
+        {collapsed ? (
+          renderSingleItem("/admin/ctv", "Quản lý CTV", Users, onCtv, totalCtvBadge)
+        ) : (
+          <div className="pt-0.5">
+            <button
+              type="button"
+              onClick={() => setCtvOpen((v) => !v)}
+              className={`group flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
+                onCtv
+                  ? "!bg-[#EAF3E8] !text-[#2D5A27] font-bold ring-1 ring-[#2D5A27]/20 [&_svg]:!text-[#2D5A27]"
+                  : "text-slate-600 hover:!bg-[#F0F5EE] hover:!text-slate-900 [&_svg]:text-slate-400 group-hover:[&_svg]:!text-slate-700"
               }`}
-            />
-          </button>
-          {ctvOpen ? (
-            <div className="ml-2 mt-0.5 space-y-0.5 border-l border-[#e8e2d6] pl-2">
-              {CTV_SUB.map(({ href, label, exact, Icon, badgeKey }) => {
-                const active = exact
-                  ? pathname === href
-                  : pathname === href || pathname.startsWith(`${href}/`);
-                const n = badgeFor(badgeKey);
-                return (
-                  <Link
-                    key={href}
-                    href={href}
-                    aria-current={active ? "page" : undefined}
-                    className={linkClass(active, true)}
-                    style={active ? activeNavStyle : undefined}
-                  >
-                    <Icon
-                      className={`h-3.5 w-3.5 shrink-0 ${
-                        active ? "!text-white" : "text-slate-400 group-hover:text-slate-700"
+            >
+              <Users className="h-4 w-4 shrink-0" />
+              <span className="min-w-0 flex-1">Quản lý CTV</span>
+              <ChevronDown
+                className={`h-4 w-4 shrink-0 transition ${
+                  ctvOpen ? "rotate-0 text-[#2D5A27]" : "-rotate-90 text-slate-400"
+                }`}
+              />
+            </button>
+            {ctvOpen ? (
+              <div className="ml-2 mt-0.5 space-y-0.5 border-l border-[#e8e2d6] pl-2">
+                {CTV_SUB.map(({ href, label, exact, Icon, badgeKey }) => {
+                  const active = exact
+                    ? pathname === href
+                    : pathname === href || pathname.startsWith(`${href}/`);
+                  const n = badgeFor(badgeKey);
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      aria-current={active ? "page" : undefined}
+                      className={`group flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold transition ${
+                        active
+                          ? "!bg-[#2D5A27] !text-white shadow-sm ring-1 ring-[#2D5A27]/40 [&_svg]:!text-white"
+                          : "text-slate-600 hover:!bg-[#F0F5EE] hover:!text-slate-900 [&_svg]:text-slate-400 group-hover:[&_svg]:!text-slate-700"
                       }`}
-                    />
-                    <span className="min-w-0 flex-1 truncate">{label}</span>
-                    {n > 0 ? (
-                      <span
-                        className={`ml-1 shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${
-                          active
-                            ? "bg-white/25 text-white"
-                            : "bg-[#C62828] text-white"
+                      style={active ? activeNavStyle : undefined}
+                    >
+                      <Icon
+                        className={`h-3.5 w-3.5 shrink-0 ${
+                          active ? "!text-white" : "text-slate-400 group-hover:text-slate-700"
                         }`}
-                      >
-                        {n > 99 ? "99+" : n}
-                      </span>
-                    ) : null}
-                  </Link>
-                );
-              })}
-            </div>
-          ) : null}
-        </div>
+                      />
+                      <span className="min-w-0 flex-1 truncate">{label}</span>
+                      {n > 0 ? (
+                        <span
+                          className={`ml-1 shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${
+                            active ? "bg-white/25 text-white" : "bg-[#C62828] text-white"
+                          }`}
+                        >
+                          {n > 99 ? "99+" : n}
+                        </span>
+                      ) : null}
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+        )}
 
-        <Link
-          href={CUSTOMERS_HREF}
-          className={linkClass(onCustomers)}
-          style={onCustomers ? activeNavStyle : undefined}
-        >
-          <UserRound className="h-4 w-4 shrink-0" />
-          Quản lý khách hàng
-        </Link>
+        {/* 3. Quản lý khách hàng */}
+        {renderSingleItem(CUSTOMERS_HREF, "Quản lý khách hàng", UserRound, onCustomers)}
 
-        <Link
-          href="/admin/don-hang-web"
-          className={linkClass(pathname.startsWith("/admin/don-hang-web"))}
-          style={pathname.startsWith("/admin/don-hang-web") ? activeNavStyle : undefined}
-        >
-          <ShoppingBag className="h-4 w-4 shrink-0" />
-          Đơn hàng web
-        </Link>
+        {/* 4. Đơn hàng web */}
+        {renderSingleItem(
+          "/admin/don-hang-web",
+          "Đơn hàng web",
+          ShoppingBag,
+          pathname.startsWith("/admin/don-hang-web"),
+          badges.ordersNeedAction
+        )}
 
-        <div className="pt-0.5">
-          <button type="button" aria-expanded={websiteOpen} aria-controls={websiteMenuId} onClick={() => setWebsiteOpen(value => !value)}
-            className={`group flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${onWebsite ? "bg-[#EAF3E8] text-[#2D5A27] ring-1 ring-[#2D5A27]/20" : "text-slate-600 hover:bg-[#F0F5EE]"}`}>
-            <Globe className="h-4 w-4 shrink-0" /><span className="min-w-0 flex-1">Website bán hàng</span>
-            <ChevronDown className={`h-4 w-4 shrink-0 transition ${websiteOpen ? "rotate-0" : "-rotate-90"}`} />
-          </button>
-          {websiteOpen && <div id={websiteMenuId} className="ml-2 mt-0.5 space-y-0.5 border-l border-[#e8e2d6] pl-2">
-            {WEBSITE_SECTIONS.map(({ tab, label, Icon }) => {
-              const active = onWebsite && websiteTab === tab;
-              return <Link key={tab} href={`/admin/website?tab=${tab}`} aria-current={active ? "page" : undefined} className={linkClass(active, true)} style={active ? activeNavStyle : undefined}>
-                <Icon className="h-3.5 w-3.5 shrink-0" /><span className="min-w-0 flex-1 truncate">{label}</span>
-                {tab === "bao-gia" && newQuotes > 0 && <span className="rounded-full bg-orange-100 px-1.5 text-xs text-orange-800">{newQuotes > 99 ? "99+" : newQuotes}</span>}
-              </Link>;
-            })}
-          </div>}
-        </div>
-        <div className="pt-0.5">
-          <button
-            type="button"
-            onClick={() => setPromotionsOpen((v) => !v)}
-            className={`group flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
-              onPromotions
-                ? "!bg-[#EAF3E8] !text-[#2D5A27] font-bold ring-1 ring-[#2D5A27]/20 [&_svg]:!text-[#2D5A27]"
-                : "text-slate-600 hover:!bg-[#F0F5EE] hover:!text-slate-900 [&_svg]:text-slate-400 group-hover:[&_svg]:!text-slate-700"
-            }`}
-          >
-            <Ticket className="h-4 w-4 shrink-0" />
-            <span className="min-w-0 flex-1">Ưu đãi & Voucher</span>
-            <ChevronDown
-              className={`h-4 w-4 shrink-0 transition ${
-                promotionsOpen ? "rotate-0 text-[#2D5A27]" : "-rotate-90 text-slate-400"
+        {/* 5. Website bán hàng */}
+        {collapsed ? (
+          renderSingleItem("/admin/website", "Website bán hàng", Globe, onWebsite, newQuotes)
+        ) : (
+          <div className="pt-0.5">
+            <button
+              type="button"
+              aria-expanded={websiteOpen}
+              aria-controls={websiteMenuId}
+              onClick={() => setWebsiteOpen((value) => !value)}
+              className={`group flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
+                onWebsite
+                  ? "bg-[#EAF3E8] text-[#2D5A27] ring-1 ring-[#2D5A27]/20"
+                  : "text-slate-600 hover:bg-[#F0F5EE]"
               }`}
-            />
-          </button>
-          {promotionsOpen ? (
-            <div className="ml-2 mt-0.5 space-y-0.5 border-l border-[#e8e2d6] pl-2">
-              {PROMOTIONS_SUB.map(({ href, tab, label, Icon }) => {
-                const active = onPromotions && currentTab === tab;
-                return (
-                  <Link
-                    key={tab}
-                    href={href}
-                    aria-current={active ? "page" : undefined}
-                    className={linkClass(active, true)}
-                    style={active ? activeNavStyle : undefined}
-                  >
-                    <Icon
-                      className={`h-3.5 w-3.5 shrink-0 ${
-                        active ? "!text-white" : "text-slate-400 group-hover:text-slate-700"
+            >
+              <Globe className="h-4 w-4 shrink-0" />
+              <span className="min-w-0 flex-1">Website bán hàng</span>
+              <ChevronDown
+                className={`h-4 w-4 shrink-0 transition ${
+                  websiteOpen ? "rotate-0" : "-rotate-90"
+                }`}
+              />
+            </button>
+            {websiteOpen && (
+              <div id={websiteMenuId} className="ml-2 mt-0.5 space-y-0.5 border-l border-[#e8e2d6] pl-2">
+                {WEBSITE_SECTIONS.map(({ tab, label, Icon }) => {
+                  const active = onWebsite && websiteTab === tab;
+                  return (
+                    <Link
+                      key={tab}
+                      href={`/admin/website?tab=${tab}`}
+                      aria-current={active ? "page" : undefined}
+                      className={`group flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold transition ${
+                        active
+                          ? "!bg-[#2D5A27] !text-white shadow-sm ring-1 ring-[#2D5A27]/40 [&_svg]:!text-white"
+                          : "text-slate-600 hover:!bg-[#F0F5EE] hover:!text-slate-900 [&_svg]:text-slate-400"
                       }`}
-                    />
-                    <span className="min-w-0 flex-1 truncate">{label}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          ) : null}
-        </div>
-        <div className="pt-0.5">
-          <button
-            type="button"
-            onClick={() => setRecruitmentOpen((v) => !v)}
-            className={`group flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
-              onRecruitment
-                ? "!bg-[#EAF3E8] !text-[#2D5A27] font-bold ring-1 ring-[#2D5A27]/20 [&_svg]:!text-[#2D5A27]"
-                : "text-slate-600 hover:!bg-[#F0F5EE] hover:!text-slate-900 [&_svg]:text-slate-400 group-hover:[&_svg]:!text-slate-700"
-            }`}
-          >
-            <Briefcase className="h-4 w-4 shrink-0" />
-            <span className="min-w-0 flex-1">Tuyển dụng</span>
-            <ChevronDown
-              className={`h-4 w-4 shrink-0 transition ${
-                recruitmentOpen ? "rotate-0 text-[#2D5A27]" : "-rotate-90 text-slate-400"
+                      style={active ? activeNavStyle : undefined}
+                    >
+                      <Icon className="h-3.5 w-3.5 shrink-0" />
+                      <span className="min-w-0 flex-1 truncate">{label}</span>
+                      {tab === "bao-gia" && newQuotes > 0 && (
+                        <span className="rounded-full bg-orange-100 px-1.5 text-xs text-orange-800">
+                          {newQuotes > 99 ? "99+" : newQuotes}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 6. Ưu đãi & Voucher */}
+        {collapsed ? (
+          renderSingleItem("/admin/uu-dai", "Ưu đãi & Voucher", Ticket, onPromotions)
+        ) : (
+          <div className="pt-0.5">
+            <button
+              type="button"
+              onClick={() => setPromotionsOpen((v) => !v)}
+              className={`group flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
+                onPromotions
+                  ? "!bg-[#EAF3E8] !text-[#2D5A27] font-bold ring-1 ring-[#2D5A27]/20 [&_svg]:!text-[#2D5A27]"
+                  : "text-slate-600 hover:!bg-[#F0F5EE] hover:!text-slate-900 [&_svg]:text-slate-400 group-hover:[&_svg]:!text-slate-700"
               }`}
-            />
-          </button>
-          {recruitmentOpen ? (
-            <div className="ml-2 mt-0.5 space-y-0.5 border-l border-[#e8e2d6] pl-2">
-              {RECRUITMENT_SUB.map(({ href, label, Icon }) => {
-                const active = pathname === href || pathname.startsWith(`${href}/`);
-                return (
-                  <Link
-                    key={href}
-                    href={href}
-                    aria-current={active ? "page" : undefined}
-                    className={linkClass(active, true)}
-                    style={active ? activeNavStyle : undefined}
-                  >
-                    <Icon className={`h-3.5 w-3.5 shrink-0 ${active ? "!text-white" : "text-slate-400 group-hover:text-slate-700"}`} />
-                    <span className="min-w-0 flex-1 truncate">{label}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          ) : null}
-        </div>
+            >
+              <Ticket className="h-4 w-4 shrink-0" />
+              <span className="min-w-0 flex-1">Ưu đãi & Voucher</span>
+              <ChevronDown
+                className={`h-4 w-4 shrink-0 transition ${
+                  promotionsOpen ? "rotate-0 text-[#2D5A27]" : "-rotate-90 text-slate-400"
+                }`}
+              />
+            </button>
+            {promotionsOpen ? (
+              <div className="ml-2 mt-0.5 space-y-0.5 border-l border-[#e8e2d6] pl-2">
+                {PROMOTIONS_SUB.map(({ href, tab, label, Icon }) => {
+                  const active = onPromotions && currentTab === tab;
+                  return (
+                    <Link
+                      key={tab}
+                      href={href}
+                      aria-current={active ? "page" : undefined}
+                      className={`group flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold transition ${
+                        active
+                          ? "!bg-[#2D5A27] !text-white shadow-sm ring-1 ring-[#2D5A27]/40 [&_svg]:!text-white"
+                          : "text-slate-600 hover:!bg-[#F0F5EE] hover:!text-slate-900 [&_svg]:text-slate-400"
+                      }`}
+                      style={active ? activeNavStyle : undefined}
+                    >
+                      <Icon className="h-3.5 w-3.5 shrink-0" />
+                      <span className="min-w-0 flex-1 truncate">{label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+        )}
 
-        <Link
-          href="/admin/seo"
-          className={linkClass(pathname.startsWith("/admin/seo"))}
-          style={pathname.startsWith("/admin/seo") ? activeNavStyle : undefined}
-        >
-          <Search className="h-4 w-4 shrink-0" />
-          Tối ưu SEO
-        </Link>
+        {/* 7. Tuyển dụng */}
+        {collapsed ? (
+          renderSingleItem("/admin/tuyen-dung/ho-so", "Tuyển dụng", Briefcase, onRecruitment)
+        ) : (
+          <div className="pt-0.5">
+            <button
+              type="button"
+              onClick={() => setRecruitmentOpen((v) => !v)}
+              className={`group flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
+                onRecruitment
+                  ? "!bg-[#EAF3E8] !text-[#2D5A27] font-bold ring-1 ring-[#2D5A27]/20 [&_svg]:!text-[#2D5A27]"
+                  : "text-slate-600 hover:!bg-[#F0F5EE] hover:!text-slate-900 [&_svg]:text-slate-400 group-hover:[&_svg]:!text-slate-700"
+              }`}
+            >
+              <Briefcase className="h-4 w-4 shrink-0" />
+              <span className="min-w-0 flex-1">Tuyển dụng</span>
+              <ChevronDown
+                className={`h-4 w-4 shrink-0 transition ${
+                  recruitmentOpen ? "rotate-0 text-[#2D5A27]" : "-rotate-90 text-slate-400"
+                }`}
+              />
+            </button>
+            {recruitmentOpen ? (
+              <div className="ml-2 mt-0.5 space-y-0.5 border-l border-[#e8e2d6] pl-2">
+                {RECRUITMENT_SUB.map(({ href, label, Icon }) => {
+                  const active = pathname === href || pathname.startsWith(`${href}/`);
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      aria-current={active ? "page" : undefined}
+                      className={`group flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold transition ${
+                        active
+                          ? "!bg-[#2D5A27] !text-white shadow-sm ring-1 ring-[#2D5A27]/40 [&_svg]:!text-white"
+                          : "text-slate-600 hover:!bg-[#F0F5EE] hover:!text-slate-900 [&_svg]:text-slate-400"
+                      }`}
+                      style={active ? activeNavStyle : undefined}
+                    >
+                      <Icon className="h-3.5 w-3.5 shrink-0" />
+                      <span className="min-w-0 flex-1 truncate">{label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+        )}
 
-        <Link
-          href="/admin/bac-si-cay"
-          className={linkClass(pathname.startsWith("/admin/bac-si-cay"))}
-          style={pathname.startsWith("/admin/bac-si-cay") ? activeNavStyle : undefined}
-        >
-          <Sprout className="h-4 w-4 shrink-0" />
-          Bác sĩ cây cảnh
-        </Link>
+        {/* 8. Tối ưu SEO */}
+        {renderSingleItem("/admin/seo", "Tối ưu SEO", Search, pathname.startsWith("/admin/seo"))}
 
-        <Link
-          href="/admin/tinh-trang-website"
-          className={linkClass(pathname.startsWith("/admin/tinh-trang-website"))}
-          style={pathname.startsWith("/admin/tinh-trang-website") ? activeNavStyle : undefined}
-        >
-          <Activity className="h-4 w-4 shrink-0" />
-          Tình trạng website
-        </Link>
+        {/* 9. Bác sĩ cây cảnh */}
+        {renderSingleItem("/admin/bac-si-cay", "Bác sĩ cây cảnh", Sprout, pathname.startsWith("/admin/bac-si-cay"))}
+
+        {/* 10. Tình trạng website */}
+        {renderSingleItem("/admin/tinh-trang-website", "Tình trạng website", Activity, pathname.startsWith("/admin/tinh-trang-website"))}
       </nav>
-      <div className="border-t border-[#eef0f3] p-3">
-        <p className="truncate text-xs font-semibold text-slate-700">
-          {user?.fullName || user?.username}
-        </p>
-        <p className="truncate text-[11px] text-slate-500">{user?.role}</p>
-        <button
-          type="button"
-          onClick={() => logout.mutate()}
-          disabled={logout.isPending}
-          className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-[#e8eaed] bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-[#2D5A27]/30 hover:bg-[#F7F8FA]"
-        >
-          <LogOut className="h-3.5 w-3.5" />
-          Đăng xuất
-        </button>
+
+      {/* Footer */}
+      <div className={`border-t border-[#eef0f3] ${collapsed ? "p-2 flex flex-col items-center gap-2" : "p-3"}`}>
+        {collapsed ? (
+          <>
+            <Tooltip
+              placement="right"
+              title={`${user?.fullName || user?.username} (${user?.role === "manager" ? "Quản lý" : "Nhân viên"})`}
+              mouseEnterDelay={0.1}
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-[#2D5A27]">
+                {((user?.fullName || user?.username || "A")[0]).toUpperCase()}
+              </div>
+            </Tooltip>
+
+            <Tooltip placement="right" title="Đăng xuất" mouseEnterDelay={0.1}>
+              <button
+                type="button"
+                onClick={() => logout.mutate()}
+                disabled={logout.isPending}
+                className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-slate-700 transition hover:bg-slate-100"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </Tooltip>
+          </>
+        ) : (
+          <>
+            <p className="truncate text-xs font-semibold text-slate-700">
+              {user?.fullName || user?.username}
+            </p>
+            <p className="truncate text-[11px] text-slate-500">
+              {user?.role === "manager" ? "Quản lý" : "Nhân viên"}
+            </p>
+            <button
+              type="button"
+              onClick={() => logout.mutate()}
+              disabled={logout.isPending}
+              className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl border border-[#e8eaed] bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-[#2D5A27]/30 hover:bg-[#F7F8FA]"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              Đăng xuất
+            </button>
+          </>
+        )}
       </div>
     </aside>
   );

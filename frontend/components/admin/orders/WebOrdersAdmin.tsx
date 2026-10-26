@@ -1,28 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, App, Button, Drawer, Input, Modal, Pagination, Popover, Segmented, Table, Tag, Tooltip } from "antd";
-import { AlertTriangle, ChevronRight, HelpCircle, Info, Phone, RefreshCw, Search, Trash2 } from "lucide-react";
+import { Alert, App, Button, Drawer, Dropdown, Input, Modal, Pagination, Popover, Segmented, Table, Tag, Tooltip } from "antd";
+import { AlertTriangle, ChevronDown, ChevronRight, FileText, HelpCircle, Info, MapPin, MoreHorizontal, Package, Phone, Printer, RefreshCw, Search, Trash2 } from "lucide-react";
 import { siRequest } from "@/lib/siQueries";
 import { formatVnd } from "@/lib/api";
 import { WholesaleOrderCheck } from "./WholesaleOrderCheck";
 import { PaymentVerificationNotice } from "./PaymentVerificationNotice";
+import { OrderPrintModal, type PrintableOrder, resolveOrderAddress } from "./OrderPrintModal";
+import { OrderDetailsExpanded } from "./OrderDetailsExpanded";
 
-type OrderRow = {
-  code: string;
-  kvOrderCode?: string | null;
-  kvInvoiceCode?: string | null;
-  kvDeliveryAddress?: { state: string; reason?: string; original?: { province: string; district?: string; ward: string }; current?: { province: string; ward: string } };
-  createdAt: string;
-  customerName?: string;
-  customerPhone?: string;
-  total: number;
-  paymentStatus: string;
+type OrderRow = PrintableOrder & {
   kvPaymentVerification?: { state: string; reason: string; attempts: number };
   statusValue?: string;
   isTest?: boolean;
-  priceMode?: string;
   voidTestBlock: string | null;
 };
 
@@ -54,14 +47,20 @@ const fmtTime = (iso: string) =>
 export function WebOrdersAdmin() {
   const { message } = App.useApp();
   const qc = useQueryClient();
+  const searchParams = useSearchParams();
+  const codeParam = (searchParams?.get("code") || searchParams?.get("q") || "").trim();
+
   const [page, setPage] = useState(1);
-  const [q, setQ] = useState("");
-  const [search, setSearch] = useState("");
+  const [q, setQ] = useState(codeParam);
+  const [search, setSearch] = useState(codeParam);
   const [payment, setPayment] = useState("");
   const [target, setTarget] = useState<OrderRow | null>(null);
   const [detailOrder, setDetailOrder] = useState<OrderRow | null>(null);
   const [policyCode, setPolicyCode] = useState<string | null>(null);
   const [confirm, setConfirm] = useState("");
+  const [printTarget, setPrintTarget] = useState<{ order: PrintableOrder; mode: "receipt" | "shipping" } | null>(null);
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+  const lastOpenedCodeRef = useRef<string>("");
 
   const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
   if (search) params.set("q", search);
@@ -92,6 +91,127 @@ export function WebOrdersAdmin() {
 
   const totalCount = query.data?.total ?? 0;
   const orders = query.data?.data || [];
+
+  // Đồng bộ URL searchParams (khi người dùng click từ chuông thông báo hoặc đổi URL)
+  useEffect(() => {
+    if (codeParam && codeParam !== search) {
+      setQ(codeParam);
+      setSearch(codeParam);
+      setPage(1);
+      lastOpenedCodeRef.current = "";
+    }
+  }, [codeParam, search]);
+
+  // Lắng nghe sự kiện click trực tiếp từ trung tâm thông báo (nhanh tức thì, không phụ thuộc reload)
+  useEffect(() => {
+    const handleNotifTarget = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const item = customEvent.detail;
+      if (!item || item.type !== "order") return;
+      try {
+        const url = new URL(item.link, window.location.origin);
+        const targetCode = (url.searchParams.get("code") || url.searchParams.get("q") || "").trim();
+        if (targetCode) {
+          setQ(targetCode);
+          setSearch(targetCode);
+          setPage(1);
+          lastOpenedCodeRef.current = "";
+
+          // Nếu đơn hàng đã có sẵn trong danh sách hiện hành, mở ngay lập tức
+          const existing = orders.find(
+            (r) =>
+              r.code?.toUpperCase() === targetCode.toUpperCase() ||
+              r.kvOrderCode?.toUpperCase() === targetCode.toUpperCase()
+          );
+          if (existing) {
+            lastOpenedCodeRef.current = existing.code.toUpperCase();
+            if (typeof window !== "undefined" && window.innerWidth < 768) {
+              setDetailOrder(existing);
+            } else {
+              setExpandedRowKeys([existing.code]);
+            }
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+    };
+    window.addEventListener("aloha_open_notification_target", handleNotifTarget);
+    return () => window.removeEventListener("aloha_open_notification_target", handleNotifTarget);
+  }, [orders]);
+
+  // Chuẩn KiotViet: Tự động bung chi tiết đơn (Accordion trên Desktop, Drawer dưới lên trên Mobile)
+  useEffect(() => {
+    if (!search || !orders.length) return;
+    const targetCode = search.trim().toUpperCase();
+    if (lastOpenedCodeRef.current === targetCode) return;
+
+    const matched =
+      orders.find(
+        (r) =>
+          r.code?.toUpperCase() === targetCode ||
+          r.kvOrderCode?.toUpperCase() === targetCode
+      ) || (orders.length === 1 ? orders[0] : null);
+
+    if (matched) {
+      lastOpenedCodeRef.current = targetCode;
+      if (typeof window !== "undefined" && window.innerWidth < 768) {
+        // Mobile KiotViet: Mở Bottom Drawer chi tiết đơn
+        setDetailOrder(matched);
+      } else {
+        // Desktop KiotViet: Bung Accordion chi tiết đơn hàng
+        setExpandedRowKeys([matched.code]);
+        setTimeout(() => {
+          const el = document.querySelector(`[data-order-code="${matched.code}"]`);
+          el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }, 150);
+      }
+    }
+  }, [orders, search]);
+
+  const detailAddress = useMemo(() => resolveOrderAddress(detailOrder), [detailOrder]);
+
+  const detailItems = useMemo(() => {
+    if (!detailOrder) return [];
+    if (detailOrder.orderDetails && detailOrder.orderDetails.length > 0) {
+      return detailOrder.orderDetails.map((it) => {
+        const quantity = Number(it.quantity) || 1;
+        const price = Number(it.price) || 0;
+        const discount = Number(it.discount) || 0;
+        const sellPrice = Math.max(0, price - discount);
+        return {
+          productCode: it.productCode || "SP",
+          productName: it.productName || "Sản phẩm",
+          quantity,
+          price,
+          discount,
+          sellPrice,
+          lineTotal: sellPrice * quantity,
+          variantLabel: it.variantLabel || "",
+          isGift: Boolean(it.isGift),
+        };
+      });
+    }
+    return [
+      {
+        productCode: detailOrder.code,
+        productName: "Đơn hàng web tổng hợp",
+        quantity: 1,
+        price: detailOrder.total,
+        discount: 0,
+        sellPrice: detailOrder.total,
+        lineTotal: detailOrder.total,
+        variantLabel: "",
+        isGift: false,
+      },
+    ];
+  }, [detailOrder]);
+
+  const detailSubtotal = useMemo(() => {
+    if (!detailOrder) return 0;
+    if (detailOrder.subtotal) return detailOrder.subtotal;
+    return detailItems.reduce((sum, it) => sum + it.lineTotal, 0);
+  }, [detailOrder, detailItems]);
 
   return (
     <section className="rounded-2xl border border-slate-200/90 bg-white shadow-2xs overflow-hidden md:p-6 md:space-y-4">
@@ -278,18 +398,72 @@ export function WebOrdersAdmin() {
             pageSize: PAGE_SIZE,
             total: totalCount,
             showSizeChanger: false,
-            onChange: setPage,
+            onChange: (p) => {
+              setPage(p);
+              setExpandedRowKeys([]);
+            },
+          }}
+          expandable={{
+            expandedRowRender: (record) => (
+              <OrderDetailsExpanded
+                order={record}
+                onPrintReceipt={() => setPrintTarget({ order: record, mode: "receipt" })}
+                onPrintShipping={() => setPrintTarget({ order: record, mode: "shipping" })}
+                onCheckWholesale={() => setPolicyCode(record.code)}
+                onVoidTest={() => {
+                  setTarget(record);
+                  setConfirm("");
+                  voidTest.reset();
+                }}
+              />
+            ),
+            expandedRowKeys,
+            onExpand: (expanded, record) => {
+              setExpandedRowKeys(expanded ? [record.code] : []);
+            },
+            showExpandColumn: false,
+          }}
+          onRow={(record) => {
+            const isExpanded = expandedRowKeys.includes(record.code);
+            return {
+              "data-order-code": record.code,
+              onClick: (e: React.MouseEvent) => {
+                const el = e.target as HTMLElement;
+                if (el.closest("button") || el.closest("a") || el.closest(".ant-btn")) return;
+                setExpandedRowKeys((prev) => (prev.includes(record.code) ? [] : [record.code]));
+              },
+              className: `cursor-pointer transition-colors ${
+                isExpanded ? "bg-[#2D5A27]/5 !border-l-4 !border-l-[#2D5A27]" : "hover:bg-slate-50/80"
+              }`,
+            } as any;
           }}
           columns={[
             {
               title: "Mã đơn",
-              render: (_, r) => (
-                <div className="leading-tight">
-                  <div className="font-bold text-[#2D5A27]">{r.kvOrderCode || r.code}</div>
-                  {r.kvOrderCode && r.kvOrderCode !== r.code ? <div className="text-[11px] text-slate-400">{r.code}</div> : null}
-                  {r.kvInvoiceCode ? <div className="text-[11px] text-slate-400">HĐ {r.kvInvoiceCode}</div> : null}
-                </div>
-              ),
+              render: (_, r) => {
+                const isExpanded = expandedRowKeys.includes(r.code);
+                return (
+                  <div className="flex items-start gap-2 leading-tight">
+                    <ChevronDown
+                      size={14}
+                      className={`text-[#2D5A27] mt-0.5 shrink-0 transition-transform duration-200 ${
+                        isExpanded ? "rotate-180" : ""
+                      }`}
+                    />
+                    <div>
+                      <div className="font-bold text-[#2D5A27] hover:underline">
+                        {r.kvOrderCode || r.code}
+                      </div>
+                      {r.kvOrderCode && r.kvOrderCode !== r.code ? (
+                        <div className="text-[11px] text-slate-400">{r.code}</div>
+                      ) : null}
+                      {r.kvInvoiceCode ? (
+                        <div className="text-[11px] text-slate-400 font-medium">HĐ {r.kvInvoiceCode}</div>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              },
             },
             { title: "Ngày đặt", width: 120, render: (_, r) => <span className="text-xs">{fmtTime(r.createdAt)}</span> },
             {
@@ -320,31 +494,64 @@ export function WebOrdersAdmin() {
             },
             {
               title: "",
-              width: 150,
-              align: "right",
-              render: (_, r) =>
-                r.voidTestBlock ? (
-                  <Tooltip title={r.voidTestBlock}>
-                    <span>
-                      <Button size="small" disabled icon={<Trash2 size={13} />}>
-                        Huỷ đơn test
-                      </Button>
-                    </span>
-                  </Tooltip>
-                ) : (
-                  <Button
-                    size="small"
-                    danger
-                    icon={<Trash2 size={13} />}
-                    onClick={() => {
-                      setTarget(r);
-                      setConfirm("");
-                      voidTest.reset();
+              width: 52,
+              align: "center",
+              render: (_, r) => (
+                <div onClick={(e) => e.stopPropagation()} className="flex justify-center">
+                  <Dropdown
+                    trigger={["click"]}
+                    placement="bottomRight"
+                    menu={{
+                      items: [
+                        {
+                          key: "receipt",
+                          label: "In hoá đơn K80",
+                          icon: <Printer size={14} className="text-[#2D5A27]" />,
+                          onClick: () => setPrintTarget({ order: r, mode: "receipt" }),
+                        },
+                        {
+                          key: "shipping",
+                          label: "In phiếu gửi A6",
+                          icon: <Package size={14} className="text-slate-600" />,
+                          onClick: () => setPrintTarget({ order: r, mode: "shipping" }),
+                        },
+                        ...(r.priceMode === "si"
+                          ? [
+                              {
+                                key: "si",
+                                label: "Kiểm tra sỉ",
+                                onClick: () => setPolicyCode(r.code),
+                              },
+                            ]
+                          : []),
+                        { type: "divider" },
+                        {
+                          key: "void",
+                          label: r.voidTestBlock ? "Không thể huỷ đơn" : "Huỷ đơn test KiotViet",
+                          danger: !r.voidTestBlock,
+                          disabled: Boolean(r.voidTestBlock),
+                          icon: <Trash2 size={14} />,
+                          onClick: () => {
+                            if (!r.voidTestBlock) {
+                              setTarget(r);
+                              setConfirm("");
+                              voidTest.reset();
+                            }
+                          },
+                        },
+                      ],
                     }}
                   >
-                    Huỷ đơn test
-                  </Button>
-                ),
+                    <button
+                      type="button"
+                      className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                      aria-label="Thao tác nhanh"
+                    >
+                      <MoreHorizontal size={16} />
+                    </button>
+                  </Dropdown>
+                </div>
+              ),
             },
           ]}
         />
@@ -461,6 +668,14 @@ export function WebOrdersAdmin() {
                       className="flex items-center gap-1.5"
                       onClick={(e) => e.stopPropagation()}
                     >
+                      <Button
+                        size="small"
+                        icon={<Printer size={13} />}
+                        onClick={() => setPrintTarget({ order: r, mode: "receipt" })}
+                        className="font-medium text-slate-700"
+                      >
+                        In
+                      </Button>
                       {r.priceMode === "si" ? (
                         <Button size="small" onClick={() => setPolicyCode(r.code)}>
                           Xem sỉ
@@ -516,28 +731,33 @@ export function WebOrdersAdmin() {
         open={Boolean(detailOrder)}
         onClose={() => setDetailOrder(null)}
         placement="bottom"
-        height="auto"
+        size="auto"
         destroyOnHidden
         styles={{
-          body: { padding: "16px 18px calc(24px + env(safe-area-inset-bottom, 0px))", maxHeight: "85vh", overflowY: "auto" },
+          body: { padding: "16px 18px calc(24px + env(safe-area-inset-bottom, 0px))", maxHeight: "88vh", overflowY: "auto" },
           header: { borderBottom: "1px solid #f1f5f9", padding: "14px 18px" },
-          content: { borderTopLeftRadius: "20px", borderTopRightRadius: "20px" },
+          section: { borderTopLeftRadius: "20px", borderTopRightRadius: "20px" },
         }}
         title={
           <div className="flex items-center justify-between">
             <span className="font-bold text-base text-[#2D5A27]">
-              Chi tiết đơn {detailOrder?.kvOrderCode || detailOrder?.code}
+              Đơn hàng #{detailOrder?.kvOrderCode || detailOrder?.code}
             </span>
+            {detailOrder ? (
+              <Tag color={PAYMENT[detailOrder.paymentStatus]?.color || "default"} className="mr-0 font-semibold text-xs">
+                {PAYMENT[detailOrder.paymentStatus]?.label || detailOrder.paymentStatus}
+              </Tag>
+            ) : null}
           </div>
         }
       >
         {detailOrder ? (
-          <div className="space-y-4 text-xs">
+          <div className="space-y-3.5 text-xs">
             {/* Khối 1: Thông tin mã đơn & Thời gian */}
-            <div className="rounded-xl bg-slate-50 p-3 border border-slate-100 space-y-2">
+            <div className="rounded-xl bg-slate-50 p-3 border border-slate-100 space-y-1.5">
               <div className="flex justify-between items-center">
                 <span className="text-slate-500">Mã đơn KiotViet:</span>
-                <span className="font-bold text-slate-900">{detailOrder.kvOrderCode || "Chưa có"}</span>
+                <span className="font-bold text-[#2D5A27]">{detailOrder.kvOrderCode || "Chưa đồng bộ"}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-500">Mã đơn Web:</span>
@@ -555,89 +775,177 @@ export function WebOrdersAdmin() {
               </div>
             </div>
 
-            {/* Khối 2: Thông tin khách hàng & Trạng thái */}
-            <div className="rounded-xl border border-slate-200/90 p-3 space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500">Khách hàng:</span>
-                <span className="font-bold text-slate-900">{detailOrder.customerName || "Khách lẻ"}</span>
+            {/* Khối 2: DANH SÁCH HÀNG HOÁ CHUẨN KIOTVIET (Mã hàng | Tên hàng | SL | Đơn giá | Thành tiền) */}
+            <div className="rounded-xl border border-slate-200/90 bg-white p-3 space-y-2">
+              <div className="font-bold text-slate-800 text-xs border-b border-slate-100 pb-1.5 flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-[#2D5A27]">
+                  <Package size={14} />
+                  <span>Danh sách hàng hoá ({detailItems.length})</span>
+                </span>
+                <span className="text-[11px] text-slate-400 font-normal">
+                  KiotViet POS
+                </span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500">Số điện thoại:</span>
-                {detailOrder.customerPhone ? (
-                  <a
-                    href={`tel:${detailOrder.customerPhone}`}
-                    className="inline-flex items-center gap-1 font-semibold text-[#2D5A27] hover:underline"
-                  >
-                    <Phone size={12} />
-                    <span>{detailOrder.customerPhone}</span>
-                  </a>
-                ) : (
-                  <span className="text-slate-400">—</span>
-                )}
+              <div className="divide-y divide-slate-100">
+                {detailItems.map((it, idx) => (
+                  <div key={idx} className="py-2.5 first:pt-0 last:pb-0 space-y-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <span className="font-bold text-xs text-[#2D5A27] mr-1.5">
+                          {it.productCode}
+                        </span>
+                        <span className="font-semibold text-xs text-slate-900 uppercase">
+                          {it.productName}
+                        </span>
+                      </div>
+                      <span className="shrink-0 font-bold text-xs text-slate-900 tabular-nums">
+                        {it.lineTotal.toLocaleString("vi-VN")}đ
+                      </span>
+                    </div>
+                    {it.variantLabel ? (
+                      <div className="text-[11px] text-slate-500">
+                        Phân loại: {it.variantLabel}
+                      </div>
+                    ) : null}
+                    {it.isGift ? (
+                      <span className="inline-block text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                        Quà tặng
+                      </span>
+                    ) : null}
+                    <div className="flex items-center justify-between text-[11px] text-slate-500">
+                      <span>
+                        SL: <b className="text-slate-800">{it.quantity}</b>
+                        <span className="text-red-500">/0</span> x {it.price.toLocaleString("vi-VN")}đ
+                      </span>
+                      {it.discount > 0 ? (
+                        <span className="text-emerald-600">
+                          Giảm: -{it.discount.toLocaleString("vi-VN")}đ
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="flex justify-between items-center pt-1 border-t border-slate-100">
-                <span className="text-slate-500">Thanh toán:</span>
+            </div>
+
+            {/* Khối 3: Thông tin giao nhận */}
+            <div className="rounded-xl border border-slate-200/90 bg-white p-3 space-y-2">
+              <div className="font-bold text-slate-800 text-xs border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
+                <MapPin size={14} className="text-[#2D5A27]" />
+                <span>Thông tin giao nhận</span>
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500">Khách hàng:</span>
+                  <span className="font-bold text-slate-900">{detailOrder.customerName || "Khách lẻ"}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500">Số điện thoại:</span>
+                  {detailOrder.customerPhone ? (
+                    <a
+                      href={`tel:${detailOrder.customerPhone}`}
+                      className="inline-flex items-center gap-1 font-semibold text-[#2D5A27] hover:underline"
+                    >
+                      <Phone size={12} />
+                      <span>{detailOrder.customerPhone}</span>
+                    </a>
+                  ) : (
+                    <span className="text-slate-400">—</span>
+                  )}
+                </div>
+                <div className="flex justify-between items-start gap-2 pt-0.5">
+                  <span className="text-slate-500 shrink-0">Địa chỉ:</span>
+                  <span className="text-slate-700 text-right font-medium leading-relaxed">
+                    {detailAddress}
+                  </span>
+                </div>
+                {detailOrder.notes ? (
+                  <div className="flex justify-between items-start gap-2 pt-0.5 border-t border-slate-100">
+                    <span className="text-slate-500 shrink-0">Ghi chú:</span>
+                    <span className="text-slate-700 italic text-right">
+                      {detailOrder.notes}
+                    </span>
+                  </div>
+                ) : null}
+                <div className="flex justify-between items-center pt-1 border-t border-slate-100">
+                  <span className="text-slate-500">Phân loại:</span>
+                  <div className="flex items-center gap-1">
+                    {detailOrder.priceMode === "si" ? <Tag color="purple" className="mr-0">Đơn sỉ</Tag> : <Tag color="blue" className="mr-0">Đơn lẻ</Tag>}
+                    {detailOrder.isTest ? <Tag color="magenta" className="mr-0">Đơn TEST</Tag> : null}
+                  </div>
+                </div>
+              </div>
+
+              {/* Cảnh báo KiotViet nếu có */}
+              {detailOrder.kvDeliveryAddress?.state === "needs_review" ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-2.5 space-y-1 text-amber-900 mt-2">
+                  <div className="font-bold flex items-center gap-1.5 text-amber-800">
+                    <AlertTriangle size={14} className="shrink-0 text-amber-600" />
+                    <span>Cần xác nhận lại địa chỉ 2 cấp KiotViet</span>
+                  </div>
+                  <div className="text-[11.5px] leading-relaxed">{detailOrder.kvDeliveryAddress.reason}</div>
+                </div>
+              ) : detailOrder.kvDeliveryAddress?.current ? (
+                <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-2.5 space-y-1 text-blue-950 mt-2">
+                  <div className="font-bold text-blue-800 flex items-center gap-1">
+                    <Tag color="blue" className="mr-0">Địa chỉ 2 cấp KiotViet</Tag>
+                  </div>
+                  <div className="text-[11.5px] leading-relaxed">
+                    <span className="text-slate-500">Đã gửi KiotViet: </span>
+                    <span className="font-semibold">{detailOrder.kvDeliveryAddress.current.ward}, {detailOrder.kvDeliveryAddress.current.province}</span>
+                  </div>
+                </div>
+              ) : null}
+
+              {["unpaid", "processing", "underpaid", "expired", "failed"].includes(detailOrder.paymentStatus) &&
+              detailOrder.kvPaymentVerification?.state === "pending" ? (
+                <div className="pt-2">
+                  <PaymentVerificationNotice
+                    code={detailOrder.code}
+                    reason={detailOrder.kvPaymentVerification.reason}
+                    attempts={detailOrder.kvPaymentVerification.attempts}
+                  />
+                </div>
+              ) : null}
+            </div>
+
+            {/* Khối 4: Chi tiết thanh toán */}
+            <div className="rounded-xl border border-slate-200/90 bg-white p-3 space-y-2">
+              <div className="font-bold text-slate-800 text-xs border-b border-slate-100 pb-1.5 flex items-center justify-between">
+                <span>Chi tiết thanh toán</span>
                 <Tag color={PAYMENT[detailOrder.paymentStatus]?.color || "default"} className="mr-0 font-semibold">
                   {PAYMENT[detailOrder.paymentStatus]?.label || detailOrder.paymentStatus}
                 </Tag>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500">Phân loại:</span>
-                <div className="flex items-center gap-1">
-                  {detailOrder.priceMode === "si" ? <Tag color="purple" className="mr-0">Đơn sỉ</Tag> : <Tag color="blue" className="mr-0">Đơn lẻ</Tag>}
-                  {detailOrder.isTest ? <Tag color="magenta" className="mr-0">Đơn TEST</Tag> : null}
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center text-slate-600">
+                  <span>Tổng tiền hàng:</span>
+                  <span className="font-medium tabular-nums">{formatVnd(detailSubtotal)}</span>
                 </div>
-              </div>
-            </div>
-
-            {/* Khối 3: Địa chỉ KiotViet 2 cấp (đầy đủ như desktop tooltip) */}
-            {detailOrder.kvDeliveryAddress?.state === "needs_review" ? (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 space-y-1 text-amber-900">
-                <div className="font-bold flex items-center gap-1.5 text-amber-800">
-                  <AlertTriangle size={14} className="shrink-0 text-amber-600" />
-                  <span>Cần xác nhận lại địa chỉ 2 cấp KiotViet</span>
-                </div>
-                <div className="text-[11.5px] leading-relaxed">{detailOrder.kvDeliveryAddress.reason}</div>
-              </div>
-            ) : detailOrder.kvDeliveryAddress?.current ? (
-              <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-3 space-y-1.5 text-blue-950">
-                <div className="font-bold text-blue-800 flex items-center gap-1">
-                  <Tag color="blue" className="mr-0">Địa chỉ 2 cấp KiotViet</Tag>
-                </div>
-                <div className="text-[11.5px] leading-relaxed">
-                  <span className="text-slate-500">Đã gửi KiotViet: </span>
-                  <span className="font-semibold">{detailOrder.kvDeliveryAddress.current.ward}, {detailOrder.kvDeliveryAddress.current.province}</span>
-                </div>
-                {detailOrder.kvDeliveryAddress.original ? (
-                  <div className="text-[11px] text-slate-500 leading-relaxed">
-                    <span>Địa chỉ gốc: </span>
-                    {[detailOrder.kvDeliveryAddress.original.ward, detailOrder.kvDeliveryAddress.original.district, detailOrder.kvDeliveryAddress.original.province].filter(Boolean).join(", ")}
+                {detailOrder.discountAmount || detailOrder.voucherDiscount ? (
+                  <div className="flex justify-between items-center text-emerald-600">
+                    <span>Giảm giá / Voucher:</span>
+                    <span className="font-semibold tabular-nums">
+                      -{formatVnd(detailOrder.discountAmount || detailOrder.voucherDiscount || 0)}
+                    </span>
                   </div>
                 ) : null}
+                {detailOrder.shippingFee ? (
+                  <div className="flex justify-between items-center text-slate-600">
+                    <span>Phí vận chuyển:</span>
+                    <span className="font-medium tabular-nums">+{formatVnd(detailOrder.shippingFee)}</span>
+                  </div>
+                ) : null}
+                <div className="flex justify-between items-center pt-2 border-t border-slate-200">
+                  <span className="font-bold text-slate-900 text-sm">Khách cần trả:</span>
+                  <span className="font-black text-base text-[#2D5A27] tabular-nums">
+                    {formatVnd(detailOrder.total)}
+                  </span>
+                </div>
               </div>
-            ) : null}
-
-            {/* Khối 4: Trạng thái xác minh KiotViet (nếu có) */}
-            {["unpaid", "processing", "underpaid", "expired", "failed"].includes(detailOrder.paymentStatus) &&
-            detailOrder.kvPaymentVerification?.state === "pending" ? (
-              <div className="p-1">
-                <PaymentVerificationNotice
-                  code={detailOrder.code}
-                  reason={detailOrder.kvPaymentVerification.reason}
-                  attempts={detailOrder.kvPaymentVerification.attempts}
-                />
-              </div>
-            ) : null}
-
-            {/* Khối 5: Tổng tiền đơn hàng */}
-            <div className="flex items-center justify-between rounded-xl bg-[#2D5A27]/5 p-3.5 border border-[#2D5A27]/20">
-              <span className="font-medium text-slate-700">Tổng thanh toán:</span>
-              <span className="text-base font-black text-[#2D5A27] tabular-nums">
-                {formatVnd(detailOrder.total)}
-              </span>
             </div>
 
-            {/* Khối 6: Lý do chặn huỷ đơn test (nếu có) */}
+            {/* Khối 5: Lý do chặn huỷ đơn test (nếu có) */}
             {detailOrder.voidTestBlock ? (
               <div className="rounded-xl border border-rose-200 bg-rose-50/80 p-2.5 text-xs text-rose-800 flex items-start gap-1.5">
                 <Info size={14} className="shrink-0 text-rose-600 mt-0.5" />
@@ -647,6 +955,36 @@ export function WebOrdersAdmin() {
                 </div>
               </div>
             ) : null}
+
+            {/* Khối 6: In ấn 1-chạm & Hành động KiotViet */}
+            <div className="rounded-xl border border-emerald-200/90 bg-emerald-50/50 p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-emerald-950 flex items-center gap-1.5">
+                  <Printer size={14} className="text-[#2D5A27]" />
+                  <span>In hoá đơn & Phiếu gửi hàng</span>
+                </span>
+                <span className="text-[10.5px] font-semibold text-[#2D5A27] bg-white px-2 py-0.5 rounded-full border border-emerald-200">
+                  1-Chạm
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-0.5">
+                <Button
+                  type="primary"
+                  className="!bg-[#2D5A27] hover:!bg-[#23471f] font-semibold text-xs h-9"
+                  icon={<FileText size={13} />}
+                  onClick={() => setPrintTarget({ order: detailOrder, mode: "receipt" })}
+                >
+                  Hoá đơn K80
+                </Button>
+                <Button
+                  className="font-semibold text-xs h-9 border-slate-300 bg-white"
+                  icon={<Package size={13} />}
+                  onClick={() => setPrintTarget({ order: detailOrder, mode: "shipping" })}
+                >
+                  Phiếu gửi A6
+                </Button>
+              </div>
+            </div>
 
             {/* Khối 7: Nút hành động trực tiếp trên Bottom Sheet */}
             <div className="flex items-center gap-2 pt-1">
@@ -738,6 +1076,14 @@ export function WebOrdersAdmin() {
           </div>
         ) : null}
       </Modal>
+
+      {/* MODAL IN HOÁ ĐƠN / PHIẾU GỬI (HỖ TRỢ MỌI MÁY IN MOBILE/DESKTOP MIỄN PHÍ) */}
+      <OrderPrintModal
+        open={Boolean(printTarget)}
+        order={printTarget?.order ?? null}
+        initialMode={printTarget?.mode ?? "receipt"}
+        onClose={() => setPrintTarget(null)}
+      />
     </section>
   );
 }
