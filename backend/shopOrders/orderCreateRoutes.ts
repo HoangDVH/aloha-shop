@@ -16,6 +16,7 @@ import { SHOP_ORDERS, newPaymentCode, newShopOrderCode, transferTtlMinutes } fro
 import { annotatePreOrderDetails, assertStockAvailable } from "./stockApply.js";
 import { resolveShopPaymentQrForOrder } from "./bankConfig.js";
 import { syncBus } from "../syncBus.js";
+import { broadcastAdminWebPush } from "../shopPush/webPushService.js";
 import {
   type GetMainDb,
   applyCatalogPrices,
@@ -412,6 +413,12 @@ async function createShopOrder(
   await confirmFunnelOrder(shopDb, { ...doc, code }).catch(() => {});
 
   syncBus.publish(["shop_orders"], "shop-order-create", { ids: [code] });
+  void broadcastAdminWebPush(shopDb, {
+    title: "🔔 ALOHA - Có đơn hàng mới!",
+    body: `Đơn ${code} (${customerName || "Khách web"} - ${new Intl.NumberFormat("vi-VN").format(Number(doc.grandTotal || 0))}đ)`,
+    url: "/admin/don-hang-web",
+    tag: `order-${code}`,
+  }).catch((e) => console.warn("[web-push] order push failed:", e?.message || e));
   void notifyOrderStatus(shopDb, doc, "dat_hang").catch((e) =>
     console.warn("[shop-notify] dat_hang", code, e?.message || e)
   );

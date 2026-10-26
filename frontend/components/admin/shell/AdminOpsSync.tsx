@@ -16,6 +16,8 @@ import {
   X,
 } from "lucide-react";
 import { adminFetch } from "@/components/admin/api/adminFetch";
+import { AdminPushSettingsCard } from "@/components/admin/shell/AdminPushSettingsCard";
+import { subscribeToWebPush } from "@/components/admin/shell/adminWebPush";
 
 export type AdminOpsCounts = {
   ordersNeedAction: number;
@@ -465,7 +467,14 @@ export function AdminOpsSync({ enabled }: { enabled: boolean }) {
 
   useEffect(() => {
     if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(() => {});
+      navigator.serviceWorker.register("/sw.js").then(async (reg) => {
+        if ("Notification" in window && Notification.permission === "granted" && reg.pushManager) {
+          const sub = await reg.pushManager.getSubscription();
+          if (!sub) {
+            void subscribeToWebPush();
+          }
+        }
+      }).catch(() => {});
     }
 
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
@@ -707,8 +716,9 @@ export function AdminOpsSync({ enabled }: { enabled: boolean }) {
       try {
         const perm = await Notification.requestPermission();
         if (perm === "granted") {
+          void subscribeToWebPush();
           toast.success("Đã bật thông báo", {
-            description: "Hệ thống sẽ thông báo ngay khi có đơn hàng, khách sỉ, CTV và ứng viên mới.",
+            description: "Hệ thống sẽ thông báo ngay cả khi đóng trình duyệt hoặc khoá màn hình.",
           });
         }
       } catch {
@@ -813,7 +823,10 @@ export function AdminOpsSync({ enabled }: { enabled: boolean }) {
             </div>
 
             {/* Body */}
-            <div className="p-5 space-y-4 text-slate-800">
+            <div className="p-5 space-y-4 text-slate-800 max-h-[80vh] overflow-y-auto">
+              {/* Box Cài đặt Web Push Notification (Màn hình khóa & Đóng trình duyệt) */}
+              <AdminPushSettingsCard />
+
               {/* Box Cài đặt chung: Bật/Tắt âm thanh + Âm lượng */}
               <div className="rounded-xl border border-slate-200/90 bg-slate-50/60 p-3.5 space-y-3">
                 <div className="flex items-center justify-between">
