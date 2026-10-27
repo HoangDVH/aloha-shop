@@ -29,7 +29,7 @@ export function heroFor(o: ShopOrder): {
       Icon: Clock,
       title: "Aloha đã nhận đơn",
       subtitle:
-        "ALOHA sẽ kiểm tra sản phẩm và gửi hình ảnh thực tế cho bạn qua Zalo xác nhận trước. Sau khi bạn xác nhận hình ảnh thực tế, ALOHA gửi hướng dẫn thanh toán trước toàn bộ đơn hàng hoặc đặt cọc tối thiểu bằng phí ship",
+        "ALOHA sẽ kiểm tra sản phẩm và gửi hình ảnh thực tế cho bạn qua Zalo xác nhận trước. Sau khi bạn xác nhận hình ảnh thực tế, ALOHA gửi hướng dẫn thanh toán trước toàn bộ đơn hàng hoặc đặt cọc",
       tone: "wait",
     };
   }

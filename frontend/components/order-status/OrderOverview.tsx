@@ -41,7 +41,7 @@ export function OrderOverview({ order, hero, addressLine, payLabel, children, pa
           </div>
           <p className="mt-2 text-sm leading-relaxed text-slate-600">
             {review
-              ? "ALOHA sẽ kiểm tra sản phẩm và gửi hình ảnh thực tế cho bạn qua Zalo xác nhận trước. Sau khi bạn xác nhận hình ảnh thực tế, ALOHA gửi hướng dẫn thanh toán trước toàn bộ đơn hàng hoặc đặt cọc tối thiểu bằng phí ship"
+              ? "ALOHA sẽ kiểm tra sản phẩm và gửi hình ảnh thực tế cho bạn qua Zalo xác nhận trước. Sau khi bạn xác nhận hình ảnh thực tế, ALOHA gửi hướng dẫn thanh toán trước toàn bộ đơn hàng hoặc đặt cọc"
               : hero.subtitle}
           </p>
           {syncing && <p className="mt-1 text-xs text-amber-800" role="status">Đang chuyển đơn đến cửa hàng · Bạn không cần đặt lại.</p>}

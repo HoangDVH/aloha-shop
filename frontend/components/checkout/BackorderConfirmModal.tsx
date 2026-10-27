@@ -111,9 +111,8 @@ export function PreOrderCodConfirmModal({
           <p className="rounded-2xl border border-[#e9e3d6] bg-[#faf8f2] px-4 py-4 text-[15px] leading-7 text-stone-700 sm:px-5">
             ALOHA sẽ kiểm tra sản phẩm và gửi hình ảnh thực tế cho bạn xác nhận
             trước khi đóng gói. Sau khi bạn xác nhận hình ảnh thực tế, ALOHA gửi
-            hướng dẫn thanh toán trước toàn bộ đơn hàng hoặc đặt cọc tối thiểu
-            bằng phí ship. Bạn có đồng ý chính sách này và tiếp tục đặt hàng
-            không?
+            hướng dẫn thanh toán trước toàn bộ đơn hàng hoặc đặt cọc. Bạn có đồng
+            ý chính sách này và tiếp tục đặt hàng không?
           </p>
 
           {lines.length ? (
