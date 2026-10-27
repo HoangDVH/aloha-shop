@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CalendarClock, Paperclip, RefreshCw, Search, UserRound, X } from "lucide-react";
 import { toast } from "@/components/admin/toast";
@@ -39,6 +39,8 @@ export function ApplicationsAdmin() {
   const [loading, setLoading] = useState(true);
   const [jobs, setJobs] = useState<AdminJob[]>([]);
   const [openId, setOpenId] = useState<string | null>(paramId || null);
+  const lastTargetRef = useRef<string>((paramId || paramCode).trim().toUpperCase());
+  const dismissedRef = useRef<boolean>(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -73,9 +75,57 @@ export function ApplicationsAdmin() {
       .catch(() => setJobs([]));
   }, []);
 
+  // Đồng bộ target khi URL searchParams thay đổi (ví dụ click từ thông báo khác)
   useEffect(() => {
-    if (openId || !rows.length) return;
-    const target = paramId || paramCode;
+    const currentTarget = (paramId || paramCode).trim().toUpperCase();
+    if (currentTarget && currentTarget !== lastTargetRef.current) {
+      lastTargetRef.current = currentTarget;
+      dismissedRef.current = false;
+    }
+  }, [paramId, paramCode]);
+
+  // Lắng nghe sự kiện click trực tiếp từ trung tâm thông báo (nhanh tức thì, không phụ thuộc reload)
+  useEffect(() => {
+    const handleNotifTarget = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const item = customEvent.detail;
+      if (!item || item.type !== "recruitment") return;
+      try {
+        const url = new URL(item.link, window.location.origin);
+        const target = (
+          url.searchParams.get("code") ||
+          url.searchParams.get("id") ||
+          url.searchParams.get("q") ||
+          ""
+        ).trim();
+        if (target) {
+          lastTargetRef.current = target.toUpperCase();
+          dismissedRef.current = false;
+          setQ(target);
+          setPage(1);
+
+          const matched = rows.find(
+            (r) =>
+              r.id === target ||
+              r.publicCode?.toUpperCase() === target.toUpperCase() ||
+              r.contact?.phone === target
+          );
+          if (matched) {
+            setOpenId(matched.id);
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+    };
+    window.addEventListener("aloha_open_notification_target", handleNotifTarget);
+    return () => window.removeEventListener("aloha_open_notification_target", handleNotifTarget);
+  }, [rows]);
+
+  // Tự động mở hồ sơ ứng viên khi điều hướng từ thông báo / URL (chỉ mở 1 lần, không loop khi đóng)
+  useEffect(() => {
+    if (dismissedRef.current || !rows.length) return;
+    const target = (paramId || paramCode).trim();
     if (!target) return;
     const matched = rows.find(
       (r) =>
@@ -86,7 +136,29 @@ export function ApplicationsAdmin() {
     if (matched) {
       setOpenId(matched.id);
     }
-  }, [rows, paramId, paramCode, openId]);
+  }, [rows, paramId, paramCode]);
+
+  const handleCloseDrawer = useCallback(() => {
+    setOpenId(null);
+    dismissedRef.current = true;
+    if (typeof window !== "undefined") {
+      try {
+        const url = new URL(window.location.href);
+        if (url.searchParams.has("code") || url.searchParams.has("id")) {
+          url.searchParams.delete("code");
+          url.searchParams.delete("id");
+          const nextSearch = url.searchParams.toString();
+          window.history.replaceState(
+            {},
+            "",
+            url.pathname + (nextSearch ? `?${nextSearch}` : "")
+          );
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+  }, []);
 
   const pages = Math.max(1, Math.ceil(total / LIMIT));
   const resetPage = <T,>(fn: (v: T) => void) => (v: T) => {
@@ -97,6 +169,8 @@ export function ApplicationsAdmin() {
   const hasActiveFilters = Boolean(q || jobId || status || submissionType || source || hasCv);
 
   const resetAllFilters = () => {
+    lastTargetRef.current = "";
+    dismissedRef.current = true;
     setQ("");
     setJobId("");
     setStatus("");
@@ -302,7 +376,7 @@ export function ApplicationsAdmin() {
         </div>
       ) : null}
 
-      <ApplicationDrawer id={openId} jobs={jobs} onClose={() => setOpenId(null)} onChanged={() => void load()} />
+      <ApplicationDrawer id={openId} jobs={jobs} onClose={handleCloseDrawer} onChanged={() => void load()} />
     </div>
   );
 }
