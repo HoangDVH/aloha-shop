@@ -413,10 +413,12 @@ async function createShopOrder(
   await confirmFunnelOrder(shopDb, { ...doc, code }).catch(() => {});
 
   syncBus.publish(["shop_orders"], "shop-order-create", { ids: [code] });
+  const finalAmount = Number(doc.total || total || 0);
+  const amountStr = new Intl.NumberFormat("vi-VN").format(finalAmount);
   void broadcastAdminWebPush(shopDb, {
     title: "🔔 ALOHA - Có đơn hàng mới!",
-    body: `Đơn ${code} (${customerName || "Khách web"} - ${new Intl.NumberFormat("vi-VN").format(Number(doc.grandTotal || 0))}đ)`,
-    url: "/admin/don-hang-web",
+    body: `Đơn ${code} (${customerName || "Khách web"} - ${amountStr}đ)`,
+    url: `/admin/don-hang-web?code=${encodeURIComponent(code)}`,
     tag: `order-${code}`,
   }).catch((e) => console.warn("[web-push] order push failed:", e?.message || e));
   void notifyOrderStatus(shopDb, doc, "dat_hang").catch((e) =>

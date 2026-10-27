@@ -400,7 +400,7 @@ export function playOrderChime(explicitStyle?: ChimeStyle) {
   playNotificationSound("order", explicitStyle);
 }
 
-function showBrowserNotification(title: string, body: string) {
+function showBrowserNotification(title: string, body: string, targetUrl?: string) {
   if (typeof window === "undefined" || !("Notification" in window)) return;
   if (Notification.permission === "granted") {
     try {
@@ -412,6 +412,9 @@ function showBrowserNotification(title: string, body: string) {
       });
       notif.onclick = () => {
         window.focus();
+        if (targetUrl) {
+          window.location.href = targetUrl;
+        }
         notif.close();
       };
     } catch {
@@ -522,12 +525,13 @@ export function AdminOpsSync({ enabled }: { enabled: boolean }) {
     const triggerEventAlert = (
       category: NotificationCategory,
       title: string,
-      body: string
+      body: string,
+      targetUrl?: string
     ) => {
       playNotificationSound(category);
 
       if (typeof document !== "undefined" && document.visibilityState !== "visible") {
-        showBrowserNotification(title, body);
+        showBrowserNotification(title, body, targetUrl);
 
         if (!originalTitleRef.current) {
           originalTitleRef.current = document.title;
@@ -557,6 +561,7 @@ export function AdminOpsSync({ enabled }: { enabled: boolean }) {
       if (!n) return;
 
       const sample = [...pendingOrderIds.current].slice(0, 3).join(", ");
+      const firstId = [...pendingOrderIds.current][0];
       pendingOrderIds.current.clear();
 
       playNotificationSound("order");
@@ -567,8 +572,13 @@ export function AdminOpsSync({ enabled }: { enabled: boolean }) {
           ? `Đơn mới: ${sample || "—"}`
           : `+${n} đơn mới vừa được tạo (${sample}…)`;
 
+      const targetUrl =
+        n === 1 && firstId && firstId !== "Đơn mới"
+          ? `/admin/don-hang-web?code=${encodeURIComponent(firstId)}`
+          : `/admin/don-hang-web`;
+
       if (typeof document !== "undefined" && document.visibilityState !== "visible") {
-        showBrowserNotification(notifTitle, notifBody);
+        showBrowserNotification(notifTitle, notifBody, targetUrl);
 
         if (!originalTitleRef.current) {
           originalTitleRef.current = document.title;
@@ -656,11 +666,11 @@ export function AdminOpsSync({ enabled }: { enabled: boolean }) {
           toastTimer.current = setTimeout(flushOrderToast, 350);
         }
       } else if (isWholesale) {
-        triggerEventAlert("wholesale", "🏢 ALOHA - Khách sỉ mới đăng ký!", "Có khách sỉ mới gửi hồ sơ đăng ký.");
+        triggerEventAlert("wholesale", "🏢 ALOHA - Khách sỉ mới đăng ký!", "Có khách sỉ mới gửi hồ sơ đăng ký.", "/admin/ctv/khach-hang");
       } else if (isCtv) {
-        triggerEventAlert("ctv", "🤝 ALOHA - CTV mới đăng ký!", "Có cộng tác viên mới đăng ký tài khoản CTV.");
+        triggerEventAlert("ctv", "🤝 ALOHA - CTV mới đăng ký!", "Có cộng tác viên mới đăng ký tài khoản CTV.", "/admin/ctv/danh-sach");
       } else if (isRecruitment) {
-        triggerEventAlert("recruitment", "📄 ALOHA - Có ứng viên nộp hồ sơ!", "Ứng viên vừa nộp hồ sơ ứng tuyển.");
+        triggerEventAlert("recruitment", "📄 ALOHA - Có ứng viên nộp hồ sơ!", "Ứng viên vừa nộp hồ sơ ứng tuyển.", "/admin/tuyen-dung/ho-so");
       }
     };
 
