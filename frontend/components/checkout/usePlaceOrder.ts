@@ -2,6 +2,10 @@
 
 import { useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 import { funnelSession, trackFunnel } from "@/lib/funnelTracking";
+import {
+  trackPixelInitiateCheckout,
+  trackPixelPurchase,
+} from "@/lib/analytics/facebookPixel";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { shopUpdateMe } from "@/lib/auth";
 import { shopMeQueryKey } from "@/lib/authQueries";
@@ -117,7 +121,15 @@ export function usePlaceOrder({
   const qc = useQueryClient();
   const showShip = shopShowCheckoutShipping();
   const hasCheckout = Boolean(user && selected.length);
-  useEffect(() => { if (hasCheckout) trackFunnel("checkout"); }, [hasCheckout]);
+  useEffect(() => {
+    if (hasCheckout) {
+      trackFunnel("checkout");
+      trackPixelInitiateCheckout({
+        items: selected.map((s) => ({ ma: s.ma, gia: s.gia, qty: s.qty })),
+        totalValue: selected.reduce((sum, s) => sum + (Number(s.gia) || 0) * (Number(s.qty) || 1), 0),
+      });
+    }
+  }, [hasCheckout]);
 
   const placeMut = useMutation({
     mutationFn: placeShopOrder,
@@ -303,6 +315,13 @@ export function usePlaceOrder({
       });
       const orderCode = displayShopOrderCode(res.data) || String(res.data?.code || "").trim();
       orderPlacedRef.current = true;
+      if (orderCode) {
+        trackPixelPurchase({
+          orderCode,
+          totalValue: Number(res.data?.total || expectedSubtotal || 0),
+          items: selected.map((l) => ({ ma: l.ma, gia: l.gia, qty: l.qty })),
+        });
+      }
       try {
         if (user?.id) sessionStorage.removeItem(`aloha_checkout_draft:${encodeURIComponent(user.id)}`);
         sessionStorage.removeItem("aloha_checkout_draft");

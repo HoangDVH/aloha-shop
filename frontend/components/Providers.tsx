@@ -10,6 +10,7 @@ import { ShopCatalogSync } from "@/components/ShopCatalogSync";
 import { CtvPendingGate } from "@/components/CtvPendingGate";
 import { SiteDataMigrationCleanup } from "@/components/SiteDataMigrationCleanup";
 import { ShopVisitTracker } from "@/components/ShopVisitTracker";
+import { FacebookPixel } from "@/components/analytics/FacebookPixel";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [client] = useState(
@@ -24,6 +25,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={client}>
       <SiteDataMigrationCleanup />
       <ShopVisitTracker />
+      <FacebookPixel />
       <ShopAuthProvider>
         <CartSync />
         <ShopCatalogSync />

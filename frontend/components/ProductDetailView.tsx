@@ -6,6 +6,7 @@ import { ChevronRight, ShoppingCart, Zap } from "lucide-react";
 import { SiPriceBadge } from "@/components/si-pricing/SiPriceBadge";
 import { formatVnd, type ShopProduct } from "@/lib/api";
 import { formatTonDisplay, isPreOrderTon, stockMax, useCart } from "@/lib/cart";
+import { trackPixelViewContent } from "@/lib/analytics/facebookPixel";
 import { useToast } from "@/components/Toast";
 import { useShopAuth } from "@/components/ShopAuthProvider";
 import { useShopRouter } from "@/lib/useShopRouter";
@@ -187,6 +188,15 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
       /* ignore */
     }
   }, [product.ma, product.path]);
+
+  useEffect(() => {
+    trackPixelViewContent({
+      ma: activeProduct.ma,
+      ten: activeProduct.ten,
+      gia: activeProduct.gia,
+      nhom: activeProduct.nhom,
+    });
+  }, [activeProduct.ma, activeProduct.ten, activeProduct.gia, activeProduct.nhom]);
   useEffect(() => {
     setLiveGia(activeProduct.gia);
     setLiveWebPrice(activeProduct.webPrice);

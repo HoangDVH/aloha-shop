@@ -6,6 +6,7 @@ import type { ShopProduct, ShopProductAttr } from "./api";
 import { getGuestCtvCode, normalizeCtvCode } from "./ctv";
 import { normalizeCartAttributes } from "./cartVariant";
 import { trackFunnel } from "./funnelTracking";
+import { trackPixelAddToCart } from "./analytics/facebookPixel";
 
 export type CartLine = {
   ma: string;
@@ -190,6 +191,12 @@ export const useCart = create<CartState>()(
 
         if (result.ok && typeof window !== "undefined") {
           trackFunnel("cart");
+          trackPixelAddToCart({
+            ma: p.ma,
+            ten: p.ten,
+            gia: p.gia,
+            qty: want,
+          });
           window.dispatchEvent(new CustomEvent("aloha:cart-bump"));
         }
 
