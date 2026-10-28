@@ -5,6 +5,7 @@
 import type { Db } from "mongodb";
 import { SHOP_ORDERS, ensureShopOrderIndexes } from "./models.js";
 import { markShopOrderPaid } from "./markPaid.js";
+import { completeShopOrderDelivered } from "./completeDelivered.js";
 import { getKvInvoice } from "../shopInvoices/kvInvoiceClient.js";
 import { syncBus } from "../syncBus.js";
 
@@ -100,6 +101,18 @@ export async function reconcileShopOrderAgainstKv(opts: {
       expected,
       hd: invCode,
     });
+    // Hoàn tất đơn shop nếu hoá đơn KV đã hoàn thành
+    if (order.orderStatus !== "hoan_thanh") {
+      await completeShopOrderDelivered({
+        shopDb: opts.shopDb,
+        mainDb: opts.mainDb,
+        orderRef: code,
+        confirmedBy: "kiotqr_reconcile",
+        skipCreateKvInvoice: true,
+        kvInvoiceId: invId != null ? String(invId) : null,
+        kvInvoiceCode: invCode || null,
+      }).catch((e) => console.warn("[kv-pay-reconcile] completeDelivered error:", code, e?.message || e));
+    }
     return "paid";
   }
   console.warn("[kv-pay-reconcile] markPaid fail", code, result.error);
@@ -172,6 +185,40 @@ export async function reconcileByKvInvoiceRef(
   }
   if (!order && invCode) {
     order = await shopDb.collection(SHOP_ORDERS).findOne({ kvInvoiceCode: invCode });
+  }
+  if (!order && (invId != null || invCode)) {
+    try {
+      const inv = await getKvInvoice(mainDb, String(invId ?? invCode));
+      const orderId = inv?.orderId ?? inv?.OrderId;
+      const orderCode = inv?.orderCode ?? inv?.OrderCode;
+      if (orderId || orderCode) {
+        order = await shopDb.collection(SHOP_ORDERS).findOne({
+          $or: [
+            ...(orderId ? [{ kvOrderId: orderId }, { kvOrderId: Number(orderId) }, { kvOrderId: String(orderId) }] : []),
+            ...(orderCode ? [{ kvOrderCode: orderCode }, { code: orderCode }] : []),
+          ],
+        });
+        if (order) {
+          const realInvId = inv?.id ?? inv?.Id ?? invId;
+          const realInvCode = inv?.code ?? inv?.Code ?? invCode;
+          await shopDb.collection(SHOP_ORDERS).updateOne(
+            { _id: order._id },
+            {
+              $set: {
+                kvInvoiceId: realInvId,
+                kvInvoiceCode: realInvCode,
+                kvInvoiceMode: "kv_store_invoice",
+                updatedAt: new Date().toISOString(),
+              },
+            }
+          );
+          order.kvInvoiceId = realInvId;
+          order.kvInvoiceCode = realInvCode;
+        }
+      }
+    } catch (e: any) {
+      console.warn("[kvPaymentReconcile] reverse invoice lookup failed:", invId || invCode, e?.message || e);
+    }
   }
   if (!order) return "no_order";
   return reconcileShopOrderAgainstKv({

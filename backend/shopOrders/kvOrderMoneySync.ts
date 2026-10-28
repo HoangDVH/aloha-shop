@@ -12,6 +12,8 @@ import { SHOP_ORDERS, type ShopOrderDetail } from "./models.js";
 import { isKvShipProductCode } from "./kvDeliveryStatus.js";
 import { holdCommissionsForOrder, voidCommissionsForOrder } from "./commission.js";
 import { clawbackPaidOutCommissions } from "./commissionClawback.js";
+import { completeShopOrderDelivered } from "./completeDelivered.js";
+import { markShopOrderPaid } from "./markPaid.js";
 import {
   createShopStockHolds,
   releaseShopStockHolds,
@@ -191,6 +193,111 @@ export type SyncMoneyResult = {
   conflict?: boolean;
 };
 
+async function syncKvOrderCompletion(opts: {
+  shopDb: Db;
+  mainDb: Db;
+  order: Record<string, any>;
+  kvOrder: any;
+  total: number;
+}) {
+  const { shopDb, mainDb, order, kvOrder, total } = opts;
+  const code = String(order.code || order.id || "");
+  const kvOrderId = kvOrder?.id ?? kvOrder?.Id ?? order.kvOrderId;
+  const kvOrderCode = String(kvOrder?.code ?? kvOrder?.Code ?? order.kvOrderCode ?? "");
+  const kvStatus = Number(kvOrder?.status ?? kvOrder?.Status ?? 0);
+  const kvTotalPayment = Math.round(Number(kvOrder?.totalPayment ?? kvOrder?.TotalPayment) || 0);
+
+  // 1. Tìm hoá đơn KiotViet liên kết
+  let invoices = Array.isArray(kvOrder?.invoices)
+    ? kvOrder.invoices
+    : Array.isArray(kvOrder?.Invoices)
+      ? kvOrder.Invoices
+      : [];
+  if (!invoices.length && (kvStatus === 3 || kvTotalPayment >= total)) {
+    try {
+      const creds = await loadKvCreds(mainDb);
+      if (creds) {
+        const token = await fetchKvAccessToken(creds);
+        const res = await fetch(`${kvApiBase()}/invoices?orderId=${encodeURIComponent(String(kvOrderId))}`, {
+          headers: { Authorization: `Bearer ${token}`, Retailer: creds.retailer },
+          signal: AbortSignal.timeout(10_000),
+        });
+        if (res.ok) {
+          const json: any = await res.json().catch(() => null);
+          if (Array.isArray(json?.data)) invoices = json.data;
+        }
+      }
+    } catch (e: any) {
+      console.warn("[kv-completion] fetch invoices for order", kvOrderId, e?.message || e);
+    }
+  }
+
+  const completedInvoice = invoices.find((inv: any) => Number(inv?.status ?? inv?.Status) === 1) || invoices[0];
+  const kvInvoiceId = completedInvoice?.invoiceId ?? completedInvoice?.Id ?? completedInvoice?.id ?? null;
+  const kvInvoiceCode = completedInvoice?.invoiceCode ?? completedInvoice?.Code ?? completedInvoice?.code ?? null;
+
+  // Gắn hoá đơn vào order nếu có
+  if (kvInvoiceId || kvInvoiceCode) {
+    await shopDb.collection(SHOP_ORDERS).updateOne(
+      { _id: order._id },
+      {
+        $set: {
+          ...(kvInvoiceId ? { kvInvoiceId } : {}),
+          ...(kvInvoiceCode ? { kvInvoiceCode } : {}),
+          kvInvoiceMode: "kv_store_invoice",
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    );
+    order.kvInvoiceId = kvInvoiceId;
+    order.kvInvoiceCode = kvInvoiceCode;
+  }
+
+  const isCompletedOnKv = kvStatus === 3 || Boolean(completedInvoice && Number(completedInvoice?.status ?? completedInvoice?.Status) === 1);
+  const isPaidOnKv = kvTotalPayment >= total || Boolean(completedInvoice && Number(completedInvoice?.status ?? completedInvoice?.Status) === 1);
+
+  // 2. Nếu đã thanh toán trên KV -> đánh dấu paid trên shop nếu chưa paid
+  if (isPaidOnKv && order.paymentStatus !== "paid") {
+    const rawPaidDate = completedInvoice?.purchaseDate || completedInvoice?.createdDate;
+    const paidAt = rawPaidDate ? new Date(rawPaidDate).toISOString() : new Date().toISOString();
+    await shopDb.collection(SHOP_ORDERS).updateOne(
+      { _id: order._id },
+      {
+        $set: {
+          paymentStatus: "paid",
+          paidAmount: kvTotalPayment || total,
+          totalPayment: total,
+          remainingAmount: 0,
+          paidAt,
+          paymentConfirmedBy: "kiotviet_sync",
+          ...(order.method === "Pending" ? { method: "Transfer" } : {}),
+          ...(order.backorderStatus ? { backorderStatus: "confirmed_paid" } : {}),
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    );
+    order.paymentStatus = "paid";
+    order.paidAmount = kvTotalPayment || total;
+    order.totalPayment = total;
+    syncBus.publish(["shop_orders"], "paid", { ids: [code] });
+  }
+
+  // 3. Nếu đã hoàn thành trên KV -> đánh dấu hoàn thành trên shop nếu chưa hoàn thành
+  if (isCompletedOnKv && order.orderStatus !== "hoan_thanh") {
+    await completeShopOrderDelivered({
+      shopDb,
+      mainDb,
+      orderRef: code,
+      confirmedBy: "kiotviet_sync",
+      skipCreateKvInvoice: true,
+      kvInvoiceId,
+      kvInvoiceCode,
+      kvOrderId,
+      kvOrderCode,
+    }).catch((e) => console.warn("[kv-completion] completeShopOrderDelivered error:", code, e?.message || e));
+  }
+}
+
 export async function syncShopOrderMoneyFromKv(opts: {
   shopDb: Db;
   mainDb: Db;
@@ -213,7 +320,8 @@ export async function syncShopOrderMoneyFromKv(opts: {
 
   const code = String(order.code || order.id || "");
   const st = String(order.orderStatus || "");
-  if (st === "hoan_thanh" || st === "huy") {
+  const isPaid = order.paymentStatus === "paid";
+  if ((st === "hoan_thanh" && isPaid) || st === "huy") {
     return { ok: true, skipped: true, code };
   }
   if (webPushInProgress(order)) {
@@ -263,6 +371,7 @@ export async function syncShopOrderMoneyFromKv(opts: {
     if (order.kvMoneyConflict) {
       await shopDb.collection(SHOP_ORDERS).updateOne({ _id: order._id }, { $unset: { kvMoneyConflict: "" } });
     }
+    await syncKvOrderCompletion({ shopDb, mainDb, order, kvOrder, total });
     return { ok: true, skipped: true, changed: false, code };
   }
 
@@ -366,6 +475,7 @@ export async function syncShopOrderMoneyFromKv(opts: {
     });
   }
 
+  await syncKvOrderCompletion({ shopDb, mainDb, order, kvOrder, total });
   syncBus.publish(["shop_orders"], "kv-order-edit", { ids: [code] });
   return { ok: true, changed: true, code };
 }

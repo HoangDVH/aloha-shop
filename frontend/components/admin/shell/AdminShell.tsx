@@ -163,7 +163,11 @@ export function AdminShell({ children }: { children: ReactNode }) {
           </header>
 
           {/* Full-width content workspace (Chuẩn KiotViet/Shopee - đệm gọn gàng 16px) */}
-          <div className="w-full h-full p-2.5 sm:p-4 lg:p-4">
+          <div
+            className={`w-full h-full ${
+              pathname.startsWith("/admin/don-hang-web") ? "p-0 lg:p-4" : "p-2.5 sm:p-4 lg:p-4"
+            }`}
+          >
             {children}
           </div>
         </main>

@@ -32,3 +32,6 @@ private/
 
 # Refactor test snapshots
 docs/refactor/snap-*
+artifacts/
+test-results/
+

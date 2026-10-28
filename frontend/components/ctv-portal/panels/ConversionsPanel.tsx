@@ -1,56 +1,29 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  Alert,
-  Button,
-  Card,
-  DatePicker,
-  Input,
-  Select,
-  Space,
-  Spin,
-  Table,
-  Tag,
-} from "antd";
 import dayjs from "dayjs";
 import { useCtvMeConversions } from "../ctvPortalQueries";
 import { useCtvPortalUiStore } from "../ctvPortalUiStore";
-import { exportCsv, formatDt, formatVnd, monthRange, CTV_COMMISSION_UX, resolveCtvCommissionStatus, ctvCommissionHint } from "../shared/format";
+import {
+  exportCsv,
+  monthRange,
+  ymd,
+} from "../shared/format";
 import { visibleRefetchInterval } from "@/lib/visibleRefetchInterval";
 import type { ConversionRow } from "../types";
-import type { CtvCommissionStatusKey } from "../shared/format";
+import {
+  ORDER_STATUS_OPTIONS,
+  PAYMENT_STATUS_OPTIONS,
+  PAGE_SIZE,
+  getQuickRange,
+  type ConversionFilters,
+  type QuickRangeType,
+} from "./conversions/conversionTypes";
+import { ConversionDesktopView } from "./conversions/ConversionDesktopView";
+import { ConversionMobileCards } from "./conversions/ConversionMobileCards";
+import { ConversionMobileDrawers } from "./conversions/ConversionMobileDrawers";
 
-const { RangePicker } = DatePicker;
-
-const PAGE_SIZE = 10;
-
-interface ConversionFilters {
-  from: string;
-  to: string;
-  orderCode: string;
-  orderStatus: string;
-  paymentStatus: string;
-}
-
-function commissionCell(r: ConversionRow) {
-  const key = (r.commissionStatusKey
-    ? (r.commissionStatusKey as CtvCommissionStatusKey)
-    : resolveCtvCommissionStatus([r.commissionStatus])) as CtvCommissionStatusKey;
-  const ux = CTV_COMMISSION_UX[key] || CTV_COMMISSION_UX.none;
-  const hint =
-    r.commissionStatusHint ||
-    ctvCommissionHint(key) ||
-    ux.explain;
-  return (
-    <div className="min-w-[120px]">
-      <Tag color={ux.color} className="m-0">
-        {r.commissionStatus || ux.label}
-      </Tag>
-      <div className="mt-1 text-[11px] leading-snug text-slate-500">{hint}</div>
-    </div>
-  );
-}
+export { type ConversionFilters } from "./conversions/conversionTypes";
 
 export function ConversionsPanel() {
   const { dateRange } = useCtvPortalUiStore();
@@ -66,128 +39,75 @@ export function ConversionsPanel() {
   const { from, to, orderStatus, paymentStatus } = applied;
   const [page, setPage] = useState(1);
 
+  // Mobile state
+  const [selectedConversion, setSelectedConversion] = useState<ConversionRow | null>(null);
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
+  const [dateSheetOpen, setDateSheetOpen] = useState(false);
+
   const q = useCtvMeConversions(applied, {
     refetchInterval: visibleRefetchInterval(30_000),
   });
   const rows = q.data || [];
 
-  const columns = useMemo(
-    () => [
-      {
-        title: "Thời gian click",
-        dataIndex: "clickAt",
-        render: (v: string | null) => (
-          <span className="whitespace-nowrap">{formatDt(v)}</span>
-        ),
-        width: 148,
-      },
-      {
-        title: "Thời gian mua",
-        dataIndex: "purchasedAt",
-        render: (v: string | null) => (
-          <span className="whitespace-nowrap">{formatDt(v)}</span>
-        ),
-        width: 148,
-      },
-      {
-        title: "Mã đơn",
-        dataIndex: "orderCode",
-        render: (v: string) => (
-          <span className="whitespace-nowrap font-bold">{v}</span>
-        ),
-        width: 128,
-      },
-      {
-        title: "Sản phẩm",
-        key: "products",
-        width: 280,
-        render: (_: unknown, r: ConversionRow) => {
-          const products =
-            r.products?.length
-              ? r.products
-              : r.productSummary && r.productSummary !== "—"
-                ? [{ ma: "", name: r.productSummary, imageUrl: "" }]
-                : [];
-          if (!products.length) return "—";
-          return (
-            <div className="flex flex-col gap-2 py-0.5">
-              {products.map((p, i) => (
-                <div
-                  key={`${p.ma || p.name}-${i}`}
-                  className="flex items-center gap-2.5"
-                >
-                  {p.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={p.imageUrl}
-                      alt=""
-                      className="h-9 w-9 shrink-0 rounded object-cover"
-                    />
-                  ) : (
-                    <div className="h-9 w-9 shrink-0 rounded bg-slate-100" />
-                  )}
-                  <span className="line-clamp-2 text-[12px] leading-snug">
-                    {p.name}
-                  </span>
-                </div>
-              ))}
-            </div>
-          );
-        },
-      },
-      {
-        title: "Hoa hồng (₫)",
-        dataIndex: "totalCommission",
-        align: "right" as const,
-        render: (v: number) => (
-          <span className="whitespace-nowrap font-semibold">{formatVnd(v)}</span>
-        ),
-        width: 128,
-      },
-      {
-        title: "Trạng thái đơn",
-        dataIndex: "orderLabel",
-        width: 132,
-        render: (v: string) => <Tag className="m-0">{v || "—"}</Tag>,
-      },
-      {
-        title: "Trạng thái thanh toán",
-        dataIndex: "payLabel",
-        width: 150,
-        render: (v: string, r: ConversionRow) => (
-          <span className="whitespace-nowrap text-[12px] font-medium text-slate-600">
-            {v || r.paymentStatus || "—"}
-          </span>
-        ),
-      },
-      {
-        title: "Hoàn thành",
-        dataIndex: "completedAt",
-        render: (v: string | null) => (
-          <span className="whitespace-nowrap">{formatDt(v)}</span>
-        ),
-        width: 148,
-      },
-      {
-        title: "Trạng thái hoa hồng",
-        dataIndex: "commissionStatus",
-        width: 168,
-        render: (_: string, r: ConversionRow) => commissionCell(r),
-      },
-      {
-        title: "Người mua",
-        dataIndex: "buyerStatus",
-        width: 120,
-        render: (v: string) => (
-          <span className="whitespace-nowrap">{v || "—"}</span>
-        ),
-      },
-    ],
-    []
-  );
+  const totalCommission = useMemo(() => {
+    return rows.reduce((sum, r) => sum + (Number(r.totalCommission) || 0), 0);
+  }, [rows]);
+
+  // Labels & active filters
+  const orderStatusLabel = useMemo(() => {
+    return ORDER_STATUS_OPTIONS.find((o) => o.value === orderStatus)?.label || "Tất cả";
+  }, [orderStatus]);
+
+  const paymentStatusLabel = useMemo(() => {
+    return PAYMENT_STATUS_OPTIONS.find((o) => o.value === paymentStatus)?.label || "Tất cả";
+  }, [paymentStatus]);
+
+  const datePresetLabel = useMemo(() => {
+    const today = ymd(new Date());
+    const yesterday = ymd(new Date(Date.now() - 86400000));
+    const thisMonth = monthRange(0);
+    const lastMonth = monthRange(-1);
+
+    if (from === today && to === today) return "Hôm nay";
+    if (from === yesterday && to === yesterday) return "Hôm qua";
+    if (from === thisMonth.from && to === thisMonth.to) return "Tháng này";
+    if (from === lastMonth.from && to === lastMonth.to) return "Tháng trước";
+    if (from && to) {
+      return `${dayjs(from).format("DD/MM")} - ${dayjs(to).format("DD/MM")}`;
+    }
+    return "Thời gian";
+  }, [from, to]);
+
+  const hasActiveFilters = useMemo(() => {
+    const thisMonth = monthRange(0);
+    return (
+      orderStatus !== "all" ||
+      paymentStatus !== "all" ||
+      Boolean(applied.orderCode) ||
+      from !== thisMonth.from ||
+      to !== thisMonth.to
+    );
+  }, [orderStatus, paymentStatus, applied.orderCode, from, to]);
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (orderStatus !== "all") count++;
+    if (paymentStatus !== "all") count++;
+    if (applied.orderCode) count++;
+    const thisMonth = monthRange(0);
+    if (from !== thisMonth.from || to !== thisMonth.to) count++;
+    return count;
+  }, [orderStatus, paymentStatus, applied.orderCode, from, to]);
+
+  // Mobile paginated rows
+  const totalPages = Math.ceil(rows.length / PAGE_SIZE) || 1;
+  const pagedMobileRows = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return rows.slice(start, start + PAGE_SIZE);
+  }, [rows, page]);
 
   function applyFilters() {
-    setApplied((current: ConversionFilters) => ({ ...current, orderCode }));
+    setApplied((current) => ({ ...current, orderCode }));
     setPage(1);
   }
 
@@ -195,7 +115,7 @@ export function ConversionsPanel() {
     key: K,
     value: ConversionFilters[K]
   ) {
-    setApplied((current: ConversionFilters) => ({ ...current, [key]: value }));
+    setApplied((current) => ({ ...current, [key]: value }));
     setPage(1);
   }
 
@@ -209,6 +129,17 @@ export function ConversionsPanel() {
       orderStatus: "all",
       paymentStatus: "all",
     });
+    setPage(1);
+  }
+
+  function applyQuickRange(type: QuickRangeType) {
+    const r = getQuickRange(type);
+    setApplied((c) => ({ ...c, from: r.from, to: r.to }));
+    setPage(1);
+  }
+
+  function applyCustomDate(newFrom: string, newTo: string) {
+    setApplied((c) => ({ ...c, from: newFrom, to: newTo }));
     setPage(1);
   }
 
@@ -245,179 +176,64 @@ export function ConversionsPanel() {
   }
 
   return (
-    <div className="ctv-page-flow flex flex-col gap-7">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="m-0 text-xl font-extrabold text-[#163A2A]">
-            Báo cáo chuyển đổi
-          </h1>
-          <p className="mt-0.5 text-xs text-slate-500">
-            Theo dõi chi tiết đơn hàng, trạng thái đối soát và hoa hồng phát sinh
-          </p>
-        </div>
-      </div>
+    <div className="ctv-page-flow flex flex-col gap-4 sm:gap-7">
+      {/* 1. GIAO DIỆN DESKTOP */}
+      <ConversionDesktopView
+        applied={applied}
+        orderCode={orderCode}
+        setOrderCode={setOrderCode}
+        onApplyFilters={applyFilters}
+        onChangeFilter={changeFilter}
+        onResetFilters={resetFilters}
+        onExport={doExport}
+        rows={rows}
+        isLoading={q.isLoading}
+        isFetching={q.isFetching}
+        error={q.error as Error | null}
+        page={page}
+        pageSize={PAGE_SIZE}
+        onPageChange={setPage}
+      />
 
-      <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
-        {/* Bộ lọc đơn hàng */}
-        <div className="border-b border-slate-100 p-5 bg-white">
-          {/* Hàng 1: 3 bộ lọc chính kích thước cân đối đồng bộ */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                Thời gian mua hàng
-              </label>
-              <RangePicker
-                className="w-full !h-[42px]"
-                format="DD/MM/YYYY"
-                allowClear={false}
-                value={
-                  from && to && dayjs(from).isValid() && dayjs(to).isValid()
-                    ? [dayjs(from), dayjs(to)]
-                    : null
-                }
-                onChange={(dates) => {
-                  if (dates && dates[0] && dates[1]) {
-                    setApplied((current: ConversionFilters) => ({
-                      ...current,
-                      from: dates[0]!.format("YYYY-MM-DD"),
-                      to: dates[1]!.format("YYYY-MM-DD"),
-                    }));
-                  } else {
-                    const r = monthRange(0);
-                    setApplied((current: ConversionFilters) => ({
-                      ...current,
-                      from: r.from,
-                      to: r.to,
-                    }));
-                  }
-                  setPage(1);
-                }}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                Trạng thái đơn hàng
-              </label>
-              <Select
-                className="w-full !h-[42px]"
-                value={orderStatus}
-                onChange={(value) => changeFilter("orderStatus", value)}
-                options={[
-                  { value: "all", label: "Tất cả" },
-                  { value: "cho_xu_ly", label: "Chờ xử lý" },
-                  { value: "cho_thanh_toan", label: "Chờ thanh toán" },
-                  { value: "dang_giao", label: "Đang giao" },
-                  { value: "hoan_thanh", label: "Hoàn thành" },
-                  { value: "thieu_hang", label: "Thiếu hàng" },
-                  { value: "huy", label: "Đã hủy" },
-                ]}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                Trạng thái thanh toán
-              </label>
-              <Select
-                className="w-full !h-[42px]"
-                value={paymentStatus}
-                onChange={(value) => changeFilter("paymentStatus", value)}
-                options={[
-                  { value: "all", label: "Tất cả" },
-                  { value: "pending", label: "Chờ thanh toán" },
-                  { value: "paid", label: "Đã thanh toán" },
-                  { value: "cod", label: "COD" },
-                ]}
-              />
-            </div>
-          </div>
+      {/* 2. GIAO DIỆN MOBILE TỐI ƯU */}
+      <ConversionMobileCards
+        applied={applied}
+        orderCode={orderCode}
+        setOrderCode={setOrderCode}
+        onApplyFilters={applyFilters}
+        onChangeFilter={changeFilter}
+        onResetFilters={resetFilters}
+        rows={rows}
+        pagedRows={pagedMobileRows}
+        totalCommission={totalCommission}
+        isLoading={q.isLoading}
+        hasActiveFilters={hasActiveFilters}
+        activeFilterCount={activeFilterCount}
+        orderStatusLabel={orderStatusLabel}
+        paymentStatusLabel={paymentStatusLabel}
+        datePresetLabel={datePresetLabel}
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        onSelectConversion={setSelectedConversion}
+        onOpenFilterDrawer={() => setFilterDrawerOpen(true)}
+        onOpenDateSheet={() => setDateSheetOpen(true)}
+      />
 
-          {/* Hàng 2: Tìm kiếm mã đơn hàng & Các nút thao tác */}
-          <div className="mt-4 flex flex-col sm:flex-row sm:items-end justify-between gap-3 pt-3 border-t border-slate-100">
-            <div className="w-full sm:max-w-md">
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                Mã đơn hàng
-              </label>
-              <Space.Compact className="w-full">
-                <Input
-                  value={orderCode}
-                  onChange={(e) => setOrderCode(e.target.value)}
-                  onPressEnter={applyFilters}
-                  placeholder="Tìm theo mã HĐ / đơn hàng..."
-                  allowClear
-                  className="!h-[42px]"
-                />
-                <Button
-                  type="primary"
-                  onClick={applyFilters}
-                  className="!h-[42px] px-5 font-medium"
-                >
-                  Tìm kiếm
-                </Button>
-              </Space.Compact>
-            </div>
-            <div className="flex items-center gap-2 shrink-0 self-end">
-              <Button
-                onClick={resetFilters}
-                className="!h-[42px] px-4 font-medium"
-              >
-                Thiết lập lại
-              </Button>
-              <Button
-                type="primary"
-                ghost
-                disabled={!rows.length || q.isFetching}
-                onClick={doExport}
-                className="!h-[42px] px-4 font-medium"
-              >
-                Xuất dữ liệu
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Thanh ghi chú nhẹ */}
-        <div className="flex items-center gap-2.5 border-b border-slate-100 bg-[#F4F9F2] px-5 py-3 text-xs font-medium text-[#2D5A27]">
-          <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#2D5A27] text-[10px] font-bold text-white">
-            i
-          </span>
-          <span>
-            Hoa hồng chỉ phát sinh sau khi đơn giao thành công. Đơn đang xử lý / COD chưa giao vẫn hiện nhưng hoa hồng có thể = 0.
-          </span>
-        </div>
-
-        {q.error ? (
-          <div className="border-b border-slate-100 p-4">
-            <Alert type="error" showIcon message={(q.error as Error).message} />
-          </div>
-        ) : null}
-
-        {/* Bảng dữ liệu */}
-        {q.isLoading && !rows.length ? (
-          <div className="flex justify-center py-16">
-            <Spin />
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <Table
-              rowKey={(r) => r.shopOrderCode || r.orderCode}
-              columns={columns}
-              dataSource={rows}
-              loading={q.isFetching}
-              scroll={{ x: 1530 }}
-              pagination={{
-                current: page,
-                pageSize: PAGE_SIZE,
-                total: rows.length,
-                onChange: setPage,
-                showTotal: (t) => `${t} đơn`,
-                className: "px-4 py-3",
-              }}
-              size="middle"
-              className="ctv-conversions-table [&_.ant-table-thead>tr>th]:whitespace-nowrap [&_.ant-table-thead>tr>th]:px-4 [&_.ant-table-tbody>tr>td]:px-4 [&_.ant-table-cell]:align-middle"
-            />
-          </div>
-        )}
-      </div>
+      {/* 3. MOBILE DRAWERS (Chi tiết đơn, Bộ lọc nâng cao, Chọn ngày) */}
+      <ConversionMobileDrawers
+        selectedConversion={selectedConversion}
+        onCloseDetail={() => setSelectedConversion(null)}
+        filterDrawerOpen={filterDrawerOpen}
+        onCloseFilterDrawer={() => setFilterDrawerOpen(false)}
+        dateSheetOpen={dateSheetOpen}
+        onCloseDateSheet={() => setDateSheetOpen(false)}
+        applied={applied}
+        onChangeFilter={changeFilter}
+        onResetFilters={resetFilters}
+        onApplyQuickRange={applyQuickRange}
+        onApplyCustomDate={applyCustomDate}
+      />
     </div>
   );
 }

@@ -19,7 +19,7 @@ export function TopChartSelect({ label, value, options, onChange }: {
     <div ref={wrap} className="relative shrink-0">
       <button ref={trigger} type="button" aria-label={label} aria-haspopup="listbox" aria-expanded={open} aria-controls={id}
         onClick={() => setOpen(!open)} onKeyDown={e => { if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); setOpen(true); } }}
-        className={`flex h-8 items-center gap-2 rounded-lg border bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-[#0070f4] focus-visible:ring-2 focus-visible:ring-blue-200 ${open ? "border-[#0070f4]" : "border-slate-300 hover:border-[#0070f4]"}`}>
+        className={`flex h-8 items-center gap-2 rounded-lg border bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-[#2D5A27] focus-visible:ring-2 focus-visible:ring-[#2D5A27]/20 ${open ? "border-[#2D5A27] ring-1 ring-[#2D5A27]/30" : "border-slate-300 hover:border-[#2D5A27]"}`}>
         {options.find(o => o.value === value)?.label}<ChevronDown size={15} className={open ? "rotate-180" : ""} />
       </button>
       {open && <div ref={menu} id={id} role="listbox" aria-label={label}
@@ -35,8 +35,8 @@ export function TopChartSelect({ label, value, options, onChange }: {
         }}>
         {options.map(o => <button key={o.value} type="button" role="option" aria-selected={o.value === value} tabIndex={o.value === value ? 0 : -1}
           onClick={() => { onChange(o.value); setOpen(false); trigger.current?.focus(); }}
-          className={`flex w-full items-center justify-between gap-4 px-5 py-3 text-left text-sm outline-none hover:bg-blue-50 focus:bg-blue-50 ${o.value === value ? "bg-[#f0f7ff] font-medium text-slate-900" : "text-slate-700"}`}>
-          {o.label}{o.value === value ? <Check className="h-5 w-5 text-[#0070f4]" /> : null}
+          className={`flex w-full items-center justify-between gap-4 px-5 py-3 text-left text-sm outline-none hover:bg-[#F0F5EE] focus:bg-[#F0F5EE] ${o.value === value ? "bg-[#EAF3E8] font-semibold text-[#2D5A27]" : "text-slate-700"}`}>
+          {o.label}{o.value === value ? <Check className="h-5 w-5 text-[#2D5A27]" /> : null}
         </button>)}
       </div>}
     </div>

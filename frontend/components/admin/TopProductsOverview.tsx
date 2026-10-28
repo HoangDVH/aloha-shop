@@ -39,12 +39,12 @@ function ChartCard({ kind }: { kind: "sales" | "views" }) {
         </div>
       </div>
       {period === "custom" && <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-slate-500">
-        <input type="date" aria-label={`Từ ngày ${title}`} value={custom.from} max={custom.to} onChange={e => setCustom({ ...custom, from: e.target.value })} className="rounded-lg border border-slate-300 px-2 py-1.5" />
-        <span>–</span><input type="date" aria-label={`Đến ngày ${title}`} value={custom.to} min={custom.from} onChange={e => setCustom({ ...custom, to: e.target.value })} className="rounded-lg border border-slate-300 px-2 py-1.5" />
+        <input type="date" aria-label={`Từ ngày ${title}`} value={custom.from} max={custom.to} onChange={e => setCustom({ ...custom, from: e.target.value })} className="rounded-lg border border-slate-300 px-2 py-1.5 focus:border-[#2D5A27] focus:outline-none" />
+        <span>–</span><input type="date" aria-label={`Đến ngày ${title}`} value={custom.to} min={custom.from} onChange={e => setCustom({ ...custom, to: e.target.value })} className="rounded-lg border border-slate-300 px-2 py-1.5 focus:border-[#2D5A27] focus:outline-none" />
       </div>}
       {!valid ? <div role="alert" className="flex min-h-[420px] items-center justify-center text-sm text-red-600">Chọn khoảng ngày hợp lệ, tối đa 366 ngày.</div>
         : query.isError ? <div role="alert" className="flex min-h-[420px] flex-col items-center justify-center gap-3 text-sm text-slate-500">
-          <span>{query.error.message}</span><button type="button" onClick={() => void query.refetch()} className="rounded-lg bg-blue-50 px-4 py-2 text-blue-600">Thử lại</button>
+          <span>{query.error.message}</span><button type="button" onClick={() => void query.refetch()} className="rounded-lg bg-[#EAF3E8] px-4 py-2 font-semibold text-[#2D5A27] hover:bg-[#d8ebd5] transition">Thử lại</button>
         </div> : query.isPending ? <div aria-label="Đang tải biểu đồ" role="status" className="min-h-[420px] space-y-5">
           {Array.from({ length: 7 }, (_, i) => <div key={i} className="motion-safe:animate-pulse"><div className="mb-2 h-3 w-3/4 rounded bg-slate-100" /><div className="h-6 rounded bg-slate-100" style={{ width: `${85 - i * 7}%` }} /></div>)}
         </div> : !items.length ? <div className="flex min-h-[420px] flex-col items-center justify-center gap-2 text-center text-sm text-slate-500">
@@ -59,12 +59,12 @@ function ChartCard({ kind }: { kind: "sales" | "views" }) {
               {items.map(row => <li key={row.ma} className="mb-3 last:mb-0" title={`${row.name} (${row.unit || row.ma}) — ${new Intl.NumberFormat("vi-VN").format(row.value)}${money ? "đ" : ""}`}>
                 <p className="mb-1 truncate pl-2 text-[13px] font-medium uppercase leading-5 text-slate-500">{row.name}{row.unit ? ` (${row.unit})` : ""}</p>
                 <div className="relative h-[26px]">
-                  <div className="h-full bg-[#0070f4] transition-[width] duration-300 hover:bg-blue-700 motion-reduce:transition-none" style={{ width: `${row.value / axis.max * 100}%` }} />
-                  <span className="absolute top-1/2 -translate-y-1/2 whitespace-nowrap pl-2 text-xs text-[#35557d]" style={{ left: `${row.value / axis.max * 100}%` }}>{chartNumber(row.value, money)}</span>
+                  <div className="h-full rounded-r bg-[#2D5A27] transition-[width] duration-300 hover:bg-[#1b5e20] motion-reduce:transition-none" style={{ width: `${row.value / axis.max * 100}%` }} />
+                  <span className="absolute top-1/2 -translate-y-1/2 whitespace-nowrap pl-2 text-xs font-semibold text-[#2D5A27]" style={{ left: `${row.value / axis.max * 100}%` }}>{chartNumber(row.value, money)}</span>
                 </div>
               </li>)}
             </ol>
-            <div aria-hidden="true" className="relative mt-3 h-5 text-[11px] text-[#35557d]">
+            <div aria-hidden="true" className="relative mt-3 h-5 text-[11px] text-slate-500">
               {axis.ticks.map(tick => <span key={tick} className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: `${tick / axis.max * 100}%` }}>{chartNumber(tick, money)}</span>)}
             </div>
           </div>
@@ -75,7 +75,7 @@ function ChartCard({ kind }: { kind: "sales" | "views" }) {
           {kind === "views" && query.data?.trackingSince ? ` Có dữ liệu từ ${new Date(query.data.trackingSince).toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })}.` : ""}
           {!!query.data?.excludedUnresolvedReturns && ` ${query.data.excludedUnresolvedReturns} đơn hoàn chưa có chi tiết được loại khỏi thống kê.`}
         </p>
-        <button type="button" aria-label={`Làm mới ${title}`} disabled={!valid || query.isFetching} onClick={() => void query.refetch()} className="shrink-0 rounded p-1 hover:bg-slate-50 disabled:opacity-40"><RefreshCw size={14} className={query.isFetching ? "animate-spin" : ""} /></button>
+        <button type="button" aria-label={`Làm mới ${title}`} disabled={!valid || query.isFetching} onClick={() => void query.refetch()} className="shrink-0 rounded p-1 hover:bg-[#F0F5EE] hover:text-[#2D5A27] disabled:opacity-40 transition"><RefreshCw size={14} className={query.isFetching ? "animate-spin" : ""} /></button>
       </div>
     </section>
   );

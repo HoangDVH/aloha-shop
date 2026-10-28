@@ -26,8 +26,8 @@ export function SalesOverviewChart({ points, group }: { points: BusinessOverview
               aria-label={`${label(point.key)}: ${moneyText(point.revenue)}, ${point.orders} đơn`}
               title={`${label(point.key)}: ${moneyText(point.revenue)} · ${point.orders} đơn`}
               onFocus={() => setActive(point.key)} onMouseEnter={() => setActive(point.key)} onClick={() => setActive(point.key)}
-              className="group flex h-full min-w-5 flex-1 items-end justify-center rounded-t outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-              ><span className={`w-3/5 max-w-11 rounded-t-sm ${active === point.key ? "bg-blue-700" : "bg-[#0070f4]"}`}
+              className="group flex h-full min-w-5 flex-1 items-end justify-center rounded-t outline-none focus-visible:ring-2 focus-visible:ring-[#2D5A27]"
+              ><span className={`w-3/5 max-w-11 rounded-t-sm transition-colors duration-150 ${active === point.key ? "bg-[#1b5e20]" : "bg-[#2D5A27] hover:bg-[#22441d]"}`}
                 style={{ height: `${point.revenue / axis.max * 100}%`, minHeight: point.revenue > 0 ? 2 : 0 }} /></button>)}
           </div>
           <div aria-hidden="true" className="mt-2 flex justify-around gap-1 text-[10px] text-slate-500">
