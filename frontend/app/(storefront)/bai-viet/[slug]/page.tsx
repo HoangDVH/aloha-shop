@@ -106,8 +106,69 @@ export default async function BaiVietDetailPage({ params }: Props) {
     cats = [];
   }
 
+  const articleJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: item.title,
+    description: item.excerpt || item.title,
+    image: item.coverUrl ? [item.coverUrl] : undefined,
+    datePublished: item.publishedAt || undefined,
+    dateModified: item.updatedAt || item.publishedAt || undefined,
+    author: {
+      "@type": "Organization",
+      name: "ALOHA THẾ GIỚI CHẬU CÂY",
+      url: SHOP_ORIGIN,
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "ALOHA THẾ GIỚI CHẬU CÂY",
+      url: SHOP_ORIGIN,
+      logo: {
+        "@type": "ImageObject",
+        url: `${SHOP_ORIGIN}/brand/logo-aloha.png`,
+      },
+    },
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": shareUrl,
+    },
+  };
+
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Trang chủ",
+        item: SHOP_ORIGIN,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Bài viết",
+        item: `${SHOP_ORIGIN}/bai-viet`,
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: item.title,
+        item: shareUrl,
+      },
+    ],
+  };
+
   return (
     <div className="bg-[var(--aloha-cream)]/40 py-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       <div className={`${ARTICLE_COL} px-4`}>
         <nav
           className="mb-5 flex min-w-0 flex-nowrap items-center gap-1.5 overflow-hidden whitespace-nowrap text-sm text-slate-500"

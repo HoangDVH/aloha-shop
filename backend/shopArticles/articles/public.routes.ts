@@ -137,8 +137,14 @@ export function registerArticlesPublicRoutes(
       res.json({
         static: [
           { path: "/", priority: 1, changeFrequency: "daily" },
+          { path: "/bac-si-cay", priority: 0.9, changeFrequency: "daily" },
           { path: "/tim", priority: 0.8, changeFrequency: "daily" },
+          { path: "/uu-dai", priority: 0.8, changeFrequency: "daily" },
           { path: "/bai-viet", priority: 0.7, changeFrequency: "daily" },
+          { path: "/ve-aloha", priority: 0.7, changeFrequency: "weekly" },
+          { path: "/dang-ky-si", priority: 0.7, changeFrequency: "weekly" },
+          { path: "/tuyen-ctv", priority: 0.7, changeFrequency: "weekly" },
+          { path: "/tuyen-dung", priority: 0.6, changeFrequency: "weekly" },
         ],
         articles: articles.map((a) => ({
           path: `/bai-viet/${a.slug}`,

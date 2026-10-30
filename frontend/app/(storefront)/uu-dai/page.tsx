@@ -5,6 +5,7 @@ import { SHOP_BRAND, shopBrand } from "@/lib/brand";
 import { fetchAppearance, fallbackAppearance } from "@/lib/appearance";
 import type { CurrentCampaignResponse } from "@/lib/campaign/campaignApi";
 import { DealsPage } from "@/components/campaign/deals/DealsPage";
+import { SHOP_ORIGIN } from "@/lib/seo";
 
 async function currentCampaignForMeta(): Promise<CurrentCampaignResponse | null> {
   try {
@@ -24,17 +25,36 @@ export async function generateMetadata(): Promise<Metadata> {
     currentCampaignForMeta(),
   ]);
   const site = shopBrand(app.theme?.siteName) || SHOP_BRAND;
+  const canonical = `${SHOP_ORIGIN}/uu-dai`;
   const c = current?.campaign;
   if (!c) {
-    return { title: `Ưu đãi · ${site}`, description: `Voucher và ưu đãi đang có tại ${site}.` };
+    return {
+      title: "Ưu đãi & Mã giảm giá",
+      description: `Tổng hợp voucher và chương trình ưu đãi mới nhất tại ${site}.`,
+      alternates: { canonical },
+    };
   }
-  const title = `${c.display.hero.title || c.name} · ${site}`;
+  const title = c.display.hero.title || c.name || "Ưu đãi & Mã giảm giá";
   const description = c.display.hero.subtitle || `Chương trình ${c.name} tại ${site}.`;
   const image = c.display.banners.find((b) => b.kind === "main")?.imageUrl;
   return {
     title,
     description,
-    openGraph: { title, description, ...(image ? { images: [{ url: image }] } : {}) },
+    alternates: { canonical },
+    openGraph: {
+      type: "website",
+      locale: "vi_VN",
+      url: canonical,
+      title: `${title} · ${site}`,
+      description,
+      ...(image ? { images: [{ url: image }] } : {}),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${title} · ${site}`,
+      description,
+      images: image ? [image] : undefined,
+    },
   };
 }
 

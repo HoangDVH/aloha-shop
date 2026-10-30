@@ -17,8 +17,9 @@ export async function generateMetadata(): Promise<Metadata> {
   const app = await fetchAppearance().catch(() => fallbackAppearance());
   const site = shopBrand(app.theme?.siteName) || SHOP_BRAND;
   return {
-    title: `Tuyển dụng · ${site}`,
-    description: `Khám phá cơ hội nghề nghiệp tại ${site} — cùng Aloha mang mảng xanh đến hàng triệu ngôi nhà Việt.`,
+    title: "Tuyển dụng nhân sự & Cơ hội việc làm",
+    description: `Khám phá các cơ hội nghề nghiệp tại ${site} — cùng Aloha mang mảng xanh và năng lượng tích cực đến hàng triệu ngôi nhà Việt.`,
+    alternates: { canonical: "https://alohathegioichaucay.com/tuyen-dung" },
   };
 }
 

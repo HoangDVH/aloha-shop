@@ -61,24 +61,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       });
     }
   } catch {
-    push({
-      url: `${SHOP_ORIGIN}/`,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 1,
-    });
-    push({
-      url: `${SHOP_ORIGIN}/tim`,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 0.8,
-    });
-    push({
-      url: `${SHOP_ORIGIN}/bai-viet`,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 0.7,
-    });
+    const fallbackStatic: { path: string; priority: number; changeFrequency: MetadataRoute.Sitemap[0]["changeFrequency"] }[] = [
+      { path: "/", priority: 1, changeFrequency: "daily" },
+      { path: "/bac-si-cay", priority: 0.9, changeFrequency: "daily" },
+      { path: "/tim", priority: 0.8, changeFrequency: "daily" },
+      { path: "/uu-dai", priority: 0.8, changeFrequency: "daily" },
+      { path: "/bai-viet", priority: 0.7, changeFrequency: "daily" },
+      { path: "/ve-aloha", priority: 0.7, changeFrequency: "weekly" },
+      { path: "/dang-ky-si", priority: 0.7, changeFrequency: "weekly" },
+      { path: "/tuyen-ctv", priority: 0.7, changeFrequency: "weekly" },
+      { path: "/tuyen-dung", priority: 0.6, changeFrequency: "weekly" },
+    ];
+    for (const s of fallbackStatic) {
+      push({
+        url: `${SHOP_ORIGIN}${s.path}`,
+        lastModified: now,
+        changeFrequency: s.changeFrequency,
+        priority: s.priority,
+      });
+    }
   }
 
   // Bổ sung danh mục từ tree (hoạt động cả khi API sitemap chưa có categories)
