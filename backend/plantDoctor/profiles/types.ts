@@ -57,7 +57,7 @@ export const ncsu = (slug: string, latin: string): PlantSource => ({
 
 export const NO_TOXIC_DATA = "Nguồn tham khảo không ghi độc tính; vẫn nên để xa tầm với trẻ nhỏ và thú cưng.";
 
-export const BRING = "Nếu bạn không tự tin, mang cây ra Aloha để được hỗ trợ.";
+export const BRING = "Nếu ca nặng hoặc chưa tự tin tự xử lý, hãy nhắn Zalo nhà vườn Aloha để được hỗ trợ 1-1.";
 
 type Base = { id?: string; signs: string; why?: string; severity?: Severity; extraSteps?: string[]; extraCare?: string[] };
 
@@ -68,17 +68,17 @@ export function rootRot(o: Base & { dry: string }): Problem {
     condition: "ung_re",
     title: "Tưới nhiều, rễ bị úng",
     signs: o.signs,
-    summary: "Đất ẩm quá lâu làm rễ bị ngạt và bắt đầu thối. Phát hiện sớm thì cây vẫn cứu được.",
+    summary: "Đất ẩm quá lâu làm rễ bị ngạt thiếu oxy và bắt đầu thối nhũn. Phát hiện sớm thì cây cứu lại rất dễ.",
     why:
       o.why ??
-      "Rễ cần không khí để thở. Khi đất ướt liên tục, rễ bị ngạt và nấm trong đất làm rễ thối, cây không hút được nước nên lá vàng, héo dù đất vẫn ẩm.",
+      "Rễ cần không khí để thở. Khi đất ướt liên tục, rễ bị ngạt và nấm trong đất làm rễ thối nhũn, cây không hút được nước nên cuống lá vàng, héo rũ dù đất vẫn ướt sũng.",
     steps: [
-      `Ngưng tưới ngay, chỉ tưới lại khi ${o.dry}.`,
-      "Đổ hết nước đọng dưới đĩa lót chậu, để cây chỗ thoáng gió, có ánh sáng để đất mau khô.",
-      ...(o.extraSteps ?? ["Cắt bỏ lá đã vàng nhũn bằng kéo sạch."]),
-      `Nếu gốc đã mềm, thâm đen hoặc đất có mùi hôi: nhấc cây khỏi chậu, cắt bỏ rễ thối và trồng lại bằng đất mới thoát nước. ${BRING}`,
+      "Đổ sạch nước đang đọng ở đĩa lót dưới đáy chậu đi. Kê 2 nắp chai dưới đáy chậu để thông gió.",
+      "Lấy 1 chiếc đũa ăn cơm chọc nhẹ 4–5 lỗ quanh mép chậu xuống sâu để đất thở và thoát ẩm nhanh gấp 3 lần.",
+      `Cắt bỏ lá đã vàng nhũn. Bỏ đói không tưới nước cho tới khi ${o.dry}.`,
+      `Nếu thân gốc đã mềm nhũn, lung lay hoặc đất bốc mùi: nhấc bầu cây ra, dùng kéo cắt bỏ rễ thối đen và trồng lại vào chậu vừa khít rễ (tuyệt đối không dùng chậu to). ${BRING}`,
     ],
-    care: [`Chỉ tưới khi ${o.dry}.`, "Dùng chậu có lỗ thoát nước, không để nước đọng dưới đĩa.", ...(o.extraCare ?? [])],
+    care: [`Chỉ tưới khi ${o.dry}. Luôn thử bằng que đũa trước khi tưới.`, "Dùng chậu có lỗ thoát nước, không bao giờ để nước đọng dưới đĩa.", ...(o.extraCare ?? [])],
     severity: o.severity ?? "chu_y",
     needHelp: true,
   };
@@ -91,14 +91,14 @@ export function thirsty(o: Base & { water: string }): Problem {
     condition: "thieu_nuoc",
     title: "Thiếu nước",
     signs: o.signs,
-    summary: "Cây đang khát nước. Tưới lại đúng cách thì phần lá còn mềm sẽ tươi lại sau vài ngày.",
-    why: o.why ?? "Khi đất khô quá lâu, rễ không đủ nước nuôi lá nên lá héo, nhăn rồi khô dần từ mép.",
+    summary: "Cây đang khát nước nghiêm trọng. Cấp nước đúng cách thì lá sẽ ngẩng đầu tươi lại sau vài tiếng.",
+    why: o.why ?? "Đất khô kiệt lâu ngày khiến rễ không hút được nước nuôi cành lá, làm toàn bộ cuống lá mềm rũ và khô dần từ mép.",
     steps: [
-      "Tưới đẫm từ từ cho tới khi nước chảy ra lỗ đáy chậu, rồi đổ nước thừa dưới đĩa.",
-      "Nếu đất khô cứng không thấm nước, đặt đáy chậu vào thau nước khoảng 15–20 phút rồi nhấc ra cho ráo.",
-      ...(o.extraSteps ?? ["Cắt bỏ phần lá đã khô giòn; lá chỉ héo mềm thường sẽ tươi lại."]),
+      "Áp dụng mẹo ngâm mông: Đặt đáy chậu vào thau nước ngập 1/3 chậu trong 15–20 phút để đất hút no nước từ đáy lên.",
+      "Nhấc chậu ra ngoài để róc hết nước thừa chảy ra đĩa rồi mới đặt lại vào bàn.",
+      ...(o.extraSteps ?? ["Dùng kéo bấm tỉa phần đầu lá đã khô giòn; các lá chỉ rũ mềm sẽ tự đứng dậy sau 2–4 tiếng."]),
     ],
-    care: [o.water, "Thử đất bằng ngón tay hoặc que tre trước khi tưới.", ...(o.extraCare ?? [])],
+    care: [o.water, "Thử đất bằng que đũa hoặc ngón tay trước khi tưới.", ...(o.extraCare ?? [])],
     severity: o.severity ?? "nhe",
     needHelp: false,
   };
@@ -111,14 +111,14 @@ export function lowLight(o: Base & { light: string }): Problem {
     condition: "thieu_sang",
     title: "Thiếu ánh sáng",
     signs: o.signs,
-    summary: "Cây đang thiếu sáng nên mọc yếu. Dời chỗ sáng hơn là cây sẽ khoẻ lại dần.",
-    why: o.why ?? "Thiếu sáng thì cây không tự tạo đủ thức ăn, nên vươn dài tìm sáng, lá nhỏ và nhạt màu hơn.",
+    summary: "Cây đang thiếu sáng nên mọc vươn dài khẳng khiu. Dời ra chỗ sáng hơn là cây sẽ khoẻ lại dần.",
+    why: o.why ?? "Thiếu sáng khiến cây không quang hợp đủ để tạo dinh dưỡng, buộc phải vươn dài tìm sáng, lá nhỏ và nhạt màu.",
     steps: [
       `Dời cây tới chỗ sáng hơn: ${o.light}.`,
-      "Chuyển chỗ từ từ trong khoảng 1 tuần để lá quen dần, tránh bị cháy.",
-      ...(o.extraSteps ?? ["Xoay chậu mỗi tuần để cây mọc đều các phía."]),
+      "Cứ 3–4 ngày, xoay chậu cây nửa vòng để các mặt nhận sáng đều, cây không bị nghiêng vẹo.",
+      ...(o.extraSteps ?? ["Bấm tỉa các ngọn quá dài để cây đẻ nhánh mới rậm rạp hơn."]),
     ],
-    care: [o.light, "Cây để chỗ tối thì đất lâu khô hơn, nên tưới thưa hơn.", ...(o.extraCare ?? [])],
+    care: [o.light, "Cây để chỗ ít nắng thì đất lâu khô hơn, nên kéo dãn chu kỳ tưới thưa hơn.", ...(o.extraCare ?? [])],
     severity: o.severity ?? "nhe",
     needHelp: false,
   };
@@ -131,14 +131,14 @@ export function sunburn(o: Base & { light: string }): Problem {
     condition: "chay_nang",
     title: "Cháy nắng",
     signs: o.signs,
-    summary: "Lá bị nắng gắt làm cháy. Phần cháy không xanh lại nhưng cây vẫn mọc lá mới bình thường.",
+    summary: "Lá bị nắng gắt làm cháy khô mảng. Cây sẽ sớm ra lá mới khỏe mạnh khi được chuyển chỗ râm mát.",
     why:
       o.why ??
-      "Nắng chiếu thẳng quá mạnh, nhất là khi cây vừa chuyển từ chỗ râm ra, làm mô lá bị cháy thành mảng bạc, vàng hoặc nâu khô.",
+      "Nắng trưa hoặc chiều chiếu thẳng qua kính quá mạnh làm mô lá bị cháy thành mảng bạc, vàng hoặc nâu khô giòn.",
     steps: [
-      "Dời cây khỏi chỗ nắng gắt chiếu thẳng, nhất là nắng trưa và nắng chiều.",
-      "Vết cháy không hồi lại được: cháy ít thì để nguyên, cháy nhiều thì cắt bỏ bằng kéo sạch.",
-      "Kiểm tra đất: đất khô thì tưới, còn ẩm thì không tưới thêm.",
+      "Dời cây lùi sâu vào trong nhà ngay (cách cửa kính ít nhất 1m hoặc sau lớp rèm che mỏng).",
+      "Dùng kéo bấm bỏ phần mép lá đã cháy khô giòn (chừa lại 1mm viền khô để không phạm vào phần xanh).",
+      "Xịt sương nhẹ quanh không khí để hạ nhiệt làm mát cây; không tưới đẫm nước hay bón phân ngay lúc này.",
       ...(o.extraSteps ?? []),
     ],
     care: [o.light, ...(o.extraCare ?? [])],
@@ -170,20 +170,18 @@ export function pests(o: Omit<Base, "signs"> & { kinds: PestKey[]; signs?: strin
     condition: "sau_hai",
     title: `Bị ${joinOr(names)}`,
     signs: o.signs ?? `${signs.map((s, i) => (i ? s : s[0].toUpperCase() + s.slice(1))).join("; hoặc ")}; lá có thể vàng, dính nhớt.`,
-    summary: "Cây đang bị sâu bọ hút nhựa. Xử lý sớm và lặp lại vài lần là sạch.",
+    summary: "Cây đang bị rệp hoặc bọ chích hút nhựa. Dùng đồ nhà bếp xử lý vài lần là sạch bóng.",
     why:
       o.why ??
-      "Các loại rệp, nhện nhỏ hút nhựa ở mặt dưới lá và nách lá làm lá vàng, lốm đốm, cây còi dần; chúng sinh sôi nhanh khi không khí khô, ít thoáng gió.",
+      "Các loại rệp sáp, rệp vảy hút nhựa ở kẽ lá và mặt dưới lá làm cây còi cọc; chúng sinh sôi nhanh khi phòng khô bí gió.",
     steps: [
-      "Để riêng cây ra xa các cây khác để sâu bọ không lây.",
-      "Dùng tăm bông hoặc khăn ẩm lau sạch rệp và các mảng bông trắng ở nách lá, mặt dưới lá.",
-      o.noWash
-        ? "Không xịt nước vào giữa nụ lá; nếu cần rửa thì nghiêng chậu, xịt nhẹ rồi để khô thoáng ngay."
-        : "Xịt rửa cả mặt trên và mặt dưới lá bằng vòi nước nhẹ, để lá khô thoáng.",
-      "Lặp lại 5–7 ngày một lần trong 3–4 tuần vì trứng sẽ tiếp tục nở. Bị nhiều thì dùng chế phẩm trừ sâu sinh học hoặc dầu neem có bán tại Aloha, pha đúng hướng dẫn trên bao bì.",
+      "Để riêng cây ra xa các cây khác để rệp không bò lây sang.",
+      "Lấy que tăm bông chấm cồn y tế (hoặc rượu trắng) dí thẳng vào từng đốm bông rệp sáp để diệt ngay tại chỗ.",
+      "Pha 3 giọt nước rửa chén vào 1 bình xịt nước (500ml), lắc đều rồi xịt kỹ vào kẽ lá, 30 phút sau dùng khăn ướt lau sạch.",
+      "Lặp lại sau 5–7 ngày nếu thấy rệp còn xuất hiện.",
       ...(o.extraSteps ?? []),
     ],
-    care: ["Mỗi lần tưới, xem qua mặt dưới lá và nách lá để phát hiện sớm.", ...(o.extraCare ?? [])],
+    care: ["Mỗi lần tưới, xem qua mặt dưới lá và kẽ lá để phát hiện sớm.", ...(o.extraCare ?? [])],
     severity: o.severity ?? "chu_y",
     needHelp: false,
   };
@@ -196,10 +194,14 @@ export function oldLeaves(o: Base): Problem {
     condition: "la_gia",
     title: "Lá già rụng tự nhiên",
     signs: o.signs,
-    summary: "Đây là chuyện bình thường khi cây lớn, không phải bệnh.",
-    why: o.why ?? "Cây tự bỏ bớt lá già phía dưới để dồn sức nuôi lá non. Chỉ đáng lo khi lá non hoặc ngọn cũng vàng.",
-    steps: ["Ngắt bỏ lá đã vàng hẳn cho gọn.", "Giữ nguyên cách chăm nếu ngọn và lá non vẫn xanh khoẻ.", ...(o.extraSteps ?? [])],
-    care: ["Theo dõi lá non: nếu lá non cũng vàng thì gửi thêm ảnh để kiểm tra lại.", ...(o.extraCare ?? [])],
+    summary: "Yên tâm: Đây là quy luật sinh lý tự nhiên khi cây lớn (như người rụng tóc mọc tóc mới), hoàn toàn không phải bệnh.",
+    why: o.why ?? "Cây tự đào thải bớt lá già sát gốc để dồn dinh dưỡng nuôi chồi non xanh mướt phía trên.",
+    steps: [
+      "Dùng kéo bấm sát cuống các lá đã vàng rũ bỏ đi cho chậu cây gọn gàng, đẹp mắt.",
+      "Giữ nguyên cách chăm sóc hiện tại nếu thấy các ngọn và lá non vẫn xanh mướt bình thường.",
+      ...(o.extraSteps ?? []),
+    ],
+    care: ["Theo dõi lá non: nếu lá non cũng bị vàng hoặc nhũn thì chụp ảnh gửi Bác sĩ cây kiểm tra lại.", ...(o.extraCare ?? [])],
     severity: "nhe",
     needHelp: false,
   };
@@ -233,12 +235,13 @@ export function leafSpot(o: Base): Problem {
     condition: "nam_benh",
     title: "Đốm lá do nấm",
     signs: o.signs,
-    summary: "Lá bị nấm đốm do ẩm và bí gió. Cắt bỏ lá bệnh, giữ lá khô thoáng là bệnh dừng lại.",
-    why: o.why ?? "Nấm gây đốm lá phát triển khi lá ướt lâu, cây đặt chỗ bí gió hoặc trồng sát nhau.",
+    summary: "Lá bị nấm đốm do ẩm ướt và phòng bí gió. Cắt bỏ lá bệnh, giữ lá khô thoáng là bệnh dừng lại ngay.",
+    why: o.why ?? "Nấm đốm lá phát triển khi nước đọng trên mặt lá quá lâu hoặc phòng kín ít thông gió.",
     steps: [
-      "Cắt bỏ lá có đốm bằng kéo sạch, bỏ vào túi kín rồi vứt đi.",
-      "Tưới vào gốc, không tưới hoặc phun ướt lá; dời cây ra chỗ thoáng gió.",
-      `Đốm lan nhanh sang nhiều lá: dùng thuốc trừ nấm sinh học có bán tại Aloha theo hướng dẫn trên bao bì. ${BRING}`,
+      "Dùng kéo cắt bỏ ngay các lá có đốm đen, bỏ vào túi rác kín để nấm không lây sang lá lành.",
+      "Lấy thìa cạo bỏ lớp đất mốc trắng trên mặt chậu bỏ đi, dời cây ra nơi thoáng gió.",
+      "Chỉ tưới nước sát gốc cây vào ban ngày; tuyệt đối không tưới phun ướt lá vào ban đêm.",
+      `Nếu đốm lan nhanh sang nhiều lá: nhắn Zalo Aloha để được tư vấn dung dịch sinh học an toàn. ${BRING}`,
       ...(o.extraSteps ?? []),
     ],
     care: ["Tưới vào buổi sáng, vào gốc, để lá khô ráo.", "Đặt cây chỗ thoáng gió, không xếp sát các cây khác.", ...(o.extraCare ?? [])],

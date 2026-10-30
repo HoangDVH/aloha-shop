@@ -174,21 +174,19 @@ export default function CartPage() {
 
   return (
     <div className="shop-pb-sticky mx-auto max-w-7xl px-0 sm:px-4 py-0 sm:py-6 space-y-2 sm:space-y-4">
-      <div className="hidden md:flex flex-wrap items-center justify-between gap-3">
+      <div className="hidden md:flex items-center justify-between gap-3">
         <h1 className="text-2xl font-extrabold text-[var(--aloha-ink)]">Giỏ hàng</h1>
-        <SiCartNotice />
         {lines.length > 0 ? (
           <Link
             href={moreHref}
-            className="inline-flex items-center gap-1 rounded-lg border border-[var(--aloha-green)] px-3 py-2 text-sm font-bold text-[var(--aloha-green)] hover:bg-[var(--aloha-green-light)]"
+            className="inline-flex items-center gap-1 rounded-lg border border-[var(--aloha-green)] px-3 py-2 text-sm font-bold text-[var(--aloha-green)] hover:bg-[var(--aloha-green-light)] transition"
           >
             <Plus size={16} /> Mua thêm
           </Link>
         ) : null}
       </div>
-      <div className="contents md:hidden">
-        <SiCartNotice />
-      </div>
+
+      <SiCartNotice />
       {priceNote ? (
         <p className="rounded-lg bg-[var(--aloha-green-light)] px-3 py-2 text-sm font-medium text-[var(--aloha-green-mid)]">
           {priceNote}

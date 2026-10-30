@@ -62,6 +62,13 @@ export const FOLIAGE_A: PlantProfile[] = [
         extraSteps: ["Lá nào đã thối mềm ở chân thì cắt bỏ hẳn; phần lá còn lành phía trên có thể cắt khúc đem giâm."],
         severity: "nang",
       }),
+      sunburn({
+        signs: "Phiến lá xuất hiện vệt bạc, vàng hoặc mảng khô nâu giòn ở chóp lá và mép lá hướng ra nắng.",
+        light: "Để chỗ sáng hoặc có nắng nhẹ buổi sáng; tránh nắng trưa gắt chiếu thẳng lâu ngày.",
+      }),
+      leafSpot({
+        signs: "Trên phiến lá xuất hiện các đốm tròn nâu hoặc đen, có thể có quầng vàng xung quanh, thường gặp khi lá đọng nước lâu hoặc chỗ bí gió.",
+      }),
       pests({ kinds: ["rep_sap"] }),
       pests({ kinds: ["nhen_do"] }),
     ],

@@ -4,6 +4,7 @@ import { generateText, geminiKey, type GeminiContent } from "./gemini.js";
 import { resolvePlant, type PlantRef } from "./identify.js";
 import { getProblem, getProfile, type PlantProfile, type Problem } from "./profiles/index.js";
 import { HEALTHY_ID, buildPickSystem, buildPlantGuessSystem, pickSchema, plantGuessSchema } from "./prompt.js";
+import { diagnoseWithVisionAi } from "./visionDiagnose.js";
 
 export type Pick = { offTopic: boolean; problemId: string; confidence: Confidence; alternatives: string[]; observed: string };
 
@@ -97,6 +98,35 @@ export async function diagnose(input: {
   newPhotos?: boolean;
 }): Promise<DoctorCard> {
   const userTexts = input.messages.filter((m) => m.role === "user").map((m) => m.content);
+  const lastUserText = userTexts[userTexts.length - 1] || "";
+
+  if (input.plant?.profileId) {
+    const profile = getProfile(input.plant.profileId);
+    if (profile) {
+      const answered = answeredProblem(profile, lastUserText);
+      if (answered) {
+        return diagnosisCard({
+          profile,
+          plant: {
+            profileId: profile.id,
+            name: profile.nameVi,
+            scientificName: profile.scientific,
+            source: input.plant.source,
+            score: input.plant.score,
+            candidates: [],
+          },
+          problem: answered,
+          confidence: "cao",
+        });
+      }
+    }
+  }
+
+  if (input.images.length > 0 && geminiKey()) {
+    const visionCard = await diagnoseWithVisionAi(input.contents);
+    if (visionCard) return visionCard;
+  }
+
   const res = await resolvePlant({ ref: input.plant, images: input.images, userTexts, newPhotos: input.newPhotos });
   const hasImages = input.images.length > 0;
   if (hasImages && (res.kind === "not_plant" || res.kind === "none" || res.kind === "uncertain")) {
@@ -114,7 +144,7 @@ export async function diagnose(input: {
 
   const profile = getProfile(res.identity.profileId);
   if (!profile) return unknownPlantCard(res.identity);
-  const answered = answeredProblem(profile, userTexts[userTexts.length - 1] || "");
+  const answered = answeredProblem(profile, lastUserText);
   if (answered) return diagnosisCard({ profile, plant: res.identity, problem: answered, confidence: "cao" });
   return pickWithAi(profile, res.identity, input.contents);
 }

@@ -31,7 +31,7 @@ export type PlantIdentity = {
   profileId: string | null;
   name: string;
   scientificName: string;
-  source: "plantnet" | "customer" | "text";
+  source: "plantnet" | "customer" | "text" | "ai_vision";
   score: number | null;
   candidates: PlantCandidate[];
 };

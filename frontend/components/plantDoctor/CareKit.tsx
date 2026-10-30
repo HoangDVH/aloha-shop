@@ -23,7 +23,7 @@ async function loadProduct(ma: string): Promise<ShopProduct | null> {
   }
 }
 
-/** Vật tư hỗ trợ theo bệnh: lấy đúng mã trong bộ soạn sẵn, bỏ hàng hết/đặt trước/chưa có giá. */
+/** Vật tư hỗ trợ theo bệnh: hiển thị nhẹ nhàng, tinh tế dưới câu trả lời của Bác sĩ AI. */
 export function CareKit({ condition, plantGroup }: { condition: DoctorCondition; plantGroup: DoctorPlantGroup }) {
   const [items, setItems] = useState<Picked[] | null>(null);
 
@@ -49,15 +49,13 @@ export function CareKit({ condition, plantGroup }: { condition: DoctorCondition;
 
   if (items && !items.length) return null;
   return (
-    <div className="mt-3.5 rounded-2xl border border-emerald-200/80 bg-gradient-to-b from-[#F7FAF6] to-white p-3.5 sm:p-4 shadow-2xs">
-      <div className="mb-2.5 flex items-center gap-1.5">
-        <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-100 text-[#1C4C40]">
-          <ShoppingBag size={13} strokeWidth={2.5} aria-hidden />
+    <div className="mt-3 rounded-2xl border border-stone-200/80 bg-stone-50/40 p-3 sm:p-3.5">
+      <div className="mb-2.5 flex items-center justify-between">
+        <div className="flex items-center gap-1.5 text-xs font-bold text-stone-700">
+          <ShoppingBag size={14} className="text-emerald-700" aria-hidden />
+          <span>Vật tư gợi ý phục hồi cây</span>
         </div>
-        <div>
-          <p className="text-xs font-bold text-[#1C4C40]">Đồ dùng có thể giúp cây của bạn</p>
-          <p className="text-[10.5px] text-stone-500">Hàng còn sẵn tại Aloha · không bắt buộc mua</p>
-        </div>
+        <span className="text-[10.5px] text-stone-400 font-medium">Có sẵn tại Aloha · Không bắt buộc</span>
       </div>
 
       {items ? (
@@ -65,14 +63,14 @@ export function CareKit({ condition, plantGroup }: { condition: DoctorCondition;
           {items.map(({ product, why }) => (
             <div key={product.ma} className="flex flex-col gap-1">
               <ProductCard product={product} variant="default" />
-              <p className="px-0.5 text-[10.5px] leading-snug text-stone-600">{why}</p>
+              <p className="px-0.5 text-[10.5px] leading-snug text-stone-500 line-clamp-2">{why}</p>
             </div>
           ))}
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="aspect-[3/4] animate-pulse rounded-xl bg-stone-200/60" />
+            <div key={i} className="aspect-[3/4] animate-pulse rounded-xl bg-stone-200/50" />
           ))}
         </div>
       )}

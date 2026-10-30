@@ -18,7 +18,7 @@ export function PlantDoctorPage() {
     retry: 1,
   });
 
-  const shell = "bg-[#FAF9F6] flex-1 flex flex-col h-[calc(100dvh-64px)] sm:h-[calc(100vh-108px)] w-full overflow-hidden";
+  const shell = "bg-white flex-1 flex flex-col h-[calc(100dvh-64px)] sm:h-[calc(100vh-108px)] w-full overflow-hidden";
 
   if (me.isLoading || access.isLoading) {
     return (
@@ -38,12 +38,7 @@ export function PlantDoctorPage() {
 
   return (
     <div className={shell}>
-      {access.data.tester && (
-        <div className="shrink-0 bg-amber-50 px-4 py-1.5 text-center text-xs font-medium text-amber-800">
-          Chế độ thử nghiệm · chỉ tài khoản test thấy Bác sĩ cây
-        </div>
-      )}
-      <Clinic />
+      <Clinic isTester={Boolean(access.data.tester)} />
     </div>
   );
 }

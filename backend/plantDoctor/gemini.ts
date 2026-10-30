@@ -3,13 +3,13 @@ export type GeminiPart = { text: string } | { inlineData: { mimeType: string; da
 export type GeminiContent = { role: "user" | "model"; parts: GeminiPart[] };
 
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
-const PRIMARY_TIMEOUT_MS = 25_000;
-const FALLBACK_TIMEOUT_MS = 20_000;
-/** Tổng thời gian cho 1 câu hỏi, phải dưới proxy_read_timeout 60s của nginx. */
-const TOTAL_BUDGET_MS = 55_000;
-const MIN_ATTEMPT_MS = 6_000;
-/** Model báo hết lượt (429) thì bỏ qua một lúc, khỏi tốn thêm một vòng gọi mỗi câu hỏi. */
-const QUOTA_COOLDOWN_MS = 15 * 60_000;
+const PRIMARY_TIMEOUT_MS = 14_000;
+const FALLBACK_TIMEOUT_MS = 10_000;
+/** Tổng thời gian cho 1 câu hỏi, tối ưu phản hồi nhanh trong vòng 25s. */
+const TOTAL_BUDGET_MS = 25_000;
+const MIN_ATTEMPT_MS = 4_000;
+/** Model báo 429 thì tạm nghỉ 60s (hạn mức RPM reset theo phút), không chặn 15 phút. */
+const QUOTA_COOLDOWN_MS = 60_000;
 
 const cooldownUntil = new Map<string, number>();
 
@@ -24,20 +24,25 @@ export function geminiKey(): string | null {
 }
 
 export function geminiModel(): string {
-  return String(process.env.GEMINI_MODEL || "").trim() || "gemini-3.6-flash";
+  return String(process.env.GEMINI_MODEL || "").trim() || "gemini-flash-lite-latest";
 }
 
 /**
- * Model dự phòng, thử lần lượt khi model trước hết lượt/quá tải (429/5xx/timeout).
- * Mặc định Gemma 4: miễn phí trên cùng API key, hạn mức ngày cao hơn Flash gói Free.
+ * Model dự phòng:
+ * Khi có hình ảnh (multimodal): BẮT BUỘC dùng các model hỗ trợ thị giác (Gemini Flash), tuyệt đối không dùng Gemma thuần văn bản.
  */
-export function geminiFallbackModels(): string[] {
-  const raw = String(process.env.GEMINI_FALLBACK_MODEL || "").trim() || "gemma-4-26b-a4b-it,gemma-4-31b-it";
+export function geminiFallbackModels(hasImage = false): string[] {
+  if (hasImage) {
+    const list = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash"];
+    const cur = geminiModel();
+    return list.filter((m) => m !== cur).slice(0, 2);
+  }
+  const raw = String(process.env.GEMINI_FALLBACK_MODEL || "").trim() || "gemini-2.0-flash,gemini-1.5-flash";
   return raw
     .split(",")
     .map((m) => m.trim())
     .filter(Boolean)
-    .slice(0, 3);
+    .slice(0, 2);
 }
 
 type SchemaNode = { type?: string; enum?: string[]; items?: SchemaNode; properties?: Record<string, SchemaNode> };
@@ -105,7 +110,8 @@ export async function generateText(
   responseSchema?: unknown
 ): Promise<string> {
   const primary = geminiModel();
-  const models = [primary, ...geminiFallbackModels().filter((m) => m !== primary)];
+  const hasImage = contents.some((c) => c.parts.some((p) => "inlineData" in p));
+  const models = [primary, ...geminiFallbackModels(hasImage).filter((m) => m !== primary)];
   const started = Date.now();
   let lastError = "gemini_unavailable";
 

@@ -15,7 +15,7 @@ export type DoctorPlantGroup = "sen_da_xuong_rong" | "kieng_la" | "bonsai_cay_go
 
 export type PlantCandidate = { profileId: string | null; name: string; scientificName: string; score: number; byAi?: boolean };
 
-export type PlantSource = "plantnet" | "customer" | "text";
+export type PlantSource = "plantnet" | "customer" | "text" | "ai_vision";
 
 export type PlantIdentity = {
   profileId: string | null;
