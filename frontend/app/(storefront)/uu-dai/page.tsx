@@ -38,7 +38,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const description = c.display.hero.subtitle || `Chương trình ${c.name} tại ${site}.`;
   const hasBanner = Boolean(c.display?.banners?.some((b) => b.kind === "main" && b.imageUrl));
   const ogImageUrl = hasBanner
-    ? `${SHOP_ORIGIN}/api/shop/campaigns/og-image?cid=${encodeURIComponent(c.id)}`
+    ? `${SHOP_ORIGIN}/api/shop/campaigns/og-image?cid=${encodeURIComponent(c.id)}&v=cover`
     : undefined;
 
   return {

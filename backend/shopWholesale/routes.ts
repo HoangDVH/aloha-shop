@@ -28,6 +28,7 @@ import {
   takeSiOauthSession,
 } from "./siEphemeral.js";
 import { zaloNotifyService, NOTIFY_PHONE_TARGET } from "./zaloNotifyService.js";
+import { broadcastAdminWebPush } from "../shopPush/webPushService.js";
 
 type GetDb = () => Promise<Db>;
 const COOKIE = "shop_si_onboarding";
@@ -300,6 +301,14 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
       }).catch((err) => {
         console.error("[ZaloNotify] Auto notice error:", err?.message || err);
       });
+      const regionText = regionAssignment.region === "HCM" ? "TP.HCM" : "Tỉnh";
+      void broadcastAdminWebPush(db, {
+        title: "🏢 ALOHA - Có khách sỉ mới đăng ký!",
+        body: `${input.fullName} (${input.phone}) - ${input.shopName || "Đại lý sỉ"} (${regionText})`,
+        url: `/admin/ctv/khach-hang?id=${encodeURIComponent(String(account!._id))}&q=${encodeURIComponent(input.phone)}`,
+        tag: `si-${String(account!._id)}`,
+      }).catch((e) => console.warn("[web-push] wholesale register push failed:", e?.message || e));
+
       res.json(await issueShopSession(res, db, account!));
     } catch (error) { sendError(res, error); }
   });

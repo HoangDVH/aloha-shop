@@ -45,7 +45,8 @@ async function readImageBuffer(imageUrl: string): Promise<Buffer | null> {
 
 export async function campaignOgImageHandler(getDb: GetDb, req: Request, res: Response): Promise<void> {
   const cid = typeof req.query.cid === "string" ? req.query.cid.trim() : "";
-  const cacheKey = cid || "current";
+  const fitMode = typeof req.query.fit === "string" ? req.query.fit.trim() : "cover";
+  const cacheKey = `${cid || "current"}_${fitMode}`;
 
   const cached = MEM_CACHE.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
@@ -69,7 +70,8 @@ export async function campaignOgImageHandler(getDb: GetDb, req: Request, res: Re
     }
 
     const banners = content?.display?.banners || [];
-    const mainBanner = banners.find((b) => b.kind === "main") || banners[0];
+    const shareBanner = banners.find((b) => (b.kind as string) === "share" || (b.kind as string) === "og");
+    const mainBanner = shareBanner || banners.find((b) => b.kind === "main") || banners[0];
     const rawUrl = mainBanner?.imageUrl || "";
 
     if (!rawUrl) {
@@ -83,29 +85,41 @@ export async function campaignOgImageHandler(getDb: GetDb, req: Request, res: Re
       return;
     }
 
-    // Xử lý tạo ảnh chuẩn 1.91:1 (1200 x 630 px) cho Facebook / Zalo không bị crop
-    const bg = await sharp(rawBuffer, { failOn: "none" })
-      .rotate()
-      .resize(OG_WIDTH, OG_HEIGHT, { fit: "cover" })
-      .blur(25)
-      .modulate({ brightness: 0.88 })
-      .toBuffer();
+    // Xử lý tạo ảnh chuẩn 1.91:1 (1200 x 630 px) cho Facebook / Zalo tràn viền 100% không bị dải mờ
+    let finalBuffer: Buffer;
 
-    const fg = await sharp(rawBuffer, { failOn: "none" })
-      .rotate()
-      .resize(OG_WIDTH, OG_HEIGHT, { fit: "inside" })
-      .toBuffer();
+    if (fitMode === "cover") {
+      // Chuẩn công ty lớn: Phóng to và lấp đầy 100% khung hình 1200 x 630 px
+      // Tràn viền hoàn toàn, không có dải mờ hay khoảng trắng trên dưới
+      finalBuffer = await sharp(rawBuffer, { failOn: "none" })
+        .rotate()
+        .resize(OG_WIDTH, OG_HEIGHT, { fit: "cover", position: "center" })
+        .jpeg({ quality: 92, mozjpeg: true })
+        .toBuffer();
+    } else {
+      const bg = await sharp(rawBuffer, { failOn: "none" })
+        .rotate()
+        .resize(OG_WIDTH, OG_HEIGHT, { fit: "cover" })
+        .blur(25)
+        .modulate({ brightness: 0.88 })
+        .toBuffer();
 
-    const fgMeta = await sharp(fg).metadata();
-    const fgW = fgMeta.width || OG_WIDTH;
-    const fgH = fgMeta.height || OG_HEIGHT;
-    const left = Math.max(0, Math.round((OG_WIDTH - fgW) / 2));
-    const top = Math.max(0, Math.round((OG_HEIGHT - fgH) / 2));
+      const fg = await sharp(rawBuffer, { failOn: "none" })
+        .rotate()
+        .resize(OG_WIDTH, OG_HEIGHT, { fit: "inside" })
+        .toBuffer();
 
-    const finalBuffer = await sharp(bg)
-      .composite([{ input: fg, left, top }])
-      .jpeg({ quality: 90 })
-      .toBuffer();
+      const fgMeta = await sharp(fg).metadata();
+      const fgW = fgMeta.width || OG_WIDTH;
+      const fgH = fgMeta.height || OG_HEIGHT;
+      const left = Math.max(0, Math.round((OG_WIDTH - fgW) / 2));
+      const top = Math.max(0, Math.round((OG_HEIGHT - fgH) / 2));
+
+      finalBuffer = await sharp(bg)
+        .composite([{ input: fg, left, top }])
+        .jpeg({ quality: 90 })
+        .toBuffer();
+    }
 
     MEM_CACHE.set(cacheKey, { buffer: finalBuffer, expiresAt: Date.now() + CACHE_TTL_MS });
 

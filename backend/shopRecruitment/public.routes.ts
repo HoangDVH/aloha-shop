@@ -3,6 +3,7 @@ import type { Express, Request, Response } from "express";
 import type { Db } from "mongodb";
 import type { GetShopDb } from "../shopOrders/routes.js";
 import { shopRateLimitOrReject } from "../shopRateLimit.js";
+import { broadcastAdminWebPush } from "../shopPush/webPushService.js";
 import {
   APPLICATIONS_COL,
   EMPLOYMENT_TYPES,
@@ -349,6 +350,13 @@ export function registerRecruitmentPublicRoutes(app: Express, getShopDb: GetShop
           } catch {
             /* non-fatal */
           }
+          void broadcastAdminWebPush(db, {
+            title: "📄 ALOHA - Có hồ sơ ứng viên mới!",
+            body: `${input.fullName} (${input.phone}) ứng tuyển: ${interestedPosition || "Ứng viên mới"}`,
+            url: `/admin/tuyen-dung/ho-so?code=${encodeURIComponent(doc.publicCode)}`,
+            tag: `recruit-${doc.publicCode}`,
+          }).catch((e) => console.warn("[web-push] recruitment apply push failed:", e?.message || e));
+
           res.status(201).json({ ok: true, publicCode: doc.publicCode, submissionType: doc.submissionType });
           return;
         } catch (e) {

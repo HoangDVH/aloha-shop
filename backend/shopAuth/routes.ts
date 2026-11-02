@@ -34,6 +34,7 @@ import { applyShopCors, isAllowedShopOrigin } from "../shopCors.js";
 import { syncBus } from "../syncBus.js";
 import { rateLimitAllow, shopRateLimitOrReject } from "../shopRateLimit.js";
 import { putGoogleOauthState, takeGoogleOauthState } from "./authEphemeral.js";
+import { broadcastAdminWebPush } from "../shopPush/webPushService.js";
 import { checkRefreshToken, markRefreshRotated, refreshFamilyOf } from "./refreshTokens.js";
 import {
   allocateCtvCode,
@@ -328,6 +329,16 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
       const body = await issueShopSession(res, db, user);
       if (asCtv) {
         publishShopAccountChange(String(ins.insertedId), "ctv_register");
+        const ctvDisplay = ctvCode ? ` (Mã: ${ctvCode})` : "";
+        const contact = phone || email || "";
+        void broadcastAdminWebPush(db, {
+          title: "🤝 ALOHA - Có CTV mới đăng ký!",
+          body: `${fullName}${ctvDisplay} - ${contact}`,
+          url: ctvCode
+            ? `/admin/ctv/danh-sach/${encodeURIComponent(ctvCode)}`
+            : `/admin/ctv/khach-hang?id=${encodeURIComponent(String(ins.insertedId))}`,
+          tag: `ctv-${String(ins.insertedId)}`,
+        }).catch((e) => console.warn("[web-push] ctv register push failed:", e?.message || e));
       } else {
         publishShopAccountChange(String(ins.insertedId), "shop_register");
       }
@@ -544,6 +555,17 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
       const updated = await db.collection(SHOP_ACCOUNTS).findOne({ _id: user._id });
       if (becomeCtv && patch.ctvStatus === "cho_duyet") {
         publishShopAccountChange(String(user._id), "ctv_apply");
+        const ctvDisplay = patch.ctvCode ? ` (Mã: ${patch.ctvCode})` : "";
+        const nameDisplay = updated?.fullName || user.fullName || "Thành viên";
+        const contact = patch.phone || updated?.phone || updated?.email || "";
+        void broadcastAdminWebPush(db, {
+          title: "🤝 ALOHA - Hồ sơ CTV mới nộp!",
+          body: `${nameDisplay}${ctvDisplay} - ${contact}`,
+          url: patch.ctvCode
+            ? `/admin/ctv/danh-sach/${encodeURIComponent(String(patch.ctvCode))}`
+            : `/admin/ctv/khach-hang?id=${encodeURIComponent(String(user._id))}`,
+          tag: `ctv-apply-${String(user._id)}`,
+        }).catch((e) => console.warn("[web-push] ctv apply push failed:", e?.message || e));
       }
       return res.json({ ok: true, user: toPublicShopAccount(updated!) });
     } catch (e: any) {

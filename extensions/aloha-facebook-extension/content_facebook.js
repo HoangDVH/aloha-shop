@@ -247,17 +247,70 @@
         } catch {}
       }
 
-      // Điền văn bản từng dòng với insertText và insertParagraph (Facebook Lexical hiển thị xuống dòng chuẩn 100%)
-      const lines = (payload.caption || "").split("\n");
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        if (line) {
-          document.execCommand("insertText", false, line);
+      // Điền văn bản với cơ chế chuẩn cho Facebook Lexical Rich Text Editor
+      const fullCaption = String(payload.caption || "").replace(/\r\n/g, "\n");
+      let pasteSuccess = false;
+
+      // 1. Cách chuẩn công nghiệp: ClipboardEvent 'paste' với DataTransfer (giữ trọn vẹn xuống dòng trong Lexical)
+      try {
+        const dt = new DataTransfer();
+        dt.setData("text/plain", fullCaption);
+        const pasteEvt = new ClipboardEvent("paste", {
+          bubbles: true,
+          cancelable: true,
+          clipboardData: dt,
+        });
+        textbox.dispatchEvent(pasteEvt);
+        if (textbox.innerText && textbox.innerText.trim().length > 10) {
+          pasteSuccess = true;
         }
-        if (i < lines.length - 1) {
-          const ok = document.execCommand("insertParagraph", false, null);
-          if (!ok) {
-            document.execCommand("insertLineBreak", false, null);
+      } catch (err) {
+        console.warn("[Aloha Extension] ClipboardEvent paste error:", err);
+      }
+
+      // 2. Fallback bằng InputEvent insertFromPaste nếu paste event bị chặn
+      if (!pasteSuccess) {
+        try {
+          const dt = new DataTransfer();
+          dt.setData("text/plain", fullCaption);
+          const inputEvt = new InputEvent("beforeinput", {
+            bubbles: true,
+            cancelable: true,
+            inputType: "insertFromPaste",
+            dataTransfer: dt,
+          });
+          textbox.dispatchEvent(inputEvt);
+          if (textbox.innerText && textbox.innerText.trim().length > 10) {
+            pasteSuccess = true;
+          }
+        } catch (err) {}
+      }
+
+      // 3. Fallback bằng execCommand: Chèn toàn bộ nội dung trực tiếp (không cắt chuỗi để tránh nuốt ký tự xuống dòng)
+      if (!pasteSuccess) {
+        try {
+          document.execCommand("insertText", false, fullCaption);
+          if (textbox.innerText && textbox.innerText.trim().length > 10) {
+            pasteSuccess = true;
+          }
+        } catch (err) {}
+      }
+
+      // 4. Fallback từng dòng kết hợp KeyboardEvent Enter & insertParagraph
+      if (!pasteSuccess) {
+        const lines = fullCaption.split("\n");
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          if (line) {
+            document.execCommand("insertText", false, line);
+          }
+          if (i < lines.length - 1) {
+            textbox.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
+            textbox.dispatchEvent(new InputEvent("beforeinput", { inputType: "insertParagraph", bubbles: true, cancelable: true }));
+            const ok = document.execCommand("insertParagraph", false, null);
+            if (!ok) {
+              document.execCommand("insertLineBreak", false, null);
+            }
           }
         }
       }
@@ -297,7 +350,8 @@
         <span style="color: #2D5A27; font-weight: bold;">
           ${activeText}
         </span>
-        <br/><span style="font-size: 11px; color: #555;">Bạn chỉ cần xem lại và bấm nút "Đăng" của Facebook!</span>
+        <br/><span style="font-size: 11px; color: #555;">Đã tự động nạp ảnh & bài viết chuẩn xuống dòng. Bạn chỉ cần xem lại và bấm "Đăng"!</span>
+        <br/><span style="font-size: 10px; color: #166534; background: #f0fdf4; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 3px;">💡 Mẹo: Nội dung cũng đã lưu sẵn trong bộ nhớ, bạn có thể nhấn <b>Ctrl + V</b> để dán lại bất kỳ lúc nào.</span>
       `;
     }
 
