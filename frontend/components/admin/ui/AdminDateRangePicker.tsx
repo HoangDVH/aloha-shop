@@ -248,8 +248,8 @@ export function AdminDateRangePicker({
     const r = rangeForPreset(id);
     setDraft(r);
     setPreset(id);
-    const d = parseYmd(r.from)!;
-    setView({ y: d.getFullYear(), m: d.getMonth() });
+    onChange(r);
+    setOpen(false);
   }
 
   function onPickDay(day: Date) {
@@ -296,10 +296,29 @@ export function AdminDateRangePicker({
             className="fixed inset-0 z-40 cursor-default bg-transparent"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute right-0 z-50 mt-2 w-[min(92vw,560px)] rounded-xl border border-[#e4ebe3] bg-white p-4 shadow-xl">
-            <div className="mb-3 text-[14px] font-bold text-[#1a2e1a]">
-              Chọn khoảng thời gian
-            </div>
+          <div className="absolute right-0 z-50 mt-2 flex max-h-[min(85vh,640px)] w-[min(94vw,560px)] flex-col rounded-xl border border-[#e4ebe3] bg-white shadow-xl overflow-hidden">
+            <div className="flex-1 overflow-y-auto overscroll-contain p-4 pb-2">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-[14px] font-bold text-[#1a2e1a]">
+                  Chọn khoảng thời gian
+                </span>
+                {allowClear ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange(null);
+                      setOpen(false);
+                    }}
+                    className={`text-[12px] font-semibold transition px-2 py-1 rounded-md ${
+                      !value
+                        ? "bg-[#2D5A27] text-white"
+                        : "text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                    }`}
+                  >
+                    Tất cả thời gian
+                  </button>
+                ) : null}
+              </div>
 
             <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
               {PRESETS.map((p) => (
@@ -388,7 +407,9 @@ export function AdminDateRangePicker({
               />
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+            </div>
+
+            <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 bg-white/95 px-4 py-3 backdrop-blur-xs">
               {allowClear ? (
                 <button
                   type="button"

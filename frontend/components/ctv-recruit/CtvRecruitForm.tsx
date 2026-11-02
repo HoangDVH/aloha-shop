@@ -195,13 +195,13 @@ export function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
   return (
     <div
       id="ctv-dang-ky"
-      className="relative rounded-2xl bg-white p-5 shadow-[0_18px_48px_-20px_rgba(27,94,32,0.35)] ring-1 ring-[var(--aloha-line)] sm:p-7"
+      className="relative w-full min-h-full sm:min-h-0 rounded-none sm:rounded-2xl bg-white p-5 sm:p-7 shadow-[0_18px_48px_-20px_rgba(27,94,32,0.35)] sm:ring-1 sm:ring-[var(--aloha-line)]"
     >
       {onClose ? (
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"
+          className="absolute right-3.5 top-3.5 inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition cursor-pointer"
           aria-label="Đóng"
         >
           <X size={18} />
@@ -222,20 +222,6 @@ export function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
 
       <form
         onSubmit={onSubmit}
-        onFocus={(e) => {
-          const target = e.target as HTMLElement;
-          if (
-            target &&
-            (target.tagName === "INPUT" ||
-              target.tagName === "SELECT" ||
-              target.tagName === "TEXTAREA") &&
-            typeof target.scrollIntoView === "function"
-          ) {
-            setTimeout(() => {
-              target.scrollIntoView({ behavior: "smooth", block: "center" });
-            }, 300);
-          }
-        }}
         className="mt-5 space-y-5"
         noValidate
       >

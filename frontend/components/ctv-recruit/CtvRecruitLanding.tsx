@@ -20,22 +20,12 @@ export function CtvRecruitLanding() {
     };
     document.addEventListener("keydown", onKey);
 
-    // Chuẩn khóa cuộn an toàn cho iOS Safari (body-scroll-lock technique)
-    const scrollY = window.scrollY;
-    const originalPosition = document.body.style.position;
-    const originalTop = document.body.style.top;
-    const originalWidth = document.body.style.width;
-
-    document.body.style.position = "fixed";
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.width = "100%";
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
 
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.body.style.position = originalPosition;
-      document.body.style.top = originalTop;
-      document.body.style.width = originalWidth;
-      window.scrollTo(0, scrollY);
+      document.body.style.overflow = prevOverflow;
     };
   }, [formOpen]);
 
@@ -47,20 +37,21 @@ export function CtvRecruitLanding() {
       {/* Hero — 2 cột kiểu landing Affiliate sàn TMĐT */}
       <RecruitHero onOpenForm={openForm} />
 
-      {/* Form đăng ký — chỉ hiện khi bấm Đăng ký ngay */}
+      {/* Form đăng ký — mở toàn màn hình cuộn mượt trên Mobile, dạng popup modal trên Desktop */}
       {formOpen ? (
         <div
-          className="fixed inset-0 z-[80] flex items-end justify-center p-0 sm:items-center sm:p-6"
+          className="fixed inset-0 z-[80] overflow-y-auto bg-[#0b141a]/60 backdrop-blur-xs sm:p-6 sm:flex sm:items-center sm:justify-center ios-scroll-touch"
           role="dialog"
           aria-modal="true"
           aria-labelledby="ctv-dang-ky"
         >
+          {/* Backdrop click on desktop */}
           <div
-            className="absolute inset-0 bg-[#0b141a]/55 backdrop-blur-[2px] cursor-pointer"
+            className="hidden sm:block absolute inset-0 cursor-pointer"
             aria-hidden="true"
             onClick={closeForm}
           />
-          <div className="relative z-10 max-h-[min(92dvh,720px)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-2xl sm:rounded-2xl ios-scroll-touch">
+          <div className="relative z-10 w-full min-h-full sm:min-h-0 sm:max-w-lg sm:rounded-2xl bg-white shadow-2xl">
             <CtvRecruitForm key={user?.id || "guest"} onClose={closeForm} />
           </div>
         </div>

@@ -36,7 +36,11 @@ export async function generateMetadata(): Promise<Metadata> {
   }
   const title = c.display.hero.title || c.name || "Ưu đãi & Mã giảm giá";
   const description = c.display.hero.subtitle || `Chương trình ${c.name} tại ${site}.`;
-  const image = c.display.banners.find((b) => b.kind === "main")?.imageUrl;
+  const hasBanner = Boolean(c.display?.banners?.some((b) => b.kind === "main" && b.imageUrl));
+  const ogImageUrl = hasBanner
+    ? `${SHOP_ORIGIN}/api/shop/campaigns/og-image?cid=${encodeURIComponent(c.id)}`
+    : undefined;
+
   return {
     title,
     description,
@@ -47,13 +51,25 @@ export async function generateMetadata(): Promise<Metadata> {
       url: canonical,
       title: `${title} · ${site}`,
       description,
-      ...(image ? { images: [{ url: image }] } : {}),
+      ...(ogImageUrl
+        ? {
+            images: [
+              {
+                url: ogImageUrl,
+                width: 1200,
+                height: 630,
+                alt: `${title} · ${site}`,
+                type: "image/jpeg",
+              },
+            ],
+          }
+        : {}),
     },
     twitter: {
       card: "summary_large_image",
       title: `${title} · ${site}`,
       description,
-      images: image ? [image] : undefined,
+      images: ogImageUrl ? [ogImageUrl] : undefined,
     },
   };
 }

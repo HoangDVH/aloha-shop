@@ -15,6 +15,7 @@ import { productGifts } from "../types.js";
 import { hasSuccessfulWebPurchase } from "../../shopPromotions/returningBuyer.js";
 import { voucherMatchesBuyer } from "../../../shared/voucherAudience.js";
 import { publicProductVouchers } from "../../shopPromotions/publicProductVouchers.js";
+import { campaignOgImageHandler } from "./ogImage.js";
 
 type GetDb = () => Promise<Db>;
 
@@ -161,6 +162,11 @@ export function registerCampaignPublicRoutes(app: Express, getDb: GetDb) {
   app.options("/api/shop/campaigns/*", (req, res) => {
     applyShopCors(req, res);
     res.sendStatus(204);
+  });
+
+  app.get("/api/shop/campaigns/og-image", async (req, res) => {
+    applyShopCors(req, res);
+    await campaignOgImageHandler(getDb, req, res);
   });
 
   app.get("/api/shop/campaigns/current", async (req, res) => {
