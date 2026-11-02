@@ -60,9 +60,7 @@ export function buildProductCaption(product: ShopProduct, url: string, now = Dat
       ? `Giá ${money(reference)} chỉ còn ${money(final)}/${unit}` : `Giá ${money(final)}/${unit}`,
     voucher ? `Khi áp dụng voucher “${sharePlainText(voucherCustomerTitle(voucher.title))}” đặt hàng TẠI WEBSITE${audience}${voucher.claimRequired ? ", cần lưu voucher" : ""}.` : "",
     "Chưa gồm phí vận chuyển.",
-    "",
-    `Xem chi tiết & đặt mua tại: ${url} `,
-    "",
+    `\nXem chi tiết & đặt mua tại: ${url} \n`,
     final < reference ? "Mua ngay để nhận mức giá ưu đãi tốt nhất!" : "Mua ngay tại ALOHA!",
   ].filter(Boolean).join("\n");
 }
