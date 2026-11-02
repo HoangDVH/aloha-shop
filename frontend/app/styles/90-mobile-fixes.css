@@ -1,16 +1,16 @@
 /* Chuẩn mobile big-tech: Chống tự động zoom lố trên iOS Safari khi focus input/select/textarea (< 16px) */
 @media screen and (max-width: 767px) {
-  input[type="text"],
-  input[type="number"],
-  input[type="email"],
-  input[type="password"],
-  input[type="search"],
-  input[type="tel"],
-  input[type="url"],
+  input:not([type="checkbox"]):not([type="radio"]),
   select,
-  textarea {
+  textarea,
+  .auth-field {
     font-size: 16px !important;
   }
+}
+
+/* Safari iOS: Hỗ trợ cuộn gia tốc phần cứng và chống kẹt layout khi mở bàn phím ảo */
+.ios-scroll-touch {
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Ẩn thanh cuộn nhưng vẫn vuốt/cuộn mượt */

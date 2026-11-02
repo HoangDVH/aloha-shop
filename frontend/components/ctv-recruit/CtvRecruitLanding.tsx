@@ -19,11 +19,23 @@ export function CtvRecruitLanding() {
       if (e.key === "Escape") setFormOpen(false);
     };
     document.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+
+    // Chuẩn khóa cuộn an toàn cho iOS Safari (body-scroll-lock technique)
+    const scrollY = window.scrollY;
+    const originalPosition = document.body.style.position;
+    const originalTop = document.body.style.top;
+    const originalWidth = document.body.style.width;
+
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
+
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
+      document.body.style.position = originalPosition;
+      document.body.style.top = originalTop;
+      document.body.style.width = originalWidth;
+      window.scrollTo(0, scrollY);
     };
   }, [formOpen]);
 
@@ -43,13 +55,12 @@ export function CtvRecruitLanding() {
           aria-modal="true"
           aria-labelledby="ctv-dang-ky"
         >
-          <button
-            type="button"
-            className="absolute inset-0 bg-[#0b141a]/55 backdrop-blur-[2px]"
-            aria-label="Đóng"
+          <div
+            className="absolute inset-0 bg-[#0b141a]/55 backdrop-blur-[2px] cursor-pointer"
+            aria-hidden="true"
             onClick={closeForm}
           />
-          <div className="relative z-[1] max-h-[min(92svh,720px)] w-full max-w-lg overflow-y-auto rounded-t-2xl sm:rounded-2xl">
+          <div className="relative z-10 max-h-[min(92dvh,720px)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-2xl sm:rounded-2xl ios-scroll-touch">
             <CtvRecruitForm key={user?.id || "guest"} onClose={closeForm} />
           </div>
         </div>

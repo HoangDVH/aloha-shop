@@ -43,6 +43,8 @@ export function CtvFormFields({
           </label>
           <input
             id="ctv-name"
+            type="text"
+            autoComplete="name"
             placeholder="Nguyễn Văn A"
             className="auth-field"
             {...register("fullName")}
@@ -62,7 +64,9 @@ export function CtvFormFields({
           </label>
           <input
             id="ctv-phone"
+            type="tel"
             inputMode="tel"
+            autoComplete="tel"
             placeholder="09xx xxx xxx"
             className="auth-field"
             {...register("phone")}
@@ -82,6 +86,7 @@ export function CtvFormFields({
           </label>
           <input
             id="ctv-zalo"
+            type="text"
             placeholder="SĐT Zalo hoặc https://zalo.me/..."
             className="auth-field"
             {...register("zalo")}
@@ -149,6 +154,8 @@ export function CtvFormFields({
           </label>
           <input
             id="ctv-addr"
+            type="text"
+            autoComplete="street-address"
             placeholder="Số nhà, đường, phường, tỉnh/thành"
             className="auth-field"
             {...register("addressText")}
@@ -208,6 +215,7 @@ export function CtvFormFields({
               </label>
               <input
                 id="ctv-exp-note"
+                type="text"
                 placeholder="VD: bán cây cảnh trên Facebook"
                 className="auth-field"
                 {...register("businessExpNote")}
@@ -278,6 +286,8 @@ export function CtvFormFields({
               </label>
               <input
                 id="ctv-url"
+                type="url"
+                inputMode="url"
                 placeholder="https://..."
                 className="auth-field"
                 {...register("channelUrl")}

@@ -220,7 +220,25 @@ export function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
         </div>
       ) : null}
 
-      <form onSubmit={onSubmit} className="mt-5 space-y-5" noValidate>
+      <form
+        onSubmit={onSubmit}
+        onFocus={(e) => {
+          const target = e.target as HTMLElement;
+          if (
+            target &&
+            (target.tagName === "INPUT" ||
+              target.tagName === "SELECT" ||
+              target.tagName === "TEXTAREA") &&
+            typeof target.scrollIntoView === "function"
+          ) {
+            setTimeout(() => {
+              target.scrollIntoView({ behavior: "smooth", block: "center" });
+            }, 300);
+          }
+        }}
+        className="mt-5 space-y-5"
+        noValidate
+      >
         <CtvFormFields
           register={register}
           control={control}
