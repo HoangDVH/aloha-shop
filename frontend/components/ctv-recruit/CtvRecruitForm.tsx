@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CheckCircle2, ShieldCheck, X } from "lucide-react";
+import { ArrowRight, CheckCircle2, ShieldCheck, X } from "lucide-react";
 import { useShopAuth } from "@/components/ShopAuthProvider";
 import {
   useShopRegisterMutation,
@@ -30,6 +30,12 @@ export function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
   const router = useShopRouter();
   const [done, setDone] = useState(false);
   const loggedIn = Boolean(user);
+  const isCtvActive = Boolean(
+    user && user.roles.includes("ctv") && user.ctvStatus === "active",
+  );
+  const isCtvPending = Boolean(
+    user && (user.ctvStatus === "cho_duyet" || isCtvPendingBlocked(user)),
+  );
   const rejected = Boolean(
     user?.roles.includes("ctv") && user.ctvStatus === "tu_choi",
   );
@@ -85,16 +91,7 @@ export function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
   const pending = registerMut.isPending || updateMut.isPending;
   const canSubmit = isValid && agreeTerms === true && !pending && !locked;
 
-  useEffect(() => {
-    if (loading || !user) return;
-    if (isCtvPendingBlocked(user) || user.ctvStatus === "cho_duyet") {
-      router.replace(CTV_PENDING_PATH);
-      return;
-    }
-    if (user.roles.includes("ctv") && user.ctvStatus === "active") {
-      router.replace("/cong-tac-vien");
-    }
-  }, [loading, user, router]);
+  // Không tự động redirect khi vào trang để CTV có thể xem landing page / chính sách
 
   const onSubmit = handleSubmit(async (values) => {
     try {
@@ -183,6 +180,56 @@ export function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
         <p className="mt-2 text-sm text-[var(--aloha-muted)]">
           Liên hệ Aloha để được hỗ trợ trước khi nộp hồ sơ CTV.
         </p>
+      </div>
+    );
+  }
+
+  if (isCtvActive) {
+    return (
+      <div className="rounded-3xl bg-white p-6 sm:p-8 text-center shadow-sm border border-stone-200/90">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--aloha-green-light)] text-[var(--aloha-green)]">
+          <CheckCircle2 size={36} strokeWidth={2} />
+        </div>
+        <h3 className="text-xl font-extrabold text-[var(--aloha-green-dark)] sm:text-2xl">
+          Bạn đã là Cộng tác viên chính thức của Aloha
+        </h3>
+        <p className="mx-auto mt-2.5 max-w-md text-sm leading-relaxed text-stone-600">
+          Tài khoản của bạn đã được kích hoạt quyền CTV. Bạn có thể truy cập Bảng điều khiển để lấy link chia sẻ sản phẩm, theo dõi đơn hàng và hoa hồng.
+        </p>
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <Link
+            href="/cong-tac-vien"
+            className="inline-flex min-h-[46px] items-center gap-2 rounded-full bg-[var(--aloha-green-dark)] px-6 text-sm font-bold text-white shadow-sm transition hover:bg-[var(--aloha-green)] active:scale-98"
+          >
+            Vào Bảng điều khiển CTV
+            <ArrowRight size={17} />
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (isCtvPending) {
+    return (
+      <div className="rounded-3xl bg-white p-6 sm:p-8 text-center shadow-sm border border-stone-200/90">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+          <ShieldCheck size={36} strokeWidth={2} />
+        </div>
+        <h3 className="text-xl font-extrabold text-[#0f3822] sm:text-2xl">
+          Hồ sơ CTV của bạn đang chờ duyệt
+        </h3>
+        <p className="mx-auto mt-2.5 max-w-md text-sm leading-relaxed text-stone-600">
+          Aloha đã tiếp nhận hồ sơ đăng ký của bạn. Ban quản trị sẽ đối chiếu thông tin và kích hoạt tài khoản trong thời gian sớm nhất.
+        </p>
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <Link
+            href={CTV_PENDING_PATH}
+            className="inline-flex min-h-[46px] items-center gap-2 rounded-full bg-[var(--aloha-green-dark)] px-6 text-sm font-bold text-white shadow-sm transition hover:bg-[var(--aloha-green)] active:scale-98"
+          >
+            Xem trạng thái hồ sơ
+            <ArrowRight size={17} />
+          </Link>
+        </div>
       </div>
     );
   }
