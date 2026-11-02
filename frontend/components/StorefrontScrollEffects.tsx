@@ -34,9 +34,6 @@ export function StorefrontScrollEffects() {
     motion.addEventListener("change", onMotion);
     const onScroll = () => {
       setShowTop(window.scrollY > Math.max(600, window.innerHeight));
-      if (document.activeElement && (document.activeElement.tagName === "INPUT" || document.activeElement.tagName === "TEXTAREA")) {
-        (document.activeElement as HTMLElement).blur();
-      }
     };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });

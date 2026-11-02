@@ -1,0 +1,25 @@
+{
+  "name": "ALOHA Shop Quản Trị",
+  "short_name": "ALOHA Admin",
+  "description": "Hệ thống quản trị bán hàng & vận hành ALOHA Shop",
+  "start_url": "/admin",
+  "scope": "/admin",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0F172A",
+  "theme_color": "#1B5E20",
+  "icons": [
+    {
+      "src": "/brand/logo-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/brand/logo-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

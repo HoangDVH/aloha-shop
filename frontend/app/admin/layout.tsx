@@ -4,6 +4,7 @@ import { AdminShell } from "@/components/admin/shell/AdminShell";
 export const metadata: Metadata = {
   title: "Admin Shop",
   robots: { index: false, follow: false },
+  manifest: "/manifest-admin.json",
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

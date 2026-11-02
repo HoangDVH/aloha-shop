@@ -1,8 +1,8 @@
 {
-  "name": "ALOHA Shop - Hệ Thống Bán Hàng & Quản Trị",
-  "short_name": "ALOHA Shop",
-  "description": "Thế giới chậu cây & cây cảnh ALOHA Shop",
-  "start_url": "/admin",
+  "name": "ALOHA THẾ GIỚI CHẬU CÂY",
+  "short_name": "ALOHA",
+  "description": "Thế giới chậu cây & cây cảnh ALOHA — TP.HCM",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",

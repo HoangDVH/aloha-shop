@@ -39,13 +39,7 @@ export function PartnerNavDropdown({ pathname, onNavigate, mobile = false }: {
 
   if (mobile) {
     return (
-      <div
-        ref={root}
-        className="relative w-full"
-        onBlur={event => {
-          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
-        }}
-      >
+      <div ref={root} className="relative w-full">
         <button
           ref={trigger}
           type="button"
@@ -92,8 +86,7 @@ export function PartnerNavDropdown({ pathname, onNavigate, mobile = false }: {
   }
 
   return (
-    <div ref={root} className="relative shrink-0"
-      onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false); }}>
+    <div ref={root} className="relative shrink-0">
       <button ref={trigger} type="button" aria-expanded={open} aria-controls={id}
         onClick={() => setOpen(value => !value)}
         className={`inline-flex min-h-[38px] gap-1.5 whitespace-nowrap rounded-xl border px-2 py-2 text-[13.5px] xl:text-[14px] items-center font-semibold transition-colors ${active || open ? "border-emerald-200 bg-emerald-50 text-[var(--aloha-green)]" : "border-transparent text-neutral-800 hover:bg-neutral-100/70 hover:text-[var(--aloha-green)]"}`}>
