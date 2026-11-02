@@ -177,7 +177,11 @@ export function registerShopAdminOpsRoutes(
         });
 
         const wholesaleItems = wholesaleAccounts.map((a: any) => {
-          const isPending = a.siStatus === "cho_duyet" || a.siVerificationStatus === "pending";
+          const isPending =
+            a.siStatus === "cho_duyet" ||
+            a.siVerificationStatus === "pending" ||
+            a.siVerification?.status === "pending" ||
+            a.siKvSyncStatus === "awaiting_verification";
           const name = a.fullName || a.phone || "Khách sỉ";
           const region = a.siRegion === "HCM" ? "TP.HCM" : a.siRegion === "TINH" ? "Tỉnh" : "Chưa chọn vùng";
           return {
@@ -187,7 +191,7 @@ export function registerShopAdminOpsRoutes(
             subtitle: `SĐT: ${a.phone || "Chưa có"} • Email: ${a.email || "Chưa có"}`,
             detail: `Khu vực: ${region} • ${isPending ? "Chờ duyệt sỉ" : "Đã kích hoạt"}`,
             createdAt: a.createdAt ? new Date(a.createdAt).toISOString() : new Date().toISOString(),
-            link: `/admin/ctv/khach-hang?id=${encodeURIComponent(String(a._id))}&q=${encodeURIComponent(a.phone || a.fullName || "")}`,
+            link: `/admin/ctv/khach-hang?id=${encodeURIComponent(String(a._id))}&q=${encodeURIComponent(a.phone || a.fullName || "")}&review=si`,
             tag: isPending ? "Chờ duyệt" : "Khách sỉ",
             tagColor: isPending ? "amber" : "purple",
             needsAction: isPending,
@@ -197,9 +201,11 @@ export function registerShopAdminOpsRoutes(
         const ctvItems = ctvAccounts.map((a: any) => {
           const isPending = a.ctvStatus === "cho_duyet";
           const name = a.fullName || a.phone || "Cộng tác viên";
-          const link = a.ctvCode
+          const link = isPending
+            ? `/admin/ctv/khach-hang?id=${encodeURIComponent(String(a._id))}&q=${encodeURIComponent(a.phone || "")}&review=ctv`
+            : a.ctvCode
             ? `/admin/ctv/danh-sach/${encodeURIComponent(a.ctvCode)}`
-            : `/admin/ctv/khach-hang?id=${encodeURIComponent(String(a._id))}&q=${encodeURIComponent(a.phone || "")}`;
+            : `/admin/ctv/khach-hang?id=${encodeURIComponent(String(a._id))}&q=${encodeURIComponent(a.phone || "")}&review=ctv`;
           return {
             id: `ctv_${a._id}`,
             type: "ctv" as const,

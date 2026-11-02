@@ -67,6 +67,7 @@ export default function CustomerDirectory() {
   const searchParams = useSearchParams();
   const paramQ = searchParams?.get("q") || searchParams?.get("phone") || "";
   const paramId = searchParams?.get("id") || "";
+  const paramReview = searchParams?.get("review") || "";
 
   const [view, setView] = useState("customers");
   const [filters, setFilters] = useState<Filters>(defaults);
@@ -114,7 +115,7 @@ export default function CustomerDirectory() {
   // Tự động mở chi tiết hồ sơ sỉ / CTV khi điều hướng từ thông báo
   useEffect(() => {
     if (openedRef.current || !list.data?.items?.length) return;
-    if (!paramId && !paramQ) return;
+    if (!paramId && !paramQ && !paramReview) return;
     const match = list.data.items.find(
       (it) =>
         it.id === paramId ||
@@ -125,12 +126,16 @@ export default function CustomerDirectory() {
     );
     if (match) {
       openedRef.current = true;
-      const target = customerReviewTarget(match);
-      if (target === "si") setSiId(match.id);
-      else if (target === "ctv") reviewCtv(match.id);
-      else setSelectedId(match.id);
+      if (paramReview === "si") setSiId(match.id);
+      else if (paramReview === "ctv") reviewCtv(match.id);
+      else {
+        const target = customerReviewTarget(match);
+        if (target === "si") setSiId(match.id);
+        else if (target === "ctv") reviewCtv(match.id);
+        else setSelectedId(match.id);
+      }
     }
-  }, [list.data?.items, paramId, paramQ, reviewCtv]);
+  }, [list.data?.items, paramId, paramQ, paramReview, reviewCtv]);
 
   useEffect(() => {
     if (list.data) setPage(current => Math.min(current, Math.max(1, Math.ceil(list.data.total / pageSize))));

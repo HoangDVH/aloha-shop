@@ -7,7 +7,7 @@ export type CampaignSlotUI = { key: string; start: string; end: string; overnigh
 
 export type CampaignBannerUI = {
   id: string;
-  kind: "main" | "side";
+  kind: "main" | "side" | "share";
   imageUrl: string;
   mobileImageUrl?: string;
   href: string;

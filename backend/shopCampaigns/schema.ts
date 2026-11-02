@@ -94,7 +94,7 @@ const productSchema = z.preprocess(
 
 const bannerSchema = z.object({
   id: z.string().min(1).max(40),
-  kind: z.enum(["main", "side"]),
+  kind: z.enum(["main", "side", "share"]),
   imageUrl,
   mobileImageUrl: imageUrl.optional(),
   href,

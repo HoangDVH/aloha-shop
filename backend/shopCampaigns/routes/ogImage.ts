@@ -46,15 +46,6 @@ async function readImageBuffer(imageUrl: string): Promise<Buffer | null> {
 export async function campaignOgImageHandler(getDb: GetDb, req: Request, res: Response): Promise<void> {
   const cid = typeof req.query.cid === "string" ? req.query.cid.trim() : "";
   const fitMode = typeof req.query.fit === "string" ? req.query.fit.trim() : "cover";
-  const cacheKey = `${cid || "current"}_${fitMode}`;
-
-  const cached = MEM_CACHE.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now()) {
-    res.setHeader("Content-Type", "image/jpeg");
-    res.setHeader("Cache-Control", "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800");
-    res.send(cached.buffer);
-    return;
-  }
 
   try {
     const db = await getDb();
@@ -71,11 +62,21 @@ export async function campaignOgImageHandler(getDb: GetDb, req: Request, res: Re
 
     const banners = content?.display?.banners || [];
     const shareBanner = banners.find((b) => (b.kind as string) === "share" || (b.kind as string) === "og");
+    const isCustomShare = Boolean(shareBanner?.imageUrl);
     const mainBanner = shareBanner || banners.find((b) => b.kind === "main") || banners[0];
     const rawUrl = mainBanner?.imageUrl || "";
 
     if (!rawUrl) {
       res.redirect(302, "/brand/logo-full.png");
+      return;
+    }
+
+    const cacheKey = `${cid || "current"}_${rawUrl.slice(-30)}_${fitMode}`;
+    const cached = MEM_CACHE.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      res.setHeader("Content-Type", "image/jpeg");
+      res.setHeader("Cache-Control", "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800");
+      res.send(cached.buffer);
       return;
     }
 
@@ -85,23 +86,30 @@ export async function campaignOgImageHandler(getDb: GetDb, req: Request, res: Re
       return;
     }
 
-    // Xử lý tạo ảnh chuẩn 1.91:1 (1200 x 630 px) cho Facebook / Zalo tràn viền 100% không bị dải mờ
+    const meta = await sharp(rawBuffer, { failOn: "none" }).metadata();
+    const rawW = meta.width || OG_WIDTH;
+    const rawH = meta.height || OG_HEIGHT;
+    const rawAspect = rawW / Math.max(1, rawH);
+
+    // Xử lý tạo ảnh chuẩn 1.91:1 (1200 x 630 px) cho Facebook / Zalo
     let finalBuffer: Buffer;
 
-    if (fitMode === "cover") {
-      // Chuẩn công ty lớn: Phóng to và lấp đầy 100% khung hình 1200 x 630 px
-      // Tràn viền hoàn toàn, không có dải mờ hay khoảng trắng trên dưới
+    // Nếu là ảnh chia sẻ thiết kế riêng hoặc ảnh có tỉ lệ gần chuẩn 1.91:1
+    if (isCustomShare || rawAspect <= 2.05) {
       finalBuffer = await sharp(rawBuffer, { failOn: "none" })
         .rotate()
         .resize(OG_WIDTH, OG_HEIGHT, { fit: "cover", position: "center" })
         .jpeg({ quality: 92, mozjpeg: true })
         .toBuffer();
     } else {
+      // Banner ngang rộng (panoramic > 2.05:1 như 8:3):
+      // Thu nhỏ hiển thị trọn vẹn 100% nội dung chữ và hình ảnh ở giữa (không phóng to, không cắt chữ)
+      // Nền trên dưới: Ambient Glow chuyển màu tự nhiên, làm tối nhẹ để banner chính nổi bật
       const bg = await sharp(rawBuffer, { failOn: "none" })
         .rotate()
-        .resize(OG_WIDTH, OG_HEIGHT, { fit: "cover" })
-        .blur(25)
-        .modulate({ brightness: 0.88 })
+        .resize(OG_WIDTH, OG_HEIGHT, { fit: "cover", position: "center" })
+        .blur(40)
+        .modulate({ brightness: 0.82, saturation: 1.05 })
         .toBuffer();
 
       const fg = await sharp(rawBuffer, { failOn: "none" })
@@ -117,7 +125,7 @@ export async function campaignOgImageHandler(getDb: GetDb, req: Request, res: Re
 
       finalBuffer = await sharp(bg)
         .composite([{ input: fg, left, top }])
-        .jpeg({ quality: 90 })
+        .jpeg({ quality: 92, mozjpeg: true })
         .toBuffer();
     }
 

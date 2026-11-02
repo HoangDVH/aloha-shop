@@ -334,9 +334,7 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
         void broadcastAdminWebPush(db, {
           title: "🤝 ALOHA - Có CTV mới đăng ký!",
           body: `${fullName}${ctvDisplay} - ${contact}`,
-          url: ctvCode
-            ? `/admin/ctv/danh-sach/${encodeURIComponent(ctvCode)}`
-            : `/admin/ctv/khach-hang?id=${encodeURIComponent(String(ins.insertedId))}`,
+          url: `/admin/ctv/khach-hang?id=${encodeURIComponent(String(ins.insertedId))}&review=ctv`,
           tag: `ctv-${String(ins.insertedId)}`,
         }).catch((e) => console.warn("[web-push] ctv register push failed:", e?.message || e));
       } else {
@@ -561,9 +559,7 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
         void broadcastAdminWebPush(db, {
           title: "🤝 ALOHA - Hồ sơ CTV mới nộp!",
           body: `${nameDisplay}${ctvDisplay} - ${contact}`,
-          url: patch.ctvCode
-            ? `/admin/ctv/danh-sach/${encodeURIComponent(String(patch.ctvCode))}`
-            : `/admin/ctv/khach-hang?id=${encodeURIComponent(String(user._id))}`,
+          url: `/admin/ctv/khach-hang?id=${encodeURIComponent(String(user._id))}&review=ctv`,
           tag: `ctv-apply-${String(user._id)}`,
         }).catch((e) => console.warn("[web-push] ctv apply push failed:", e?.message || e));
       }

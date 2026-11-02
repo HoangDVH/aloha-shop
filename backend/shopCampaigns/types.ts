@@ -52,7 +52,7 @@ export type CampaignLink = { label: string; href: string };
 
 export type CampaignBanner = {
   id: string;
-  kind: "main" | "side";
+  kind: "main" | "side" | "share";
   imageUrl: string;
   mobileImageUrl?: string;
   href: string;

@@ -666,9 +666,9 @@ export function AdminOpsSync({ enabled }: { enabled: boolean }) {
           toastTimer.current = setTimeout(flushOrderToast, 350);
         }
       } else if (isWholesale) {
-        triggerEventAlert("wholesale", "🏢 ALOHA - Khách sỉ mới đăng ký!", "Có khách sỉ mới gửi hồ sơ đăng ký.", "/admin/ctv/khach-hang");
+        triggerEventAlert("wholesale", "🏢 ALOHA - Khách sỉ mới đăng ký!", "Có khách sỉ mới gửi hồ sơ đăng ký.", "/admin/ctv/khach-hang?review=si");
       } else if (isCtv) {
-        triggerEventAlert("ctv", "🤝 ALOHA - CTV mới đăng ký!", "Có cộng tác viên mới đăng ký tài khoản CTV.", "/admin/ctv/danh-sach");
+        triggerEventAlert("ctv", "🤝 ALOHA - CTV mới đăng ký!", "Có cộng tác viên mới đăng ký tài khoản CTV.", "/admin/ctv/khach-hang?review=ctv");
       } else if (isRecruitment) {
         triggerEventAlert("recruitment", "📄 ALOHA - Có ứng viên nộp hồ sơ!", "Ứng viên vừa nộp hồ sơ ứng tuyển.", "/admin/tuyen-dung/ho-so");
       }

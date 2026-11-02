@@ -46,16 +46,49 @@ const newMainId = () => `main-${Date.now().toString(36)}${Math.random().toString
 function upsertBanner(
   banners: CampaignBannerUI[],
   id: string,
-  kind: "main" | "side",
+  kind: "main" | "side" | "share",
   patch: Partial<CampaignBannerUI>
 ): CampaignBannerUI[] {
   const cur = banners.find((b) => b.id === id);
-  const next = { ...(cur || { id, kind, imageUrl: "", href: "/uu-dai" }), ...patch };
+  const next = { ...(cur || { id, kind, imageUrl: "", href: "/uu-dai" }), ...patch, kind };
   if (!next.imageUrl) return banners.filter((b) => b.id !== id);
   if (cur) return banners.map((b) => (b.id === id ? next : b));
   const mains = banners.filter(isMain);
-  const sides = banners.filter((b) => !isMain(b));
-  return kind === "main" ? [...mains, next, ...sides] : [...mains, ...sides, next];
+  const others = banners.filter((b) => !isMain(b));
+  return kind === "main" ? [...mains, next, ...others] : [...mains, ...others, next];
+}
+
+function ShareBannerCard({
+  banners,
+  onBanners,
+}: {
+  banners: CampaignBannerUI[];
+  onBanners: (next: CampaignBannerUI[]) => void;
+}) {
+  const shareId = "share-og";
+  const b = banners.find((x) => x.id === shareId || (x.kind as string) === "share");
+  const set = (patch: Partial<CampaignBannerUI>) =>
+    onBanners(upsertBanner(banners, b?.id || shareId, "share", patch));
+
+  return (
+    <div className="space-y-2 p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-bold text-slate-800">Ảnh chia sẻ Facebook / Zalo</span>
+        <span className="rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 border border-blue-200">
+          Khuyến nghị 1200 × 630 px
+        </span>
+      </div>
+      <CampaignBannerField
+        value={b?.imageUrl}
+        aspect={1200 / 630}
+        ratioLabel="1.91:1 (1200x630)"
+        onChange={(url) => set({ imageUrl: url })}
+      />
+      <p className="text-[11px] text-slate-500">
+        Khung hình tỉ lệ chuẩn 1.91:1 khi đăng lên Facebook, gửi Zalo, Messenger. Không bị phóng to, không bị cắt mép chữ.
+      </p>
+    </div>
+  );
 }
 
 function moveMain(banners: CampaignBannerUI[], id: string, dir: -1 | 1): CampaignBannerUI[] {
@@ -459,6 +492,15 @@ export function DisplayStep({ content, update, errors }: Props) {
                 onBanners={setBanners}
               />
             ))}
+          </div>
+        </div>
+
+        <div className="space-y-2 border-t border-slate-100 pt-4">
+          <div className="flex items-center justify-between">
+            <div className="text-xs font-bold text-slate-700">Ảnh chia sẻ Facebook / Zalo (Khuyến nghị 1200 × 630 px)</div>
+          </div>
+          <div className="max-w-md">
+            <ShareBannerCard banners={display.banners} onBanners={setBanners} />
           </div>
         </div>
         {bannerErrors.map((m) => (

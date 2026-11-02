@@ -58,7 +58,9 @@ export function DealsShareModal({
   const campaignSubtitle =
     campaign?.display?.hero?.subtitle ||
     "Săn ngay hàng trăm voucher giảm sâu, quà tặng 0Đ và deal cây cảnh chậu kiểng đang diễn ra tại ALOHA!";
+  const shareBanner = campaign?.display?.banners?.find((b) => (b.kind as string) === "share" && b.imageUrl)?.imageUrl;
   const bannerImage =
+    shareBanner ||
     campaign?.display?.banners?.find((b) => b.kind === "main" && b.imageUrl)?.imageUrl ||
     "/banners/banner-1010-desktop.webp";
 

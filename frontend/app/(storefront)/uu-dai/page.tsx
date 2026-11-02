@@ -36,9 +36,9 @@ export async function generateMetadata(): Promise<Metadata> {
   }
   const title = c.display.hero.title || c.name || "Ưu đãi & Mã giảm giá";
   const description = c.display.hero.subtitle || `Chương trình ${c.name} tại ${site}.`;
-  const hasBanner = Boolean(c.display?.banners?.some((b) => b.kind === "main" && b.imageUrl));
+  const hasBanner = Boolean(c.display?.banners?.some((b) => (b.kind === "main" || (b.kind as string) === "share") && b.imageUrl));
   const ogImageUrl = hasBanner
-    ? `${SHOP_ORIGIN}/api/shop/campaigns/og-image?cid=${encodeURIComponent(c.id)}&v=cover`
+    ? `${SHOP_ORIGIN}/api/shop/campaigns/og-image?cid=${encodeURIComponent(c.id)}&v=auto`
     : undefined;
 
   return {

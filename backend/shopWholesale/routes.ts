@@ -305,7 +305,7 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
       void broadcastAdminWebPush(db, {
         title: "🏢 ALOHA - Có khách sỉ mới đăng ký!",
         body: `${input.fullName} (${input.phone}) - ${input.shopName || "Đại lý sỉ"} (${regionText})`,
-        url: `/admin/ctv/khach-hang?id=${encodeURIComponent(String(account!._id))}&q=${encodeURIComponent(input.phone)}`,
+        url: `/admin/ctv/khach-hang?id=${encodeURIComponent(String(account!._id))}&q=${encodeURIComponent(input.phone)}&review=si`,
         tag: `si-${String(account!._id)}`,
       }).catch((e) => console.warn("[web-push] wholesale register push failed:", e?.message || e));
 
