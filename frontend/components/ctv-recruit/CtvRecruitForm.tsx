@@ -148,7 +148,7 @@ export function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
 
   if (done) {
     return (
-      <div className="rounded-2xl bg-white p-6 text-center shadow-lg ring-1 ring-[var(--aloha-line)] sm:p-8">
+      <div className="rounded-3xl bg-white p-6 sm:p-8 text-center shadow-sm border border-stone-200/90">
         <CheckCircle2
           className="mx-auto text-[var(--aloha-green)]"
           size={40}
@@ -166,7 +166,7 @@ export function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
 
   if (locked) {
     return (
-      <div className="relative rounded-2xl bg-white p-6 shadow-lg ring-1 ring-[var(--aloha-line)] sm:p-8">
+      <div className="relative rounded-3xl bg-white p-6 sm:p-8 shadow-sm border border-stone-200/90">
         {onClose ? (
           <button
             type="button"
@@ -195,7 +195,7 @@ export function CtvRecruitForm({ onClose }: { onClose?: () => void }) {
   return (
     <div
       id="ctv-dang-ky"
-      className="relative w-full min-h-full sm:min-h-0 rounded-none sm:rounded-2xl bg-white p-5 sm:p-7 shadow-[0_18px_48px_-20px_rgba(27,94,32,0.35)] sm:ring-1 sm:ring-[var(--aloha-line)]"
+      className="relative rounded-3xl bg-white p-5 sm:p-8 shadow-sm border border-stone-200/90"
     >
       {onClose ? (
         <button

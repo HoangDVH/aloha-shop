@@ -8,6 +8,14 @@
   }
 }
 
+/* Tối ưu phản hồi chạm tức thì cho ô nhập liệu trên iOS Safari */
+input,
+select,
+textarea {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* Safari iOS: Hỗ trợ cuộn gia tốc phần cứng và chống kẹt layout khi mở bàn phím ảo */
 .ios-scroll-touch {
   -webkit-overflow-scrolling: touch;

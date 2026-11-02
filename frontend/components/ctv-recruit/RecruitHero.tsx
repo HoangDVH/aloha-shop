@@ -43,7 +43,7 @@ export function RecruitHero({ onOpenForm }: { onOpenForm: () => void }) {
             <button
               type="button"
               onClick={onOpenForm}
-              className="inline-flex h-11 items-center gap-1.5 rounded-full bg-[var(--aloha-green-dark)] px-6 text-[15px] font-bold text-white shadow-sm transition hover:bg-[var(--aloha-green)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--aloha-green-dark)]"
+              className="inline-flex h-11 items-center gap-1.5 rounded-full bg-[var(--aloha-green-dark)] px-6 text-[15px] font-bold text-white shadow-sm transition hover:bg-[var(--aloha-green)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--aloha-green-dark)] cursor-pointer active:scale-98"
             >
               Đăng ký ngay
               <ChevronRight size={18} aria-hidden />
