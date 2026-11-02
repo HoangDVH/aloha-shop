@@ -14,7 +14,7 @@ test("requested caption uses actual product, program, total saving, unit and vou
     expiresAt: new Date(now + 60000).toISOString(), campaignName: "20/10 và 20/11",
     voucher: { title: "Đặt trước 10%", targetCustomer: "retail", claimRequired: true } };
   assert.equal(buildProductCaption(p, "https://example.com/sp/GSDL?ctv=A", now, preview),
-    "GIỎ SEN ĐÁ LỚN — ưu đãi 20/10 và 20/11 GIẢM ĐẾN 35%!\nGiá 344.000đ chỉ còn 225.000đ/CHẬU\nKhi áp dụng voucher “Đặt trước 10%” đặt hàng TẠI WEB, cần lưu voucher.\nChưa gồm phí vận chuyển.\nXem chi tiết & đặt mua tại: https://example.com/sp/GSDL?ctv=A\nMua ngay để nhận mức giá ưu đãi tốt nhất!");
+    "GIỎ SEN ĐÁ LỚN — ưu đãi 20/10 và 20/11 GIẢM ĐẾN 35%!\nGiá 344.000đ chỉ còn 225.000đ/CHẬU\nKhi áp dụng voucher “Đặt trước 10%” đặt hàng TẠI WEBSITE, cần lưu voucher.\nChưa gồm phí vận chuyển.\n\nXem chi tiết & đặt mua tại: https://example.com/sp/GSDL?ctv=A \n\nMua ngay để nhận mức giá ưu đãi tốt nhất!");
   const other = buildProductCaption({ ...product, ma: "OTHER", ten: "CHẬU KHÁC", dvt: "bộ", webPrice: 120000, campaignPromo: null }, "https://example.com/sp/OTHER", now, preview);
   assert.ok(other.includes("Giá 120.000đ/bộ"));
   for (const text of ["GSDL", "225.000", "20/11", "voucher", "GIẢM ĐẾN"]) assert.ok(!other.includes(text), text);

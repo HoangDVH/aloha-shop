@@ -19,6 +19,7 @@ import { DealsMoreFeed } from "./DealsMoreFeed";
 import { DealsSectionHead } from "./DealsSectionHead";
 import { VoucherKindFilter, filterVouchers, toVoucherKind, type VoucherKind } from "./VoucherKindFilter";
 import { openVoucherModal } from "@/lib/campaign/useVoucherModal";
+import { DealsShareButton } from "./DealsShareButton";
 
 const subscribeHydration = () => () => {};
 const clientHydrated = () => true;
@@ -109,6 +110,7 @@ export function DealsPage() {
         <div className="mx-auto max-w-7xl px-3 py-3 sm:px-4 sm:py-5">
           <DealsOverview campaign={campaign} vouchers={vouchers} viewer={viewer} offsetMs={offsetMs} lastHours={lastHours} />
         </div>
+        <DealsShareButton campaign={campaign} variant="fab" />
       </div>
     );
   }
@@ -254,8 +256,10 @@ export function DealsPage() {
               <ChevronRight size={15} className="text-slate-400 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-rose-500" />
             </Link>
           ) : null}
+          <DealsShareButton campaign={campaign} variant="pill" />
         </div>
       </div>
+      <DealsShareButton campaign={campaign} variant="fab" />
     </div>
   );
 }

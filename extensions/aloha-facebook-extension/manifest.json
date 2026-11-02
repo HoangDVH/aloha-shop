@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "Aloha Auto Share - Đăng bài Facebook",
+  "version": "1.0.0",
+  "description": "Tự động nạp toàn bộ ảnh và bài viết từ Aloha Shop vào Facebook",
+  "icons": {
+    "16": "icons/icon.png",
+    "48": "icons/icon.png",
+    "128": "icons/icon.png"
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "clipboardRead",
+    "clipboardWrite"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://alohathegioichaucay.com/*",
+        "http://localhost:*/*",
+        "https://localhost:*/*"
+      ],
+      "js": ["content_aloha.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://*.facebook.com/*"
+      ],
+      "js": ["content_facebook.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Aloha Auto Share"
+  }
+}

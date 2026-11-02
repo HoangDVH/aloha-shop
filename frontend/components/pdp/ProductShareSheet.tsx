@@ -1,18 +1,36 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { Check, Download, Link2, Loader2, Play, Share2, X } from "lucide-react";
-import { formatVnd } from "@/lib/api";
-import { buildProductShareUrl } from "@/lib/ctv";
+import {
+  Check,
+  Copy,
+  Download,
+  Gift,
+  Link2,
+  Loader2,
+  Play,
+  QrCode,
+  Share2,
+  Sparkles,
+  X,
+} from "lucide-react";
+import { QRCodeSVG } from "@rc-component/qrcode";
+import { formatVnd, type ShopProduct } from "@/lib/api";
+import { buildProductShareUrl, isValidCtvCode, normalizeCtvCode } from "@/lib/ctv";
 import { SHOP_ORIGIN } from "@/lib/seo";
 import { useToast } from "@/components/Toast";
+import { useShopAuth } from "@/components/ShopAuthProvider";
 import { productShareData } from "@/lib/productShareData";
-import { buildProductCaption, publicSharePrice, shareCaptionWithLink } from "@/lib/shareCaption";
+import {
+  buildProductCaption,
+  publicSharePrice,
+  shareCaptionWithLink,
+} from "@/lib/shareCaption";
 import { fetchPublicSharePreview, fetchPublicShareProduct } from "@/lib/publicShareProduct";
 import type { PublicSharePreview } from "../../../shared/publicSharePreview";
-import type { ShopProduct } from "@/lib/api";
 import { ShareCaptionEditor } from "@/components/ShareCaptionEditor";
 import { useHydrated } from "@/lib/useHydratedQuery";
+import { ProductExtensionGuideModal } from "./ProductExtensionGuideModal";
 import {
   canShareFilesOnDevice,
   copyText,
@@ -28,7 +46,18 @@ const DEFAULT_PICK = 6;
 
 type LoadState = "loading" | "ok" | "error";
 
-/** Zalo/Facebook chỉ dựng thẻ xem trước (ảnh SP) từ domain công khai — không dùng localhost/IP LAN. */
+function isMobileBrowser(): boolean {
+  if (typeof window === "undefined" || typeof navigator === "undefined") return false;
+  const nav = navigator as Navigator & { userAgentData?: { mobile?: boolean } };
+  if (typeof nav.userAgentData?.mobile === "boolean") {
+    return nav.userAgentData.mobile;
+  }
+  const ua = navigator.userAgent || "";
+  const isMobileUa = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+  const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+  return isMobileUa || (isTouch && window.innerWidth <= 820);
+}
+
 function publicShareUrl(raw: string): string {
   try {
     const u = new URL(raw, SHOP_ORIGIN);
@@ -38,7 +67,7 @@ function publicShareUrl(raw: string): string {
   }
 }
 
-type ShareProps = {
+export type ShareProps = {
   ma: string;
   name: string;
   path: string;
@@ -48,46 +77,26 @@ type ShareProps = {
   ctvCode?: string;
 };
 
-/** Nút «Chia sẻ» trang SP kiểu Shopee: Zalo / Facebook kèm ảnh + video của SP. */
-export function ProductShareButton(props: ShareProps) {
-  const hydrated = useHydrated();
-  const [open, setOpen] = useState(false);
-  const [shareCtv, setShareCtv] = useState(props.ctvCode);
-  useEffect(() => {
-    const handle = (event: Event) => {
-      const detail = (event as CustomEvent<{ ma: string; ctvCode?: string }>).detail;
-      if (detail?.ma !== props.ma) return;
-      setShareCtv(detail.ctvCode || props.ctvCode);
-      setOpen(true);
-    };
-    window.addEventListener("aloha-product-share", handle);
-    return () => window.removeEventListener("aloha-product-share", handle);
-  }, [props.ma, props.ctvCode]);
-  return (
-    <>
-      <button
-        type="button"
-        disabled={!hydrated}
-        aria-busy={!hydrated}
-        onClick={() => { setShareCtv(props.ctvCode); setOpen(true); }}
-        aria-haspopup="dialog"
-        className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs font-bold text-slate-600 ring-1 ring-slate-200 transition hover:bg-slate-50 active:scale-95"
-      >
-        <Share2 size={15} aria-hidden />
-        Chia sẻ
-      </button>
-      {open ? <ProductShareSheet {...props} ctvCode={shareCtv} onClose={() => setOpen(false)} /> : null}
-    </>
-  );
-}
+export { ProductShareButton } from "./ProductShareButton";
 
-function ProductShareSheet({ ma, name, path, images, videos, ctvCode, onClose }: ShareProps & { onClose: () => void }) {
+export function ProductShareSheet({
+  ma,
+  name,
+  path,
+  images,
+  videos,
+  ctvCode: propCtvCode,
+  onClose,
+}: ShareProps & { onClose: () => void }) {
   const toast = useToast();
+  const { user } = useShopAuth();
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId();
+
   const files = useRef(new Map<string, File>());
   const inflight = useRef(new Set<string>());
   const loader = useRef<AbortController | null>(null);
+
   const [loadState, setLoadState] = useState<Record<string, LoadState>>({});
   const [deviceShare, setDeviceShare] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -97,20 +106,42 @@ function ProductShareSheet({ ma, name, path, images, videos, ctvCode, onClose }:
   const [editedCaption, setEditedCaption] = useState<string | null>(null);
   const [preview, setPreview] = useState<PublicSharePreview>();
 
+  const [copiedUrl, setCopiedUrl] = useState(false);
+  const [copiedCaption, setCopiedCaption] = useState(false);
+  const [showQr, setShowQr] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [hasExtension, setHasExtension] = useState(false);
+  const [showExtensionGuide, setShowExtensionGuide] = useState(false);
+
+  // CHỈ hiển thị mã CTV khi tài khoản đang đăng nhập có quyền CTV thực thụ
+  const isCtv = Boolean(user?.roles?.includes("ctv") && user?.ctvCode);
+  const effectiveCtv = isCtv && user?.ctvCode ? normalizeCtvCode(user.ctvCode) : (isValidCtvCode(propCtvCode || "") ? normalizeCtvCode(propCtvCode || "") : "");
+
   const media = useMemo<ShareMediaItem[]>(() => {
-    const vids = [...new Set(videos.filter(isShareableVideoUrl))].map((src) => ({ src, kind: "video" as const }));
-    const imgs = [...new Set(images.filter(Boolean))].map((src) => ({ src, kind: "image" as const }));
+    const vids = [...new Set(videos.filter(isShareableVideoUrl))].map((src) => ({
+      src,
+      kind: "video" as const,
+    }));
+    const imgs = [...new Set(images.filter(Boolean))].map((src) => ({
+      src,
+      kind: "image" as const,
+    }));
     return [...vids.slice(0, 2), ...imgs].slice(0, MAX_MEDIA);
   }, [images, videos]);
 
-  const [picked, setPicked] = useState<string[]>(() => media.slice(0, DEFAULT_PICK).map((m) => m.src));
+  const [picked, setPicked] = useState<string[]>(() =>
+    media.slice(0, DEFAULT_PICK).map((m) => m.src)
+  );
   const pickedItems = media.filter((m) => picked.includes(m.src));
   const poster = images[0] || "";
-  const url = publicShareUrl(buildProductShareUrl(path, ctvCode, ma));
+  const url = publicShareUrl(buildProductShareUrl(path, effectiveCtv, ma));
   const publicPrice = publicProduct ? publicSharePrice(publicProduct).price : 0;
   const priceLabel = publicPrice > 0 ? formatVnd(publicPrice) : "";
-  const defaultCaption = publicProduct ? buildProductCaption(publicProduct, url, Date.now(), preview) : `${name}\n\nXem mẫu và giá tại ALOHA: ${url}`;
+  const defaultCaption = publicProduct
+    ? buildProductCaption(publicProduct, url, Date.now(), preview)
+    : `${name}\n\nXem mẫu và giá tại ALOHA: ${url}`;
   const caption = editedCaption ?? defaultCaption;
+  const fullCaption = shareCaptionWithLink(caption, url);
   const fileBase = `aloha-${ma}`.replace(/[^\w-]+/g, "-");
 
   useEffect(() => {
@@ -121,16 +152,28 @@ function ProductShareSheet({ ma, name, path, images, videos, ctvCode, onClose }:
     setEditedCaption(null);
     setPreview(undefined);
     const load = async () => {
-      const [product, offer] = await Promise.allSettled([fetchPublicShareProduct(ma, ctrl.signal), fetchPublicSharePreview(ma, ctrl.signal)]);
+      const [product, offer] = await Promise.allSettled([
+        fetchPublicShareProduct(ma, ctrl.signal),
+        fetchPublicSharePreview(ma, ctrl.signal),
+      ]);
       if (ctrl.signal.aborted) return;
-      if (product.status === "fulfilled") { setPublicProduct(product.value); setCaptionError(false); }
-      else setCaptionError(true);
+      if (product.status === "fulfilled") {
+        setPublicProduct(product.value);
+        setCaptionError(false);
+      } else {
+        setCaptionError(true);
+      }
       setPreview(offer.status === "fulfilled" ? offer.value : undefined);
       setCaptionLoading(false);
     };
     void load();
-    const refresh = window.setInterval(() => { void load(); }, 45_000);
-    return () => { ctrl.abort(); window.clearInterval(refresh); };
+    const refresh = window.setInterval(() => {
+      void load();
+    }, 45_000);
+    return () => {
+      ctrl.abort();
+      window.clearInterval(refresh);
+    };
   }, [ma]);
 
   useEffect(() => {
@@ -139,22 +182,39 @@ function ProductShareSheet({ ma, name, path, images, videos, ctvCode, onClose }:
     const before = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     el.showModal();
+    setIsMobile(isMobileBrowser());
     setDeviceShare(canShareFilesOnDevice());
+
+    const checkExt = () => {
+      if (document.documentElement.getAttribute("data-aloha-extension-installed") === "true") {
+        setHasExtension(true);
+      }
+    };
+    checkExt();
+    const handleReady = () => setHasExtension(true);
+    window.addEventListener("aloha-extension-ready", handleReady);
+    const extTimer = setTimeout(checkExt, 300);
+
     return () => {
       el.close();
       document.body.style.overflow = before;
+      window.removeEventListener("aloha-extension-ready", handleReady);
+      clearTimeout(extTimer);
     };
   }, []);
 
   useEffect(() => () => loader.current?.abort(), []);
 
-  // Preload on supported browsers so sharing stays within the click gesture.
   useEffect(() => {
-    if (!deviceShare) return;
     loader.current ??= new AbortController();
     const { signal } = loader.current;
     for (const item of pickedItems) {
-      if (files.current.has(item.src) || inflight.current.has(item.src) || loadState[item.src] === "error") continue;
+      if (
+        files.current.has(item.src) ||
+        inflight.current.has(item.src) ||
+        loadState[item.src] === "error"
+      )
+        continue;
       inflight.current.add(item.src);
       setLoadState((s) => ({ ...s, [item.src]: "loading" }));
       loadShareFile(item, `${fileBase}-${media.indexOf(item) + 1}`, signal)
@@ -168,10 +228,11 @@ function ProductShareSheet({ ma, name, path, images, videos, ctvCode, onClose }:
         .finally(() => inflight.current.delete(item.src));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deviceShare, picked, loadState]);
+  }, [picked, loadState]);
 
-  const pending = deviceShare ? pickedItems.filter((m) => loadState[m.src] !== "ok" && loadState[m.src] !== "error").length : 0;
-  const readyFiles = pickedItems.map((m) => files.current.get(m.src)).filter((f): f is File => Boolean(f));
+  const readyFiles = pickedItems
+    .map((m) => files.current.get(m.src))
+    .filter((f): f is File => Boolean(f));
 
   const toggle = (src: string) => {
     setPicked((p) => {
@@ -189,56 +250,143 @@ function ProductShareSheet({ ma, name, path, images, videos, ctvCode, onClose }:
     });
   };
 
-  const shareWithDevice = async (target: "facebook" | "zalo") => {
+  // Chia sẻ bằng ứng dụng native trên điện thoại (App Facebook / Zalo tự nạp toàn bộ ảnh & video)
+  const shareNative = async (target: "facebook" | "zalo") => {
     try {
-      const data = productShareData({ selectedCount: pickedItems.length, files: readyFiles, target,
-        title: name, caption: shareCaptionWithLink(caption, url), url, canShare: data => Boolean(navigator.canShare?.(data)) });
+      let currentFiles = readyFiles;
+      if (currentFiles.length < pickedItems.length) {
+        setDownloading(true);
+        toast.push("Đang chuẩn bị ảnh & video...");
+        const loaded: File[] = [];
+        for (const item of pickedItems) {
+          let f = files.current.get(item.src);
+          if (!f) {
+            try {
+              f = await loadShareFile(item, `${fileBase}-${media.indexOf(item) + 1}`);
+              files.current.set(item.src, f);
+            } catch {}
+          }
+          if (f) loaded.push(f);
+        }
+        currentFiles = loaded;
+        setDownloading(false);
+      }
+
+      await copyText(fullCaption);
+
+      const data = productShareData({
+        selectedCount: currentFiles.length,
+        files: currentFiles,
+        target,
+        title: name,
+        caption: fullCaption,
+        url,
+        canShare: (d) => Boolean(navigator.canShare?.(d)),
+      });
+
       await navigator.share(data);
-      toast.push(pickedItems.length ? "Bấm «Sao chép nội dung & link» để dán vào bài viết hoặc tin nhắn." : "Đã đóng bảng chia sẻ link.");
+      toast.push(
+        target === "facebook" && currentFiles.length
+          ? "Đã mở Facebook kèm ảnh/video — chỉ cần chạm 'Dán' vào bài đăng!"
+          : `Đã mở chia sẻ ${target === "facebook" ? "Facebook" : "Zalo"}.`
+      );
     } catch (e) {
       if ((e as { name?: string })?.name === "AbortError") return;
-      const message = (e as Error).message;
-      toast.push(message === "media_incomplete" ? "Ảnh/video chưa tải đủ. Hãy thử tải lại các file lỗi." :
-        message === "media_unsupported" ? "Máy không chia sẻ được bộ file này. Thử chọn ít ảnh hơn, tách video hoặc lưu file để đăng trong ứng dụng." :
-          "Không chia sẻ được ảnh/video. Bạn có thể lưu file và chọn từ thư viện trong ứng dụng.");
+      if (target === "facebook") {
+        window.open(
+          `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
+          "_blank",
+          "noopener,noreferrer,width=640,height=600"
+        );
+      } else {
+        window.open("https://chat.zalo.me/", "_blank", "noopener,noreferrer");
+      }
     }
   };
 
-  const shareTo = async (target: "zalo" | "facebook") => {
-    if (deviceShare && typeof navigator.share === "function") {
-      await shareWithDevice(target);
+  // Bắn dữ liệu sang Chrome Extension Aloha để tự động nạp ảnh & video vào Facebook
+  const handleExtensionShare = () => {
+    if (hasExtension) {
+      window.postMessage(
+        {
+          type: "ALOHA_SHARE_TO_FB_EXTENSION",
+          payload: {
+            name,
+            caption: fullCaption,
+            url,
+            media: pickedItems.map((p) => ({
+              src: p.src,
+              kind: p.kind,
+            })),
+            images: pickedItems.map((p) => p.src),
+          },
+        },
+        "*"
+      );
+      toast.push("🌿 Đang mở Facebook và tự động nạp ảnh & video...");
+    } else {
+      setShowExtensionGuide(true);
+    }
+  };
+
+  // Sao chép link 1-click
+  const handleCopyOnlyUrl = async () => {
+    const ok = await copyText(url);
+    if (ok) {
+      setCopiedUrl(true);
+      toast.push("Đã sao chép liên kết sản phẩm!");
+      setTimeout(() => setCopiedUrl(false), 2500);
+    } else {
+      toast.push("Không thể sao chép liên kết.");
+    }
+  };
+
+  // Sao chép toàn bộ bài viết (caption + link)
+  const handleCopyCaption = async () => {
+    const ok = await copyText(fullCaption);
+    if (ok) {
+      setCopiedCaption(true);
+      toast.push("Đã sao chép nội dung bài viết & link SP!");
+      setTimeout(() => setCopiedCaption(false), 2500);
+    } else {
+      toast.push("Không thể sao chép nội dung bài viết.");
+    }
+  };
+
+  // Chia sẻ Zalo
+  const handleZaloShare = () => {
+    if (isMobile && deviceShare) {
+      void shareNative("zalo");
       return;
     }
-
-    const fullCaption = shareCaptionWithLink(caption, url);
-    await copyText(fullCaption);
-
-    if (target === "facebook") {
-      window.open(
-        `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
-        "_blank",
-        "noopener,noreferrer,width=640,height=600"
-      );
-      toast.push(
-        pickedItems.length > 0
-          ? "Đã mở Facebook & sao chép nội dung. Bạn có thể nhấn Ctrl+V để dán bài viết hoặc tải thêm ảnh."
-          : "Đã mở cửa sổ chia sẻ Facebook."
-      );
-      return;
-    }
-
+    // Trên máy tính: mở trực tiếp Zalo Web và sao chép nội dung
+    void copyText(fullCaption);
     window.open("https://chat.zalo.me/", "_blank", "noopener,noreferrer");
-    toast.push(
-      pickedItems.length > 0
-        ? "Đã sao chép nội dung & link SP. Nhấn dán (Ctrl+V) vào khung chat Zalo để gửi ngay!"
-        : "Đã sao chép link SP — dán (Ctrl+V) vào khung chat Zalo."
+    toast.push("Đã sao chép link SP & mở Zalo. Nhấn Dán (Ctrl+V) để gửi ngay!");
+  };
+
+  // Chia sẻ Facebook (Tự động nạp qua tiện ích nếu có, hoặc mở khung chia sẻ)
+  const handleFacebookShare = () => {
+    if (isMobile && deviceShare) {
+      void shareNative("facebook");
+      return;
+    }
+    // Trên máy tính: nếu đã cài tiện ích Aloha -> tự động nạp toàn bộ ảnh & video
+    if (hasExtension) {
+      handleExtensionShare();
+      return;
+    }
+    // Trên máy tính chưa cài tiện ích: mở trực tiếp khung popup Facebook và sao chép nội dung
+    void copyText(fullCaption);
+    window.open(
+      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
+      "_blank",
+      "noopener,noreferrer,width=640,height=600"
     );
+    toast.push("Đã mở khung Tạo bài viết Facebook & sao chép nội dung!");
   };
 
-  const copyLink = async () => {
-    toast.push((await copyText(shareCaptionWithLink(caption, url))) ? "Đã sao chép nội dung và link sản phẩm" : "Không sao chép được nội dung và link");
-  };
-
+  // Tải trọn bộ ảnh & video đã chọn về máy
   const saveMedia = async () => {
     if (!pickedItems.length) {
       toast.push("Chọn ít nhất 1 ảnh hoặc video");
@@ -246,55 +394,28 @@ function ProductShareSheet({ ma, name, path, images, videos, ctvCode, onClose }:
     }
     setDownloading(true);
     let failed = 0;
-    for (const item of pickedItems) {
+    for (let i = 0; i < pickedItems.length; i++) {
+      const item = pickedItems[i]!;
       try {
         const n = media.indexOf(item) + 1;
         const f = files.current.get(item.src) ?? (await loadShareFile(item, `${fileBase}-${n}`));
         files.current.set(item.src, f);
         downloadFile(f);
+        if (i < pickedItems.length - 1) {
+          await new Promise((r) => setTimeout(r, 180));
+        }
       } catch {
         failed += 1;
       }
     }
     setDownloading(false);
-    toast.push(failed ? `Đã lưu ${pickedItems.length - failed}/${pickedItems.length} file` : `Đã lưu ${pickedItems.length} file`);
+    void copyText(fullCaption);
+    toast.push(
+      failed
+        ? `Đã lưu ${pickedItems.length - failed}/${pickedItems.length} file.`
+        : `Đã lưu ${pickedItems.length} ảnh/video và sao chép sẵn bài viết!`
+    );
   };
-
-  const busy = pending > 0;
-  const actions = [
-    {
-      key: "zalo",
-      label: "Zalo",
-      icon: <span className="text-[11px] font-black tracking-tight">Zalo</span>,
-      tone: "bg-[#0068FF] text-white",
-      onClick: () => void shareTo("zalo"),
-      wait: true,
-    },
-    {
-      key: "facebook",
-      label: "Facebook",
-      icon: <span className="text-xl font-black leading-none">f</span>,
-      tone: "bg-[#1877F2] text-white",
-      onClick: () => void shareTo("facebook"),
-      wait: true,
-    },
-    {
-      key: "copy",
-      label: "Sao chép nội dung & link",
-      icon: <Link2 size={20} />,
-      tone: "bg-slate-100 text-slate-700",
-      onClick: () => void copyLink(),
-      wait: false,
-    },
-    {
-      key: "save",
-      label: "Lưu ảnh & video",
-      icon: downloading ? <Loader2 size={20} className="animate-spin" /> : <Download size={20} />,
-      tone: "bg-emerald-50 text-[var(--aloha-green-mid)]",
-      onClick: () => void saveMedia(),
-      wait: false,
-    },
-  ];
 
   return (
     <dialog
@@ -304,121 +425,302 @@ function ProductShareSheet({ ma, name, path, images, videos, ctvCode, onClose }:
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-x-0 bottom-0 top-auto m-0 max-h-[90dvh] w-full max-w-none overflow-hidden rounded-t-[28px] border-0 bg-white p-0 text-stone-900 backdrop:bg-black/50 sm:inset-0 sm:m-auto sm:h-fit sm:max-w-md sm:rounded-3xl"
+      className="fixed inset-x-0 bottom-0 top-auto m-0 max-h-[92dvh] w-full max-w-none overflow-y-auto rounded-t-3xl border-0 bg-white p-5 text-stone-900 shadow-2xl backdrop:bg-black/60 sm:inset-0 sm:m-auto sm:max-w-lg sm:rounded-3xl"
     >
-      <div className="flex max-h-[90dvh] flex-col">
-        <div className="flex shrink-0 items-center justify-between px-5 pb-2 pt-4">
-          <h2 id={titleId} className="text-base font-bold">Chia sẻ sản phẩm</h2>
-          <button type="button" onClick={onClose} aria-label="Đóng chia sẻ" className="-mr-2 flex h-11 w-11 items-center justify-center rounded-full text-stone-500 outline-none focus-visible:ring-2 focus-visible:ring-stone-300">
-            <X size={22} />
-          </button>
+      {/* Tiêu đề & Nút đóng */}
+      <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+        <div className="flex items-center gap-2">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-[var(--aloha-green,#2D5A27)]">
+            <Share2 size={18} />
+          </div>
+          <div>
+            <h2 id={titleId} className="text-base sm:text-lg font-bold text-stone-900 leading-tight">
+              Chia sẻ sản phẩm
+            </h2>
+            <p className="text-xs text-stone-500">Gửi bạn bè hoặc lưu ảnh/video để đăng bài</p>
+          </div>
         </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Đóng chia sẻ"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200 hover:text-stone-900 transition"
+        >
+          <X size={18} />
+        </button>
+      </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-2">
-          <div className="flex items-center gap-3 rounded-2xl bg-stone-50 p-2.5">
-            <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-white">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              {poster ? <img src={poster} alt="" className="h-full w-full object-cover" /> : null}
+      <div className="mt-4 space-y-4">
+        {/* Thẻ xem trước sản phẩm (Product Preview Card) */}
+        <div className="overflow-hidden rounded-2xl border border-stone-200/80 bg-stone-50 shadow-xs">
+          <div className="flex items-center gap-3 p-3">
+            <div className="h-18 w-18 sm:h-20 sm:w-20 shrink-0 overflow-hidden rounded-xl bg-white border border-stone-200/60 shadow-2xs">
+              {poster ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={poster} alt={name} className="h-full w-full object-cover" />
+              ) : null}
             </div>
-            <div className="min-w-0">
-              <p className="line-clamp-2 text-sm font-semibold text-stone-800">{name}</p>
-              {priceLabel ? <p className="mt-0.5 text-sm font-bold text-[#e91e50]">{priceLabel}</p> : null}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 mb-1">
+                <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold tracking-wide uppercase text-emerald-800">
+                  Sản phẩm ALOHA
+                </span>
+                <span className="text-[11px] font-semibold text-stone-500">
+                  alohathegioichaucay.com
+                </span>
+              </div>
+              <h3 className="line-clamp-2 text-sm font-bold text-stone-900 leading-snug">
+                {name}
+              </h3>
+              {priceLabel ? (
+                <p className="mt-1 text-sm font-extrabold text-[#e91e50]">
+                  {priceLabel}
+                </p>
+              ) : null}
             </div>
           </div>
+        </div>
 
-          <ShareCaptionEditor value={caption} onChange={setEditedCaption} onReset={() => setEditedCaption(null)} loading={captionLoading} />
-          {captionError ? <p role="status" className="mt-2 text-xs text-amber-700">Chưa tải được giá hiện tại. Nội dung chia sẻ chỉ giữ tên và link để khách xem giá trên shop.</p> : null}
+        {/* Huy hiệu dành riêng cho CTV */}
+        {isCtv && effectiveCtv && (
+          <div className="flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50/80 p-3 text-xs text-emerald-900">
+            <Gift size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold">Mã CTV của bạn: {effectiveCtv}</span>
+              <p className="text-emerald-700 text-[11px] mt-0.5">
+                Link chia sẻ đã được tự động gắn mã giới thiệu của bạn. Khách mua qua link này sẽ tự động tính hoa hồng cho bạn!
+              </p>
+            </div>
+          </div>
+        )}
 
-          {media.length ? (
-            <div className="mt-4">
-              <div className="flex items-baseline justify-between">
-                <p className="text-sm font-semibold">Gửi kèm ảnh & video</p>
-                <p className="text-xs tabular-nums text-stone-500">
-                  Đã chọn {pickedItems.length}/{Math.min(MAX_PICK, media.length)}
+        {/* Hàng nút chia sẻ nhanh 1-chạm */}
+        <div>
+          <div className="grid grid-cols-4 gap-2">
+            {/* 1. Sao chép link */}
+            <button
+              type="button"
+              onClick={handleCopyOnlyUrl}
+              className="group flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-stone-200 bg-stone-50/80 p-2.5 text-xs font-semibold text-stone-800 hover:bg-stone-100 hover:border-stone-300 transition active:scale-95"
+            >
+              <div
+                className={`flex h-9 w-9 items-center justify-center rounded-full text-white shadow-xs group-hover:scale-105 transition-transform ${
+                  copiedUrl ? "bg-emerald-600" : "bg-[var(--aloha-green,#2D5A27)]"
+                }`}
+              >
+                {copiedUrl ? <Check size={17} /> : <Link2 size={17} />}
+              </div>
+              <span className="truncate max-w-full">{copiedUrl ? "Đã chép" : "Chép link"}</span>
+            </button>
+
+            {/* 2. Zalo */}
+            <button
+              type="button"
+              onClick={handleZaloShare}
+              className="group flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-blue-100 bg-blue-50/60 p-2.5 text-xs font-semibold text-blue-900 hover:bg-blue-100 hover:border-blue-200 transition active:scale-95"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0068FF] text-white shadow-xs group-hover:scale-105 transition-transform">
+                <span className="font-black text-xs tracking-tighter">Zalo</span>
+              </div>
+              <span className="truncate max-w-full">Zalo</span>
+            </button>
+
+            {/* 3. Facebook (Thông minh: Auto nếu có tiện ích) */}
+            <button
+              type="button"
+              onClick={handleFacebookShare}
+              className="relative group flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-blue-100 bg-blue-50/60 p-2.5 text-xs font-semibold text-blue-900 hover:bg-blue-100 hover:border-blue-200 transition active:scale-95"
+            >
+              {hasExtension && (
+                <span className="absolute -top-1.5 -right-1 flex h-4 items-center gap-0.5 rounded-full bg-emerald-600 px-1.5 text-[9px] font-bold text-white shadow-xs">
+                  ⚡ Auto
+                </span>
+              )}
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1877F2] text-white shadow-xs group-hover:scale-105 transition-transform">
+                <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                </svg>
+              </div>
+              <span className="truncate max-w-full">Facebook</span>
+            </button>
+
+            {/* 4. Mã QR */}
+            <button
+              type="button"
+              onClick={() => setShowQr((v) => !v)}
+              className={`group flex flex-col items-center justify-center gap-1.5 rounded-2xl border p-2.5 text-xs font-semibold transition active:scale-95 ${
+                showQr
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                  : "border-stone-200 bg-stone-50/80 text-stone-800 hover:bg-stone-100"
+              }`}
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-stone-800 text-white shadow-xs group-hover:scale-105 transition-transform">
+                <QrCode size={18} />
+              </div>
+              <span className="truncate max-w-full">{showQr ? "Ẩn QR" : "Mã QR"}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Gợi ý cài tiện ích nhẹ nhàng cho máy tính nếu chưa có */}
+        {!hasExtension && !isMobile && (
+          <div className="flex items-center justify-between gap-2 rounded-xl border border-emerald-200/70 bg-emerald-50/60 px-3 py-2 text-xs">
+            <span className="text-[11px] text-emerald-900 flex items-center gap-1.5 min-w-0 truncate">
+              <Sparkles size={13} className="text-emerald-600 shrink-0" />
+              Tự động nạp cả ảnh & video vào Facebook?
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowExtensionGuide(true)}
+              className="text-[11px] font-bold text-emerald-700 hover:underline shrink-0"
+            >
+              Cài tiện ích Aloha (30s) &rarr;
+            </button>
+          </div>
+        )}
+
+        {/* Khung hiển thị Mã QR khi bật */}
+        {showQr && (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-stone-200/90 bg-stone-50 p-4 text-center animate-in fade-in duration-200">
+            <div className="rounded-xl bg-white p-3 shadow-xs border border-stone-100">
+              <QRCodeSVG value={url} size={160} level="M" includeMargin={false} />
+            </div>
+            <p className="mt-2.5 text-xs font-bold text-stone-800">
+              Quét mã để xem và chia sẻ từ điện thoại
+            </p>
+            <p className="text-[11px] text-stone-500 mt-0.5 max-w-xs">
+              📱 Dùng điện thoại quét mã QR để mở sản phẩm — sau đó bấm chia sẻ để tự động nạp toàn bộ ảnh & video vào App Facebook/Zalo!
+            </p>
+          </div>
+        )}
+
+        {/* Bộ công cụ Media: Tải ảnh & video thực tế */}
+        {media.length > 0 && (
+          <div className="rounded-2xl border border-stone-200/80 bg-stone-50/60 p-3.5 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-stone-800">
+                  Ảnh & video thực tế của sản phẩm
+                </p>
+                <p className="text-[11px] text-stone-500">
+                  Đã chọn {pickedItems.length}/{Math.min(MAX_PICK, media.length)} file để tải
                 </p>
               </div>
-              <ul className="-mx-5 mt-2 flex gap-2 overflow-x-auto px-5 pb-1">
-                {media.map((m) => {
-                  const on = picked.includes(m.src);
-                  const st = loadState[m.src];
-                  return (
-                    <li key={m.src} className="shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => toggle(m.src)}
-                        aria-pressed={on}
-                        aria-label={`${m.kind === "video" ? "Video" : "Ảnh"} ${media.indexOf(m) + 1}`}
-                        className={`relative h-16 w-16 overflow-hidden rounded-xl bg-stone-100 ring-2 transition ${on ? "ring-[var(--aloha-green)]" : "ring-transparent opacity-70"}`}
-                      >
-                        {m.kind === "video" ? (
-                          poster ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={poster} alt="" className="h-full w-full object-cover" />
-                          ) : (
-                            <video src={m.src} muted playsInline preload="metadata" className="h-full w-full object-cover" />
-                          )
-                        ) : (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={m.src} alt="" className="h-full w-full object-cover" />
-                        )}
-                        {m.kind === "video" ? (
-                          <span className="absolute inset-0 flex items-center justify-center bg-black/35">
-                            <Play size={18} className="fill-white text-white" />
-                          </span>
-                        ) : null}
-                        <span
-                          className={`absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full text-white ring-2 ring-white ${
-                            on ? (st === "error" ? "bg-rose-500" : "bg-[var(--aloha-green)]") : "bg-black/30"
-                          }`}
-                        >
-                          {on && deviceShare && st === "loading" ? (
-                            <Loader2 size={11} className="animate-spin" />
-                          ) : on && st === "error" ? (
-                            <X size={11} strokeWidth={3} />
-                          ) : on ? (
-                            <Check size={11} strokeWidth={3} />
-                          ) : null}
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-              <p className="mt-1.5 text-xs leading-relaxed text-stone-500">
-                {deviceShare
-                  ? "Chọn ứng dụng nhận trong bảng chia sẻ của máy. Facebook nhận riêng ảnh/video; bấm «Sao chép nội dung & link» để dán vào bài viết. Nếu không có ứng dụng bạn cần hoặc không nhận đủ file, hãy lưu file để đăng trực tiếp."
-                  : "Trên máy tính: Bấm Facebook hoặc Zalo để chia sẻ link kèm ảnh xem trước tự động. Bấm «Lưu ảnh & video» nếu muốn tải trọn bộ file về máy."}
-              </p>
-              {Object.values(loadState).includes("error") && <button type="button" onClick={() => setLoadState(s => Object.fromEntries(Object.entries(s).filter(([, state]) => state !== "error")))} className="mt-2 text-sm font-semibold text-rose-700 underline">Thử tải lại ảnh/video lỗi</button>}
+              <button
+                type="button"
+                onClick={saveMedia}
+                disabled={downloading || pickedItems.length === 0}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--aloha-green,#2D5A27)] px-3 py-1.5 text-xs font-bold text-white shadow-2xs hover:opacity-90 active:scale-95 disabled:opacity-40 transition"
+              >
+                {downloading ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : (
+                  <Download size={13} />
+                )}
+                <span>{downloading ? "Đang tải…" : "Lưu ảnh & video"}</span>
+              </button>
             </div>
-          ) : null}
-        </div>
 
-        <div className="shrink-0 border-t border-stone-100 px-3 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          <p role="status" aria-live="polite" className="min-h-4 px-2 text-center text-xs text-stone-500">
-            {busy ? `Đang chuẩn bị ảnh & video… (${pickedItems.length - pending}/${pickedItems.length})` : ""}
-          </p>
-          <div className="mt-1 grid grid-cols-4 gap-1">
-            {actions.map((a) => {
-              const disabled = (a.key !== "save" && captionLoading) || (a.wait && busy) || (a.key === "save" && downloading);
-              return (
-                <button
-                  key={a.key}
-                  type="button"
-                  onClick={a.onClick}
-                  disabled={disabled}
-                  className="flex flex-col items-center gap-1.5 rounded-2xl px-1 py-2 text-[11px] font-semibold text-stone-700 transition hover:bg-stone-50 disabled:opacity-40"
-                >
-                  <span className={`flex h-12 w-12 items-center justify-center rounded-full ${a.tone}`}>
-                    {a.wait && busy ? <Loader2 size={18} className="animate-spin" /> : a.icon}
-                  </span>
-                  <span className="text-center leading-tight">{a.label}</span>
-                </button>
-              );
-            })}
+            <ul className="flex gap-2 overflow-x-auto pb-1">
+              {media.map((m) => {
+                const on = picked.includes(m.src);
+                return (
+                  <li key={m.src} className="shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => toggle(m.src)}
+                      aria-pressed={on}
+                      className={`relative h-16 w-16 overflow-hidden rounded-xl bg-stone-100 ring-2 transition active:scale-95 ${
+                        on ? "ring-[var(--aloha-green,#2D5A27)]" : "ring-transparent opacity-70"
+                      }`}
+                    >
+                      {m.kind === "video" ? (
+                        poster ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={poster} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <video src={m.src} muted playsInline className="h-full w-full object-cover" />
+                        )
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={m.src} alt="" className="h-full w-full object-cover" />
+                      )}
+                      {m.kind === "video" && (
+                        <span className="absolute inset-0 flex items-center justify-center bg-black/35">
+                          <Play size={16} className="fill-white text-white" />
+                        </span>
+                      )}
+                      <span
+                        className={`absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full text-white ring-1 ring-white ${
+                          on ? "bg-[var(--aloha-green,#2D5A27)]" : "bg-black/35"
+                        }`}
+                      >
+                        {on && <Check size={10} strokeWidth={3} />}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
+        )}
+
+        {/* Lời giới thiệu soạn sẵn (Caption Editor) */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+              <Sparkles size={13} className="text-amber-500" />
+              Bài viết giới thiệu
+            </span>
+            <div className="flex items-center gap-3">
+              {editedCaption !== null && (
+                <button
+                  type="button"
+                  onClick={() => setEditedCaption(null)}
+                  disabled={captionLoading}
+                  className="text-[11px] font-semibold text-stone-500 hover:text-stone-800 hover:underline transition"
+                >
+                  Khôi phục
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleCopyCaption}
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-[var(--aloha-green,#2D5A27)] hover:underline"
+              >
+                {copiedCaption ? <Check size={12} /> : <Copy size={12} />}
+                {copiedCaption ? "Đã sao chép" : "Sao chép bài viết"}
+              </button>
+            </div>
+          </div>
+          <ShareCaptionEditor
+            value={caption}
+            onChange={setEditedCaption}
+            onReset={() => setEditedCaption(null)}
+            loading={captionLoading}
+            hideHeader={true}
+          />
+          {captionError && (
+            <p role="status" className="text-xs text-amber-700">
+              Chưa tải được giá hiện tại. Nội dung chia sẻ chỉ giữ tên và link để khách xem giá trên shop.
+            </p>
+          )}
         </div>
       </div>
+
+      {showExtensionGuide && (
+        <ProductExtensionGuideModal
+          onClose={() => setShowExtensionGuide(false)}
+          onCheckAgain={() => {
+            if (document.documentElement.getAttribute("data-aloha-extension-installed") === "true") {
+              setHasExtension(true);
+              toast.push("🎉 Tuyệt vời! Tiện ích Aloha Auto Share đã kết nối thành công!");
+            } else {
+              toast.push("Chưa tìm thấy tiện ích. Hãy kiểm tra bạn đã bật Developer Mode và tải thư mục tiện ích chưa nhé!");
+            }
+          }}
+        />
+      )}
     </dialog>
   );
 }

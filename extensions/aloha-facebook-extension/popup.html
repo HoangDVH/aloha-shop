@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Aloha Auto Share</title>
+  <style>
+    body {
+      width: 280px;
+      margin: 0;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #1e293b;
+      background: #fafaf9;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .header img {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+    }
+    .title {
+      font-weight: 700;
+      font-size: 14px;
+      color: #2D5A27;
+      margin: 0;
+    }
+    .badge {
+      display: inline-block;
+      background: #dcfce7;
+      color: #166534;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-top: 4px;
+    }
+    .guide {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #475569;
+    }
+    .guide ol {
+      margin: 0;
+      padding-left: 18px;
+    }
+    .guide li {
+      margin-bottom: 6px;
+    }
+    .btn {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+      text-align: center;
+      background: #2D5A27;
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 12px;
+      padding: 10px;
+      border-radius: 10px;
+      margin-top: 12px;
+      border: none;
+      cursor: pointer;
+    }
+    .btn:hover {
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="icons/icon.png" alt="Aloha Logo">
+    <div>
+      <h1 class="title">Aloha Auto Share</h1>
+      <span class="badge">● Đang hoạt động</span>
+    </div>
+  </div>
+
+  <div class="guide">
+    <strong>Cách sử dụng:</strong>
+    <ol>
+      <li>Mở trang sản phẩm bất kỳ trên website Aloha.</li>
+      <li>Bấm <strong>Chia sẻ</strong> &rarr; chọn <strong>Đăng Facebook tự động</strong>.</li>
+      <li>Tiện ích sẽ tự nạp trọn bộ ảnh & nội dung vào Facebook!</li>
+    </ol>
+  </div>
+
+  <button id="open-shop-btn" class="btn">Mở Aloha Shop</button>
+
+  <script src="popup.js"></script>
+</body>
+</html>
