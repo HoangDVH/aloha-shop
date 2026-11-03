@@ -31,6 +31,67 @@ interface SavedZaloCredentials {
   savedAt?: string;
 }
 
+export interface WholesaleNotifyData {
+  fullName: string;
+  phone: string;
+  region?: string;
+  shopName?: string;
+  businessType?: string;
+  address?: string;
+  note?: string;
+  registeredAt?: string | Date;
+}
+
+export interface NewOrderNotifyData {
+  orderCode: string;
+  customerName: string;
+  phone: string;
+  address?: string;
+  deliveryMethod?: string;
+  paymentMethod?: string;
+  total: number;
+  shippingFee?: number;
+  discount?: number;
+  items?: Array<{
+    name: string;
+    quantity: number;
+    price?: number;
+    variant?: string;
+  }>;
+  customerNote?: string;
+  createdAt?: string | Date;
+}
+
+export interface CollaboratorNotifyData {
+  fullName: string;
+  phone: string;
+  email?: string;
+  ctvCode?: string;
+  referralChannel?: string;
+  channelUrl?: string;
+  businessExperience?: string;
+  address?: string;
+  note?: string;
+  registeredAt?: string | Date;
+  type?: "new_account" | "upgrade_account";
+}
+
+export interface RecruitmentNotifyData {
+  fullName: string;
+  phone: string;
+  email?: string;
+  position: string;
+  submissionType?: string;
+  location?: string;
+  experienceLevel?: string;
+  experienceSummary?: string;
+  cvFileName?: string;
+  publicCode: string;
+  appliedAt?: string | Date;
+}
+
+export type ZaloNotificationType = "wholesale" | "order" | "ctv" | "recruitment";
+
 class ZaloNotifyService {
   private api: any = null;
   private ownUid: string = "";
@@ -89,6 +150,15 @@ class ZaloNotifyService {
       console.error("[ZaloNotifyService] ensureGroup error:", e?.message || e);
     }
     return this.targetGroupId;
+  }
+
+  public async getGroupIdForType(type: ZaloNotificationType): Promise<string> {
+    if (type === "order" && process.env.ZALO_ORDER_GROUP_ID) return process.env.ZALO_ORDER_GROUP_ID;
+    if (type === "ctv" && process.env.ZALO_CTV_GROUP_ID) return process.env.ZALO_CTV_GROUP_ID;
+    if (type === "recruitment" && process.env.ZALO_RECRUITMENT_GROUP_ID) return process.env.ZALO_RECRUITMENT_GROUP_ID;
+    if (type === "wholesale" && process.env.ZALO_WHOLESALE_GROUP_ID) return process.env.ZALO_WHOLESALE_GROUP_ID;
+    if (process.env.ZALO_NOTIFY_GROUP_ID) return process.env.ZALO_NOTIFY_GROUP_ID;
+    return this.ensureGroup();
   }
 
   public async restoreSession(): Promise<boolean> {
@@ -221,58 +291,161 @@ class ZaloNotifyService {
     }
   }
 
-  public async sendWholesaleRegistrationNotice(data: {
-    fullName: string;
-    phone: string;
-    region?: string;
-    shopName?: string;
-    businessType?: string;
-    address?: string;
-    note?: string;
-    registeredAt?: string | Date;
-  }): Promise<{ success: boolean; reason?: string }> {
+  private async sendToGroup(
+    groupId: string,
+    messageText: string,
+    tag: string
+  ): Promise<{ success: boolean; reason?: string }> {
     if (!this.api || !this.ownUid) {
       const restored = await this.restoreSession();
       if (!restored || !this.api || !this.ownUid) {
-        console.warn(`[ZaloNotifyService] Cannot send notice to ${NOTIFY_PHONE_TARGET}: Zalo session not connected.`);
+        console.warn(`[ZaloNotifyService] Cannot send [${tag}] to ${NOTIFY_PHONE_TARGET}: Zalo session not connected.`);
         return { success: false, reason: "Zalo chưa được kết nối bằng mã QR." };
       }
     }
 
     try {
-      const regionText = data.region === "HCM" ? "Sỉ TP.HCM" : "Sỉ Tỉnh";
-      const timeStr = data.registeredAt
-        ? new Date(data.registeredAt).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })
-        : new Date().toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
-
-      const messageText = [
-        `🌿 [ALOHA] CÓ KHÁCH ĐĂNG KÝ MUA SỈ MỚI:`,
-        `👤 Khách hàng: ${data.fullName}`,
-        `📞 Số điện thoại: ${data.phone}`,
-        `📍 Phân vùng: ${regionText}`,
-        `🏪 Cửa hàng: ${data.shopName || "Chưa cập nhật"}`,
-        `🏢 Mô hình: ${data.businessType || "Chưa cập nhật"}`,
-        data.address ? `🏠 Địa chỉ: ${data.address}` : "",
-        data.note ? `📝 Ghi chú: ${data.note}` : "",
-        `💬 Nhắn Zalo khách ngay: https://zalo.me/${data.phone}`,
-        `⏰ Thời gian: ${timeStr}`,
-      ]
-        .filter(Boolean)
-        .join("\n");
-
-      const gid = await this.ensureGroup();
+      const gid = groupId || (await this.ensureGroup());
       if (!gid) {
         throw new Error("Không tìm thấy nhóm Zalo thông báo");
       }
 
       const sendResult = await this.api.sendMessage(messageText, gid, zca.ThreadType.Group);
       const msgId = sendResult?.message?.msgId;
-      console.log(`[ZaloNotifyService] Successfully sent wholesale alert to Group ${this.targetGroupName} (${gid}) for customer ${data.phone}. MsgId: ${msgId}`);
+      console.log(`[ZaloNotifyService] Successfully sent [${tag}] to Group (${gid}). MsgId: ${msgId}`);
       return { success: true };
     } catch (err: any) {
-      console.error(`[ZaloNotifyService] Failed to send message to group:`, err?.message || err);
+      console.error(`[ZaloNotifyService] Failed to send [${tag}] to group:`, err?.message || err);
       return { success: false, reason: err?.message || String(err) };
     }
+  }
+
+  public async sendWholesaleRegistrationNotice(data: WholesaleNotifyData): Promise<{ success: boolean; reason?: string }> {
+    const regionText = data.region === "HCM" ? "Sỉ TP.HCM" : "Sỉ Tỉnh";
+    const timeStr = data.registeredAt
+      ? new Date(data.registeredAt).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })
+      : new Date().toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+
+    const messageText = [
+      `🌾 [ALOHA] CÓ KHÁCH ĐĂNG KÝ MUA SỈ MỚI:`,
+      `👤 Khách hàng: ${data.fullName}`,
+      `📞 Số điện thoại: ${data.phone}`,
+      `📍 Phân vùng: ${regionText}`,
+      `🏪 Cửa hàng: ${data.shopName || "Chưa cập nhật"}`,
+      `🏢 Mô hình: ${data.businessType || "Chưa cập nhật"}`,
+      data.address ? `🏠 Địa chỉ: ${data.address}` : "",
+      data.note ? `📝 Ghi chú: ${data.note}` : "",
+      `💬 Nhắn Zalo khách ngay: https://zalo.me/${data.phone}`,
+      `🔗 Quản trị khách sỉ: https://alohathegioichaucay.com/admin/khach-si`,
+      `⏰ Thời gian: ${timeStr}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const gid = await this.getGroupIdForType("wholesale");
+    return this.sendToGroup(gid, messageText, `Wholesale:${data.phone}`);
+  }
+
+  public async sendNewOrderNotice(data: NewOrderNotifyData): Promise<{ success: boolean; reason?: string }> {
+    const timeStr = data.createdAt
+      ? new Date(data.createdAt).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })
+      : new Date().toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+    const totalStr = new Intl.NumberFormat("vi-VN").format(Math.max(0, data.total || 0));
+
+    const items = (data.items || []).slice(0, 8);
+    const itemsLines = items.map((it, idx) => {
+      const priceStr = it.price != null ? ` - ${new Intl.NumberFormat("vi-VN").format(it.price * it.quantity)}đ` : "";
+      const variantStr = it.variant ? ` (${it.variant})` : "";
+      return `  ${idx + 1}. ${it.name}${variantStr} x ${it.quantity}${priceStr}`;
+    });
+    if ((data.items || []).length > 8) {
+      itemsLines.push(`  ... và ${(data.items || []).length - 8} sản phẩm khác`);
+    }
+
+    const deliveryStr = data.deliveryMethod === "lay_tai_tiem" ? "Đến tiệm lấy" : "Giao tận nơi";
+
+    const messageText = [
+      `🛒 [ALOHA] CÓ ĐƠN HÀNG MỚI TỪ WEBSITE!`,
+      `📦 Mã đơn: #${data.orderCode}`,
+      `👤 Khách hàng: ${data.customerName}`,
+      `📞 Số điện thoại: ${data.phone}`,
+      `💰 Tổng thanh toán: ${totalStr}đ`,
+      data.paymentMethod ? `💳 Phương thức: ${data.paymentMethod}` : "",
+      `🚚 Hình thức: ${deliveryStr}`,
+      data.address ? `🏠 Địa chỉ: ${data.address}` : "",
+      itemsLines.length > 0 ? `🛍️ Danh sách sản phẩm:\n${itemsLines.join("\n")}` : "",
+      data.customerNote ? `📝 Ghi chú: ${data.customerNote}` : "",
+      `💬 Nhắn Zalo khách ngay: https://zalo.me/${data.phone}`,
+      `🔗 Chi tiết đơn hàng: https://alohathegioichaucay.com/admin/don-hang-web?code=${encodeURIComponent(data.orderCode)}`,
+      `⏰ Thời gian: ${timeStr}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const gid = await this.getGroupIdForType("order");
+    return this.sendToGroup(gid, messageText, `Order:${data.orderCode}`);
+  }
+
+  public async sendCollaboratorNotice(data: CollaboratorNotifyData): Promise<{ success: boolean; reason?: string }> {
+    const timeStr = data.registeredAt
+      ? new Date(data.registeredAt).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })
+      : new Date().toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+
+    const typeTitle = data.type === "upgrade_account"
+      ? "🤝 [ALOHA] THÀNH VIÊN ĐĂNG KÝ TRỞ THÀNH CTV!"
+      : "🤝 [ALOHA] CÓ ĐĂNG KÝ CỘNG TÁC VIÊN (CTV) MỚI!";
+
+    const messageText = [
+      typeTitle,
+      `👤 Họ và tên: ${data.fullName}`,
+      `📞 Số điện thoại: ${data.phone}`,
+      data.email ? `📧 Email: ${data.email}` : "",
+      data.ctvCode ? `🏷️ Mã CTV mong muốn/cấp: ${data.ctvCode}` : "",
+      data.referralChannel ? `📢 Kênh dự kiến: ${data.referralChannel}` : "",
+      data.channelUrl ? `🔗 Link kênh/shop: ${data.channelUrl}` : "",
+      data.businessExperience ? `💼 Kinh nghiệm: ${data.businessExperience}` : "",
+      data.address ? `🏠 Khu vực/Địa chỉ: ${data.address}` : "",
+      data.note ? `📝 Ghi chú: ${data.note}` : "",
+      `💬 Nhắn Zalo CTV ngay: https://zalo.me/${data.phone}`,
+      `🔗 Quản trị danh sách CTV: https://alohathegioichaucay.com/admin/ctv`,
+      `⏰ Thời gian: ${timeStr}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const gid = await this.getGroupIdForType("ctv");
+    return this.sendToGroup(gid, messageText, `CTV:${data.phone}`);
+  }
+
+  public async sendRecruitmentNotice(data: RecruitmentNotifyData): Promise<{ success: boolean; reason?: string }> {
+    const timeStr = data.appliedAt
+      ? new Date(data.appliedAt).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })
+      : new Date().toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+
+    const submissionTitle = data.submissionType === "general_interest"
+      ? "📄 [ALOHA] CÓ HỒ SƠ ỨNG VIÊN TIỀM NĂNG!"
+      : "📄 [ALOHA] CÓ HỒ SƠ ỨNG TUYỂN VỊ TRÍ MỚI!";
+
+    const messageText = [
+      submissionTitle,
+      `👤 Ứng viên: ${data.fullName}`,
+      `💼 Vị trí: ${data.position}`,
+      `📞 Số điện thoại: ${data.phone}`,
+      data.email ? `📧 Email: ${data.email}` : "",
+      data.location ? `📍 Địa điểm làm việc: ${data.location}` : "",
+      data.experienceLevel ? `⭐ Mức kinh nghiệm: ${data.experienceLevel}` : "",
+      data.experienceSummary ? `📝 Giới thiệu/Kinh nghiệm: ${data.experienceSummary}` : "",
+      data.cvFileName ? `📎 File CV đính kèm: ${data.cvFileName}` : "",
+      `🏷️ Mã hồ sơ: ${data.publicCode}`,
+      `💬 Nhắn Zalo ứng viên: https://zalo.me/${data.phone}`,
+      `🔗 Xem & xử lý hồ sơ: https://alohathegioichaucay.com/admin/tuyen-dung/ho-so?code=${encodeURIComponent(data.publicCode)}`,
+      `⏰ Thời gian: ${timeStr}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const gid = await this.getGroupIdForType("recruitment");
+    return this.sendToGroup(gid, messageText, `Recruitment:${data.publicCode}`);
   }
 }
 

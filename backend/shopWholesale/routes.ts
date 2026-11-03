@@ -420,17 +420,64 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
     }
   });
 
-  app.post("/api/shop/zalo-notify/test-send", async (_req, res) => {
+  app.post("/api/shop/zalo-notify/test-send", async (req, res) => {
     try {
-      const result = await zaloNotifyService.sendWholesaleRegistrationNotice({
-        fullName: "Khách Thử Nghiệm",
-        phone: "0912345678",
-        region: "HCM",
-        shopName: "Tiệm Cây Xanh Test",
-        businessType: "Đại lý bán lẻ",
-        address: "123 Nguyễn Thị Thập, Phường Tân Phú, Quận 7, TP. Hồ Chí Minh",
-        note: "Tin nhắn kiểm tra tính năng thông báo Zalo đến số " + NOTIFY_PHONE_TARGET,
-      });
+      const type = String(req.body?.type || "wholesale");
+      let result;
+      if (type === "order") {
+        result = await zaloNotifyService.sendNewOrderNotice({
+          orderCode: "TEST-DH" + Math.floor(1000 + Math.random() * 9000),
+          customerName: "Nguyễn Văn Test",
+          phone: "0912345678",
+          address: "123 Nguyễn Thị Thập, Phường Tân Phú, Quận 7, TP. Hồ Chí Minh",
+          deliveryMethod: "giao_tan_noi",
+          paymentMethod: "COD (Thanh toán khi nhận hàng)",
+          total: 350000,
+          items: [
+            { name: "Cây Kim Tiền Để Bàn Phát Tài", quantity: 1, price: 150000, variant: "Chậu sứ trắng" },
+            { name: "Đất Trồng Sen Đá Cao Cấp 5L", quantity: 2, price: 100000 },
+          ],
+          customerNote: "Giao giờ hành chính, gọi trước khi giao",
+        });
+      } else if (type === "ctv") {
+        result = await zaloNotifyService.sendCollaboratorNotice({
+          fullName: "Lê Thị CTV Test",
+          phone: "0987654321",
+          email: "ctv.test@gmail.com",
+          ctvCode: "CTV-TEST88",
+          referralChannel: "TikTok / Facebook",
+          channelUrl: "https://tiktok.com/@aloha_ctv_test",
+          businessExperience: "Có kinh nghiệm 2 năm bán cây cảnh online",
+          address: "TP. Thủ Đức, TP. Hồ Chí Minh",
+          note: "Đăng ký làm CTV bán chậu và kiểng lá",
+          registeredAt: new Date(),
+          type: "new_account",
+        });
+      } else if (type === "recruitment") {
+        result = await zaloNotifyService.sendRecruitmentNotice({
+          fullName: "Trần Tuyển Dụng Test",
+          phone: "0933112233",
+          email: "ungvien.test@gmail.com",
+          position: "Nhân viên chăm sóc cây kiểng & Showroom",
+          submissionType: "job_application",
+          location: "Showroom Aloha Quận 7",
+          experienceLevel: "1 - 2 năm",
+          experienceSummary: "Đã làm việc tại vườn ươm 1.5 năm, am hiểu kỹ thuật chăm sen đá & monstera",
+          cvFileName: "CV_TranTuyenDung_Test.pdf",
+          publicCode: "TD-" + Math.floor(1000 + Math.random() * 9000),
+          appliedAt: new Date(),
+        });
+      } else {
+        result = await zaloNotifyService.sendWholesaleRegistrationNotice({
+          fullName: "Khách Sỉ Thử Nghiệm",
+          phone: "0912345678",
+          region: "HCM",
+          shopName: "Tiệm Cây Xanh Test",
+          businessType: "Đại lý bán lẻ",
+          address: "123 Nguyễn Thị Thập, Phường Tân Phú, Quận 7, TP. Hồ Chí Minh",
+          note: "Tin nhắn kiểm tra tính năng thông báo Zalo đến số " + NOTIFY_PHONE_TARGET,
+        });
+      }
       res.json(result);
     } catch (err: any) {
       res.status(500).json({ error: err?.message || "Lỗi gửi tin nhắn" });
@@ -513,9 +560,9 @@ function renderZaloConnectHtml() {
     <div class="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-800 mb-3">
       Test Thông Báo Zalo (Số: ${NOTIFY_PHONE_TARGET})
     </div>
-    <h1 class="text-2xl font-black text-[#0f3822]">KẾT NỐI ZALO THÔNG BÁO SỈ</h1>
+    <h1 class="text-2xl font-black text-[#0f3822]">KẾT NỐI ZALO THÔNG BÁO ALOHA</h1>
     <p class="text-xs text-slate-500 mt-1">
-      Quét mã QR bằng ứng dụng Zalo trên số <strong class="text-emerald-800">${NOTIFY_PHONE_TARGET}</strong> để nhận thông báo tức thì vào nhóm Zalo "Aloha - Thông Báo Sỉ" (gồm số test ${NOTIFY_PHONE_TARGET} và số shop 0794901233).
+      Hệ thống thông báo tự động đa kênh qua Zalo: <strong>Đơn hàng mới, Cộng tác viên (CTV), Tuyển dụng, và Khách mua sỉ</strong> trực tiếp về nhóm Zalo nội bộ!
     </p>
 
     <div id="statusBadge" class="mt-4 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700">
@@ -532,9 +579,21 @@ function renderZaloConnectHtml() {
         Tạo mã QR kết nối Zalo
       </button>
 
-      <button id="btnTestSend" onclick="testSend()" class="w-full rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white py-2.5 px-4 text-xs font-bold shadow transition active:scale-95 cursor-pointer">
-        Gửi tin nhắn thử nghiệm vào Nhóm Zalo
-      </button>
+      <div class="pt-2 text-xs font-bold text-slate-700 text-left">Gửi thông báo thử nghiệm:</div>
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="testSend('order')" class="rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white py-2 px-2 text-xs font-bold shadow transition active:scale-95 cursor-pointer">
+          🛒 Đơn Hàng Mới
+        </button>
+        <button onclick="testSend('ctv')" class="rounded-xl bg-blue-700 hover:bg-blue-800 text-white py-2 px-2 text-xs font-bold shadow transition active:scale-95 cursor-pointer">
+          🤝 Cộng Tác Viên
+        </button>
+        <button onclick="testSend('recruitment')" class="rounded-xl bg-amber-700 hover:bg-amber-800 text-white py-2 px-2 text-xs font-bold shadow transition active:scale-95 cursor-pointer">
+          📄 Tuyển Dụng
+        </button>
+        <button onclick="testSend('wholesale')" class="rounded-xl bg-teal-700 hover:bg-teal-800 text-white py-2 px-2 text-xs font-bold shadow transition active:scale-95 cursor-pointer">
+          🌾 Khách Mua Sỉ
+        </button>
+      </div>
     </div>
 
     <div class="mt-5 text-[11px] text-slate-500 text-left bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-100 leading-relaxed">
@@ -596,23 +655,28 @@ function renderZaloConnectHtml() {
       }
     }
 
-    async function testSend() {
-      const btn = document.getElementById('btnTestSend');
-      btn.innerText = 'Đang gửi...';
-      btn.disabled = true;
+    async function testSend(type = 'wholesale') {
+      const labels = {
+        order: 'Đơn Hàng Mới',
+        ctv: 'Cộng Tác Viên (CTV)',
+        recruitment: 'Tuyển Dụng',
+        wholesale: 'Khách Mua Sỉ'
+      };
+      const name = labels[type] || type;
       try {
-        const res = await fetch('/api/shop/zalo-notify/test-send', { method: 'POST' });
+        const res = await fetch('/api/shop/zalo-notify/test-send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type })
+        });
         const result = await res.json();
         if (result.success) {
-          alert('✅ Đã gửi thông báo test thành công vào nhóm Zalo "Aloha - Thông Báo Sỉ"! Mở Zalo kiểm tra ting ting nhé.');
+          alert('✅ Đã gửi thông báo test [' + name + '] thành công vào nhóm Zalo! Mở Zalo kiểm tra ting ting nhé.');
         } else {
-          alert('⚠️ Chưa thể gửi: ' + (result.reason || result.error || 'Vui lòng quét mã QR trước'));
+          alert('⚠️ Chưa thể gửi [' + name + ']: ' + (result.reason || result.error || 'Vui lòng quét mã QR trước'));
         }
       } catch (e) {
         alert('Lỗi: ' + e.message);
-      } finally {
-        btn.innerText = 'Gửi tin nhắn thử nghiệm vào Nhóm Zalo';
-        btn.disabled = false;
       }
     }
 

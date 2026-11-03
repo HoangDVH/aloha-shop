@@ -4,6 +4,7 @@ import type { Db } from "mongodb";
 import type { GetShopDb } from "../shopOrders/routes.js";
 import { shopRateLimitOrReject } from "../shopRateLimit.js";
 import { broadcastAdminWebPush } from "../shopPush/webPushService.js";
+import { zaloNotifyService } from "../shopWholesale/zaloNotifyService.js";
 import {
   APPLICATIONS_COL,
   EMPLOYMENT_TYPES,
@@ -356,6 +357,31 @@ export function registerRecruitmentPublicRoutes(app: Express, getShopDb: GetShop
             url: `/admin/tuyen-dung/ho-so?code=${encodeURIComponent(doc.publicCode)}`,
             tag: `recruit-${doc.publicCode}`,
           }).catch((e) => console.warn("[web-push] recruitment apply push failed:", e?.message || e));
+
+          const locationNames = locationPreference.mode === "any"
+            ? "Tất cả các chi nhánh"
+            : (locationPreference.locations || []).map((l) => `${l.name} (${l.city})`).join(", ");
+
+          const expLevelMap: Record<string, string> = {
+            chua_co: "Chưa có kinh nghiệm",
+            duoi_1_nam: "Dưới 1 năm",
+            tu_1_den_2_nam: "1 - 2 năm",
+            tren_2_nam: "Trên 2 năm",
+          };
+
+          void zaloNotifyService.sendRecruitmentNotice({
+            fullName: input.fullName,
+            phone: input.phone,
+            email: input.email,
+            position: interestedPosition || "Ứng tuyển chung",
+            submissionType: input.submissionType,
+            location: locationNames,
+            experienceLevel: expLevelMap[input.experienceLevel] || input.experienceLevel,
+            experienceSummary: input.experienceSummary,
+            cvFileName: cv?.originalName,
+            publicCode: doc.publicCode,
+            appliedAt: now,
+          }).catch((e) => console.warn("[zalo] recruitment notice failed:", e?.message || e));
 
           res.status(201).json({ ok: true, publicCode: doc.publicCode, submissionType: doc.submissionType });
           return;

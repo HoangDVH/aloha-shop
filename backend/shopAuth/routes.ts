@@ -35,6 +35,7 @@ import { syncBus } from "../syncBus.js";
 import { rateLimitAllow, shopRateLimitOrReject } from "../shopRateLimit.js";
 import { putGoogleOauthState, takeGoogleOauthState } from "./authEphemeral.js";
 import { broadcastAdminWebPush } from "../shopPush/webPushService.js";
+import { zaloNotifyService } from "../shopWholesale/zaloNotifyService.js";
 import { checkRefreshToken, markRefreshRotated, refreshFamilyOf } from "./refreshTokens.js";
 import {
   allocateCtvCode,
@@ -337,6 +338,27 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
           url: `/admin/ctv/khach-hang?id=${encodeURIComponent(String(ins.insertedId))}&review=ctv`,
           tag: `ctv-${String(ins.insertedId)}`,
         }).catch((e) => console.warn("[web-push] ctv register push failed:", e?.message || e));
+
+        const appDoc = ctvApp as any;
+        const expDesc = appDoc?.hasBusinessExp
+          ? `Có kinh nghiệm (${appDoc?.businessExpYears || 0} năm): ${appDoc?.businessExpNote || ""}`.trim()
+          : appDoc?.hasBusinessExp === false
+            ? "Chưa có kinh nghiệm bán hàng"
+            : undefined;
+
+        void zaloNotifyService.sendCollaboratorNotice({
+          fullName,
+          phone: phone || phoneRaw || "",
+          email,
+          ctvCode: ctvCode || undefined,
+          referralChannel: appDoc?.referralChannel,
+          channelUrl: appDoc?.channelUrl,
+          businessExperience: expDesc,
+          address: appDoc?.addressText,
+          note: appDoc?.businessExpNote,
+          registeredAt: now,
+          type: "new_account",
+        }).catch((e) => console.warn("[zalo] ctv register notice failed:", e?.message || e));
       } else {
         publishShopAccountChange(String(ins.insertedId), "shop_register");
       }
@@ -562,6 +584,31 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
           url: `/admin/ctv/khach-hang?id=${encodeURIComponent(String(user._id))}&review=ctv`,
           tag: `ctv-apply-${String(user._id)}`,
         }).catch((e) => console.warn("[web-push] ctv apply push failed:", e?.message || e));
+
+        const rawApp = patch as any;
+        const userApp = user as any;
+        const hasExp = rawApp.hasBusinessExp ?? userApp.hasBusinessExp;
+        const expYears = rawApp.businessExpYears ?? userApp.businessExpYears ?? 0;
+        const expNote = rawApp.businessExpNote || userApp.businessExpNote || "";
+        const expDesc = hasExp
+          ? `Có kinh nghiệm (${expYears} năm): ${expNote}`.trim()
+          : hasExp === false
+            ? "Chưa có kinh nghiệm bán hàng"
+            : undefined;
+
+        void zaloNotifyService.sendCollaboratorNotice({
+          fullName: nameDisplay,
+          phone: String(patch.phone || updated?.phone || user.phone || ""),
+          email: updated?.email || user.email,
+          ctvCode: String(patch.ctvCode || user.ctvCode || ""),
+          referralChannel: rawApp.referralChannel || userApp.referralChannel,
+          channelUrl: rawApp.channelUrl || userApp.channelUrl,
+          businessExperience: expDesc,
+          address: rawApp.addressText || userApp.addressText,
+          note: expNote,
+          registeredAt: new Date(),
+          type: "upgrade_account",
+        }).catch((e) => console.warn("[zalo] ctv apply notice failed:", e?.message || e));
       }
       return res.json({ ok: true, user: toPublicShopAccount(updated!) });
     } catch (e: any) {

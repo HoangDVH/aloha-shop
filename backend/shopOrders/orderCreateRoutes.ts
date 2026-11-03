@@ -17,6 +17,7 @@ import { annotatePreOrderDetails, assertStockAvailable } from "./stockApply.js";
 import { resolveShopPaymentQrForOrder } from "./bankConfig.js";
 import { syncBus } from "../syncBus.js";
 import { broadcastAdminWebPush } from "../shopPush/webPushService.js";
+import { zaloNotifyService } from "../shopWholesale/zaloNotifyService.js";
 import {
   type GetMainDb,
   applyCatalogPrices,
@@ -421,6 +422,34 @@ async function createShopOrder(
     url: `/admin/don-hang-web?code=${encodeURIComponent(code)}`,
     tag: `order-${code}`,
   }).catch((e) => console.warn("[web-push] order push failed:", e?.message || e));
+
+  const fullAddress = deliveryMethod === "lay_tai_tiem"
+    ? "Đến tiệm nhận hàng"
+    : [shippingAddress, ward, district, province].filter(Boolean).join(", ");
+  const orderItemsSummary = (orderDetails || []).map((it) => ({
+    name: it.productName,
+    quantity: it.quantity,
+    price: it.price,
+    variant: it.variantLabel,
+  }));
+  const paymentMethodLabel = isTransfer
+    ? "Chuyển khoản ngân hàng"
+    : form.usingCod
+      ? "COD (Thanh toán khi nhận hàng)"
+      : (method || "Khác");
+
+  void zaloNotifyService.sendNewOrderNotice({
+    orderCode: code,
+    customerName: customerName || "Khách web",
+    phone: customerPhone,
+    address: fullAddress,
+    deliveryMethod,
+    paymentMethod: paymentMethodLabel,
+    total: finalAmount,
+    items: orderItemsSummary,
+    customerNote: customerNote || undefined,
+    createdAt: doc.createdAt || new Date(),
+  }).catch((e) => console.warn("[zalo] order notice failed:", e?.message || e));
   void notifyOrderStatus(shopDb, doc, "dat_hang").catch((e) =>
     console.warn("[shop-notify] dat_hang", code, e?.message || e)
   );
