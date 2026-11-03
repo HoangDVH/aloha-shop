@@ -41,7 +41,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const mainBanner = shareBanner || banners.find((b) => b.kind === "main") || banners[0];
   const bannerUrl = String(mainBanner?.imageUrl || "").trim();
   const hasBanner = Boolean(bannerUrl);
-  const vHash = bannerUrl ? shortHash(bannerUrl) : "auto";
+  const vHash = bannerUrl ? shortHash(bannerUrl + "_hd") : "auto";
   const ogImageUrl = hasBanner
     ? `${SHOP_ORIGIN}/og/uu-dai?v=${vHash}`
     : undefined;

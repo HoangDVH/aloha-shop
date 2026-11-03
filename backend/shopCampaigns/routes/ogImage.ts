@@ -76,7 +76,7 @@ export async function campaignOgImageHandler(getDb: GetDb, req: Request, res: Re
       return;
     }
 
-    const cacheKey = `${cid || "current"}_${rawUrl.slice(-30)}_${fitMode}`;
+    const cacheKey = `${cid || "current"}_${rawUrl.slice(-30)}_${fitMode}_hd`;
     const cached = MEM_CACHE.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
       res.removeHeader("ETag");
@@ -107,7 +107,8 @@ export async function campaignOgImageHandler(getDb: GetDb, req: Request, res: Re
       finalBuffer = await sharp(rawBuffer, { failOn: "none" })
         .rotate()
         .resize(OG_WIDTH, OG_HEIGHT, { fit: "cover", position: "center" })
-        .jpeg({ quality: 90, progressive: false, mozjpeg: false })
+        .sharpen({ sigma: 0.75, m1: 0.5, m2: 1.5 })
+        .jpeg({ quality: 95, chromaSubsampling: "4:4:4", mozjpeg: true })
         .toBuffer();
     } else {
       // Banner ngang rộng (panoramic > 2.05:1 như 8:3):
@@ -133,7 +134,8 @@ export async function campaignOgImageHandler(getDb: GetDb, req: Request, res: Re
 
       finalBuffer = await sharp(bg)
         .composite([{ input: fg, left, top }])
-        .jpeg({ quality: 90, progressive: false, mozjpeg: false })
+        .sharpen({ sigma: 0.75, m1: 0.5, m2: 1.5 })
+        .jpeg({ quality: 95, chromaSubsampling: "4:4:4", mozjpeg: true })
         .toBuffer();
     }
 
