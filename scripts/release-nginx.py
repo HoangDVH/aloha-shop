@@ -20,6 +20,7 @@ def prepare(text, port, assets):
     block += '\n        proxy_cache off;\n        proxy_hide_header Cache-Control;\n        proxy_hide_header Expires;\n        add_header Cache-Control "private, no-store" always;'
     text = text[:start] + block + text[end:]
     text = re.sub(r"\n    # Aloha retained assets\n    location \^~ /_next/static/ \{[^}]+\}\n", "\n", text)
+    text = re.sub(r"\n    # Open Graph dynamic images[^\n]*\n    location /og/ \{[^}]+\}\n", "\n", text)
     if re.search(r"location\s+[^\n]*?/_next/static/", text):
         raise ValueError("Unmanaged static location; review before deploying")
     static = f'''\n    # Aloha retained assets
@@ -27,6 +28,16 @@ def prepare(text, port, assets):
         alias {assets}/;
         add_header Cache-Control "public, max-age=31536000, immutable";
         access_log off;
+    }}
+
+    # Open Graph dynamic images (Facebook / Zalo crawler)
+    location /og/ {{
+        proxy_pass http://nextjs_shop_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }}
 '''
     start = text.index("    location / {")
