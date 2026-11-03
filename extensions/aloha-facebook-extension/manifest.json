@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Aloha Auto Share - Đăng bài Facebook",
-  "version": "1.0.0",
+  "version": "2.3.0",
   "description": "Tự động nạp toàn bộ ảnh và bài viết từ Aloha Shop vào Facebook",
   "icons": {
     "16": "icons/icon.png",
@@ -34,8 +34,22 @@
       "matches": [
         "*://*.facebook.com/*"
       ],
+      "js": ["content_facebook_main.js"],
+      "world": "MAIN",
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://*.facebook.com/*"
+      ],
       "js": ["content_facebook.js"],
       "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["content_facebook_main.js"],
+      "matches": ["*://*.facebook.com/*"]
     }
   ],
   "action": {
