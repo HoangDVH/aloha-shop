@@ -538,7 +538,7 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
     }
   });
 
-  app.get("/zalo-connect", (_req, res) => {
+  app.get(["/zalo-connect", "/api/shop/zalo-connect", "/api/shop/zalo-notify/connect-page"], (_req, res) => {
     res.send(renderZaloConnectHtml());
   });
 }
