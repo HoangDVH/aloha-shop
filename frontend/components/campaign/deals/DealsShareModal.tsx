@@ -38,15 +38,13 @@ export function DealsShareModal({
   const isCtv = Boolean(user?.roles?.includes("ctv") && user?.ctvCode);
   const ctvCode = isCtv && user?.ctvCode ? normalizeCtvCode(user.ctvCode) : "";
 
-  // Tạo URL chia sẻ: Gắn mã CTV (khi người dùng thực sự là CTV) hoặc gắn UTM tracking chuẩn
+  // Tạo URL chia sẻ: Gắn mã CTV (khi người dùng thực sự là CTV) hoặc dùng link chuẩn canonical không kèm query params
+  // để tránh phân mảnh cache Open Graph trên Facebook/Zalo
   const shareUrl = useMemo(() => {
     try {
       const u = new URL("/uu-dai", SHOP_ORIGIN);
       if (ctvCode) {
         u.searchParams.set("ctv", ctvCode);
-      } else {
-        u.searchParams.set("utm_source", "share");
-        u.searchParams.set("utm_medium", "deals");
       }
       return u.toString();
     } catch {
