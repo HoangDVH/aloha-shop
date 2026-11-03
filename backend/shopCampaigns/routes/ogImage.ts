@@ -44,7 +44,12 @@ async function readImageBuffer(imageUrl: string): Promise<Buffer | null> {
 }
 
 export async function campaignOgImageHandler(getDb: GetDb, req: Request, res: Response): Promise<void> {
-  const cid = typeof req.query.cid === "string" ? req.query.cid.trim() : "";
+  const cid =
+    typeof req.params?.cid === "string"
+      ? req.params.cid.trim()
+      : typeof req.query.cid === "string"
+      ? req.query.cid.trim()
+      : "";
   const fitMode = typeof req.query.fit === "string" ? req.query.fit.trim() : "cover";
 
   try {
@@ -74,9 +79,12 @@ export async function campaignOgImageHandler(getDb: GetDb, req: Request, res: Re
     const cacheKey = `${cid || "current"}_${rawUrl.slice(-30)}_${fitMode}`;
     const cached = MEM_CACHE.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
+      res.removeHeader("ETag");
       res.setHeader("Content-Type", "image/jpeg");
-      res.setHeader("Cache-Control", "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800");
-      res.send(cached.buffer);
+      res.setHeader("Cache-Control", "public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Accept-Ranges", "bytes");
+      res.end(cached.buffer);
       return;
     }
 
@@ -131,9 +139,12 @@ export async function campaignOgImageHandler(getDb: GetDb, req: Request, res: Re
 
     MEM_CACHE.set(cacheKey, { buffer: finalBuffer, expiresAt: Date.now() + CACHE_TTL_MS });
 
+    res.removeHeader("ETag");
     res.setHeader("Content-Type", "image/jpeg");
-    res.setHeader("Cache-Control", "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800");
-    res.send(finalBuffer);
+    res.setHeader("Cache-Control", "public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Accept-Ranges", "bytes");
+    res.end(finalBuffer);
   } catch {
     res.redirect(302, "/brand/logo-full.png");
   }

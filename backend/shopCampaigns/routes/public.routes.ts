@@ -164,10 +164,18 @@ export function registerCampaignPublicRoutes(app: Express, getDb: GetDb) {
     res.sendStatus(204);
   });
 
-  app.get(["/api/shop/campaigns/og-image", "/api/shop/campaigns/og-image.jpg"], async (req, res) => {
-    applyShopCors(req, res);
-    await campaignOgImageHandler(getDb, req, res);
-  });
+  app.get(
+    [
+      "/api/shop/campaigns/og-image",
+      "/api/shop/campaigns/og-image.jpg",
+      "/api/shop/campaigns/og.jpg",
+      "/api/shop/campaigns/og/:cid.jpg",
+    ],
+    async (req, res) => {
+      applyShopCors(req, res);
+      await campaignOgImageHandler(getDb, req, res);
+    }
+  );
 
   app.get("/api/shop/campaigns/current", async (req, res) => {
     applyShopCors(req, res);

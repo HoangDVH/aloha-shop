@@ -43,7 +43,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const hasBanner = Boolean(bannerUrl);
   const vHash = bannerUrl ? shortHash(bannerUrl) : "auto";
   const ogImageUrl = hasBanner
-    ? `${SHOP_ORIGIN}/api/shop/campaigns/og-image.jpg?cid=${encodeURIComponent(c.id)}&v=${vHash}`
+    ? `${SHOP_ORIGIN}/og/uu-dai?v=${vHash}`
     : undefined;
 
   return {
@@ -61,6 +61,7 @@ export async function generateMetadata(): Promise<Metadata> {
             images: [
               {
                 url: ogImageUrl,
+                secureUrl: ogImageUrl,
                 width: 1200,
                 height: 630,
                 alt: `${title} · ${site}`,
