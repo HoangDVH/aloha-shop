@@ -99,7 +99,7 @@ export async function campaignOgImageHandler(getDb: GetDb, req: Request, res: Re
       finalBuffer = await sharp(rawBuffer, { failOn: "none" })
         .rotate()
         .resize(OG_WIDTH, OG_HEIGHT, { fit: "cover", position: "center" })
-        .jpeg({ quality: 92, mozjpeg: true })
+        .jpeg({ quality: 90, progressive: false, mozjpeg: false })
         .toBuffer();
     } else {
       // Banner ngang rộng (panoramic > 2.05:1 như 8:3):
@@ -125,7 +125,7 @@ export async function campaignOgImageHandler(getDb: GetDb, req: Request, res: Re
 
       finalBuffer = await sharp(bg)
         .composite([{ input: fg, left, top }])
-        .jpeg({ quality: 92, mozjpeg: true })
+        .jpeg({ quality: 90, progressive: false, mozjpeg: false })
         .toBuffer();
     }
 

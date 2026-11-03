@@ -5,7 +5,7 @@ import { SHOP_BRAND, shopBrand } from "@/lib/brand";
 import { fetchAppearance, fallbackAppearance } from "@/lib/appearance";
 import type { CurrentCampaignResponse } from "@/lib/campaign/campaignApi";
 import { DealsPage } from "@/components/campaign/deals/DealsPage";
-import { SHOP_ORIGIN } from "@/lib/seo";
+import { SHOP_ORIGIN, shortHash } from "@/lib/seo";
 
 async function currentCampaignForMeta(): Promise<CurrentCampaignResponse | null> {
   try {
@@ -36,9 +36,14 @@ export async function generateMetadata(): Promise<Metadata> {
   }
   const title = c.display.hero.title || c.name || "Ưu đãi & Mã giảm giá";
   const description = c.display.hero.subtitle || `Chương trình ${c.name} tại ${site}.`;
-  const hasBanner = Boolean(c.display?.banners?.some((b) => (b.kind === "main" || (b.kind as string) === "share") && b.imageUrl));
+  const banners = c.display?.banners || [];
+  const shareBanner = banners.find((b) => (b.kind as string) === "share" || (b.kind as string) === "og");
+  const mainBanner = shareBanner || banners.find((b) => b.kind === "main") || banners[0];
+  const bannerUrl = String(mainBanner?.imageUrl || "").trim();
+  const hasBanner = Boolean(bannerUrl);
+  const vHash = bannerUrl ? shortHash(bannerUrl) : "auto";
   const ogImageUrl = hasBanner
-    ? `${SHOP_ORIGIN}/api/shop/campaigns/og-image?cid=${encodeURIComponent(c.id)}&v=auto`
+    ? `${SHOP_ORIGIN}/api/shop/campaigns/og-image.jpg?cid=${encodeURIComponent(c.id)}&v=${vHash}`
     : undefined;
 
   return {
