@@ -19,8 +19,8 @@ def prepare(text, port, assets):
     block = re.sub(r'(?m)^\s*proxy_hide_header (?:Cache-Control|Expires);', '', block)
     block += '\n        proxy_cache off;\n        proxy_hide_header Cache-Control;\n        proxy_hide_header Expires;\n        add_header Cache-Control "private, no-store" always;'
     text = text[:start] + block + text[end:]
-    text = re.sub(r"\n    # Aloha retained assets\n    location \^~ /_next/static/ \{[^}]+\}\n", "\n", text)
-    text = re.sub(r"\n    # Open Graph dynamic images[^\n]*\n    location /og/ \{[^}]+\}\n", "\n", text)
+    text = re.sub(r"\n\s*(?:#[^\n]*\n\s*)*location\s+\^~\s+/_next/static/\s*\{[^}]+\}\n", "\n", text)
+    text = re.sub(r"\n\s*(?:#[^\n]*\n\s*)*location\s+/og/\s*\{[^}]+\}\n", "\n", text)
     if re.search(r"location\s+[^\n]*?/_next/static/", text):
         raise ValueError("Unmanaged static location; review before deploying")
     static = f'''\n    # Aloha retained assets

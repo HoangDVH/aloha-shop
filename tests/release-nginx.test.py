@@ -35,8 +35,10 @@ class ReleaseNginxTests(unittest.TestCase):
         self.assertIn("proxy_cache off;", output)
         self.assertIn("proxy_hide_header Cache-Control;", output)
         self.assertIn("immutable", output)
+        self.assertEqual(output.count("location /og/"), 1)
         again = module.prepare(output, 3002, "/root/aloha-shop-releases/static")
         self.assertEqual(again.count("location ^~ /_next/static/"), 1)
+        self.assertEqual(again.count("location /og/"), 1)
         self.assertEqual(again.count('add_header Cache-Control "private, no-store"'), 1)
 
     def test_unknown_config_and_unsafe_paths_fail_closed(self):
