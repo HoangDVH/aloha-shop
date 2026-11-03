@@ -76,7 +76,7 @@ export async function campaignOgImageHandler(getDb: GetDb, req: Request, res: Re
       return;
     }
 
-    const cacheKey = `${cid || "current"}_${rawUrl.slice(-30)}_${fitMode}_hd`;
+    const cacheKey = `${cid || "current"}_${rawUrl.slice(-30)}_${fitMode}_fullres_q98`;
     const cached = MEM_CACHE.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
       res.removeHeader("ETag");
@@ -99,16 +99,23 @@ export async function campaignOgImageHandler(getDb: GetDb, req: Request, res: Re
     const rawH = meta.height || OG_HEIGHT;
     const rawAspect = rawW / Math.max(1, rawH);
 
-    // Xử lý tạo ảnh chuẩn 1.91:1 (1200 x 630 px) cho Facebook / Zalo
+    // Giữ nguyên độ phân giải gốc cao (ví dụ 1600x840 px) nếu ảnh đã có tỉ lệ chuẩn 1.91:1, không bị co nhỏ
+    let targetW = Math.max(OG_WIDTH, Math.min(2400, rawW));
+    let targetH = Math.round(targetW / (1200 / 630));
+    if (isCustomShare && rawW >= OG_WIDTH && rawH >= OG_HEIGHT && Math.abs(rawAspect - (1200 / 630)) < 0.08) {
+      targetW = rawW;
+      targetH = rawH;
+    }
+
     let finalBuffer: Buffer;
 
     // Nếu là ảnh chia sẻ thiết kế riêng hoặc ảnh có tỉ lệ gần chuẩn 1.91:1
     if (isCustomShare || rawAspect <= 2.05) {
       finalBuffer = await sharp(rawBuffer, { failOn: "none" })
         .rotate()
-        .resize(OG_WIDTH, OG_HEIGHT, { fit: "cover", position: "center" })
-        .sharpen({ sigma: 0.75, m1: 0.5, m2: 1.5 })
-        .jpeg({ quality: 95, chromaSubsampling: "4:4:4", mozjpeg: true })
+        .resize(targetW, targetH, { fit: "cover", position: "center" })
+        .sharpen({ sigma: 0.6, m1: 0.4, m2: 1.2 })
+        .jpeg({ quality: 98, chromaSubsampling: "4:4:4", mozjpeg: true })
         .toBuffer();
     } else {
       // Banner ngang rộng (panoramic > 2.05:1 như 8:3):
@@ -116,26 +123,26 @@ export async function campaignOgImageHandler(getDb: GetDb, req: Request, res: Re
       // Nền trên dưới: Ambient Glow chuyển màu tự nhiên, làm tối nhẹ để banner chính nổi bật
       const bg = await sharp(rawBuffer, { failOn: "none" })
         .rotate()
-        .resize(OG_WIDTH, OG_HEIGHT, { fit: "cover", position: "center" })
+        .resize(targetW, targetH, { fit: "cover", position: "center" })
         .blur(40)
         .modulate({ brightness: 0.82, saturation: 1.05 })
         .toBuffer();
 
       const fg = await sharp(rawBuffer, { failOn: "none" })
         .rotate()
-        .resize(OG_WIDTH, OG_HEIGHT, { fit: "inside" })
+        .resize(targetW, targetH, { fit: "inside" })
         .toBuffer();
 
       const fgMeta = await sharp(fg).metadata();
-      const fgW = fgMeta.width || OG_WIDTH;
-      const fgH = fgMeta.height || OG_HEIGHT;
-      const left = Math.max(0, Math.round((OG_WIDTH - fgW) / 2));
-      const top = Math.max(0, Math.round((OG_HEIGHT - fgH) / 2));
+      const fgW = fgMeta.width || targetW;
+      const fgH = fgMeta.height || targetH;
+      const left = Math.max(0, Math.round((targetW - fgW) / 2));
+      const top = Math.max(0, Math.round((targetH - fgH) / 2));
 
       finalBuffer = await sharp(bg)
         .composite([{ input: fg, left, top }])
-        .sharpen({ sigma: 0.75, m1: 0.5, m2: 1.5 })
-        .jpeg({ quality: 95, chromaSubsampling: "4:4:4", mozjpeg: true })
+        .sharpen({ sigma: 0.6, m1: 0.4, m2: 1.2 })
+        .jpeg({ quality: 98, chromaSubsampling: "4:4:4", mozjpeg: true })
         .toBuffer();
     }
 
