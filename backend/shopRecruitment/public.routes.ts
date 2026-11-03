@@ -360,7 +360,7 @@ export function registerRecruitmentPublicRoutes(app: Express, getShopDb: GetShop
 
           const locationNames = locationPreference.mode === "any"
             ? "Tất cả các chi nhánh"
-            : (locationPreference.locations || []).map((l) => `${l.name} (${l.city})`).join(", ");
+            : (locationPreference.locations || []).map((l) => `${l.address} (${l.city})`).join(", ");
 
           const expLevelMap: Record<string, string> = {
             chua_co: "Chưa có kinh nghiệm",

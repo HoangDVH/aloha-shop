@@ -423,8 +423,8 @@ async function createShopOrder(
     tag: `order-${code}`,
   }).catch((e) => console.warn("[web-push] order push failed:", e?.message || e));
 
-  const fullAddress = deliveryMethod === "lay_tai_tiem"
-    ? "Đến tiệm nhận hàng"
+  const fullAddress = deliveryMethod === "nhan_cua_hang"
+    ? "Nhận tại cửa hàng Aloha"
     : [shippingAddress, ward, district, province].filter(Boolean).join(", ");
   const orderItemsSummary = (orderDetails || []).map((it) => ({
     name: it.productName,
@@ -448,7 +448,7 @@ async function createShopOrder(
     total: finalAmount,
     items: orderItemsSummary,
     customerNote: customerNote || undefined,
-    createdAt: doc.createdAt || new Date(),
+    createdAt: (doc.createdAt as any) || new Date(),
   }).catch((e) => console.warn("[zalo] order notice failed:", e?.message || e));
   void notifyOrderStatus(shopDb, doc, "dat_hang").catch((e) =>
     console.warn("[shop-notify] dat_hang", code, e?.message || e)
