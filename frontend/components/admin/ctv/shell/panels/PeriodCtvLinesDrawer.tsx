@@ -19,6 +19,7 @@ export function PeriodCtvLinesDrawer({
   ctvCode,
   period,
   billStatus,
+  selectedLine,
   onClose,
   onOpenFullList,
   onPayCtv,
