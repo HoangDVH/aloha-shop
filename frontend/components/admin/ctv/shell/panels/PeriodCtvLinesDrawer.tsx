@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import React, { useEffect, useMemo, useState } from "react";
-import { Alert, Button, Drawer, Empty, Space, Spin, Table, Tabs } from "antd";
+import { Alert, Button, Drawer, Empty, Space, Spin, Table, Tabs, Tag } from "antd";
 import { useCtvCommissions } from "../../ctvQueries";
 import {
   billStatusLabel,
@@ -36,14 +36,15 @@ export function PeriodCtvLinesDrawer({
   payPending?: boolean;
 }) {
   const isLocked = billStatus === "locked" || billStatus === "paid";
-  const [activeTab, setActiveTab] = useState<string>(isLocked ? "billed" : "all");
+  const defaultTab = isLocked ? "billed" : "eligible";
+  const [activeTab, setActiveTab] = useState<string>(defaultTab);
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
   useEffect(() => {
     if (open) {
       setPage(1);
-      setActiveTab(isLocked ? "billed" : "all");
+      setActiveTab(isLocked ? "billed" : "eligible");
     }
   }, [open, ctvCode, period, isLocked]);
 
@@ -84,8 +85,46 @@ export function PeriodCtvLinesDrawer({
   const rows = open && ctvCode ? data?.data || [] : [];
   const total = Number(data?.total) || rows.length;
   const totalHh = rows.reduce((s: number, r: any) => s + (Number(r.amount) || 0), 0);
-  const ctvName = String(rows[0]?.ctvName || "").trim();
+  const ctvName = String(rows[0]?.ctvName || selectedLine?.ctvName || "").trim();
   const periodCounts = data?.periodCounts;
+
+  const debtOffset = Number(selectedLine?.debtOffset || 0);
+  const adjustmentsList = selectedLine?.adjustmentEntries || [];
+  const postAdjustmentsList = selectedLine?.postPaymentAdjustments || [];
+  const hasDebt = debtOffset > 0 || adjustmentsList.length > 0 || postAdjustmentsList.length > 0;
+  const adjustmentEntriesCount = adjustmentsList.length + postAdjustmentsList.length;
+
+  const grossAmount = useMemo(() => {
+    if (selectedLine?.gross != null) return Number(selectedLine.gross);
+    if (selectedLine?.commission != null) return Number(selectedLine.commission);
+    if (selectedLine?.net != null) return Number(selectedLine.net) + debtOffset;
+    if (isLocked && periodCounts?.inBillSum != null) return Number(periodCounts.inBillSum);
+    if (periodCounts?.eligibleSum != null) return Number(periodCounts.eligibleSum);
+    return totalHh;
+  }, [selectedLine, debtOffset, isLocked, periodCounts, totalHh]);
+
+  const netAmount = useMemo(() => {
+    if (selectedLine?.net != null) return Number(selectedLine.net);
+    return Math.max(0, grossAmount - debtOffset);
+  }, [selectedLine, grossAmount, debtOffset]);
+
+  const validOrderCount = useMemo(() => {
+    if (selectedLine?.orderCount != null) return Number(selectedLine.orderCount);
+    if (isLocked && periodCounts?.inBill != null) return Number(periodCounts.inBill);
+    if (periodCounts?.eligible != null) return Number(periodCounts.eligible);
+    return rows.filter((r: any) => r.status === "billed" || r.status === "eligible" || r.status === "paid_out").length;
+  }, [selectedLine, isLocked, periodCounts, rows]);
+
+  const debtOrderCodes = useMemo(() => {
+    const set = new Set<string>();
+    adjustmentsList.forEach((e: any) => {
+      if (e.orderCode) set.add(String(e.orderCode).trim());
+    });
+    postAdjustmentsList.forEach((e: any) => {
+      if (e.orderCode) set.add(String(e.orderCode).trim());
+    });
+    return set;
+  }, [adjustmentsList, postAdjustmentsList]);
 
   const tabItems = useMemo(() => {
     if (isLocked) {
@@ -176,8 +215,7 @@ export function PeriodCtvLinesDrawer({
           </div>
           <div className="text-[12px] font-normal text-slate-500">
             {ctvName ? `${ctvName} · ` : ""}
-            Kỳ {formatPeriodLabel(period)} ({period}) · {total} dòng
-            {rows.length ? ` · trang này ${formatVnd(totalHh)}` : ""}
+            Kỳ {formatPeriodLabel(period)} ({period})
             {billStatus ? ` · ${billStatusLabel(billStatus)}` : ""}
           </div>
         </div>
@@ -194,8 +232,9 @@ export function PeriodCtvLinesDrawer({
               size="small"
               loading={payPending}
               onClick={() => onPayCtv(ctvCode)}
+              className="!bg-[#2D5A27] hover:!bg-[#23471f]"
             >
-              Chi CTV này
+              {netAmount > 0 ? `Chi CTV: ${formatVnd(netAmount)}` : "Chi CTV này"}
             </Button>
           ) : null}
           <Button
@@ -212,34 +251,119 @@ export function PeriodCtvLinesDrawer({
         </Space>
       }
     >
-      {selectedLine && (Number(selectedLine.debtOffset) > 0 || selectedLine.adjustmentEntries?.length > 0 || selectedLine.postPaymentAdjustments?.length > 0) ? (
-        <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50/70 p-3.5 text-xs text-rose-900">
-          <div className="flex items-center justify-between font-bold text-rose-800 text-[13px] mb-1.5">
-            <span>Công nợ & Điều chỉnh hoàn hàng trong kỳ:</span>
-            <span>−{formatVnd(Number(selectedLine.debtOffset || 0))}</span>
+      {/* Khối Quyết toán dòng tiền (Settlement Breakdown) chuẩn Shopee / TikTok Shop */}
+      <div className="mb-4 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xs">
+        <div className="border-b border-slate-100 bg-[#f8faf8] px-4 py-2.5 flex items-center justify-between">
+          <div className="text-[12px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+            <span>Sao kê quyết toán kỳ này</span>
+            {billStatus ? (
+              <Tag color={billStatus === "paid" ? "cyan" : billStatus === "locked" ? "blue" : "orange"} className="!mr-0">
+                {billStatusLabel(billStatus)}
+              </Tag>
+            ) : null}
           </div>
-          <div className="space-y-1.5 text-slate-700">
-            {(selectedLine.adjustmentEntries || []).map((entry: any) => (
-              <div key={entry.id} className="flex justify-between items-center bg-white/80 px-2.5 py-1.5 rounded-lg border border-rose-100">
-                <div>
-                  <span className="font-semibold text-rose-700">#{entry.orderCode}</span>
-                  {entry.ma ? ` (${entry.ma})` : ""}: {entry.reason || "Thu hồi nợ hoàn hàng"}
-                </div>
-                <span className="font-bold text-rose-700">{formatVnd(Number(entry.amount) || 0)}</span>
-              </div>
-            ))}
-            {(selectedLine.postPaymentAdjustments || []).map((entry: any) => (
-              <div key={entry.id} className="flex justify-between items-center bg-white/80 px-2.5 py-1.5 rounded-lg border border-rose-100">
-                <div>
-                  <span className="font-semibold text-rose-700">#{entry.orderCode}</span>
-                  {entry.ma ? ` (${entry.ma})` : ""}: Thu hồi sau chi · {entry.reason || "Hoàn hàng"}
-                </div>
-                <span className="font-bold text-rose-700">{formatVnd(Number(entry.amount) || 0)}</span>
-              </div>
-            ))}
-          </div>
+          <span className="text-[11.5px] text-slate-500">
+            {ctvName ? `${ctvName} · ` : ""}{ctvCode}
+          </span>
         </div>
-      ) : null}
+
+        <div className="p-3.5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* 1. Hoa hồng đơn hàng */}
+            <div className="rounded-xl border border-slate-200 bg-[#fbfcfb] p-3">
+              <div className="text-[11.5px] font-medium text-slate-500">
+                1. Hoa hồng được duyệt
+              </div>
+              <div className="mt-1 text-[17px] font-extrabold text-slate-800">
+                {formatVnd(grossAmount)}
+              </div>
+              <div className="mt-0.5 text-[11px] text-slate-400">
+                {validOrderCount} đơn hợp lệ trong kỳ
+              </div>
+            </div>
+
+            {/* 2. Cấn trừ nợ hoàn hàng */}
+            <div
+              className={`rounded-xl border p-3 ${
+                hasDebt
+                  ? "border-rose-200 bg-rose-50/50 text-rose-900"
+                  : "border-slate-200 bg-[#fbfcfb] text-slate-600"
+              }`}
+            >
+              <div className="flex items-center justify-between text-[11.5px] font-medium">
+                <span>2. Giảm trừ / Hoàn nợ</span>
+                {hasDebt ? (
+                  <span className="rounded bg-rose-100 px-1.5 py-0.2 text-[10px] font-bold text-rose-700">
+                    {adjustmentEntriesCount} khoản
+                  </span>
+                ) : null}
+              </div>
+              <div
+                className={`mt-1 text-[17px] font-extrabold ${
+                  hasDebt ? "text-rose-600" : "text-slate-400"
+                }`}
+              >
+                {hasDebt ? `−${formatVnd(debtOffset)}` : "0 đ"}
+              </div>
+              <div className="mt-0.5 text-[11px] text-slate-500">
+                {hasDebt ? "Cấn trừ nợ trả hàng kỳ này" : "Không có khoản nợ tồn"}
+              </div>
+            </div>
+
+            {/* 3. Tiền thực chi (Net Payout) */}
+            <div className="rounded-xl border border-emerald-300 bg-emerald-50/70 p-3 text-emerald-950 shadow-xs">
+              <div className="text-[11.5px] font-bold text-emerald-800">
+                3. Thực chi cho CTV (= 1 − 2)
+              </div>
+              <div className="mt-1 text-[19px] font-black text-[#2D5A27]">
+                {formatVnd(netAmount)}
+              </div>
+              <div className="mt-0.5 text-[11px] font-semibold text-emerald-700">
+                Số tiền chuyển khoản
+              </div>
+            </div>
+          </div>
+
+          {/* Chi tiết từng đơn bị cấn trừ nợ */}
+          {hasDebt ? (
+            <div className="mt-3 rounded-xl border border-rose-100 bg-rose-50/40 p-2.5 text-xs">
+              <div className="mb-1.5 font-bold text-rose-800 text-[11.5px]">
+                Chi tiết các khoản cấn trừ hoàn hàng / thu hồi:
+              </div>
+              <div className="space-y-1.5">
+                {(selectedLine?.adjustmentEntries || []).map((entry: any) => (
+                  <div
+                    key={entry.id}
+                    className="flex items-center justify-between rounded-lg border border-rose-100 bg-white/90 px-2.5 py-1.5"
+                  >
+                    <div>
+                      <span className="font-bold text-rose-700">#{entry.orderCode}</span>
+                      {entry.ma ? ` (${entry.ma})` : ""}: {entry.reason || "Thu hồi nợ hoàn hàng"}
+                    </div>
+                    <span className="font-extrabold text-rose-700">
+                      {formatVnd(Number(entry.amount) || 0)}
+                    </span>
+                  </div>
+                ))}
+                {(selectedLine?.postPaymentAdjustments || []).map((entry: any) => (
+                  <div
+                    key={entry.id}
+                    className="flex items-center justify-between rounded-lg border border-rose-100 bg-white/90 px-2.5 py-1.5"
+                  >
+                    <div>
+                      <span className="font-bold text-rose-700">#{entry.orderCode}</span>
+                      {entry.ma ? ` (${entry.ma})` : ""}: Thu hồi sau chi · {entry.reason || "Hoàn hàng"}
+                    </div>
+                    <span className="font-extrabold text-rose-700">
+                      {formatVnd(Number(entry.amount) || 0)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
 
       <div className="mb-3">
         <Tabs
@@ -266,7 +390,7 @@ export function PeriodCtvLinesDrawer({
         {activeTab === "eligible" ? (
           <div className="mb-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200 text-[12.5px] text-emerald-900 flex flex-wrap items-center justify-between gap-1">
             <div>
-              <span className="font-semibold text-emerald-800">Đơn đủ điều kiện chờ kỳ tới:</span> Đã hết hạn đổi/trả nhưng chưa nằm trong đợt chốt kỳ này. Sẽ được đưa vào đợt thanh toán kế tiếp.
+              <span className="font-semibold text-emerald-800">Đơn đủ điều kiện:</span> Đã hết hạn đổi/trả và hợp lệ để đưa vào kỳ thanh toán.
             </div>
             {periodCounts?.eligibleSum != null ? (
               <span className="font-bold text-emerald-800">
@@ -278,7 +402,7 @@ export function PeriodCtvLinesDrawer({
         {activeTab === "all" ? (
           <div className="mb-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-[12.5px] text-slate-700 flex flex-wrap items-center justify-between gap-1">
             <div>
-              <span className="font-semibold text-slate-800">Tất cả đơn phát sinh:</span> Toàn bộ các dòng hoa hồng của CTV trong kỳ (đang giữ đổi trả, cảnh báo gian lận, đủ điều kiện và đã chốt).
+              <span className="font-semibold text-slate-800">Tất cả đơn phát sinh:</span> Toàn bộ các dòng hoa hồng của CTV trong kỳ (đang giữ đổi trả, cảnh báo gian lận, đủ điều kiện, và đơn hủy/hoàn).
             </div>
             {periodCounts?.allSum != null ? (
               <span className="font-bold text-slate-800">
@@ -315,22 +439,22 @@ export function PeriodCtvLinesDrawer({
             rowKey={(r) => String(r.id)}
             dataSource={rows}
             pagination={false}
-            scroll={{ x: 900 }}
+            scroll={{ x: 920 }}
             columns={[
               {
                 title: "Click",
                 dataIndex: "clickAt",
-                width: 132,
+                width: 120,
                 render: (v: string | null) => (
-                  <span className="whitespace-nowrap text-slate-600">{formatDt(v)}</span>
+                  <span className="whitespace-nowrap text-slate-600 text-xs">{formatDt(v)}</span>
                 ),
               },
               {
                 title: "Mua",
                 dataIndex: "purchasedAt",
-                width: 132,
+                width: 120,
                 render: (v: string | null) => (
-                  <span className="whitespace-nowrap text-slate-600">{formatDt(v)}</span>
+                  <span className="whitespace-nowrap text-slate-600 text-xs">{formatDt(v)}</span>
                 ),
               },
               {
@@ -339,14 +463,22 @@ export function PeriodCtvLinesDrawer({
                 render: (v: string, r: any) => {
                   const code = String(v || r.orderCode || "").trim();
                   if (!code) return "—";
+                  const isDebtOrder = debtOrderCodes.has(code);
                   return (
-                    <Link
-                      href={`/don-hang/${encodeURIComponent(r.orderCode || code)}`}
-                      className="font-bold text-[#2D5A27] hover:underline"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      #{code}
-                    </Link>
+                    <div className="flex flex-col items-start gap-0.5">
+                      <Link
+                        href={`/don-hang/${encodeURIComponent(r.orderCode || code)}`}
+                        className="font-bold text-[#2D5A27] hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        #{code}
+                      </Link>
+                      {isDebtOrder ? (
+                        <span className="inline-block rounded bg-rose-100 px-1.5 py-0.2 text-[10px] font-bold text-rose-700 border border-rose-200">
+                          Thu hồi nợ cấn trừ
+                        </span>
+                      ) : null}
+                    </div>
                   );
                 },
               },
@@ -354,31 +486,86 @@ export function PeriodCtvLinesDrawer({
               {
                 title: "DT",
                 dataIndex: "lineTotal",
-                width: 100,
+                width: 95,
                 render: (v: number) => formatVnd(Number(v) || 0),
               },
               {
                 title: "%",
-                width: 56,
+                width: 50,
                 render: (_: unknown, r: any) => `${r.rate ?? "—"}%`,
               },
               {
                 title: "HH",
                 dataIndex: "amount",
-                width: 100,
-                render: (v: number) => (
-                  <span className="font-extrabold">{formatVnd(Number(v) || 0)}</span>
-                ),
+                width: 130,
+                render: (v: number, r: any) => {
+                  const num = Number(v) || 0;
+                  const isCancelled = r.status === "cancelled" || r.status === "rejected";
+                  const isSuspect =
+                    r.status === "suspect" ||
+                    (Array.isArray(r.fraudFlags) && r.fraudFlags.length > 0);
+                  const isHeld = r.status === "held" || r.status === "pending_return";
+
+                  if (isCancelled) {
+                    return (
+                      <div className="flex flex-col items-start leading-tight">
+                        <span className="text-[11px] text-slate-400 line-through">
+                          {formatVnd(num)}
+                        </span>
+                        <span className="text-[12px] font-bold text-rose-600">
+                          0 đ <span className="text-[10px] font-normal">(Đã hủy)</span>
+                        </span>
+                      </div>
+                    );
+                  }
+
+                  if (isSuspect) {
+                    return (
+                      <div className="flex flex-col items-start leading-tight">
+                        <span className="text-[12.5px] font-bold text-amber-700">
+                          {formatVnd(num)}
+                        </span>
+                        <span className="rounded bg-amber-50 px-1 text-[10px] font-semibold text-amber-700 border border-amber-200">
+                          Tạm giữ
+                        </span>
+                      </div>
+                    );
+                  }
+
+                  if (isHeld) {
+                    return (
+                      <div className="flex flex-col items-start leading-tight">
+                        <span className="text-[12.5px] font-semibold text-slate-600">
+                          {formatVnd(num)}
+                        </span>
+                        <span className="text-[10px] text-slate-500">
+                          Chờ đối soát
+                        </span>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="flex flex-col items-start leading-tight">
+                      <span className="text-[13px] font-extrabold text-emerald-700">
+                        +{formatVnd(num)}
+                      </span>
+                      <span className="text-[10px] font-medium text-emerald-600">
+                        Được tính
+                      </span>
+                    </div>
+                  );
+                },
               },
               {
                 title: "TT",
                 dataIndex: "status",
-                width: 120,
+                width: 130,
                 render: (s: string, r: any) => (
                   <div>
                     {statusTag(s)}
                     {Array.isArray(r.fraudFlags) && r.fraudFlags.length ? (
-                      <div className="mt-1 text-[11px] text-rose-600">
+                      <div className="mt-1 text-[11px] text-rose-600 leading-tight">
                         {formatFraudFlags(r.fraudFlags)}
                       </div>
                     ) : null}
@@ -387,6 +574,38 @@ export function PeriodCtvLinesDrawer({
               },
             ]}
           />
+
+          {/* Footer tổng kết dòng tiền dưới bảng */}
+          <div className="mt-3 rounded-xl border border-slate-200 bg-[#f8faf8] px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="text-slate-600">
+              <span className="font-semibold text-slate-700">Tổng kết bảng:</span>{" "}
+              {activeTab === "all" ? (
+                <span>
+                  {total} đơn phát sinh ({rows.filter((r: any) => r.status === "billed" || r.status === "eligible" || r.status === "paid_out").length} đơn tính hoa hồng · {rows.filter((r: any) => r.status === "cancelled" || r.status === "rejected").length} đơn hủy · {rows.filter((r: any) => r.status === "suspect" || (Array.isArray(r.fraudFlags) && r.fraudFlags.length)).length} đơn tạm giữ)
+                </span>
+              ) : (
+                <span>
+                  {total} đơn trong đợt thanh toán này
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-3 font-medium">
+              {hasDebt && (activeTab === "billed" || activeTab === "eligible") ? (
+                <>
+                  <span className="text-slate-700">Hoa hồng: <strong>{formatVnd(grossAmount)}</strong></span>
+                  <span className="text-rose-600">Trừ nợ: <strong>−{formatVnd(debtOffset)}</strong></span>
+                  <span className="text-[#2D5A27] font-black text-[13px]">
+                    = Thực chi: {formatVnd(netAmount)}
+                  </span>
+                </>
+              ) : (
+                <span className="text-[#2D5A27] font-bold text-[13px]">
+                  Tổng hoa hồng trang này: {formatVnd(totalHh)}
+                </span>
+              )}
+            </div>
+          </div>
+
           <div className="mt-3">
             <CtvPagination
               page={page}
