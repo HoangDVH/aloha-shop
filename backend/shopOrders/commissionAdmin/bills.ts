@@ -49,20 +49,32 @@ export function registerBills(app: Express, ctx: CommissionAdminCtx) {
           const accs = await shopDb
             .collection(SHOP_ACCOUNTS)
             .find({ ctvCode: { $in: codes } })
-            .project({ ctvCode: 1, fullName: 1, displayName: 1 })
+            .project({ ctvCode: 1, fullName: 1, displayName: 1, payoutBank: 1, phone: 1 })
             .toArray();
-          const map = new Map<string, string>();
+          const map = new Map<string, { ctvName: string; payoutBank?: any; phone?: string }>();
           for (const a of accs) {
             const c = normalizeCtvCode(String((a as any).ctvCode || ""));
             const n =
               String((a as any).fullName || "").trim() ||
               String((a as any).displayName || "").trim();
-            if (c && n) map.set(c, n);
+            if (c) {
+              map.set(c, {
+                ctvName: n || "",
+                payoutBank: (a as any).payoutBank || null,
+                phone: String((a as any).phone || "").trim(),
+              });
+            }
           }
-          return lines.map((l) => ({
-            ...l,
-            ctvName: map.get(normalizeCtvCode(String(l?.ctvCode || ""))) || "",
-          }));
+          return lines.map((l) => {
+            const code = normalizeCtvCode(String(l?.ctvCode || ""));
+            const acc = map.get(code);
+            return {
+              ...l,
+              ctvName: acc?.ctvName || l.ctvName || "",
+              payoutBank: acc?.payoutBank || l.payoutBank || null,
+              phone: acc?.phone || l.phone || "",
+            };
+          });
         };
         if (preview?.ctvLines) {
           preview = {

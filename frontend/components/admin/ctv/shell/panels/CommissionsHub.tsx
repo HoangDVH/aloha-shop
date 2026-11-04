@@ -26,6 +26,7 @@ import {
 } from "../../shared/format";
 import { PeriodCtvLinesDrawer } from "./PeriodCtvLinesDrawer";
 import { CommissionLinesTable } from "./CommissionLinesTable";
+import { PayoutConfirmModal } from "./PayoutConfirmModal";
 
 const { Text } = Typography;
 
@@ -58,6 +59,7 @@ export function CommissionsHub({
 
   const period = selectedPeriod;
   const [drillCtv, setDrillCtv] = useState<string | null>(null);
+  const [payTargetLine, setPayTargetLine] = useState<any | null>(null);
   const [listSeedCtv, setListSeedCtv] = useState<string | undefined>();
   const [listSeedPeriod, setListSeedPeriod] = useState<string | undefined>();
   const billQ = useCtvBills(period);
@@ -291,22 +293,10 @@ export function CommissionsHub({
                         ) : bill?.status === "locked" ? (
                           <Button
                             size="small"
-                            loading={paidM.isPending}
+                            loading={paidM.isPending && payTargetLine?.ctvCode === l.ctvCode}
                             onClick={(e) => {
                               e.stopPropagation();
-                              const ok = window.confirm(
-                                `Xác nhận đã chi ${formatVnd(Number(l.net || 0))} cho ${l.ctvCode}${l.debtOffset > 0 ? `, đã bù trừ nợ ${formatVnd(l.debtOffset)}` : ""}?`
-                              );
-                              if (!ok) return;
-                              paidM.mutate(
-                                { period, ctvCode: String(l.ctvCode || ""), expectedRevision: Number(bill.revision || 0), expectedAmount: Number(l.net || 0) },
-                                {
-                                  onSuccess: () =>
-                                    toast.success(`Đã chi ${l.ctvCode}`),
-                                  onError: (err: unknown) =>
-                                    toast.error((err as Error).message),
-                                }
-                              );
+                              setPayTargetLine(l);
                             }}
                           >
                             {Number(l.net || 0) === 0 && l.debtOffset > 0 ? "Xác nhận bù trừ" : "Chi CTV này"}
@@ -353,21 +343,39 @@ export function CommissionsHub({
                 ? (code) => {
                     const line = tableLines.find((l: any) => l.ctvCode === code && !l.paidAt && !l.voidedAt);
                     if (!line) { toast.error("Không còn khoản chi cho CTV này."); return; }
-                    const ok = window.confirm(
-                      `Xác nhận đã chi ${formatVnd(Number(line.net || 0))} cho ${code}?`
-                    );
-                    if (!ok) return;
-                    paidM.mutate(
-                      { period, ctvCode: code, expectedRevision: Number(bill.revision || 0), expectedAmount: Number(line.net || 0) },
-                      {
-                        onSuccess: () => toast.success(`Đã chi ${code}`),
-                        onError: (e: unknown) => toast.error((e as Error).message),
-                      }
-                    );
+                    setPayTargetLine(line);
                   }
                 : undefined
             }
-            payPending={paidM.isPending}
+            payPending={paidM.isPending && payTargetLine?.ctvCode === drillCtv}
+          />
+
+          <PayoutConfirmModal
+            open={Boolean(payTargetLine)}
+            line={payTargetLine}
+            period={period}
+            billRevision={Number(bill?.revision || 0)}
+            loading={paidM.isPending}
+            onClose={() => setPayTargetLine(null)}
+            onConfirm={(payload) => {
+              paidM.mutate(
+                {
+                  period,
+                  ctvCode: payload.ctvCode,
+                  expectedRevision: payload.expectedRevision,
+                  expectedAmount: payload.expectedAmount,
+                },
+                {
+                  onSuccess: () => {
+                    toast.success(`Đã chi ${payload.ctvCode}`);
+                    setPayTargetLine(null);
+                  },
+                  onError: (err: unknown) => {
+                    toast.error((err as Error).message);
+                  },
+                }
+              );
+            }}
           />
 
           {seg === "dong" ? (
