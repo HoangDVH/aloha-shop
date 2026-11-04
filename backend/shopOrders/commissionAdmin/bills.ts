@@ -5,7 +5,15 @@ import { SHOP_ACCOUNTS, normalizeCtvCode } from "../../shopAuth/models.js";
 import { reconcileCommissionBills } from "../billSettlement.js";
 import { z } from "zod";
 
-const paymentInput = z.object({ ctvCode: z.string().min(3).max(20).optional(), expectedRevision: z.number().int().nonnegative(), expectedAmount: z.number().int().nonnegative() }).strict();
+const paymentInput = z
+  .object({
+    ctvCode: z.string().min(3).max(20).optional(),
+    expectedRevision: z.number().int().nonnegative(),
+    expectedAmount: z.number().int().nonnegative(),
+    bankRef: z.string().max(100).optional(),
+    note: z.string().max(200).optional(),
+  })
+  .passthrough();
 const paymentErrors: Record<string, string> = {
   bill_changed: "Số tiền hoặc phiên bản kỳ chi đã thay đổi. Tải lại, kiểm tra số tiền mới rồi xác nhận lại.",
   bill_confirmation_required: "Tải lại kỳ chi để xác nhận phiên bản và số tiền hiện tại.",
@@ -143,6 +151,8 @@ export function registerBills(app: Express, ctx: CommissionAdminCtx) {
         expectedRevision: parsed.data.expectedRevision,
         expectedAmount: parsed.data.expectedAmount,
         paidBy: req.auth?.username || "admin",
+        bankRef: parsed.data.bankRef,
+        note: parsed.data.note,
       });
       if (!result.ok) return res.status(result.error === "bill_changed" ? 409 : 400).json({ ...result, message: paymentErrors[result.error || ""] || result.error });
       return res.json(result);

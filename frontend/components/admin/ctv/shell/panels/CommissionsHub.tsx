@@ -289,7 +289,14 @@ export function CommissionsHub({
                       width: 140,
                       render: (_: unknown, l: any) =>
                         l.voidedAt ? <Tag>Đã hủy khoản chi</Tag> : l.paidAt ? (
-                          <Tag color="cyan">Đã chi</Tag>
+                          <div className="space-y-0.5">
+                            <Tag color="cyan">Đã chi</Tag>
+                            {l.bankRef ? (
+                              <div className="text-[11px] text-slate-500 font-mono" title={`Mã giao dịch: ${l.bankRef}`}>
+                                FT: {l.bankRef}
+                              </div>
+                            ) : null}
+                          </div>
                         ) : bill?.status === "locked" ? (
                           <Button
                             size="small"
@@ -364,6 +371,7 @@ export function CommissionsHub({
                   ctvCode: payload.ctvCode,
                   expectedRevision: payload.expectedRevision,
                   expectedAmount: payload.expectedAmount,
+                  bankRef: payload.bankRef,
                 },
                 {
                   onSuccess: () => {

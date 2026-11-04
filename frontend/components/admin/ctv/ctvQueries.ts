@@ -148,13 +148,20 @@ export function useLockBill() {
 export function useMarkBillPaid() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { period: string; ctvCode?: string; expectedRevision: number; expectedAmount: number }) => {
-      const { period, ctvCode, expectedRevision, expectedAmount } = payload;
+    mutationFn: (payload: {
+      period: string;
+      ctvCode?: string;
+      expectedRevision: number;
+      expectedAmount: number;
+      bankRef?: string;
+      note?: string;
+    }) => {
+      const { period, ctvCode, expectedRevision, expectedAmount, bankRef, note } = payload;
       return adminFetch(
         `/api/shop/admin/ctv/bills/${encodeURIComponent(period)}/mark-paid`,
         {
           method: "POST",
-          body: JSON.stringify({ ctvCode, expectedRevision, expectedAmount }),
+          body: JSON.stringify({ ctvCode, expectedRevision, expectedAmount, bankRef, note }),
         }
       );
     },

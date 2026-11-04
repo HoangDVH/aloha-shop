@@ -49,7 +49,18 @@ async function finishPayment(db: Db, bill: any) {
   const selected = new Map<string, any>(op.lines.map((line: any) => [line.ctvCode, line]));
   const next = bill.ctvLines.map((line: any) => {
     const paid = selected.get(line.ctvCode);
-    return paid ? { ...line, paidAt: op.at, paidBy: op.by, paidAmount: paid.net, debtOffset: paid.debtOffset, paymentOperationId: op.id } : line;
+    return paid
+      ? {
+          ...line,
+          paidAt: op.at,
+          paidBy: op.by,
+          paidAmount: paid.net,
+          debtOffset: paid.debtOffset,
+          paymentOperationId: op.id,
+          bankRef: op.bankRef || line.bankRef || null,
+          note: op.note || line.note || null,
+        }
+      : line;
   });
   const closed = next.every((line: any) => line.paidAt || line.voidedAt);
   await db.collection(SHOP_COMMISSION_BILLS).updateOne(
@@ -177,7 +188,14 @@ export async function createLockedCommissionBill(db: Db, period: string, lockedB
   });
 }
 
-export type BillPaymentConfirmation = { ctvCode?: string; paidBy?: string; expectedRevision?: number; expectedAmount?: number };
+export type BillPaymentConfirmation = {
+  ctvCode?: string;
+  paidBy?: string;
+  expectedRevision?: number;
+  expectedAmount?: number;
+  bankRef?: string;
+  note?: string;
+};
 export async function confirmCommissionBillPaid(db: Db, period: string, opts: BillPaymentConfirmation = {}) {
   return runCommissionFinance(db, async () => {
     const bill = await db.collection(SHOP_COMMISSION_BILLS).findOne({ period });
@@ -208,7 +226,15 @@ export async function confirmCommissionBillPaid(db: Db, period: string, opts: Bi
       }
       return { ctvCode: line.ctvCode, net: money(line.net), debtOffset: money(line.debtOffset), debtAllocations };
     }));
-    const op = { id: randomUUID(), at: new Date().toISOString(), by: opts.paidBy || "admin", commissionIds: ids(rows), lines: paymentLines };
+    const op = {
+      id: randomUUID(),
+      at: new Date().toISOString(),
+      by: opts.paidBy || "admin",
+      commissionIds: ids(rows),
+      lines: paymentLines,
+      bankRef: opts.bankRef ? String(opts.bankRef).trim() : undefined,
+      note: opts.note ? String(opts.note).trim() : undefined,
+    };
     const claimed = await db.collection(SHOP_COMMISSION_BILLS).updateOne(
       { _id: bill._id, status: "locked", revision: bill.revision, paymentPending: { $exists: false } },
       { $set: { paymentPending: op } },
