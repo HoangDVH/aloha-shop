@@ -538,14 +538,23 @@ export function PeriodCtvLinesDrawer({
             ]}
           />
 
-          {/* Dòng tóm tắt chân bảng tinh gọn */}
-          <div className="mt-2.5 flex items-center justify-between text-[11.5px] text-slate-500 px-1">
-            <span>
+          {/* Dòng tóm tắt chân bảng minh bạch */}
+          <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-[12px] text-slate-600 px-1 py-1.5 border-t border-slate-100">
+            <span className="text-slate-500">
               Hiển thị {rows.length} {rows.length < total ? `trên tổng ${total} đơn` : "đơn"}
             </span>
-            <span className="text-slate-600">
-              Tổng hoa hồng đơn trang này: <strong className="text-slate-800">{formatVnd(totalHh)}</strong>
-            </span>
+            <div className="flex flex-wrap items-center gap-2 font-medium">
+              <span>
+                Hoa hồng đơn: <strong className="text-slate-800">{formatVnd(grossAmount)}</strong>{" "}
+                <span className="text-[11px] text-slate-400 font-normal">(chưa trừ nợ)</span>
+              </span>
+              {hasDebt ? (
+                <>
+                  <span className="text-rose-600">− Trừ nợ: <strong>{formatVnd(debtOffset)}</strong></span>
+                  <span className="text-[#2D5A27] font-black">➔ Thực chi: {formatVnd(netAmount)}</span>
+                </>
+              ) : null}
+            </div>
           </div>
 
           <div className="mt-2">
