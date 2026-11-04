@@ -208,14 +208,8 @@ export function PayoutConfirmModal({
       centered
       width={620}
       destroyOnHidden
-      className="payout-confirm-modal"
-      styles={{
-        content: {
-          padding: 0,
-          borderRadius: "16px",
-          overflow: "hidden",
-        },
-      }}
+      className="payout-confirm-modal [&_.ant-modal-content]:!p-0 [&_.ant-modal-content]:!rounded-2xl [&_.ant-modal-content]:!overflow-hidden"
+      styles={{ body: { padding: 0 } }}
     >
       {/* 1. Header */}
       <div className="bg-gradient-to-r from-[#2D5A27] to-[#1e3e1a] text-white px-6 py-4">
