@@ -13,7 +13,6 @@ import {
   CreditCard,
   QrCode,
   Download,
-  Users2,
   ExternalLink,
 } from "lucide-react";
 import { formatPeriodLabel, formatVnd } from "../../shared/format";
@@ -367,9 +366,7 @@ export function PayoutConfirmModal({
                 </div>
 
                 <div className="text-[11px] text-slate-500 bg-white/60 p-2 rounded-lg border border-slate-200/60 leading-relaxed">
-                  📱 Giám đốc mở App ngân hàng quét mã QR trên $\rightarrow$ Tiền
-                  sẽ chuyển đúng <strong>{formatVnd(netAmount)}</strong> với lời
-                  nhắn chuẩn.
+                  📱 Mở App ngân hàng quét mã QR trên để chuyển đúng <strong>{formatVnd(netAmount)}</strong> với lời nhắn chuẩn.
                 </div>
               </div>
             </div>
@@ -485,17 +482,7 @@ export function PayoutConfirmModal({
           </div>
         </div>
 
-        {/* 5. GHI CHÚ QUY TRÌNH 2 BƯỚC (KẾ TOÁN & GIÁM ĐỐC) */}
-        <div className="bg-blue-50/60 border border-blue-100 rounded-lg p-2.5 text-xs text-blue-900 flex items-start gap-2">
-          <Users2 className="w-4 h-4 text-blue-700 shrink-0 mt-0.5" />
-          <div className="leading-relaxed">
-            <strong>Quy trình 2 người:</strong> Kế toán kiểm tra số liệu $\rightarrow$
-            Giám đốc quét mã QR chuyển tiền và bấm xác nhận chi. Hệ thống sẽ lưu
-            vết người thực hiện vĩnh viễn trong sổ cái.
-          </div>
-        </div>
-
-        {/* 6. Footer CTA buttons */}
+        {/* 5. Footer CTA buttons */}
         <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
           <Button onClick={onClose} disabled={loading} size="middle">
             Để sau
