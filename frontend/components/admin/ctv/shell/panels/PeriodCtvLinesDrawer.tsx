@@ -28,6 +28,7 @@ export function PeriodCtvLinesDrawer({
   ctvCode: string;
   period: string;
   billStatus?: string;
+  selectedLine?: any;
   onClose: () => void;
   onOpenFullList: (ctvCode: string) => void;
   onPayCtv?: (ctvCode: string) => void;
@@ -210,6 +211,35 @@ export function PeriodCtvLinesDrawer({
         </Space>
       }
     >
+      {selectedLine && (Number(selectedLine.debtOffset) > 0 || selectedLine.adjustmentEntries?.length > 0 || selectedLine.postPaymentAdjustments?.length > 0) ? (
+        <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50/70 p-3.5 text-xs text-rose-900">
+          <div className="flex items-center justify-between font-bold text-rose-800 text-[13px] mb-1.5">
+            <span>Công nợ & Điều chỉnh hoàn hàng trong kỳ:</span>
+            <span>−{formatVnd(Number(selectedLine.debtOffset || 0))}</span>
+          </div>
+          <div className="space-y-1.5 text-slate-700">
+            {(selectedLine.adjustmentEntries || []).map((entry: any) => (
+              <div key={entry.id} className="flex justify-between items-center bg-white/80 px-2.5 py-1.5 rounded-lg border border-rose-100">
+                <div>
+                  <span className="font-semibold text-rose-700">#{entry.orderCode}</span>
+                  {entry.ma ? ` (${entry.ma})` : ""}: {entry.reason || "Thu hồi nợ hoàn hàng"}
+                </div>
+                <span className="font-bold text-rose-700">{formatVnd(Number(entry.amount) || 0)}</span>
+              </div>
+            ))}
+            {(selectedLine.postPaymentAdjustments || []).map((entry: any) => (
+              <div key={entry.id} className="flex justify-between items-center bg-white/80 px-2.5 py-1.5 rounded-lg border border-rose-100">
+                <div>
+                  <span className="font-semibold text-rose-700">#{entry.orderCode}</span>
+                  {entry.ma ? ` (${entry.ma})` : ""}: Thu hồi sau chi · {entry.reason || "Hoàn hàng"}
+                </div>
+                <span className="font-bold text-rose-700">{formatVnd(Number(entry.amount) || 0)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       <div className="mb-3">
         <Tabs
           activeKey={activeTab}

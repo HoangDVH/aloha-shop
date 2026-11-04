@@ -340,6 +340,7 @@ export function CommissionsHub({
             ctvCode={drillCtv || ""}
             period={period}
             billStatus={bill?.status}
+            selectedLine={tableLines.find((l: any) => l.ctvCode === drillCtv)}
             onClose={() => setDrillCtv(null)}
             onOpenFullList={(code) => {
               setListSeedCtv(code);

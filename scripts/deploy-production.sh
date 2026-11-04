@@ -38,6 +38,14 @@ PUPPETEER_SKIP_DOWNLOAD=1 npm ci --prefix getPrivateTokenKV --no-audit --no-fund
 for file in .env .token_cache.json; do
   if [ -f "$APP_DIR/getPrivateTokenKV/$file" ]; then ln -sfn "$APP_DIR/getPrivateTokenKV/$file" "$RELEASE/getPrivateTokenKV/$file"; fi
 done
+# Preserve live Zalo bot session across immutable releases
+mkdir -p "$APP_DIR/backend/shopWholesale"
+for file in zalo_session_0337095980.json; do
+  if [ -f "$APP_DIR/backend/shopWholesale/$file" ]; then
+    rm -f "$RELEASE/backend/shopWholesale/$file"
+    ln -sfn "$APP_DIR/backend/shopWholesale/$file" "$RELEASE/backend/shopWholesale/$file"
+  fi
+done
 npm run typecheck:api
 npm run typecheck:web
 npm run build --prefix frontend
