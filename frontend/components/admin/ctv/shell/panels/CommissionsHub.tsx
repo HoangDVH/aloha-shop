@@ -357,34 +357,36 @@ export function CommissionsHub({
             payPending={paidM.isPending && payTargetLine?.ctvCode === drillCtv}
           />
 
-          <PayoutConfirmModal
-            open={Boolean(payTargetLine)}
-            line={payTargetLine}
-            period={period}
-            billRevision={Number(bill?.revision || 0)}
-            loading={paidM.isPending}
-            onClose={() => setPayTargetLine(null)}
-            onConfirm={(payload) => {
-              paidM.mutate(
-                {
-                  period,
-                  ctvCode: payload.ctvCode,
-                  expectedRevision: payload.expectedRevision,
-                  expectedAmount: payload.expectedAmount,
-                  bankRef: payload.bankRef,
-                },
-                {
-                  onSuccess: () => {
-                    toast.success(`Đã chi ${payload.ctvCode}`);
-                    setPayTargetLine(null);
+          {payTargetLine ? (
+            <PayoutConfirmModal
+              open={Boolean(payTargetLine)}
+              line={payTargetLine}
+              period={period}
+              billRevision={Number(bill?.revision || 0)}
+              loading={paidM.isPending}
+              onClose={() => setPayTargetLine(null)}
+              onConfirm={(payload) => {
+                paidM.mutate(
+                  {
+                    period,
+                    ctvCode: payload.ctvCode,
+                    expectedRevision: payload.expectedRevision,
+                    expectedAmount: payload.expectedAmount,
+                    bankRef: payload.bankRef,
                   },
-                  onError: (err: unknown) => {
-                    toast.error((err as Error).message);
-                  },
-                }
-              );
-            }}
-          />
+                  {
+                    onSuccess: () => {
+                      toast.success(`Đã chi ${payload.ctvCode}`);
+                      setPayTargetLine(null);
+                    },
+                    onError: (err: unknown) => {
+                      toast.error((err as Error).message);
+                    },
+                  }
+                );
+              }}
+            />
+          ) : null}
 
           {seg === "dong" ? (
             <CommissionLinesTable

@@ -127,26 +127,24 @@ export function PayoutConfirmModal({
     }
   }, [open, line?.ctvCode]);
 
-  if (!line) return null;
-
-  const ctvCode = String(line.ctvCode || "").trim();
-  const ctvName = String(line.ctvName || "").trim();
-  const phone = String(line.phone || "").trim();
-  const netAmount = Number(line.net || 0);
-  const debtOffset = Number(line.debtOffset || 0);
+  const ctvCode = String(line?.ctvCode || "").trim();
+  const ctvName = String(line?.ctvName || "").trim();
+  const phone = String(line?.phone || "").trim();
+  const netAmount = Number(line?.net || 0);
+  const debtOffset = Number(line?.debtOffset || 0);
   const grossAmount =
-    line.gross != null
+    line?.gross != null
       ? Number(line.gross)
-      : line.commission != null
+      : line?.commission != null
       ? Number(line.commission)
       : netAmount + debtOffset;
 
-  const bank = line.payoutBank;
+  const bank = line?.payoutBank;
   const hasBank = Boolean(bank && (bank.accountNumber || bank.bankName));
 
   // Cú pháp nội dung chuyển khoản chuẩn doanh nghiệp: ALOHA HH [MA_CTV] [PERIOD]
   const cleanCode = ctvCode.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
-  const cleanPeriod = period.replace(/[^0-9]/g, "");
+  const cleanPeriod = String(period || "").replace(/[^0-9]/g, "");
   const transferContent = `ALOHA HH ${cleanCode} ${cleanPeriod}`.slice(0, 25);
 
   // Sinh link ảnh VietQR chuẩn Napas 247
@@ -160,6 +158,8 @@ export function PayoutConfirmModal({
     const addInfo = encodeURIComponent(transferContent);
     return `https://img.vietqr.io/image/${binOrCode}-${accNum}-compact2.png?amount=${netAmount}&addInfo=${addInfo}&accountName=${accName}`;
   }, [hasBank, netAmount, bank, ctvName, transferContent]);
+
+  if (!line) return null;
 
   const handleCopyStk = () => {
     if (!bank?.accountNumber) return;
@@ -414,7 +414,7 @@ export function PayoutConfirmModal({
                     −{formatVnd(debtOffset)}
                   </span>
                 </div>
-                {line.adjustmentEntries && line.adjustmentEntries.length > 0 ? (
+                {Array.isArray(line.adjustmentEntries) && line.adjustmentEntries.length > 0 ? (
                   <div className="text-[11px] text-rose-500 pl-4 border-l-2 border-rose-200">
                     {line.adjustmentEntries.map((e: any, idx: number) => (
                       <div key={idx}>
