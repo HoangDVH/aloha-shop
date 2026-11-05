@@ -147,3 +147,46 @@ test('giftCollectionInputSchema rejects invalid slug with uppercase or special c
   const parsed = giftCollectionInputSchema.safeParse(invalid);
   assert.equal(parsed.success, false);
 });
+
+test('giftNavConfigSchema validates and sanitizes gift nav configuration', async () => {
+  const { giftNavConfigSchema } = await import('../backend/shopGifts/schema.js');
+  const { DEFAULT_GIFT_NAV_CONFIG } = await import('../backend/shopGifts/types.js');
+  const { getGiftNavConfig, updateGiftNavConfig } = await import('../backend/shopGifts/navRepo.js');
+
+  // 1. Default config is valid
+  const parsedDefault = giftNavConfigSchema.safeParse(DEFAULT_GIFT_NAV_CONFIG);
+  assert.equal(parsedDefault.success, true);
+  assert.equal(parsedDefault.data?.categories.length, 4);
+
+  // 2. Reject empty categories
+  assert.equal(giftNavConfigSchema.safeParse({ ...DEFAULT_GIFT_NAV_CONFIG, categories: [] }).success, false);
+
+  // 3. Reject empty label
+  const invalidCategory = structuredClone(DEFAULT_GIFT_NAV_CONFIG);
+  invalidCategory.categories[0].label = '';
+  assert.equal(giftNavConfigSchema.safeParse(invalidCategory).success, false);
+
+  // 4. Mock DB test for getGiftNavConfig fallback and updateGiftNavConfig
+  let storedDoc: any = null;
+  const mockDb = {
+    collection: () => ({
+      findOne: async () => storedDoc,
+      updateOne: async (_q: any, update: any) => {
+        storedDoc = { ...update.$set };
+        return { matchedCount: 1 };
+      },
+    }),
+  } as unknown as Db;
+
+  const initial = await getGiftNavConfig(mockDb);
+  assert.equal(initial.categories.length, 4);
+  assert.equal(initial.categories[0].label, 'Người thương');
+
+  const updatedConfig = structuredClone(DEFAULT_GIFT_NAV_CONFIG);
+  updatedConfig.categories[0].label = 'Dành cho Nàng (20/10)';
+  await updateGiftNavConfig(mockDb, updatedConfig);
+
+  const afterUpdate = await getGiftNavConfig(mockDb);
+  assert.equal(afterUpdate.categories[0].label, 'Dành cho Nàng (20/10)');
+});
+

@@ -12,12 +12,48 @@ import {
 } from '../../auth/middleware.js';
 import { applyShopCors } from '../../shopCors.js';
 import { listAllGiftsAdmin, createGiftAdmin, updateGiftAdmin, deleteGiftAdmin } from '../giftRepo.js';
-import { giftCollectionInputSchema, giftCollectionUpdateSchema } from '../schema.js';
+import { getGiftNavConfig, updateGiftNavConfig } from '../navRepo.js';
+import { giftCollectionInputSchema, giftCollectionUpdateSchema, giftNavConfigSchema } from '../schema.js';
 import { registerGiftProductAdminRoutes } from './products.routes.js';
 
 export function registerGiftAdminRoutes(app: Express, getOpsDb: GetOpsDb, getShopDb: () => Promise<Db>) {
   const guards = [requireAuth(getOpsDb), requireActive, requireManager, checkSameOrigin];
   registerGiftProductAdminRoutes(app, guards, getShopDb);
+
+  // GET /api/shop/admin/gifts/nav — Lấy cấu hình menu gợi ý quà tặng (4 thẻ + header)
+  app.get('/api/shop/admin/gifts/nav', ...guards, async (req: AuthRequest, res: Response) => {
+    applyShopCors(req, res);
+    try {
+      const db = await getShopDb();
+      const config = await getGiftNavConfig(db);
+      res.json({ ok: true, data: config });
+    } catch (err: any) {
+      console.error('[shopGifts Admin] GET /api/shop/admin/gifts/nav error:', err);
+      res.status(500).json({ ok: false, error: 'Không thể tải cấu hình menu quà tặng' });
+    }
+  });
+
+  // PUT /api/shop/admin/gifts/nav — Cập nhật cấu hình menu gợi ý quà tặng (4 thẻ + header)
+  app.put('/api/shop/admin/gifts/nav', ...guards, async (req: AuthRequest, res: Response) => {
+    applyShopCors(req, res);
+    try {
+      const parsed = giftNavConfigSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          ok: false,
+          error: 'Dữ liệu cấu hình menu không hợp lệ',
+          details: parsed.error.flatten().fieldErrors,
+        });
+      }
+
+      const db = await getShopDb();
+      const updated = await updateGiftNavConfig(db, parsed.data);
+      res.json({ ok: true, data: updated });
+    } catch (err: any) {
+      console.error('[shopGifts Admin] PUT /api/shop/admin/gifts/nav error:', err);
+      res.status(500).json({ ok: false, error: 'Không thể cập nhật cấu hình menu quà tặng' });
+    }
+  });
 
   // GET /api/shop/admin/gifts — Lấy tất cả thẻ quà tặng cho trang quản trị
   app.get('/api/shop/admin/gifts', ...guards, async (req: AuthRequest, res: Response) => {

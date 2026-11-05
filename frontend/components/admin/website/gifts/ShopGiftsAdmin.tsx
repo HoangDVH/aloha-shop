@@ -13,10 +13,12 @@ import {
   message,
   Popconfirm,
   Tag,
+  Tabs,
 } from "antd";
 import { Plus, Edit2, Trash2, Image as ImageIcon, UploadCloud, RefreshCw, Sparkles } from "lucide-react";
 import { GiftProductPicker } from "./GiftProductPicker";
 import { GiftImageLibrary } from "./GiftImageLibrary";
+import { GiftNavEditor } from "./GiftNavEditor";
 
 interface GiftItem {
   _id?: string;
@@ -295,8 +297,31 @@ export function ShopGiftsAdmin() {
   ];
 
   return (
-    <div className="space-y-4">
-      {/* Thanh công cụ */}
+    <div className="space-y-6">
+      <Tabs
+        defaultActiveKey="menu-nav"
+        type="card"
+        className="gift-admin-tabs"
+        items={[
+          {
+            key: "menu-nav",
+            label: (
+              <span className="flex items-center gap-1.5 font-semibold text-emerald-800">
+                🎯 4 Nhóm Gợi Ý Quà Tặng (Menu Header)
+              </span>
+            ),
+            children: <GiftNavEditor />,
+          },
+          {
+            key: "gift-catalog",
+            label: (
+              <span className="flex items-center gap-1.5 font-semibold text-stone-700">
+                📦 Danh Sách Thẻ Quà Tặng Chi Tiết
+              </span>
+            ),
+            children: (
+              <div className="space-y-4">
+                {/* Thanh công cụ */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-stone-200/80 shadow-2xs">
         <div>
           <h2 className="text-lg font-bold text-stone-900 flex items-center gap-2">
@@ -486,6 +511,12 @@ export function ShopGiftsAdmin() {
           </Form.Item>
         </Form>
       </Modal>
+
+              </div>
+            ),
+          },
+        ]}
+      />
 
       <GiftImageLibrary
         open={libraryModalOpen}

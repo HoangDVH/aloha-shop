@@ -1,10 +1,25 @@
 import type { Express, Request, Response } from 'express';
 import type { Db } from 'mongodb';
 import { listActiveGifts } from '../giftRepo.js';
+import { getGiftNavConfig } from '../navRepo.js';
 import { publicReadCache } from '../../cache/readCache.js';
 import { loadGiftProducts } from '../products.js';
 
 export function registerGiftPublicRoutes(app: Express, getShopDb: () => Promise<Db>) {
+  // GET /api/shop/gifts/nav — Cấu hình menu gợi ý quà tặng (4 nhóm + header + B2B link)
+  app.get('/api/shop/gifts/nav', async (_req: Request, res: Response) => {
+    try {
+      const db = await getShopDb();
+      const result = await publicReadCache.read('gifts', 'nav', () => getGiftNavConfig(db), 60);
+      res.setHeader('X-Shop-Cache', result.cache);
+      res.setHeader('Cache-Control', 'no-store');
+      res.json({ ok: true, data: result.body });
+    } catch (err: any) {
+      console.error('[shopGifts] GET /api/shop/gifts/nav error:', err);
+      res.status(500).json({ ok: false, error: 'Không thể tải cấu hình menu quà tặng' });
+    }
+  });
+
   // GET /api/shop/gifts — Danh sách thẻ quà tặng đang bật (hiển thị trang chủ)
   app.get('/api/shop/gifts', async (_req: Request, res: Response) => {
     try {

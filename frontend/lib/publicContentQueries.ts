@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { shopApiBase } from "./api";
 import type { PublicAppearance } from "./appearance";
 import type { GiftCardItem } from "@/components/gift/HomeGiftSection";
+import { DEFAULT_GIFT_NAV_CONFIG, type GiftNavConfig } from "./giftFilters";
 
 export const PUBLIC_CONTENT_KEY = ["shop_public_content"] as const;
 const contentPolicy = { staleTime: 60_000, gcTime: 5 * 60_000, retry: 1, refetchOnWindowFocus: true };
@@ -42,3 +43,23 @@ export function usePublicAppearance(enabled = true) {
 export function usePublicGifts(initialItems?: GiftCardItem[]) {
   return useQuery({ ...giftsQueryOptions, initialData: initialItems?.length ? initialItems : undefined });
 }
+
+export const giftNavQueryOptions = {
+  ...contentPolicy,
+  queryKey: [...PUBLIC_CONTENT_KEY, "gift_nav"] as const,
+  queryFn: async (): Promise<GiftNavConfig> => {
+    const data = await readContent("/api/shop/gifts/nav");
+    if (!data?.ok || !data.data) throw new Error("Invalid gift nav response");
+    return data.data;
+  },
+};
+
+export function usePublicGiftNav(initialConfig?: GiftNavConfig) {
+  return useQuery({
+    ...giftNavQueryOptions,
+    initialData: initialConfig,
+    placeholderData: initialConfig || DEFAULT_GIFT_NAV_CONFIG,
+    staleTime: 5_000,
+  });
+}
+

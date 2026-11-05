@@ -28,3 +28,25 @@ export const giftCollectionUpdateSchema = z.object({
   order: giftCollectionInputSchema.shape.order.removeDefault(),
   isActive: giftCollectionInputSchema.shape.isActive.removeDefault(),
 }).partial();
+
+export const giftNavCategoryItemSchema = z.object({
+  id: z.string().trim().min(1),
+  label: z.string().trim().min(1, 'Tên nhóm quà không được để trống').max(100),
+  hint: z.string().trim().max(200).default(''),
+  href: z.string().trim().min(1, 'Đường dẫn liên kết không được để trống'),
+  icon: z.string().trim().default('Heart'),
+  color: z.string().trim().default('bg-rose-50 text-rose-600'),
+  order: z.number().int().default(1),
+  enabled: z.boolean().default(true),
+});
+
+export const giftNavConfigSchema = z.object({
+  headerTitle: z.string().trim().min(1).max(100).default('Chọn quà, gửi yêu thương'),
+  headerSubtitle: z.string().trim().max(200).default('Bạn muốn tặng ai, nhân dịp nào?'),
+  b2bTitle: z.string().trim().max(100).default('Quà tặng doanh nghiệp'),
+  b2bSubtitle: z.string().trim().max(200).default('Tư vấn quà tặng cho đối tác, khách hàng & đội ngũ'),
+  b2bHref: z.string().trim().default('/qua-tang/doanh-nghiep'),
+  b2bEnabled: z.boolean().default(true),
+  categories: z.array(giftNavCategoryItemSchema).min(1, 'Cần ít nhất 1 nhóm quà tặng').max(10),
+});
+
