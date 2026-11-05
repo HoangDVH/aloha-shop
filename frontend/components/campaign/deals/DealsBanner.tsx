@@ -3,7 +3,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import type { CampaignBannerUI, CampaignUI } from "@/lib/campaign/campaignApi";
 import { DealsBannerGrid } from "./DealsBannerGrid";
-import { DealsShareButton } from "./DealsShareButton";
 
 /** Vị trí / nhịp rơi cố định (không random) để server và client render giống nhau. */
 const PETALS: { left: number; delay: number; dur: number; size: number }[] = [
@@ -61,9 +60,6 @@ export function DealsBanner({ campaign, below }: { campaign: CampaignUI; below?:
       <div className="relative">
         <DealsBannerGrid banners={effectiveBanners} />
         <Petals />
-        <div className="absolute top-2.5 right-2.5 sm:top-4 sm:right-4 z-10">
-          <DealsShareButton campaign={campaign} variant="banner" />
-        </div>
       </div>
       {below}
       <h1 className="sr-only">{hero.title || campaign.name}</h1>
