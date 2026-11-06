@@ -104,14 +104,19 @@ class ZaloNotifyService {
   private lastExpiryAlertDate: string = "";
 
   constructor() {
+    if (process.env.NODE_ENV === "test") return;
+
     this.restoreSession().catch((err) => {
       console.log("[ZaloNotifyService] No saved session or restore failed:", err?.message || err);
     });
 
     // Định kỳ mỗi 6 giờ kiểm tra xem phiên có sắp hết hạn không để cảnh báo trước 48h
-    setInterval(() => {
+    const timer = setInterval(() => {
       this.checkExpiryAndAlert().catch(() => {});
     }, 1000 * 60 * 60 * 6);
+    if (typeof timer.unref === "function") {
+      timer.unref();
+    }
   }
 
   public getStatus() {
