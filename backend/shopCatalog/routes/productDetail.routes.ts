@@ -21,6 +21,7 @@ import {
   isComboOrFormulaProduct,
   resolveShopDisplayTon,
   normalizeAttrs,
+  normKey,
 } from "../../shopVariantGroup.js";
 import {
   loadCategoryMetaById,
@@ -159,6 +160,20 @@ export function registerProductDetailRoutes(app: Express, ctx: CatalogCtx) {
         (packed.current
           ? (await subtractHeldFromPublicItems(db, [packed.current]))[0]
           : null);
+      for (const axis of packed.axes) {
+        for (const val of axis.values) {
+          const hitModel = modelsAvail.find((m) =>
+            m.attributes.some(
+              (a) =>
+                normKey(a.attributeName) === normKey(axis.name) &&
+                normKey(a.attributeValue) === normKey(val.value)
+            )
+          );
+          if (hitModel && hitModel.ton > 0) {
+            val.available = true;
+          }
+        }
+      }
       // Chỉ trả khi có gì để chọn
       const useful =
         packed.axes.length > 0 &&
