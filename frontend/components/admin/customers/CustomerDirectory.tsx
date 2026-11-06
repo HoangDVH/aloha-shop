@@ -126,6 +126,8 @@ export default function CustomerDirectory() {
     );
     if (match) {
       openedRef.current = true;
+      // Pre-seed cache để modal CTV mở ngay lập tức, không bị chậm hay treo loading
+      qc.setQueryData(["admin", "shop", "account", match.id], { ok: true, user: match });
       if (paramReview === "si") setSiId(match.id);
       else if (paramReview === "ctv") reviewCtv(match.id);
       else {
@@ -135,7 +137,7 @@ export default function CustomerDirectory() {
         else setSelectedId(match.id);
       }
     }
-  }, [list.data?.items, paramId, paramQ, paramReview, reviewCtv]);
+  }, [list.data?.items, paramId, paramQ, paramReview, reviewCtv, qc]);
 
   useEffect(() => {
     if (list.data) setPage(current => Math.min(current, Math.max(1, Math.ceil(list.data.total / pageSize))));
@@ -209,7 +211,10 @@ export default function CustomerDirectory() {
               account={row}
               onPermissions={() => setSelectedId(row.id)}
               onSi={() => setSiId(row.id)}
-              onCtv={() => reviewCtv(row.id)}
+              onCtv={() => {
+                qc.setQueryData(["admin", "shop", "account", row.id], { ok: true, user: row });
+                reviewCtv(row.id);
+              }}
               onCollapse={() => toggleRow(row.id)}
             />
           ),
@@ -260,7 +265,7 @@ export default function CustomerDirectory() {
 
     <Drawer open={Boolean(selectedId)} onClose={() => setSelectedId(null)} title="Chi tiết khách hàng" size="large" destroyOnHidden>
       {detail.isPending ? <Skeleton active /> : detail.error ? <Alert type="error" title={detail.error.message} action={<Button onClick={() => void detail.refetch()}>Thử lại</Button>} /> : detail.data && <AccountDetails key={detail.data.user.id} account={detail.data.user} onChanged={refresh} onDeleted={() => { setSelectedId(null); refresh(); }}
-        onSi={() => { setSiId(detail.data.user.id); setSelectedId(null); }} onCtv={() => { reviewCtv(detail.data.user.id); setSelectedId(null); }} />}
+        onSi={() => { setSiId(detail.data.user.id); setSelectedId(null); }} onCtv={() => { qc.setQueryData(["admin", "shop", "account", detail.data.user.id], { ok: true, user: detail.data.user }); reviewCtv(detail.data.user.id); setSelectedId(null); }} />}
     </Drawer>
     {siId && (si.isFetching || si.error || !si.data ? <Drawer open onClose={() => setSiId(null)} title="Hồ sơ khách sỉ" size="large">
       {si.error ? <Alert type="error" title={si.error.message} action={<Button onClick={() => void si.refetch()}>Thử lại</Button>} /> : <Skeleton active />}

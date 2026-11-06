@@ -10,6 +10,7 @@ import { useAdminSession } from "@/components/admin/auth/useAdminSession";
 import { AdminOpsSync } from "@/components/admin/shell/AdminOpsSync";
 import { AdminMobileTabBar } from "@/components/admin/shell/AdminMobileTabBar";
 import { AdminNotificationCenter } from "@/components/admin/shell/AdminNotificationCenter";
+import { AdminZaloStatusButton } from "@/components/admin/shell/AdminZaloStatusButton";
 import { Loader2, Menu, PanelLeftClose, PanelLeftOpen, Volume2 } from "lucide-react";
 
 function getAdminSectionTitle(path: string): string {
@@ -106,6 +107,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
               <span className="text-sm font-bold text-[#2D5A27]">ALOHA Admin</span>
             </div>
             <div className="flex items-center gap-2">
+              <AdminZaloStatusButton mobile />
               <AdminNotificationCenter mode="mobile" />
             </div>
           </div>
@@ -141,6 +143,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
                 <Volume2 className="h-3.5 w-3.5 text-emerald-700" />
                 <span>Âm thanh báo</span>
               </button>
+
+              {/* Trạng thái kết nối Zalo & Quét QR */}
+              <AdminZaloStatusButton />
 
               {/* Chuông thông báo KiotViet */}
               <AdminNotificationCenter mode="desktop" />

@@ -411,9 +411,10 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
     res.json(zaloNotifyService.getStatus());
   });
 
-  app.post("/api/shop/zalo-notify/qr", async (_req, res) => {
+  app.post("/api/shop/zalo-notify/qr", async (req, res) => {
     try {
-      const qr = await zaloNotifyService.generateQR();
+      const force = Boolean(req.body?.force);
+      const qr = await zaloNotifyService.generateQR(force);
       res.json({ success: true, qr, ...zaloNotifyService.getStatus() });
     } catch (err: any) {
       res.status(500).json({ error: err?.message || "Lỗi tạo mã QR Zalo" });

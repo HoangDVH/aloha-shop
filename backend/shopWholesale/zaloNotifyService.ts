@@ -100,24 +100,63 @@ class ZaloNotifyService {
   private statusText: string = "chua_ket_noi"; // chua_ket_noi | dang_tao_qr | cho_quet | da_quet_cho_xac_nhan | da_ket_noi | loi
   private targetGroupId: string = "3714868686368863924";
   private targetGroupName: string = "Aloha - Thông Báo Sỉ";
+  private savedAt: string | null = null;
+  private lastExpiryAlertDate: string = "";
 
   constructor() {
     this.restoreSession().catch((err) => {
       console.log("[ZaloNotifyService] No saved session or restore failed:", err?.message || err);
     });
+
+    // Định kỳ mỗi 6 giờ kiểm tra xem phiên có sắp hết hạn không để cảnh báo trước 48h
+    setInterval(() => {
+      this.checkExpiryAndAlert().catch(() => {});
+    }, 1000 * 60 * 60 * 6);
   }
 
   public getStatus() {
+    const savedTime = this.savedAt ? new Date(this.savedAt).getTime() : 0;
+    const now = Date.now();
+    const daysActive = savedTime ? Math.floor((now - savedTime) / (1000 * 60 * 60 * 24)) : 0;
+    const estimatedLifespanDays = 21; // Phiên cookie Zalo cá nhân thường duy trì ~20-30 ngày
+    const daysRemaining = savedTime ? Math.max(0, estimatedLifespanDays - daysActive) : 0;
+    const isConnected = Boolean(this.api) && this.statusText === "da_ket_noi";
+    const isExpiringSoon = isConnected && daysRemaining <= 3;
+
     return {
       targetPhone: NOTIFY_PHONE_TARGET,
-      connected: Boolean(this.api),
+      connected: isConnected,
       ownUid: this.ownUid,
       targetGroupId: this.targetGroupId,
       targetGroupName: this.targetGroupName,
       status: this.statusText,
       hasQr: Boolean(this.currentQrDataUrl),
       qrImage: this.currentQrDataUrl,
+      savedAt: this.savedAt,
+      daysActive,
+      daysRemaining,
+      isExpiringSoon,
     };
+  }
+
+  public async checkExpiryAndAlert(): Promise<void> {
+    if (!this.api || this.statusText !== "da_ket_noi" || !this.savedAt) return;
+    const st = this.getStatus();
+    if (st.isExpiringSoon && st.daysRemaining <= 2) {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      if (this.lastExpiryAlertDate === todayStr) return;
+      this.lastExpiryAlertDate = todayStr;
+      const text = [
+        "⚠️ [HỆ THỐNG ALOHA] CẢNH BÁO PHIÊN ZALO SẮP HẾT HẠN!",
+        `⏰ Phiên đăng nhập Zalo thông báo còn khoảng ${st.daysRemaining} ngày hiệu lực.`,
+        "👉 Quản trị viên vui lòng vào trang Quản trị Aloha để quét mã QR gia hạn, tránh bị gián đoạn nhận thông báo đơn hàng & CTV mới.",
+        `🔗 Link gia hạn nhanh: https://alohathegioichaucay.com/admin/ctv/khach-hang`,
+      ].join("\n");
+      const gid = await this.ensureGroup();
+      await this.sendToGroup(gid, text, "Alert:ZaloExpiry").catch((e) =>
+        console.error("[ZaloNotifyService] Failed to send expiry alert:", e)
+      );
+    }
   }
 
   private async ensureGroup(): Promise<string> {
@@ -183,6 +222,7 @@ class ZaloNotifyService {
       });
 
       this.api = api;
+      this.savedAt = creds.savedAt || null;
       const uid = typeof api.getOwnId === "function" ? api.getOwnId() : creds.uid || "";
       this.ownUid = String(uid);
       if (creds.groupId) {
@@ -202,8 +242,8 @@ class ZaloNotifyService {
     }
   }
 
-  public async generateQR(): Promise<string> {
-    if (this.api && this.statusText === "da_ket_noi") {
+  public async generateQR(force = false): Promise<string> {
+    if (this.api && this.statusText === "da_ket_noi" && !force) {
       return this.currentQrDataUrl;
     }
 
@@ -236,7 +276,10 @@ class ZaloNotifyService {
               userAgent: event.data.userAgent,
               language: "vi",
               savedAt: new Date().toISOString(),
+              groupId: this.targetGroupId,
+              groupName: this.targetGroupName,
             };
+            this.savedAt = creds.savedAt;
             try {
               fs.writeFileSync(SESSION_FILE, JSON.stringify(creds, null, 2), "utf8");
               console.log(`[ZaloNotifyService] Saved session to ${SESSION_FILE}`);
@@ -336,7 +379,7 @@ class ZaloNotifyService {
       data.address ? `🏠 Địa chỉ: ${data.address}` : "",
       data.note ? `📝 Ghi chú: ${data.note}` : "",
       `💬 Nhắn Zalo khách ngay: https://zalo.me/${data.phone}`,
-      `🔗 Quản trị khách sỉ: https://alohathegioichaucay.com/admin/khach-si`,
+      `🔗 Xem hồ sơ khách sỉ: https://alohathegioichaucay.com/admin/ctv/khach-hang?phone=${encodeURIComponent(data.phone)}&review=si`,
       `⏰ Thời gian: ${timeStr}`,
     ]
       .filter(Boolean)
@@ -407,7 +450,7 @@ class ZaloNotifyService {
       data.address ? `🏠 Khu vực/Địa chỉ: ${data.address}` : "",
       data.note ? `📝 Ghi chú: ${data.note}` : "",
       `💬 Nhắn Zalo CTV ngay: https://zalo.me/${data.phone}`,
-      `🔗 Quản trị danh sách CTV: https://alohathegioichaucay.com/admin/ctv`,
+      `🔗 Xem & duyệt hồ sơ CTV: https://alohathegioichaucay.com/admin/ctv/khach-hang?phone=${encodeURIComponent(data.phone)}&review=ctv`,
       `⏰ Thời gian: ${timeStr}`,
     ]
       .filter(Boolean)
