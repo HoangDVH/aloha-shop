@@ -37,6 +37,9 @@ export function ProductAttachedItems({
   const setQty = useCart((s) => s.setQty);
   const cartLines = useCart((s) => s.lines);
 
+  // Tạm thời ẩn khối mua kèm trợ giá theo yêu cầu
+  return null;
+
   const items = attachedProducts || mainProduct.attachedProducts || [];
   if (!items.length) return null;
 

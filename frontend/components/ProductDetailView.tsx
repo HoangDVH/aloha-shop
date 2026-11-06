@@ -374,32 +374,10 @@ export function ProductDetailView({ product }: { product: ShopProduct }) {
     [product.attachedProducts, activeProduct.attachedProducts]
   );
 
+  // Tạm thời ẩn mua kèm trợ giá theo yêu cầu
   const attachedCartLines = useMemo(() => {
-    const codes = [
-      ...(product.attachedItems || []),
-      ...attachedProductsList.map((p) => p.ma),
-      ...(activeProduct.attachedItems || []),
-    ];
-    if (!codes.length) return [];
-    const attachedCodeSet = new Set(codes.map((c) => String(c).toUpperCase()));
-    attachedCodeSet.delete(activeProduct.ma.toUpperCase());
-
-    const attachedProductMap = new Map(
-      attachedProductsList.map((p) => [p.ma.toUpperCase(), p])
-    );
-
-    return cartLines
-      .filter((l) => attachedCodeSet.has(l.ma.toUpperCase()) && l.qty > 0)
-      .map((l) => {
-        const p = attachedProductMap.get(l.ma.toUpperCase());
-        return {
-          ma: l.ma,
-          ten: l.ten || p?.ten,
-          gia: l.gia,
-          qty: l.qty,
-        };
-      });
-  }, [product.attachedItems, product.attachedProducts, activeProduct.attachedItems, activeProduct.attachedProducts, activeProduct.ma, attachedProductsList, cartLines]);
+    return [];
+  }, []);
 
   const productPricing = useProductPricing({
     ma: activeProduct.ma,
