@@ -22,6 +22,20 @@ export function ProductTierPricing({
   maxQty = 10000,
 }: Props) {
   if (basePrice <= 0) return null;
+
+  // Tạm thời ẩn các ô bậc giá theo số lượng, hiển thị giá bán tiêu chuẩn
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-2.5 text-2xl font-bold text-[var(--aloha-price)] sm:text-[1.75rem]">
+      <span>{formatVnd(basePrice)}</span>
+      {unit ? (
+        <span className="text-base font-semibold text-[var(--aloha-muted)] sm:text-lg">
+          / {unit}
+        </span>
+      ) : null}
+    </div>
+  );
+
+  /*
   const { tier } = calculateTierPrice(basePrice, qty);
 
   return (
@@ -44,21 +58,18 @@ export function ProductTierPricing({
                   : "border-stone-200 bg-white hover:border-stone-400 hover:bg-stone-50/60 text-slate-700"
               }`}
             >
-              {/* Badge % giảm góc trên phải chuẩn 1688 / Shopee — nằm gọn trong thẻ, không đội chiều cao */}
               {t.discountPercent > 0 && (
                 <span className="absolute top-0 right-0 rounded-bl-md bg-rose-50 border-b border-l border-rose-200/90 px-1.5 py-0.5 text-[9px] font-extrabold text-rose-600 leading-none">
                   -{t.discountPercent}%
                 </span>
               )}
 
-              {/* Tick xác nhận góc dưới phải chuẩn Shopee — nằm gọn trong thẻ, không tràn ra ngoài */}
               {selected && (
                 <span className="absolute bottom-0 right-0 flex h-3.5 w-3.5 items-center justify-center rounded-tl-md bg-emerald-600 text-white">
                   <Check size={9} className="stroke-[3.5]" />
                 </span>
               )}
 
-              {/* Dòng 1: Khoảng số lượng */}
               <span
                 className={`text-[11px] font-semibold leading-tight sm:text-xs ${
                   selected ? "text-emerald-900" : "text-slate-600"
@@ -67,7 +78,6 @@ export function ProductTierPricing({
                 {t.label} {unit ? unit.toLowerCase() : ""}
               </span>
 
-              {/* Dòng 2: Giá rõ ràng, không lặp lại /kg */}
               <span
                 className={`text-xs font-extrabold tabular-nums tracking-tight sm:text-sm ${
                   selected ? "text-rose-600" : "text-slate-800"
@@ -81,4 +91,5 @@ export function ProductTierPricing({
       </div>
     </section>
   );
+  */
 }
