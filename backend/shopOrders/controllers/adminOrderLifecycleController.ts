@@ -10,6 +10,12 @@ import { notifyOrderStatus } from "../notifyOrderStatus.js";
 import { syncBus } from "../../syncBus.js";
 import type { GetShopDb } from "../routes.js";
 import { ensureAdminOrderIndexes } from "./adminOrderQueryController.js";
+import { ADMIN_NOTIFICATION_TYPES } from "../../../shared/opsContracts.js";
+import {
+  ADMIN_NOTIFICATIONS,
+  buildOrderNotificationFields,
+  syncAdminNotificationEntity,
+} from "../../shopNotifications/adminNotificationStore.js";
 
 export async function handleConfirmPayment(
   req: AuthRequest,
@@ -129,7 +135,7 @@ export async function handleConfirmShipment(
 
     await shopDb.collection(SHOP_ORDERS).updateOne(
       { _id: doc._id },
-      { $set: { shipment, updatedAt: now } }
+      { $set: { shipment, updatedAt: new Date() } }
     );
 
     if (!result.ok) {
@@ -138,8 +144,16 @@ export async function handleConfirmShipment(
 
     await shopDb.collection(SHOP_ORDERS).updateOne(
       { _id: doc._id },
-      { $set: { orderStatus: "dang_giao", updatedAt: now } }
+      { $set: { orderStatus: "dang_giao", updatedAt: new Date() } }
     );
+    await syncAdminNotificationEntity(shopDb, {
+      entityType: ADMIN_NOTIFICATION_TYPES.ORDER,
+      entityId: String(doc.code || id),
+      fields: buildOrderNotificationFields({ ...doc, orderStatus: "dang_giao" }),
+    });
+    syncBus.publish(["shop_orders", ADMIN_NOTIFICATIONS], "mark-shipping", {
+      ids: [String(doc.code || id)],
+    });
 
     return res.json({ ok: true, shipment, raw: result.raw, orderStatus: "dang_giao" });
   } catch (e: any) {
@@ -157,7 +171,8 @@ export async function handleMarkShipping(
     const shopDb = await getShopDb();
     await ensureAdminOrderIndexes(shopDb, idxState);
     const id = String(req.params.id || "").trim();
-    const now = new Date().toISOString();
+    const nowDate = new Date();
+    const now = nowDate.toISOString();
     const r = await shopDb.collection(SHOP_ORDERS).findOneAndUpdate(
       {
         $or: [{ id }, { code: id }],
@@ -168,7 +183,7 @@ export async function handleMarkShipping(
         $set: {
           orderStatus: "dang_giao",
           shippingAt: now,
-          updatedAt: now,
+          updatedAt: nowDate,
           shippingBy: req.auth?.username || "admin",
         },
       },
@@ -178,7 +193,12 @@ export async function handleMarkShipping(
     if (!doc || !(doc as any)._id) {
       return res.status(400).json({ error: "Không cập nhật được (đơn đã xong/hủy?)" });
     }
-    syncBus.publish(["shop_orders"], "mark-shipping", {
+    await syncAdminNotificationEntity(shopDb, {
+      entityType: ADMIN_NOTIFICATION_TYPES.ORDER,
+      entityId: String((doc as any).code || id),
+      fields: buildOrderNotificationFields(doc as any),
+    });
+    syncBus.publish(["shop_orders", ADMIN_NOTIFICATIONS], "mark-shipping", {
       ids: [String((doc as any).code || id)],
     });
     void notifyOrderStatus(shopDb, doc as any, "dang_giao").catch((e) =>

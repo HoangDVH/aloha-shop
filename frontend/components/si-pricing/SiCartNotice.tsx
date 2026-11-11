@@ -48,7 +48,9 @@ export function useCartQuote(delivery?: {
     queryFn: () =>
       siRequest<CartQuote>("/api/shop/cart/quote", { items, ...delivery }),
     enabled: Boolean(isSi && items.length),
-    refetchInterval: 15000,
+    staleTime: 30_000,
+    refetchInterval: 45_000,
+    refetchOnWindowFocus: false,
   });
   return { isSi, items, quote };
 }

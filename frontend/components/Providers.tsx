@@ -1,7 +1,7 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { ToastProvider } from "@/components/Toast";
 import { ShopAuthProvider } from "@/components/ShopAuthProvider";
 import { ShopGlobalLoading } from "@/components/ShopGlobalLoading";
@@ -13,6 +13,18 @@ import { ShopVisitTracker } from "@/components/ShopVisitTracker";
 import { FacebookPixel } from "@/components/analytics/FacebookPixel";
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    const sync = () => {
+      document.documentElement.classList.toggle("aloha-tab-hidden", document.visibilityState !== "visible");
+    };
+    sync();
+    document.addEventListener("visibilitychange", sync);
+    return () => {
+      document.removeEventListener("visibilitychange", sync);
+      document.documentElement.classList.remove("aloha-tab-hidden");
+    };
+  }, []);
+
   const [client] = useState(
     () =>
       new QueryClient({

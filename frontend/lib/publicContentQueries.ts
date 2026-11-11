@@ -7,7 +7,7 @@ import type { GiftCardItem } from "@/components/gift/HomeGiftSection";
 import { DEFAULT_GIFT_NAV_CONFIG, type GiftNavConfig } from "./giftFilters";
 
 export const PUBLIC_CONTENT_KEY = ["shop_public_content"] as const;
-const contentPolicy = { staleTime: 60_000, gcTime: 5 * 60_000, retry: 1, refetchOnWindowFocus: true };
+const contentPolicy = { staleTime: 120_000, gcTime: 5 * 60_000, retry: 1, refetchOnWindowFocus: false };
 
 async function readContent(path: string) {
   // Keep small shared requests alive across transient unmounts (including StrictMode).

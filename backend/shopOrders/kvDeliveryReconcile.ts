@@ -19,6 +19,12 @@ import {
 } from "./findShopOrder.js";
 import { notifyOrderStatus } from "./notifyOrderStatus.js";
 import { syncBus } from "../syncBus.js";
+import { ADMIN_NOTIFICATION_TYPES } from "../../shared/opsContracts.js";
+import {
+  ADMIN_NOTIFICATIONS,
+  buildOrderNotificationFields,
+  syncAdminNotificationEntity,
+} from "../shopNotifications/adminNotificationStore.js";
 
 export type GetShopDb = () => Promise<Db>;
 export type GetMainDb = () => Promise<Db>;
@@ -171,12 +177,17 @@ export async function applyKvInvoiceDeliveryToShop(opts: {
         $set: {
           orderStatus: "dang_giao",
           shippingAt: now,
-          updatedAt: now,
+          updatedAt: new Date(),
           shippingBy: opts.confirmedBy,
         },
       }
     );
-    syncBus.publish(["shop_orders"], "mark-shipping", { ids: [code] });
+    await syncAdminNotificationEntity(shopDb, {
+      entityType: ADMIN_NOTIFICATION_TYPES.ORDER,
+      entityId: code,
+      fields: buildOrderNotificationFields({ ...order, orderStatus: "dang_giao" }),
+    });
+    syncBus.publish(["shop_orders", ADMIN_NOTIFICATIONS], "mark-shipping", { ids: [code] });
     void notifyOrderStatus(
       shopDb,
       { ...order, orderStatus: "dang_giao" },

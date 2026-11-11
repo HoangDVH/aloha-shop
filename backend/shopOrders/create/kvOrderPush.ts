@@ -80,7 +80,7 @@ export async function holdOrderStock(ctx: KvPushContext): Promise<void> {
       .collection(SHOP_ORDERS)
       .updateOne(
         { _id: ctx.mongoId },
-        { $set: { stockHeld: true, updatedAt: new Date().toISOString() } }
+        { $set: { stockHeld: true, updatedAt: new Date() } }
       );
     ctx.doc.stockHeld = true;
   } catch (e: any) {
@@ -143,7 +143,7 @@ async function pushCodOrReviewOrder(ctx: KvPushContext, code: string): Promise<K
       kvOrderId: ord.kvOrderId,
       kvDeliveryAddress: ord.kvDeliveryAddress || null,
       kvOrderCode,
-      updatedAt: new Date().toISOString(),
+      updatedAt: new Date(),
     };
     let nextCode = code;
     if (kvOrderCode && kvOrderCode !== code) {
@@ -159,7 +159,7 @@ async function pushCodOrReviewOrder(ctx: KvPushContext, code: string): Promise<K
     const msg = String(e?.message || e || "Không tạo được đơn đặt hàng trên KiotViet");
     if (ctx.hasPreOrder) {
       console.warn("[shop-order] kv COD soft-fail (preOrder)", code, msg);
-      await patchOrder(ctx, { kvPushError: msg.slice(0, 500), updatedAt: new Date().toISOString() });
+      await patchOrder(ctx, { kvPushError: msg.slice(0, 500), updatedAt: new Date() });
       return { ok: true, code };
     }
     await rollbackOrder(ctx, code);
@@ -220,7 +220,7 @@ async function pushAwaitingInvoice(ctx: KvPushContext, code: string): Promise<Kv
       kvDeliveryAddress: inv.kvDeliveryAddress || null,
       kvInvoiceCode: inv.kvInvoiceCode,
       kvInvoiceMode: "awaiting",
-      updatedAt: new Date().toISOString(),
+      updatedAt: new Date(),
     });
     return { ok: true, code };
   } catch (e: any) {
@@ -228,7 +228,7 @@ async function pushAwaitingInvoice(ctx: KvPushContext, code: string): Promise<Kv
     // Đơn đặt trước: giữ Mongo + QR ngân hàng dù KV từ chối vì hết tồn
     if (ctx.hasPreOrder) {
       console.warn("[shop-order] kv awaiting soft-fail (preOrder)", code, msg);
-      await patchOrder(ctx, { kvPushError: msg.slice(0, 500), updatedAt: new Date().toISOString() });
+      await patchOrder(ctx, { kvPushError: msg.slice(0, 500), updatedAt: new Date() });
       return { ok: true, code };
     }
     await rollbackOrder(ctx, code);

@@ -3,8 +3,7 @@ import type { Express, Request, Response } from "express";
 import type { Db } from "mongodb";
 import type { GetShopDb } from "../shopOrders/routes.js";
 import { shopRateLimitOrReject } from "../shopRateLimit.js";
-import { broadcastAdminWebPush } from "../shopPush/webPushService.js";
-import { zaloNotifyService } from "../shopWholesale/zaloNotifyService.js";
+import { emitRecruitmentApplied } from "../shopNotifications/domainEvents.js";
 import {
   APPLICATIONS_COL,
   EMPLOYMENT_TYPES,
@@ -341,22 +340,8 @@ export function registerRecruitmentPublicRoutes(app: Express, getShopDb: GetShop
 
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
-          await col.insertOne(doc);
+          const inserted = await col.insertOne(doc);
           savedCvKey = null;
-          try {
-            const { syncBus } = await import("../syncBus.js");
-            syncBus.publish([APPLICATIONS_COL, "recruitment_applications"], "recruitment_apply", {
-              ids: [doc.publicCode],
-            });
-          } catch {
-            /* non-fatal */
-          }
-          void broadcastAdminWebPush(db, {
-            title: "📄 ALOHA - Có hồ sơ ứng viên mới!",
-            body: `${input.fullName} (${input.phone}) ứng tuyển: ${interestedPosition || "Ứng viên mới"}`,
-            url: `/admin/tuyen-dung/ho-so?code=${encodeURIComponent(doc.publicCode)}`,
-            tag: `recruit-${doc.publicCode}`,
-          }).catch((e) => console.warn("[web-push] recruitment apply push failed:", e?.message || e));
 
           const locationNames = locationPreference.mode === "any"
             ? "Tất cả các chi nhánh"
@@ -369,19 +354,23 @@ export function registerRecruitmentPublicRoutes(app: Express, getShopDb: GetShop
             tren_2_nam: "Trên 2 năm",
           };
 
-          void zaloNotifyService.sendRecruitmentNotice({
-            fullName: input.fullName,
-            phone: input.phone,
-            email: input.email,
-            position: interestedPosition || "Ứng tuyển chung",
-            submissionType: input.submissionType,
-            location: locationNames,
-            experienceLevel: expLevelMap[input.experienceLevel] || input.experienceLevel,
-            experienceSummary: input.experienceSummary,
-            cvFileName: cv?.originalName,
-            publicCode: doc.publicCode,
-            appliedAt: now,
-          }).catch((e) => console.warn("[zalo] recruitment notice failed:", e?.message || e));
+          await emitRecruitmentApplied({
+            shopDb: db,
+            application: { ...doc, _id: (inserted as any)?.insertedId ?? (doc as any)._id ?? doc.publicCode },
+            zaloPayload: {
+              fullName: input.fullName,
+              phone: input.phone,
+              email: input.email,
+              position: interestedPosition || "Ứng tuyển chung",
+              submissionType: input.submissionType,
+              location: locationNames,
+              experienceLevel: expLevelMap[input.experienceLevel] || input.experienceLevel,
+              experienceSummary: input.experienceSummary,
+              cvFileName: cv?.originalName,
+              publicCode: doc.publicCode,
+              appliedAt: now,
+            },
+          }).catch(() => {});
 
           res.status(201).json({ ok: true, publicCode: doc.publicCode, submissionType: doc.submissionType });
           return;

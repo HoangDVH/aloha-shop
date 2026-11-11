@@ -11,6 +11,7 @@ import {
 } from "../commissionModels.js";
 import { clearHeldCommissions } from "../commission.js";
 import type { CtvMeCtx } from "./shared.js";
+import { toIsoString } from "../../utils/mongoDate.js";
 
 export function registerCtvMeStatsRoute(app: Express, ctx: CtvMeCtx) {
   app.get("/api/shop/ctv/me/stats", ctx.auth, async (req: ShopAuthRequest, res) => {
@@ -107,7 +108,7 @@ export function registerCtvMeStatsRoute(app: Express, ctx: CtvMeCtx) {
           orderLabel,
           isCod,
           total: Number(o.total ?? o.totalPayment) || 0,
-          createdAt: o.createdAt || null,
+          createdAt: toIsoString(o.createdAt) || null,
           items: myLines.map((d: any) => ({
             ma: String(d.productCode || d.ma || "").toUpperCase(),
             ten: String(d.productName || d.ten || ""),

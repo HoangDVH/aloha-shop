@@ -27,9 +27,9 @@ export function useCurrentCampaign() {
     queryKey: [...CURRENT_CAMPAIGN_KEY, user?.id || "guest"],
     enabled: hydrated && !authLoading && !authBusy,
     queryFn: fetchCurrentCampaign,
-    staleTime: 30_000,
-    refetchInterval: 40_000,
-    refetchOnWindowFocus: true,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: false,
   });
 
   useEffect(

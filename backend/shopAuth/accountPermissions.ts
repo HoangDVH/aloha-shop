@@ -6,6 +6,13 @@ import { requireAuth, requireActive, requireManager, type AuthRequest, type GetD
 import { SHOP_ACCOUNTS, shopAccountIdQuery, toPublicShopAccount, normalizeCtvCode, isValidCtvCode } from "./models.js";
 import { normalizeWholesalePhone } from "../shopWholesale/policy.js";
 import { syncBus } from "../syncBus.js";
+import { ADMIN_NOTIFICATION_TYPES } from "../../shared/opsContracts.js";
+import {
+  ADMIN_NOTIFICATIONS,
+  buildCtvNotificationFields,
+  buildWholesaleNotificationFields,
+  syncAdminNotificationEntity,
+} from "../shopNotifications/adminNotificationStore.js";
 
 const status = z.enum(["active", "cho_duyet", "khoa", "tu_choi"]).nullable();
 export const permissionsInput = z.object({
@@ -25,8 +32,9 @@ export async function updateAccountPermissions(db: Db, ref: string, input: z.inf
     return { status: 409, error: "Quyền tài khoản đã thay đổi. Vui lòng tải lại hồ sơ." };
   }
   const wholesale = input.customerType === "wholesale", hasSi = roles.includes("si"), hasCtv = roles.includes("ctv");
-  const now = new Date().toISOString(), nextRoles = ["customer", ...(wholesale ? ["si"] : []), ...(input.ctv ? ["ctv"] : [])];
-  const patch: Record<string, any> = { roles: nextRoles, updatedAt: now };
+  const nowDate = new Date();
+  const now = nowDate.toISOString(), nextRoles = ["customer", ...(wholesale ? ["si"] : []), ...(input.ctv ? ["ctv"] : [])];
+  const patch: Record<string, any> = { roles: nextRoles, updatedAt: nowDate };
   if (wholesale && !hasSi) {
     const phone = normalizeWholesalePhone(String(account.phone || ""));
     if (!/^0[35789]\d{8}$/.test(phone)) return { status: 400, error: "Khách cần bổ sung số điện thoại hợp lệ trước khi gán loại khách sỉ." };
@@ -56,7 +64,22 @@ export async function updateAccountPermissions(db: Db, ref: string, input: z.inf
       $push: { permissionsAudit: audit } as any,
     }, { returnDocument: "after" });
     if (!updated) return { status: 409, error: "Hồ sơ vừa thay đổi. Vui lòng tải lại trước khi lưu quyền." };
-    syncBus.publish([SHOP_ACCOUNTS], "account_permissions_changed", { ids: [String(account._id)] });
+    const nextRoleList = Array.isArray((updated as any).roles) ? (updated as any).roles : [];
+    if (nextRoleList.includes("ctv") || (updated as any).ctvStatus) {
+      await syncAdminNotificationEntity(db, {
+        entityType: ADMIN_NOTIFICATION_TYPES.CTV,
+        entityId: String(account._id),
+        fields: buildCtvNotificationFields(updated as any),
+      });
+    }
+    if (nextRoleList.includes("si") || (updated as any).siStatus) {
+      await syncAdminNotificationEntity(db, {
+        entityType: ADMIN_NOTIFICATION_TYPES.WHOLESALE,
+        entityId: String(account._id),
+        fields: buildWholesaleNotificationFields(updated as any),
+      });
+    }
+    syncBus.publish([SHOP_ACCOUNTS, ADMIN_NOTIFICATIONS], "account_permissions_changed", { ids: [String(account._id)] });
     return { status: 200, user: toPublicShopAccount(updated) };
   } catch (error: any) {
     if (error?.code === 11000) return { status: 409, error: "Mã CTV đã được tài khoản khác sử dụng." };

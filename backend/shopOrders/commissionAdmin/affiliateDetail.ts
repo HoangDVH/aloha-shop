@@ -15,6 +15,7 @@ import {
   voidUnpaidCommissionsForCtv,
 } from "../commission.js";
 import { recordFraudEvent } from "../ctvFraud.js";
+import { toIsoString } from "../../utils/mongoDate.js";
 
 export function registerAffiliateDetail(app: Express, ctx: CommissionAdminCtx) {
   const { getDb, getShopDb, gate, ensure } = ctx;
@@ -323,7 +324,7 @@ export function registerAffiliateDetail(app: Express, ctx: CommissionAdminCtx) {
           displayCode,
           total,
           orderStatus: String(o.orderStatus || ""),
-          createdAt: o.createdAt ? String(o.createdAt) : null,
+          createdAt: toIsoString(o.createdAt) || null,
         };
       });
 
@@ -345,7 +346,7 @@ export function registerAffiliateDetail(app: Express, ctx: CommissionAdminCtx) {
           imageUrl: String(c.imageUrl || "").trim() || cat?.anh || undefined,
           amount,
           status: String(c.status || ""),
-          createdAt: c.createdAt ? String(c.createdAt) : null,
+          createdAt: toIsoString(c.createdAt) || null,
         };
       });
 

@@ -11,6 +11,12 @@ def prepare(text, port, assets):
         lambda m: m[1] + str(port) + m[3], text)
     if count != 1:
         raise ValueError("Expected exactly one shop upstream")
+    if not re.search(r"(?m)^\s*http2\s+on\s*;", text):
+        text = re.sub(
+            r"(?m)^(\s*listen\s+(?:\[::\]:)?443\b(?![^;]*\bhttp2\b)[^;]*\bssl)\b",
+            r"\1 http2",
+            text,
+        )
     start = text.index("    location / {")
     end = text.index("\n    }", start)
     block = text[start:end]

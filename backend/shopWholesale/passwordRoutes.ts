@@ -148,7 +148,8 @@ export function registerWholesalePasswordRoutes(
             .json({ error: `SĐT đã gắn tài khoản ${masked}. Hãy mời đúng email đó (nâng cấp cùng tài khoản).` });
         }
         const existing = byEmail || byPhone || null;
-        const now = new Date().toISOString();
+        const nowDate = new Date();
+        const now = nowDate.toISOString();
         const auditBase = { id: crypto.randomUUID(), actorAdminId: req.auth!.userId, at: now };
 
         if (existing) {
@@ -180,7 +181,7 @@ export function registerWholesalePasswordRoutes(
             siIdentity: true,
             roles: nextRoles,
             siStatus: "cho_duyet",
-            updatedAt: now,
+            updatedAt: nowDate,
             "siProfile.fullName": body.fullName,
             "siProfile.phone": phone,
           };
@@ -223,8 +224,8 @@ export function registerWholesalePasswordRoutes(
           active: true,
           applicationRevision: 1,
           siProfile: { fullName: body.fullName, phone },
-          createdAt: now,
-          updatedAt: now,
+          createdAt: nowDate,
+          updatedAt: nowDate,
           siAudit: [{ ...auditBase, action: "invite" }],
         });
         res.json({

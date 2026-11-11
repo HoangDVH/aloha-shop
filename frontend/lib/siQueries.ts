@@ -29,5 +29,5 @@ export class SiApiError extends Error {
 }
 export type SiSession = { verified: boolean; user: ShopUser | null; zaloConfigured: boolean; minOrder: number; termsVersion: string };
 export function useSiSession() {
-  return useHydratedQuery(useQuery({ queryKey: ["shop", "si", "session"], queryFn: () => siRequest<SiSession>("/api/shop/auth/si/session"), refetchInterval: 15000, retry: false }));
+  return useHydratedQuery(useQuery({ queryKey: ["shop", "si", "session"], queryFn: () => siRequest<SiSession>("/api/shop/auth/si/session"), staleTime: 30_000, refetchInterval: 45_000, refetchOnWindowFocus: false, retry: false }));
 }

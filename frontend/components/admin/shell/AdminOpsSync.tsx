@@ -18,6 +18,7 @@ import {
 import { adminFetch } from "@/components/admin/api/adminFetch";
 import { AdminPushSettingsCard } from "@/components/admin/shell/AdminPushSettingsCard";
 import { subscribeToWebPush } from "@/components/admin/shell/adminWebPush";
+import { createSharedSseLeader, isPageVisible } from "@/lib/sharedSseLeader";
 
 export type AdminOpsCounts = {
   ordersNeedAction: number;
@@ -515,56 +516,57 @@ export function AdminOpsSync({ enabled }: { enabled: boolean }) {
   }, []);
 
   useEffect(() => {
-    if (!enabled || typeof EventSource === "undefined") return;
-
-    let es: EventSource | null = null;
-    let stopped = false;
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    let attempt = 0;
+    if (!enabled) return;
+    let pendingOrderFromLeader = false;
 
     const triggerEventAlert = (
       category: NotificationCategory,
       title: string,
       body: string,
-      targetUrl?: string
+      targetUrl: string | undefined,
+      fromLeader: boolean
     ) => {
-      playNotificationSound(category);
+      if (fromLeader) {
+        playNotificationSound(category);
 
-      if (typeof document !== "undefined" && document.visibilityState !== "visible") {
-        showBrowserNotification(title, body, targetUrl);
+        if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+          showBrowserNotification(title, body, targetUrl);
 
-        if (!originalTitleRef.current) {
-          originalTitleRef.current = document.title;
-        }
-        if (!titleFlashInterval.current) {
-          let toggle = false;
-          titleFlashInterval.current = setInterval(() => {
-            toggle = !toggle;
-            document.title = toggle ? `🔴 THÔNG BÁO MỚI! · ALOHA` : originalTitleRef.current;
-          }, 1000);
+          if (!originalTitleRef.current) {
+            originalTitleRef.current = document.title;
+          }
+          if (!titleFlashInterval.current) {
+            let toggle = false;
+            titleFlashInterval.current = setInterval(() => {
+              toggle = !toggle;
+              document.title = toggle ? `🔴 THÔNG BÁO MỚI! · ALOHA` : originalTitleRef.current;
+            }, 1000);
+          }
         }
       }
 
-      const now = Date.now();
-      if (now - lastToastAt.current >= 1500) {
-        lastToastAt.current = now;
-        toast.success(title, {
-          duration: 6000,
-          description: body,
-        });
+      if (fromLeader || isPageVisible()) {
+        const now = Date.now();
+        if (now - lastToastAt.current >= 1500) {
+          lastToastAt.current = now;
+          toast.success(title, {
+            duration: 6000,
+            description: body,
+          });
+        }
       }
     };
 
     const flushOrderToast = () => {
       toastTimer.current = null;
+      const fromLeader = pendingOrderFromLeader;
+      pendingOrderFromLeader = false;
       const n = pendingOrderIds.current.size;
       if (!n) return;
 
       const sample = [...pendingOrderIds.current].slice(0, 3).join(", ");
       const firstId = [...pendingOrderIds.current][0];
       pendingOrderIds.current.clear();
-
-      playNotificationSound("order");
 
       const notifTitle = "🔔 ALOHA - Có đơn hàng mới!";
       const notifBody =
@@ -577,30 +579,36 @@ export function AdminOpsSync({ enabled }: { enabled: boolean }) {
           ? `/admin/don-hang-web?code=${encodeURIComponent(firstId)}`
           : `/admin/don-hang-web`;
 
-      if (typeof document !== "undefined" && document.visibilityState !== "visible") {
-        showBrowserNotification(notifTitle, notifBody, targetUrl);
+      if (fromLeader) {
+        playNotificationSound("order");
 
-        if (!originalTitleRef.current) {
-          originalTitleRef.current = document.title;
-        }
-        if (!titleFlashInterval.current) {
-          let toggle = false;
-          titleFlashInterval.current = setInterval(() => {
-            toggle = !toggle;
-            document.title = toggle
-              ? `🔴 (${n}) ĐƠN HÀNG MỚI! · ALOHA`
-              : originalTitleRef.current;
-          }, 1000);
+        if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+          showBrowserNotification(notifTitle, notifBody, targetUrl);
+
+          if (!originalTitleRef.current) {
+            originalTitleRef.current = document.title;
+          }
+          if (!titleFlashInterval.current) {
+            let toggle = false;
+            titleFlashInterval.current = setInterval(() => {
+              toggle = !toggle;
+              document.title = toggle
+                ? `🔴 (${n}) ĐƠN HÀNG MỚI! · ALOHA`
+                : originalTitleRef.current;
+            }, 1000);
+          }
         }
       }
 
-      const now = Date.now();
-      if (now - lastToastAt.current >= 1500) {
-        lastToastAt.current = now;
-        toast.success(notifBody, {
-          duration: 6000,
-          description: "Bảng đơn hàng đã tự động làm mới tức thì.",
-        });
+      if (fromLeader || isPageVisible()) {
+        const now = Date.now();
+        if (now - lastToastAt.current >= 1500) {
+          lastToastAt.current = now;
+          toast.success(notifBody, {
+            duration: 6000,
+            description: "Bảng đơn hàng đã tự động làm mới tức thì.",
+          });
+        }
       }
     };
 
@@ -631,11 +639,14 @@ export function AdminOpsSync({ enabled }: { enabled: boolean }) {
       }
     };
 
-    const invalidate = (payload: {
-      collections?: string[];
-      ids?: string[];
-      source?: string;
-    }) => {
+    const invalidate = (
+      payload: {
+        collections?: string[];
+        ids?: string[];
+        source?: string;
+      },
+      fromLeader: boolean
+    ) => {
       const cols = payload.collections || [];
       const src = String(payload.source || "");
 
@@ -657,6 +668,7 @@ export function AdminOpsSync({ enabled }: { enabled: boolean }) {
       }
 
       if (isOrder) {
+        if (fromLeader) pendingOrderFromLeader = true;
         const ids = payload.ids || [];
         for (const id of ids) pendingOrderIds.current.add(id);
         if (!ids.length && payload.source?.includes("create")) {
@@ -666,58 +678,29 @@ export function AdminOpsSync({ enabled }: { enabled: boolean }) {
           toastTimer.current = setTimeout(flushOrderToast, 350);
         }
       } else if (isWholesale) {
-        triggerEventAlert("wholesale", "🏢 ALOHA - Khách sỉ mới đăng ký!", "Có khách sỉ mới gửi hồ sơ đăng ký.", "/admin/ctv/khach-hang?review=si");
+        triggerEventAlert("wholesale", "🏢 ALOHA - Khách sỉ mới đăng ký!", "Có khách sỉ mới gửi hồ sơ đăng ký.", "/admin/ctv/khach-hang?review=si", fromLeader);
       } else if (isCtv) {
-        triggerEventAlert("ctv", "🤝 ALOHA - CTV mới đăng ký!", "Có cộng tác viên mới đăng ký tài khoản CTV.", "/admin/ctv/khach-hang?review=ctv");
+        triggerEventAlert("ctv", "🤝 ALOHA - CTV mới đăng ký!", "Có cộng tác viên mới đăng ký tài khoản CTV.", "/admin/ctv/khach-hang?review=ctv", fromLeader);
       } else if (isRecruitment) {
-        triggerEventAlert("recruitment", "📄 ALOHA - Có ứng viên nộp hồ sơ!", "Ứng viên vừa nộp hồ sơ ứng tuyển.", "/admin/tuyen-dung/ho-so");
+        triggerEventAlert("recruitment", "📄 ALOHA - Có ứng viên nộp hồ sơ!", "Ứng viên vừa nộp hồ sơ ứng tuyển.", "/admin/tuyen-dung/ho-so", fromLeader);
       }
     };
 
-    const connect = () => {
-      if (stopped) return;
-      try {
-        es = new EventSource("/api/shop/admin/ops/stream", { withCredentials: true });
-      } catch {
-        schedule();
-        return;
-      }
-      es.addEventListener("hello", () => { attempt = 0; });
-      es.addEventListener("ops", (ev) => {
-        attempt = 0;
+    return createSharedSseLeader({
+      lockName: "aloha_sse_admin_ops",
+      channelName: "aloha_sse_admin_ops",
+      url: "/api/shop/admin/ops/stream",
+      withCredentials: true,
+      events: ["hello", "ops"],
+      onEvent: (type, rawData, meta) => {
+        if (type !== "ops") return;
         try {
-          const data = JSON.parse(String((ev as MessageEvent).data || "{}"));
-          invalidate(data);
+          invalidate(JSON.parse(rawData || "{}"), meta.fromLeader);
         } catch {
-          invalidate({});
+          invalidate({}, meta.fromLeader);
         }
-      });
-      es.onerror = () => {
-        try { es?.close(); } catch {}
-        es = null;
-        schedule();
-      };
-    };
-
-    const schedule = () => {
-      if (stopped || reconnectTimer) return;
-      const delay = Math.min(30_000, 2000 * Math.pow(2, attempt)) + Math.floor(Math.random() * 500);
-      attempt += 1;
-      reconnectTimer = setTimeout(() => {
-        reconnectTimer = null;
-        connect();
-      }, delay);
-    };
-
-    connect();
-
-    return () => {
-      stopped = true;
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      if (es) {
-        try { es.close(); } catch {}
-      }
-    };
+      },
+    });
   }, [enabled, qc]);
 
   const requestPermission = async () => {

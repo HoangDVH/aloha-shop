@@ -173,8 +173,8 @@ export async function createBackorderRequest(db: Db, input: {
     siRegion: account?.siRegion || null,
     wholesaleEligibility: body.wholesaleEligibility || null,
     shippingHandling: "shop_arranged",
-    source: "shop_web", createdAt: now.toISOString(), updatedAt: now.toISOString(),
-    purchaseDate: now.toISOString(), done: false,
+    source: "shop_web", createdAt: now, updatedAt: now,
+    purchaseDate: now, done: false,
   };
   const inserted = await db.collection(SHOP_ORDERS).insertOne(doc);
   try {

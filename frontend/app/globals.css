@@ -19,3 +19,10 @@
   flex-direction: column !important;
   gap: 1.125rem !important; /* 18px chuẩn compact dashboard */
 }
+
+/* Pause infinite CSS animations & transitions while tab is hidden in background */
+html.aloha-tab-hidden *,
+html.aloha-tab-hidden *::before,
+html.aloha-tab-hidden *::after {
+  animation-play-state: paused !important;
+}

@@ -23,6 +23,12 @@ import {
 import { findShopOrderByKvOrderId, findShopOrderByRef } from "./findShopOrder.js";
 import { trimCampaignHolds } from "../shopCampaigns/flash/trimHolds.js";
 import { syncBus } from "../syncBus.js";
+import { ADMIN_NOTIFICATION_TYPES } from "../../shared/opsContracts.js";
+import {
+  ADMIN_NOTIFICATIONS,
+  buildOrderNotificationFields,
+  syncAdminNotificationEntity,
+} from "../shopNotifications/adminNotificationStore.js";
 
 async function fetchJson(
   url: string,
@@ -245,7 +251,7 @@ async function syncKvOrderCompletion(opts: {
           ...(kvInvoiceId ? { kvInvoiceId } : {}),
           ...(kvInvoiceCode ? { kvInvoiceCode } : {}),
           kvInvoiceMode: "kv_store_invoice",
-          updatedAt: new Date().toISOString(),
+          updatedAt: new Date(),
         },
       }
     );
@@ -272,14 +278,19 @@ async function syncKvOrderCompletion(opts: {
           paymentConfirmedBy: "kiotviet_sync",
           ...(order.method === "Pending" ? { method: "Transfer" } : {}),
           ...(order.backorderStatus ? { backorderStatus: "confirmed_paid" } : {}),
-          updatedAt: new Date().toISOString(),
+          updatedAt: new Date(),
         },
       }
     );
     order.paymentStatus = "paid";
     order.paidAmount = kvTotalPayment || total;
     order.totalPayment = total;
-    syncBus.publish(["shop_orders"], "paid", { ids: [code] });
+    await syncAdminNotificationEntity(shopDb, {
+      entityType: ADMIN_NOTIFICATION_TYPES.ORDER,
+      entityId: code,
+      fields: buildOrderNotificationFields(order),
+    });
+    syncBus.publish(["shop_orders", ADMIN_NOTIFICATIONS], "paid", { ids: [code] });
   }
 
   // 3. Nếu đã hoàn thành trên KV -> đánh dấu hoàn thành trên shop nếu chưa hoàn thành
@@ -382,7 +393,7 @@ export async function syncShopOrderMoneyFromKv(opts: {
       {
         $set: {
           kvMoneyConflict: { at: now, source, kvTotal: total, kvShippingFee: shippingFee, webTotal: prevTotal },
-          updatedAt: now,
+          updatedAt: new Date(),
         },
       }
     );
@@ -413,7 +424,7 @@ export async function syncShopOrderMoneyFromKv(opts: {
         ...(paid ? {} : { totalPayment: Math.round(Number(order.paidAmount) || 0) }),
         moneySyncedFromKvAt: now,
         moneyMismatch: moneyMismatch || undefined,
-        updatedAt: now,
+        updatedAt: new Date(),
       },
       // Dòng đổi trên KV thì bỏ "Giảm giá sản phẩm" (giá trước KM) thay vì giữ số cũ sai.
       $unset: { kvMoneyConflict: "", ...(sameLines ? {} : { anchorSavings: "", volumeSavings: "" }) },
@@ -476,6 +487,15 @@ export async function syncShopOrderMoneyFromKv(opts: {
   }
 
   await syncKvOrderCompletion({ shopDb, mainDb, order, kvOrder, total });
-  syncBus.publish(["shop_orders"], "kv-order-edit", { ids: [code] });
+  await syncAdminNotificationEntity(shopDb, {
+    entityType: ADMIN_NOTIFICATION_TYPES.ORDER,
+    entityId: code,
+    fields: buildOrderNotificationFields({
+      ...order,
+      total,
+      discount: kvOrderDiscount,
+    }),
+  });
+  syncBus.publish(["shop_orders", ADMIN_NOTIFICATIONS], "kv-order-edit", { ids: [code] });
   return { ok: true, changed: true, code };
 }

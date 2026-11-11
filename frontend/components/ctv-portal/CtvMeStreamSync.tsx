@@ -3,9 +3,11 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useShopAuth } from "@/components/ShopAuthProvider";
+import { createSharedSseLeader } from "@/lib/sharedSseLeader";
 
 /**
  * CTV portal SSE — commissions/bills/account → invalidate queries (bỏ poll dày).
+ * Dùng chung 1 kết nối Leader-Follower qua Web Locks + BroadcastChannel giữa nhiều tab.
  */
 export function CtvMeStreamSync() {
   const { user } = useShopAuth();
@@ -14,26 +16,18 @@ export function CtvMeStreamSync() {
   const userId = user?.id || user?.email || "anonymous";
 
   useEffect(() => {
-    if (!enabled || typeof EventSource === "undefined") return;
-
-    let es: EventSource | null = null;
-    let stopped = false;
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    let attempt = 0;
+    if (!enabled) return;
     let debounce: ReturnType<typeof setTimeout> | null = null;
 
     const invalidate = (payload?: { collections?: string[]; source?: string }) => {
       if (debounce) clearTimeout(debounce);
       debounce = setTimeout(() => {
         const cols = payload?.collections || [];
-        // Nếu không có thông tin chi tiết collections, fallback invalidate chung với staleTime bảo vệ
         if (!cols.length) {
           void qc.invalidateQueries({ queryKey: ["ctv-portal", userId, "stats"] });
           void qc.invalidateQueries({ queryKey: ["ctv-portal", userId, "overview"] });
           return;
         }
-
-        // Phân loại chỉ invalidate query bị ảnh hưởng thay vì toàn bộ ["ctv-portal"]
         if (cols.includes("aloha_shop_commissions")) {
           void qc.invalidateQueries({ queryKey: ["ctv-portal", userId, "stats"] });
           void qc.invalidateQueries({ queryKey: ["ctv-portal", userId, "overview"] });
@@ -49,63 +43,27 @@ export function CtvMeStreamSync() {
       }, 400);
     };
 
-    const connect = () => {
-      if (stopped) return;
-      try {
-        es = new EventSource("/api/shop/ctv/me/stream", {
-          withCredentials: true,
-        });
-      } catch {
-        schedule();
-        return;
-      }
-      es.addEventListener("hello", () => {
-        attempt = 0;
-      });
-      es.addEventListener("me", (ev: MessageEvent) => {
-        attempt = 0;
+    const stop = createSharedSseLeader({
+      lockName: `aloha_sse_ctv_me_${userId}`,
+      channelName: `aloha_sse_ctv_me_${userId}`,
+      url: "/api/shop/ctv/me/stream",
+      withCredentials: true,
+      events: ["hello", "me"],
+      onEvent: (type, rawData) => {
+        if (type !== "me") return;
         try {
-          const payload = JSON.parse(ev.data || "{}");
-          invalidate(payload);
+          invalidate(JSON.parse(rawData || "{}"));
         } catch {
           invalidate();
         }
-      });
-      es.onerror = () => {
-        try {
-          es?.close();
-        } catch {
-          /* */
-        }
-        es = null;
-        schedule();
-      };
-    };
+      },
+    });
 
-    const schedule = () => {
-      if (stopped || reconnectTimer) return;
-      const delay =
-        Math.min(30_000, 2000 * Math.pow(2, attempt)) +
-        Math.floor(Math.random() * 500);
-      attempt += 1;
-      reconnectTimer = setTimeout(() => {
-        reconnectTimer = null;
-        connect();
-      }, delay);
-    };
-
-    connect();
     return () => {
-      stopped = true;
-      if (reconnectTimer) clearTimeout(reconnectTimer);
+      stop();
       if (debounce) clearTimeout(debounce);
-      try {
-        es?.close();
-      } catch {
-        /* */
-      }
     };
-  }, [enabled, qc, user?.id]);
+  }, [enabled, qc, user?.id, userId]);
 
   return null;
 }

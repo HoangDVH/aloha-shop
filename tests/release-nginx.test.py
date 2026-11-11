@@ -41,6 +41,17 @@ class ReleaseNginxTests(unittest.TestCase):
         self.assertEqual(again.count("location /og/"), 1)
         self.assertEqual(again.count('add_header Cache-Control "private, no-store"'), 1)
 
+    def test_enables_http2_idempotently(self):
+        with_ssl = FIXTURE.replace(
+            "    ssl_certificate /cert.pem;",
+            "    listen 443 ssl; # managed by Certbot\n    listen [::]:443 ssl ipv6only=on;\n    ssl_certificate /cert.pem;",
+        )
+        output = module.prepare(with_ssl, 3003, "/root/aloha-shop-releases/static")
+        self.assertIn("listen 443 ssl http2; # managed by Certbot", output)
+        self.assertIn("listen [::]:443 ssl http2 ipv6only=on;", output)
+        again = module.prepare(output, 3002, "/root/aloha-shop-releases/static")
+        self.assertEqual(again.count("http2"), 2)
+
     def test_unknown_config_and_unsafe_paths_fail_closed(self):
         for text, port, assets in [(FIXTURE, 4000, "/safe"), (FIXTURE, 3002, "/unsafe;"), ("server {}", 3002, "/safe"), (FIXTURE.replace("3002", "4000"), 3002, "/safe")]:
             with self.assertRaises(ValueError):

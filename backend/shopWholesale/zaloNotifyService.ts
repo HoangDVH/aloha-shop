@@ -2,6 +2,7 @@ import * as zcaModule from "zca-js";
 import fs from "fs";
 import path from "path";
 import CryptoJS from "crypto-js";
+import { isPickupDelivery } from "../../shared/opsContracts.js";
 
 const zca = (zcaModule as any).default || zcaModule;
 const { Zalo, LoginQRCallbackEventType } = zca;
@@ -410,7 +411,7 @@ class ZaloNotifyService {
       itemsLines.push(`  ... và ${(data.items || []).length - 8} sản phẩm khác`);
     }
 
-    const deliveryStr = data.deliveryMethod === "lay_tai_tiem" ? "Đến tiệm lấy" : "Giao tận nơi";
+    const deliveryStr = isPickupDelivery(data.deliveryMethod) ? "Đến tiệm lấy" : "Giao tận nơi";
 
     const messageText = [
       `🛒 [ALOHA] CÓ ĐƠN HÀNG MỚI TỪ WEBSITE!`,

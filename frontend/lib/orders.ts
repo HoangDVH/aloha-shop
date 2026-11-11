@@ -1,5 +1,7 @@
 "use client";
 
+import { createSharedSseLeader } from "@/lib/sharedSseLeader";
+
 export type ShopAddress = {
   id: string;
   fullName: string;
@@ -302,7 +304,7 @@ export async function renewPaymentOrder(code: string) {
   );
 }
 
-/** SSE đơn shop — gọi onChange khi có shop_orders. */
+/** SSE đơn shop dùng chung Leader-Follower giữa nhiều tab — gọi onChange khi có shop_orders. */
 export function subscribeShopOrdersStream(
   onChange: () => void,
   opts?: { onStatus?: (ok: boolean) => void }
@@ -311,63 +313,17 @@ export function subscribeShopOrdersStream(
     opts?.onStatus?.(false);
     return () => {};
   }
-  let es: EventSource | null = null;
-  let stopped = false;
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  let attempt = 0;
-
-  const setOk = (ok: boolean) => {
-    opts?.onStatus?.(ok);
-  };
-
-  const connect = () => {
-    if (stopped) return;
-    try {
-      es = new EventSource("/api/shop/orders/stream", { withCredentials: true });
-    } catch {
-      setOk(false);
-      schedule();
-      return;
-    }
-    es.addEventListener("hello", () => {
-      attempt = 0;
-      setOk(true);
-    });
-    es.addEventListener("change", () => {
-      attempt = 0;
-      setOk(true);
-      onChange();
-    });
-    es.onerror = () => {
-      setOk(false);
-      try {
-        es?.close();
-      } catch {
-        /* */
-      }
-      es = null;
-      schedule();
-    };
-  };
-
-  const schedule = () => {
-    if (stopped || timer) return;
-    const delay = Math.min(30_000, 2000 * Math.pow(2, attempt)) + Math.floor(Math.random() * 500);
-    attempt += 1;
-    timer = setTimeout(() => {
-      timer = null;
-      connect();
-    }, delay);
-  };
-
-  connect();
-  return () => {
-    stopped = true;
-    if (timer) clearTimeout(timer);
-    try {
-      es?.close();
-    } catch {
-      /* */
-    }
-  };
+  return createSharedSseLeader({
+    lockName: "aloha_sse_orders",
+    channelName: "aloha_sse_orders",
+    url: "/api/shop/orders/stream",
+    withCredentials: true,
+    events: ["hello", "change"],
+    onEvent: (type) => {
+      if (type === "change") onChange();
+    },
+    onConnectionChange: ({ connected }) => {
+      opts?.onStatus?.(connected);
+    },
+  });
 }

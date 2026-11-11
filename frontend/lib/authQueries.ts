@@ -4,6 +4,7 @@ import { advancePriceSession } from "./priceSession";
 import { useHydratedQuery } from "./useHydratedQuery";
 import { refreshCartPricesFromCatalog } from "./cartPriceRefresh";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { usePathname } from "next/navigation";
 import {
   fetchShopMe,
   shopLogin,
@@ -33,11 +34,14 @@ export type RegisterMutationInput = Omit<RegisterInput, "passwordConfirm"> & Ctv
 export const shopMeQueryKey = ["shop", "auth", "me"] as const;
 
 export function useShopMeQuery() {
+  const pathname = usePathname() || "";
+  const onAdmin = pathname.startsWith("/admin");
   return useHydratedQuery(useQuery({
     queryKey: shopMeQueryKey,
     queryFn: fetchShopMe,
-    staleTime: 15_000,
-    refetchInterval: 30_000,
+    staleTime: 30_000,
+    refetchInterval: onAdmin ? false : 60_000,
+    refetchOnWindowFocus: false,
     retry: false,
   }));
 }

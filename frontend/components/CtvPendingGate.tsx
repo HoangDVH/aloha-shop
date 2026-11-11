@@ -23,10 +23,12 @@ export function CtvPendingGate() {
   const pathname = usePathname() || "/";
   const router = useShopRouter();
 
+  const onAdminRoute = pathname.startsWith("/admin");
+
   useEffect(() => {
-    if (!user) return;
-    return startShopAuthStream();
-  }, [user?.id]);
+    if (!user || onAdminRoute) return;
+    return startShopAuthStream(user.id);
+  }, [user?.id, onAdminRoute]);
 
   useEffect(() => {
     if (!user) return;

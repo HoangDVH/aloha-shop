@@ -3,6 +3,7 @@ import { newShopOrderCode, SHOP_ORDERS, type ShopOrderDetail } from "../models.j
 import { pushShopOrderToKiotViet } from "../kvPush.js";
 import { publicPrice } from "../../shopCatalog/priceOverlay.js";
 import { publicTon } from "../../shopCatalog/catalog/publicProduct.js";
+import { emitOrderCreated } from "../../shopNotifications/domainEvents.js";
 import type {
   QuickOrderCreateInput,
   QuickOrderCreateResult,
@@ -164,6 +165,8 @@ export async function createQuickOrder(
     if (kvRes?.kvOrderCode) {
       kvOrderCode = kvRes.kvOrderCode;
       kvOrderId = kvRes.kvOrderId;
+      orderDoc.kvOrderCode = kvOrderCode;
+      orderDoc.kvOrderId = kvOrderId;
 
       await shopDb.collection(SHOP_ORDERS).updateOne(
         { _id: insertRes.insertedId },
@@ -173,6 +176,7 @@ export async function createQuickOrder(
             kvOrderId,
             kvPushStatus: "pushed",
             kvPushedAt: new Date(),
+            updatedAt: new Date(),
           },
         }
       );
@@ -185,10 +189,20 @@ export async function createQuickOrder(
         $set: {
           kvPushStatus: "failed",
           kvPushError: String(err?.message || err).slice(0, 500),
+          updatedAt: new Date(),
         },
       }
     );
   }
+
+  await emitOrderCreated({
+    shopDb,
+    order: { ...orderDoc, _id: insertRes.insertedId },
+    syncSource: "admin-quick-order-create",
+    notifyBell: true,
+    notifyPush: false,
+    notifyZalo: false,
+  }).catch(() => {});
 
   return {
     ok: true,

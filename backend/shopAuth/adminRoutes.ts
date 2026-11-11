@@ -22,6 +22,13 @@ import type { GetShopDb } from "./routes.js";
 import { syncBus } from "../syncBus.js";
 import { directoryFilter } from "./directoryFilters.js";
 import { registerAccountPermissionRoutes } from "./accountPermissions.js";
+import { ADMIN_NOTIFICATION_TYPES } from "../../shared/opsContracts.js";
+import {
+  ADMIN_NOTIFICATIONS,
+  buildCtvNotificationFields,
+  buildWholesaleNotificationFields,
+  syncAdminNotificationEntity,
+} from "../shopNotifications/adminNotificationStore.js";
 
 async function ensureIdx(db: Db) {
   await ensureShopAuthIndexes(db);
@@ -330,9 +337,26 @@ export function registerShopAccountsAdminRoutes(
 
       await db.collection(SHOP_ACCOUNTS).updateOne({ _id: user._id }, { $set: patch });
       const updated = await db.collection(SHOP_ACCOUNTS).findOne({ _id: user._id });
+      if (updated) {
+        const updatedRoles = Array.isArray((updated as any).roles) ? (updated as any).roles : [];
+        if (updatedRoles.includes("ctv") || (updated as any).ctvStatus) {
+          await syncAdminNotificationEntity(db, {
+            entityType: ADMIN_NOTIFICATION_TYPES.CTV,
+            entityId: String(user._id),
+            fields: buildCtvNotificationFields(updated as any),
+          });
+        }
+        if (updatedRoles.includes("si") || (updated as any).siStatus) {
+          await syncAdminNotificationEntity(db, {
+            entityType: ADMIN_NOTIFICATION_TYPES.WHOLESALE,
+            entityId: String(user._id),
+            fields: buildWholesaleNotificationFields(updated as any),
+          });
+        }
+      }
       try {
         const { syncBus } = await import("../syncBus.js");
-        syncBus.publish(["aloha_shop_accounts"], "shop_account_patch", {
+        syncBus.publish(["aloha_shop_accounts", ADMIN_NOTIFICATIONS], "shop_account_patch", {
           ids: [String(user._id)],
         });
       } catch {
@@ -408,8 +432,15 @@ export function registerShopAccountsAdminRoutes(
 
         await db.collection(SHOP_ACCOUNTS).updateOne(q, { $set: patch });
         const updated = await db.collection(SHOP_ACCOUNTS).findOne(q);
+        if (updated) {
+          await syncAdminNotificationEntity(db, {
+            entityType: ADMIN_NOTIFICATION_TYPES.CTV,
+            entityId: String(user._id),
+            fields: buildCtvNotificationFields(updated as any),
+          });
+        }
         try {
-          syncBus.publish(["aloha_shop_accounts"], "ctv_approve", {
+          syncBus.publish(["aloha_shop_accounts", ADMIN_NOTIFICATIONS], "ctv_approve", {
             ids: [String(user._id)],
           });
         } catch {
@@ -451,8 +482,15 @@ export function registerShopAccountsAdminRoutes(
           },
         });
         const updated = await db.collection(SHOP_ACCOUNTS).findOne(q);
+        if (updated) {
+          await syncAdminNotificationEntity(db, {
+            entityType: ADMIN_NOTIFICATION_TYPES.CTV,
+            entityId: String(user._id),
+            fields: buildCtvNotificationFields(updated as any),
+          });
+        }
         try {
-          syncBus.publish(["aloha_shop_accounts"], "ctv_reject", {
+          syncBus.publish(["aloha_shop_accounts", ADMIN_NOTIFICATIONS], "ctv_reject", {
             ids: [String(user._id)],
           });
         } catch {

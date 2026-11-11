@@ -33,6 +33,11 @@ function isDuplicateEvent(eventId?: string): boolean {
 }
 
 class SyncBus extends EventEmitter {
+  constructor() {
+    super();
+    this.setMaxListeners(200);
+  }
+
   publish(collections: string | string[], source?: string, extra?: { ids?: string[] }) {
     const list = (Array.isArray(collections) ? collections : [collections])
       .map((c) => String(c || "").trim())

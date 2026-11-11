@@ -4,6 +4,7 @@
 import type { GetDb } from "../../auth/middleware.js";
 import { normalizeCtvCode } from "../../shopAuth/models.js";
 import { SHOP_COMMISSIONS } from "../commissionModels.js";
+import { toIsoString } from "../../utils/mongoDate.js";
 import type { ActiveCtvContext } from "./shared.js";
 
 export async function getCtvOverview(
@@ -299,9 +300,7 @@ export async function getCtvOverview(
       orderLabel,
       payLabel,
       total,
-      createdAt: (o as any).createdAt
-        ? String((o as any).createdAt)
-        : null,
+      createdAt: toIsoString((o as any).createdAt) || null,
     items,
     });
 

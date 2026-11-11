@@ -28,7 +28,13 @@ import {
   takeSiOauthSession,
 } from "./siEphemeral.js";
 import { zaloNotifyService, NOTIFY_PHONE_TARGET } from "./zaloNotifyService.js";
-import { broadcastAdminWebPush } from "../shopPush/webPushService.js";
+import { emitWholesaleRegistered } from "../shopNotifications/domainEvents.js";
+import {
+  ADMIN_NOTIFICATIONS,
+  buildWholesaleNotificationFields,
+  syncAdminNotificationEntity,
+} from "../shopNotifications/adminNotificationStore.js";
+import { ADMIN_NOTIFICATION_TYPES } from "../../shared/opsContracts.js";
 
 type GetDb = () => Promise<Db>;
 const COOKIE = "shop_si_onboarding";
@@ -259,19 +265,21 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
         });
       }
       const { password, email, lookupId, acceptedTerms, ...profile } = input;
-      const now = new Date().toISOString();
+      const nowDate = new Date();
+      const now = nowDate.toISOString();
       const regionAssignment = assignWholesaleRegion(input);
       const patch = { ...registrationAddressPatch(account?.addresses, input), fullName: input.fullName, phone: input.phone, phoneNorm: input.phone, siIdentity: true,
         siStatus: "active", siRegion: regionAssignment.region, siRegionAssignment: { ...regionAssignment, assignedAt: now },
         siKvSyncStatus: "awaiting_verification",
         siApplicationSource: "customer", siProfile: { ...profile, acceptedTermsAt: now, termsVersion: SI_TERMS_VERSION },
+        siAppliedAt: nowDate,
         siLookupId: lookupId, siLookupResult: lookup.result, siCandidate: lookup.candidate,
         siCandidateRetailer: lookup.retailer, siVerification: { status: "pending" },
-        ...(who.zaloId ? { zaloId: who.zaloId, zaloVerifiedAt: now } : {}), updatedAt: now };
+        ...(who.zaloId ? { zaloId: who.zaloId, zaloVerifiedAt: now } : {}), updatedAt: nowDate };
       if (!account) {
         if (!email || !password) return res.status(400).json({ error: "Nhập email và mật khẩu để hoàn tất tài khoản" });
         const doc = { ...patch, email, passwordHash: await bcrypt.hash(password, 12), roles: ["customer", "si"],
-          active: true, applicationRevision: 1, createdAt: now };
+          active: true, applicationRevision: 1, createdAt: nowDate };
         const inserted = await db.collection(SHOP_ACCOUNTS).insertOne(doc);
         account = await db.collection(SHOP_ACCOUNTS).findOne({ _id: inserted.insertedId });
       } else {
@@ -283,31 +291,19 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
         account = await db.collection(SHOP_ACCOUNTS).findOne({ _id: account._id });
       }
       res.clearCookie(COOKIE, { path: "/" });
-      syncBus.publish([SHOP_ACCOUNTS], "si_registered_pending_verification", { ids: [String(account!._id)] });
-      // Gửi thông báo tự động vào mục Cloud của tôi trên Zalo số test (0337095980) theo Cách 1
       const fullAddress = [input.detail, input.ward, input.district, input.province]
         .map((s) => String(s || "").trim())
         .filter(Boolean)
         .join(", ");
-
-      void zaloNotifyService.sendWholesaleRegistrationNotice({
-        fullName: input.fullName,
-        phone: input.phone,
-        region: regionAssignment.region,
+      await emitWholesaleRegistered({
+        shopDb: db,
+        account: account!,
+        eventAt: nowDate,
         shopName: input.shopName,
         businessType: input.businessType,
         address: fullAddress,
         note: input.note,
-      }).catch((err) => {
-        console.error("[ZaloNotify] Auto notice error:", err?.message || err);
-      });
-      const regionText = regionAssignment.region === "HCM" ? "TP.HCM" : "Tỉnh";
-      void broadcastAdminWebPush(db, {
-        title: "🏢 ALOHA - Có khách sỉ mới đăng ký!",
-        body: `${input.fullName} (${input.phone}) - ${input.shopName || "Đại lý sỉ"} (${regionText})`,
-        url: `/admin/ctv/khach-hang?id=${encodeURIComponent(String(account!._id))}&q=${encodeURIComponent(input.phone)}&review=si`,
-        tag: `si-${String(account!._id)}`,
-      }).catch((e) => console.warn("[web-push] wholesale register push failed:", e?.message || e));
+      }).catch(() => {});
 
       res.json(await issueShopSession(res, db, account!));
     } catch (error) { sendError(res, error); }
@@ -371,8 +367,9 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
       if (to === "active" && (req.body.verified !== true || !["HCM", "TINH"].includes(region))) {
         return res.status(400).json({ error: "Xác minh quyền đại diện và chọn vùng trước khi duyệt" });
       }
-      const now = new Date().toISOString();
-      const patch: Record<string, any> = { siStatus: to, updatedAt: now };
+      const nowDate = new Date();
+      const now = nowDate.toISOString();
+      const patch: Record<string, any> = { siStatus: to, updatedAt: nowDate };
       if (to === "active") {
         const approvalBasis = wholesaleApprovalBasis(account);
         if (!approvalBasis) return res.status(409).json({ error: "Khách cần đồng ý điều khoản mua sỉ hiện hành trước khi duyệt." });
@@ -401,7 +398,12 @@ export function registerWholesaleRoutes(app: Express, getDb: GetDb, getOpsDb: Ge
       if (!result.modifiedCount) return res.status(409).json({ error: "Hồ sơ đã thay đổi. Vui lòng tải lại trước khi duyệt." });
       // The authoritative audit is atomic with status on the account; mirror can be rebuilt.
       await db.collection("aloha_shop_si_audit").updateOne({ id: audit.id }, { $setOnInsert: { ...audit, accountId: String(account._id) } }, { upsert: true }).catch(() => { /* Atomic account audit remains authoritative. */ });
-      syncBus.publish([SHOP_ACCOUNTS], "si_status_changed", { ids: [String(account._id)] });
+      await syncAdminNotificationEntity(db, {
+        entityType: ADMIN_NOTIFICATION_TYPES.WHOLESALE,
+        entityId: String(account._id),
+        fields: buildWholesaleNotificationFields({ ...account, ...patch }),
+      });
+      syncBus.publish([SHOP_ACCOUNTS, ADMIN_NOTIFICATIONS], "si_status_changed", { ids: [String(account._id)] });
       res.json({ ok: true });
     } catch (error) { sendError(res, error); }
   });

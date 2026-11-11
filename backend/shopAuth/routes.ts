@@ -32,10 +32,10 @@ import {
 } from "./tokens.js";
 import { applyShopCors, isAllowedShopOrigin } from "../shopCors.js";
 import { syncBus } from "../syncBus.js";
+import { getCoalescedShopCtvStatus } from "./accountStatusCache.js";
 import { rateLimitAllow, shopRateLimitOrReject } from "../shopRateLimit.js";
 import { putGoogleOauthState, takeGoogleOauthState } from "./authEphemeral.js";
-import { broadcastAdminWebPush } from "../shopPush/webPushService.js";
-import { zaloNotifyService } from "../shopWholesale/zaloNotifyService.js";
+import { emitCtvRegistered } from "../shopNotifications/domainEvents.js";
 import { checkRefreshToken, markRefreshRotated, refreshFamilyOf } from "./refreshTokens.js";
 import {
   allocateCtvCode,
@@ -329,16 +329,6 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
       const user = { ...doc, _id: ins.insertedId };
       const body = await issueShopSession(res, db, user);
       if (asCtv) {
-        publishShopAccountChange(String(ins.insertedId), "ctv_register");
-        const ctvDisplay = ctvCode ? ` (Mã: ${ctvCode})` : "";
-        const contact = phone || email || "";
-        void broadcastAdminWebPush(db, {
-          title: "🤝 ALOHA - Có CTV mới đăng ký!",
-          body: `${fullName}${ctvDisplay} - ${contact}`,
-          url: `/admin/ctv/khach-hang?id=${encodeURIComponent(String(ins.insertedId))}&review=ctv`,
-          tag: `ctv-${String(ins.insertedId)}`,
-        }).catch((e) => console.warn("[web-push] ctv register push failed:", e?.message || e));
-
         const appDoc = ctvApp as any;
         const expDesc = appDoc?.hasBusinessExp
           ? `Có kinh nghiệm (${appDoc?.businessExpYears || 0} năm): ${appDoc?.businessExpNote || ""}`.trim()
@@ -346,19 +336,17 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
             ? "Chưa có kinh nghiệm bán hàng"
             : undefined;
 
-        void zaloNotifyService.sendCollaboratorNotice({
-          fullName,
-          phone: phone || phoneRaw || "",
-          email,
-          ctvCode: ctvCode || undefined,
+        await emitCtvRegistered({
+          shopDb: db,
+          account: user,
+          noticeType: "new_account",
+          eventAt: now,
           referralChannel: appDoc?.referralChannel,
           channelUrl: appDoc?.channelUrl,
           businessExperience: expDesc,
           address: appDoc?.addressText,
           note: appDoc?.businessExpNote,
-          registeredAt: now,
-          type: "new_account",
-        }).catch((e) => console.warn("[zalo] ctv register notice failed:", e?.message || e));
+        }).catch(() => {});
       } else {
         publishShopAccountChange(String(ins.insertedId), "shop_register");
       }
@@ -567,24 +555,15 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
           patch.roles = [...roles, "ctv"];
           patch.ctvCode = ctvCode;
         }
+        const ctvAppliedAt = new Date();
         patch.ctvStatus = "cho_duyet";
         patch.ctvRejectReason = null;
+        patch.ctvAppliedAt = ctvAppliedAt;
       }
 
       await db.collection(SHOP_ACCOUNTS).updateOne({ _id: user._id }, { $set: patch });
       const updated = await db.collection(SHOP_ACCOUNTS).findOne({ _id: user._id });
       if (becomeCtv && patch.ctvStatus === "cho_duyet") {
-        publishShopAccountChange(String(user._id), "ctv_apply");
-        const ctvDisplay = patch.ctvCode ? ` (Mã: ${patch.ctvCode})` : "";
-        const nameDisplay = updated?.fullName || user.fullName || "Thành viên";
-        const contact = patch.phone || updated?.phone || updated?.email || "";
-        void broadcastAdminWebPush(db, {
-          title: "🤝 ALOHA - Hồ sơ CTV mới nộp!",
-          body: `${nameDisplay}${ctvDisplay} - ${contact}`,
-          url: `/admin/ctv/khach-hang?id=${encodeURIComponent(String(user._id))}&review=ctv`,
-          tag: `ctv-apply-${String(user._id)}`,
-        }).catch((e) => console.warn("[web-push] ctv apply push failed:", e?.message || e));
-
         const rawApp = patch as any;
         const userApp = user as any;
         const hasExp = rawApp.hasBusinessExp ?? userApp.hasBusinessExp;
@@ -596,19 +575,17 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
             ? "Chưa có kinh nghiệm bán hàng"
             : undefined;
 
-        void zaloNotifyService.sendCollaboratorNotice({
-          fullName: nameDisplay,
-          phone: String(patch.phone || updated?.phone || user.phone || ""),
-          email: updated?.email || user.email,
-          ctvCode: String(patch.ctvCode || user.ctvCode || ""),
+        await emitCtvRegistered({
+          shopDb: db,
+          account: updated!,
+          noticeType: "upgrade",
+          eventAt: (patch.ctvAppliedAt as Date) || new Date(),
           referralChannel: rawApp.referralChannel || userApp.referralChannel,
           channelUrl: rawApp.channelUrl || userApp.channelUrl,
           businessExperience: expDesc,
           address: rawApp.addressText || userApp.addressText,
           note: expNote,
-          registeredAt: new Date(),
-          type: "upgrade_account",
-        }).catch((e) => console.warn("[zalo] ctv apply notice failed:", e?.message || e));
+        }).catch(() => {});
       }
       return res.json({ ok: true, user: toPublicShopAccount(updated!) });
     } catch (e: any) {
@@ -785,25 +762,14 @@ export function registerShopAuthRoutes(app: Express, getShopDb: GetShopDb) {
       };
       writeEvent("hello", { at: Date.now(), userId });
 
-      const onChange = (payload: { collections?: string[]; ids?: string[]; source?: string }) => {
+      const onChange = (payload: { collections?: string[]; ids?: string[]; source?: string; eventId?: string }) => {
         const cols = payload?.collections || [];
         if (!cols.includes("aloha_shop_accounts") && !cols.includes(SHOP_ACCOUNTS)) return;
         const ids = (payload.ids || []).map(String);
         if (ids.length && !ids.includes(userId)) return;
-        void (async () => {
-          try {
-            const db = await getShopDb();
-            const user = await db.collection(SHOP_ACCOUNTS).findOne(shopAccountIdQuery(userId));
-            writeEvent("account", {
-              userId,
-              ctvStatus: user?.ctvStatus ?? null,
-              source: payload.source || "",
-              at: Date.now(),
-            });
-          } catch {
-            writeEvent("account", { userId, at: Date.now(), source: payload.source || "" });
-          }
-        })();
+        void getCoalescedShopCtvStatus(getShopDb, userId, payload.eventId)
+          .then((ctvStatus) => writeEvent("account", { userId, ctvStatus, source: payload.source || "", at: Date.now() }))
+          .catch(() => writeEvent("account", { userId, at: Date.now(), source: payload.source || "" }));
       };
       syncBus.on("change", onChange);
 

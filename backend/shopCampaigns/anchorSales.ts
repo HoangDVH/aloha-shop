@@ -4,6 +4,7 @@ import type { ActiveCampaign } from "./currentCampaign.js";
 import { isSelling } from "./campaignPhase.js";
 import { promoRowFor, type FlashStockLookup } from "./campaignPromo.js";
 import type { CampaignProduct } from "./types.js";
+import { dateRangeMatch } from "../utils/mongoDate.js";
 
 const SOLD_TTL_MS = 30_000;
 const DEAD_PAYMENT = ["expired", "cancelled", "failed"];
@@ -37,13 +38,12 @@ export function anchorSavingsOf(active: ActiveCampaign, details: ShopOrderDetail
  */
 export async function loadAnchorSold(db: Db, active: ActiveCampaign, mas: string[]): Promise<Map<string, number>> {
   if (!mas.length) return new Map();
-  const startIso = new Date(active.content.info.startAt).toISOString();
   const rows = await db
     .collection(SHOP_ORDERS)
     .aggregate<{ _id: string; qty: number }>([
       {
         $match: {
-          createdAt: { $gte: startIso },
+          ...dateRangeMatch("createdAt", { gte: active.content.info.startAt }),
           orderStatus: { $ne: "huy" },
           paymentStatus: { $nin: DEAD_PAYMENT },
           "orderDetails.productCode": { $in: mas },

@@ -78,7 +78,7 @@ export async function migrateWebOrderCodes(
             id: to,
             legacyCodes: legacy,
             codeMigratedAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+            updatedAt: new Date(),
           },
         }
       );

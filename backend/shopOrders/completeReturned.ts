@@ -10,6 +10,12 @@ import { notifyOrderStatus } from "./notifyOrderStatus.js";
 import { shopOrderLookupFilter } from "./findShopOrder.js";
 import { clawbackPaidOutCommissions } from "./commissionClawback.js";
 import { releasePromotionHold } from "../shopPromotions/redemptionService.js";
+import { ADMIN_NOTIFICATION_TYPES } from "../../shared/opsContracts.js";
+import {
+  ADMIN_NOTIFICATIONS,
+  buildOrderNotificationFields,
+  syncAdminNotificationEntity,
+} from "../shopNotifications/adminNotificationStore.js";
 
 export type CompleteReturnedOpts = {
   shopDb: Db;
@@ -69,7 +75,7 @@ export async function completeShopOrderReturned(
   }
 
   const $set: Record<string, unknown> = {
-    updatedAt: now,
+    updatedAt: new Date(),
     returnedAt: now,
     returnedBy: opts.confirmedBy || "system",
     confirmedBy: opts.confirmedBy || "system",
@@ -97,7 +103,12 @@ export async function completeShopOrderReturned(
     source: opts.source || opts.confirmedBy || "return",
   });
 
-  syncBus.publish(["shop_orders"], "mark-returned", { ids: [code] });
+  await syncAdminNotificationEntity(shopDb, {
+    entityType: ADMIN_NOTIFICATION_TYPES.ORDER,
+    entityId: code,
+    fields: buildOrderNotificationFields({ ...(doc as any), ...$set }),
+  });
+  syncBus.publish(["shop_orders", ADMIN_NOTIFICATIONS], "mark-returned", { ids: [code] });
   void notifyOrderStatus(
     shopDb,
     { ...(doc as any), ...$set },

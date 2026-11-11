@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Drawer } from "antd";
 import {
   Bell,
@@ -17,32 +17,12 @@ import {
   X,
 } from "lucide-react";
 import { adminFetch } from "@/components/admin/api/adminFetch";
+import type {
+  AdminNotificationItem,
+  AdminNotificationsResponse,
+} from "../../../../shared/opsContracts";
 
-export type AdminNotificationItem = {
-  id: string;
-  type: "order" | "wholesale" | "ctv" | "recruitment";
-  title: string;
-  subtitle: string;
-  detail?: string;
-  createdAt: string;
-  link: string;
-  tag?: string;
-  tagColor?: string;
-  needsAction?: boolean;
-};
-
-export type AdminNotificationsResponse = {
-  ok: boolean;
-  items: AdminNotificationItem[];
-  counts: {
-    total: number;
-    orders: number;
-    wholesale: number;
-    ctv: number;
-    recruitment: number;
-  };
-  at: number;
-};
+export type { AdminNotificationItem, AdminNotificationsResponse };
 
 type TabKey = "all" | "orders" | "wholesale_ctv" | "recruitment";
 
@@ -190,6 +170,8 @@ export function AdminNotificationCenter({
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
+  const queryClient = useQueryClient();
+
   const { data } = useQuery({
     queryKey: ["admin", "ops", "notifications"],
     queryFn: () => adminFetch<AdminNotificationsResponse>("/api/shop/admin/ops/notifications"),
@@ -198,11 +180,20 @@ export function AdminNotificationCenter({
   });
 
   const allItems = data?.items || [];
+  const serverReadAllMs = data?.readAllAt ? new Date(data.readAllAt).getTime() : 0;
+  const effectiveReadAllMs = Math.max(
+    Number.isFinite(readAllAt) ? readAllAt : 0,
+    Number.isFinite(serverReadAllMs) ? serverReadAllMs : 0
+  );
 
   const isUnread = (item: AdminNotificationItem) => {
+    if (item.isRead) return false;
     if (readIds.has(item.id)) return false;
-    const itemTime = new Date(item.createdAt).getTime();
-    if (readAllAt > 0 && itemTime <= readAllAt) return false;
+    const ts = item.eventAt || item.createdAt;
+    const itemTime = new Date(ts).getTime();
+    if (effectiveReadAllMs > 0 && Number.isFinite(itemTime) && itemTime <= effectiveReadAllMs) {
+      return false;
+    }
     return true;
   };
 
@@ -213,6 +204,29 @@ export function AdminNotificationCenter({
       saveReadIds(next);
       return next;
     });
+    queryClient.setQueryData<AdminNotificationsResponse>(
+      ["admin", "ops", "notifications"],
+      (prev) => {
+        if (!prev) return prev;
+        let nextUnread = 0;
+        const nextItems = prev.items.map((item) => {
+          const updated = item.id === id ? { ...item, isRead: true } : item;
+          if (!updated.isRead) nextUnread += 1;
+          return updated;
+        });
+        return { ...prev, items: nextItems, unreadCount: nextUnread };
+      }
+    );
+    void adminFetch<{ ok: boolean }>("/api/shop/admin/ops/notifications/read", {
+      method: "POST",
+      body: JSON.stringify({ id }),
+    })
+      .then(() => {
+        void queryClient.invalidateQueries({ queryKey: ["admin", "ops", "notifications"] });
+      })
+      .catch(() => {
+        /* localStorage fallback kept offline */
+      });
   };
 
   const markAllAsRead = (e?: React.MouseEvent) => {
@@ -228,6 +242,39 @@ export function AdminNotificationCenter({
     } catch {
       /* ignore */
     }
+    queryClient.setQueryData<AdminNotificationsResponse>(
+      ["admin", "ops", "notifications"],
+      (prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          readAllAt: new Date(now).toISOString(),
+          unreadCount: 0,
+          items: prev.items.map((item) => ({ ...item, isRead: true })),
+        };
+      }
+    );
+    void adminFetch<{ ok: boolean; readAllAt?: string | null }>(
+      "/api/shop/admin/ops/notifications/read-all",
+      { method: "POST" }
+    )
+      .then((res) => {
+        if (res?.readAllAt) {
+          const serverMs = new Date(res.readAllAt).getTime();
+          if (Number.isFinite(serverMs)) {
+            setReadAllAt(serverMs);
+            try {
+              localStorage.setItem(STORAGE_READ_ALL_AT, String(serverMs));
+            } catch {
+              /* ignore */
+            }
+          }
+        }
+        void queryClient.invalidateQueries({ queryKey: ["admin", "ops", "notifications"] });
+      })
+      .catch(() => {
+        /* localStorage fallback kept offline */
+      });
   };
 
   // Compute unread per category
@@ -247,7 +294,7 @@ export function AdminNotificationCenter({
     }
 
     return { all, orders, wholesaleCtv, recruitment };
-  }, [allItems, readIds, readAllAt]);
+  }, [allItems, readIds, effectiveReadAllMs]);
 
   const filteredItems = useMemo(() => {
     if (activeTab === "orders") {

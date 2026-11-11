@@ -7,6 +7,7 @@ import {
   SHOP_COMMISSION_BILLS,
 } from "../commissionModels.js";
 import { SHOP_ACCOUNTS } from "../../shopAuth/models.js";
+import { dateRangeMatch } from "../../utils/mongoDate.js";
 
 export function registerStats(app: Express, ctx: CommissionAdminCtx) {
   const { getShopDb, gate, ensure } = ctx;
@@ -27,9 +28,9 @@ export function registerStats(app: Express, ctx: CommissionAdminCtx) {
         unlockedBill,
       ] = await Promise.all([
         acc.countDocuments({ roles: "ctv", ctvStatus: "cho_duyet" }),
-        shopDb.collection(SHOP_CTV_FRAUD_EVENTS).countDocuments({
-          createdAt: { $gte: new Date(Date.now() - 7 * 86400_000).toISOString() },
-        }),
+        shopDb
+          .collection(SHOP_CTV_FRAUD_EVENTS)
+          .countDocuments(dateRangeMatch("createdAt", { gte: new Date(Date.now() - 7 * 86400_000) })),
         col.aggregate([{ $match: { status: "held" } }, { $group: { _id: null, t: { $sum: "$amount" }, n: { $sum: 1 } } }]).toArray(),
         col.aggregate([{ $match: { status: "eligible" } }, { $group: { _id: null, t: { $sum: "$amount" }, n: { $sum: 1 } } }]).toArray(),
         col.aggregate([{ $match: { status: "billed" } }, { $group: { _id: null, t: { $sum: "$amount" }, n: { $sum: 1 } } }]).toArray(),

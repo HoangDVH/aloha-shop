@@ -236,44 +236,45 @@ export function HomeTrustShowcase({ props }: { props?: Record<string, unknown> }
   useEffect(() => {
     const el = reelRef.current;
     if (!el || !displayGallery.length) return;
-
-    let animId: number;
-    const SPEED = 28; // Tốc độ trôi 28px/giây cực kỳ êm dịu, thanh lịch
-
+    let animId = 0;
+    let halfWidth = el.scrollWidth / 2;
+    let visible = document.visibilityState === "visible";
+    let inView = true;
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    const SPEED = 28;
     const step = (now: number) => {
       if (!lastTimeRef.current) lastTimeRef.current = now;
-      const deltaTime = Math.min((now - lastTimeRef.current) / 1000, 0.08); // Giới hạn deltaTime tránh giật khi lag/chuyển tab
+      const dt = Math.min((now - lastTimeRef.current) / 1000, 0.08);
       lastTimeRef.current = now;
-
-      if (!isInteractingRef.current) {
-        // Nửa chiều dài nội dung vì danh sách được nhân đôi
-        const halfWidth = el.scrollWidth / 2;
-
-        if (halfWidth > 0) {
-          posRef.current += SPEED * deltaTime;
-
-          // Khi cuộn hết vòng 1, chuyển về đầu vòng 2 hoàn toàn vô hình
-          if (posRef.current >= halfWidth) {
-            posRef.current -= halfWidth;
-          }
-
-          el.scrollLeft = posRef.current;
-
-          // Cập nhật thanh tiến trình trực tiếp qua DOM (0 lần React re-render!)
-          if (progressFillRef.current) {
-            const pct = Math.max(15, Math.min(100, (posRef.current / halfWidth) * 100));
-            progressFillRef.current.style.width = `${pct}%`;
-          }
+      if (!isInteractingRef.current && halfWidth > 0) {
+        posRef.current = (posRef.current + SPEED * dt) % halfWidth;
+        el.scrollLeft = posRef.current;
+        if (progressFillRef.current) {
+          const s = Math.max(0.15, Math.min(1, posRef.current / halfWidth));
+          progressFillRef.current.style.transform = `scaleX(${s.toFixed(4)})`;
         }
       }
-
-      animId = requestAnimationFrame(step);
+      if (visible && inView && !reduced) animId = requestAnimationFrame(step);
+      else animId = 0;
     };
-
-    animId = requestAnimationFrame(step);
-
+    const sync = () => {
+      if (reduced || !visible || !inView) {
+        if (animId) { cancelAnimationFrame(animId); animId = 0; }
+        lastTimeRef.current = null;
+      } else if (!animId) animId = requestAnimationFrame(step);
+    };
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => { halfWidth = el.scrollWidth / 2; }) : null;
+    ro?.observe(el);
+    const io = typeof IntersectionObserver !== "undefined" ? new IntersectionObserver(([e]) => { inView = Boolean(e?.isIntersecting); sync(); }, { rootMargin: "120px" }) : null;
+    io?.observe(el);
+    const onVis = () => { visible = document.visibilityState === "visible"; if (visible) halfWidth = el.scrollWidth / 2; sync(); };
+    document.addEventListener("visibilitychange", onVis);
+    sync();
     return () => {
-      cancelAnimationFrame(animId);
+      if (animId) cancelAnimationFrame(animId);
+      ro?.disconnect();
+      io?.disconnect();
+      document.removeEventListener("visibilitychange", onVis);
       if (resumeTimeoutRef.current) clearTimeout(resumeTimeoutRef.current);
     };
   }, [displayGallery]);
@@ -329,14 +330,12 @@ export function HomeTrustShowcase({ props }: { props?: Record<string, unknown> }
       if (halfWidth > 0) {
         posRef.current = reelRef.current.scrollLeft % halfWidth;
         if (progressFillRef.current) {
-          const pct = Math.max(15, Math.min(100, (posRef.current / halfWidth) * 100));
-          progressFillRef.current.style.width = `${pct}%`;
+          const s = Math.max(0.15, Math.min(1, posRef.current / halfWidth));
+          progressFillRef.current.style.transform = `scaleX(${s.toFixed(4)})`;
         }
       }
     }
   };
-
-
 
   // Đóng modal bằng phím ESC hoặc chuyển ảnh bằng mũi tên ← → (chuẩn sàn quốc tế)
   useEffect(() => {
@@ -494,11 +493,11 @@ export function HomeTrustShowcase({ props }: { props?: Record<string, unknown> }
 
                   {/* Badge góc trên */}
                   <div className="relative z-10 p-2.5 sm:p-4.5 flex items-center justify-between pointer-events-none">
-                    <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-black/45 sm:bg-black/35 backdrop-blur-md border border-white/20 sm:border-white/25 text-[9px] sm:text-[10.5px] font-bold text-white whitespace-nowrap shadow-xs tracking-normal">
+                    <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-black/70 border border-white/20 sm:border-white/25 text-[9px] sm:text-[10.5px] font-bold text-white whitespace-nowrap shadow-xs tracking-normal">
                       <Building2 size={10} className="text-amber-300 sm:w-3 sm:h-3 shrink-0" />
                       <span>{meta.badge}</span>
                     </span>
-                    <span className="opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-1 group-hover:translate-y-0 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-black/45 backdrop-blur-md border border-white/25 text-[10.5px] text-white/95 shadow-xs">
+                    <span className="opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-1 group-hover:translate-y-0 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-black/75 border border-white/25 text-[10.5px] text-white/95 shadow-xs">
                       <ZoomIn size={11} />
                       <span>HD</span>
                     </span>
@@ -521,7 +520,7 @@ export function HomeTrustShowcase({ props }: { props?: Record<string, unknown> }
                         {meta.scale}
                       </p>
                     </div>
-                    <div className="shrink-0 h-7 w-7 sm:h-9 sm:w-9 rounded-full bg-white/20 backdrop-blur-md border border-white/30 group-hover:bg-white group-hover:text-[#1C4C40] group-hover:scale-110 group-hover:shadow-lg flex items-center justify-center text-white transition-all duration-300 ease-out shadow-md">
+                    <div className="shrink-0 h-7 w-7 sm:h-9 sm:w-9 rounded-full bg-white/25 border border-white/30 group-hover:bg-white group-hover:text-[#1C4C40] group-hover:scale-110 group-hover:shadow-lg flex items-center justify-center text-white transition-all duration-300 ease-out shadow-md">
                       <ArrowUpRight size={13} className="sm:w-4 sm:h-4 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                     </div>
                   </div>
@@ -605,7 +604,7 @@ export function HomeTrustShowcase({ props }: { props?: Record<string, unknown> }
 
                     <div className="absolute top-2 left-2 z-10">
                       <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold shadow-xs backdrop-blur-xs ${
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold shadow-xs ${
                           item.isCustomer
                             ? "bg-[#1C4C40]/90 text-white"
                             : "bg-white/90 text-stone-800"
@@ -632,10 +631,8 @@ export function HomeTrustShowcase({ props }: { props?: Record<string, unknown> }
                 <div className="w-full sm:w-52 h-1 bg-stone-200/80 rounded-full overflow-hidden ml-auto">
                   <div
                     ref={progressFillRef}
-                    className="h-full bg-[#C05621] rounded-full"
-                    style={{
-                      width: "20%",
-                    }}
+                    className="h-full w-full bg-[#C05621] rounded-full origin-left"
+                    style={{ transform: "scaleX(0.2)" }}
                   />
                 </div>
               </div>
@@ -647,7 +644,7 @@ export function HomeTrustShowcase({ props }: { props?: Record<string, unknown> }
             BANNER CTA B2B ZALO TOÀN DẢI (BÁO GIÁ QUÀ TẶNG DOANH NGHIỆP)
            ========================================================================= */}
         {data.cta?.href ? (
-          <div data-show="false" className="reveal rounded-3xl bg-white/90 backdrop-blur-xs border border-[#E7DFD3] p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left" style={{ transitionDelay: "150ms" }}>
+          <div data-show="false" className="reveal rounded-3xl bg-white border border-[#E7DFD3] p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left" style={{ transitionDelay: "150ms" }}>
             <div className="flex items-center gap-3.5">
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-800 shrink-0 border border-emerald-100 shadow-2xs">
                 <MessageCircle size={22} />

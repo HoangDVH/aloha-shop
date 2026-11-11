@@ -1,5 +1,7 @@
 "use client";
 
+import { createSharedSseLeader, isPageVisible } from "@/lib/sharedSseLeader";
+
 export const SHOP_CATALOG_CHANGED = "aloha-shop-catalog-changed";
 export const SHOP_APPEARANCE_CHANGED = "aloha-shop-appearance-changed";
 export const SHOP_CAMPAIGN_CHANGED = "aloha-shop-campaign-changed";
@@ -63,30 +65,18 @@ function emitAppearance(detail: ShopAppearanceChangeDetail) {
   window.dispatchEvent(new CustomEvent(SHOP_APPEARANCE_CHANGED, { detail }));
 }
 
-function isPageVisible() {
-  return typeof document === "undefined" || document.visibilityState === "visible";
-}
-
-/** Exponential backoff + jitter, cap 30s. */
-function nextBackoffMs(attempt: number) {
-  const base = Math.min(30_000, 2000 * Math.pow(2, Math.max(0, attempt)));
-  const jitter = Math.floor(Math.random() * 500);
-  return base + jitter;
-}
-
 /**
- * SSE catalog + appearance.
- * Fallback poll chỉ khi SSE down + tab visible (chuẩn marketplace).
+ * SSE catalog + appearance dùng chung Leader-Follower giữa nhiều tab.
+ * Fallback poll chỉ chạy trên tab Leader khi SSE down + tab visible.
  */
 export function startShopCatalogStream(): () => void {
   if (typeof window === "undefined") return () => {};
 
-  let es: EventSource | null = null;
   let stopped = false;
-  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  let fallbackTimer: ReturnType<typeof setInterval> | null = null;
   let sseOk = false;
-  let reconnectAttempt = 0;
+  let isLeader = false;
+  let fallbackTimer: ReturnType<typeof setInterval> | null = null;
+  let emitFallback: ((type: string, data: string) => void) | null = null;
 
   const clearFallback = () => {
     if (fallbackTimer) {
@@ -96,127 +86,77 @@ export function startShopCatalogStream(): () => void {
   };
 
   const startFallback = () => {
-    if (fallbackTimer || stopped) return;
-    if (!isPageVisible()) return;
+    if (fallbackTimer || stopped || !isLeader || sseOk || !isPageVisible()) return;
     fallbackTimer = setInterval(() => {
-      if (!isPageVisible() || sseOk) return;
-      emitCatalog({ ids: [], at: Date.now(), source: "fallback-poll" });
+      if (stopped || !isLeader || sseOk || !isPageVisible()) return;
+      const payload = JSON.stringify({ ids: [], at: Date.now(), source: "fallback-poll" });
+      if (emitFallback) {
+        emitFallback("catalog", payload);
+      } else {
+        emitCatalog({ ids: [], at: Date.now(), source: "fallback-poll" });
+      }
     }, 40_000);
   };
 
-  const scheduleReconnect = () => {
-    if (stopped || reconnectTimer) return;
-    const delay = nextBackoffMs(reconnectAttempt);
-    reconnectAttempt += 1;
-    reconnectTimer = setTimeout(() => {
-      reconnectTimer = null;
-      connect();
-    }, delay);
-  };
-
-  const connect = () => {
-    if (stopped) return;
-    if (typeof EventSource === "undefined") {
-      startFallback();
-      return;
-    }
-    try {
-      es = new EventSource("/api/shop/catalog/stream");
-    } catch {
-      startFallback();
-      scheduleReconnect();
-      return;
-    }
-    es.addEventListener("hello", () => {
-      sseOk = true;
-      reconnectAttempt = 0;
-      clearFallback();
-    });
-    es.addEventListener("catalog", (ev) => {
-      sseOk = true;
-      reconnectAttempt = 0;
-      clearFallback();
-      try {
-        const data = JSON.parse(String((ev as MessageEvent).data || "{}")) as {
-          ids?: string[];
-          at?: number;
-          source?: string;
-        };
-        emitCatalog({
-          ids: Array.isArray(data.ids) ? data.ids.map(String) : [],
-          at: Number(data.at) || Date.now(),
-          source: data.source,
-        });
-      } catch {
-        emitCatalog({ ids: [], at: Date.now() });
+  const stopLeader = createSharedSseLeader({
+    lockName: "aloha_sse_catalog",
+    channelName: "aloha_sse_catalog",
+    url: "/api/shop/catalog/stream",
+    events: ["hello", "catalog", "appearance", "campaign", "flash"],
+    onEvent: (type, rawData) => {
+      if (type === "catalog") {
+        try {
+          const data = JSON.parse(rawData || "{}") as { ids?: string[]; at?: number; source?: string };
+          emitCatalog({
+            ids: Array.isArray(data.ids) ? data.ids.map(String) : [],
+            at: Number(data.at) || Date.now(),
+            source: data.source,
+          });
+        } catch {
+          emitCatalog({ ids: [], at: Date.now() });
+        }
+      } else if (type === "appearance") {
+        try {
+          const data = JSON.parse(rawData || "{}") as { at?: number; source?: string };
+          emitAppearance({ at: Number(data.at) || Date.now(), source: data.source });
+        } catch {
+          emitAppearance({ at: Date.now() });
+        }
+      } else if (type === "campaign" || type === "flash") {
+        window.dispatchEvent(new CustomEvent(SHOP_CAMPAIGN_CHANGED, { detail: { kind: type, at: Date.now() } }));
       }
-    });
-    es.addEventListener("appearance", (ev) => {
-      sseOk = true;
-      reconnectAttempt = 0;
-      clearFallback();
-      try {
-        const data = JSON.parse(String((ev as MessageEvent).data || "{}")) as {
-          at?: number;
-          source?: string;
-        };
-        emitAppearance({
-          at: Number(data.at) || Date.now(),
-          source: data.source,
-        });
-      } catch {
-        emitAppearance({ at: Date.now() });
+    },
+    onConnectionChange: (state, helpers) => {
+      sseOk = state.connected;
+      isLeader = state.isLeader;
+      emitFallback = helpers.emitLocalAndBroadcast;
+      if (state.connected || !state.isLeader) {
+        clearFallback();
+      } else {
+        startFallback();
       }
-    });
-    const forwardCampaign = (kind: "campaign" | "flash") => () => {
-      sseOk = true;
-      reconnectAttempt = 0;
-      clearFallback();
-      window.dispatchEvent(new CustomEvent(SHOP_CAMPAIGN_CHANGED, { detail: { kind, at: Date.now() } }));
-    };
-    es.addEventListener("campaign", forwardCampaign("campaign"));
-    es.addEventListener("flash", forwardCampaign("flash"));
-    es.onerror = () => {
-      sseOk = false;
-      try {
-        es?.close();
-      } catch {
-        /* */
-      }
-      es = null;
-      startFallback();
-      scheduleReconnect();
-    };
-  };
+    },
+  });
 
   const onVis = () => {
     if (stopped) return;
     if (!isPageVisible()) {
       clearFallback();
-      return;
-    }
-    if (!sseOk) {
+    } else if (!sseOk && isLeader) {
       startFallback();
-      if (!es && !reconnectTimer) scheduleReconnect();
     }
   };
 
-  connect();
   const boot = setTimeout(() => {
-    if (!sseOk) startFallback();
+    if (!sseOk && isLeader) startFallback();
   }, 4000);
   document.addEventListener("visibilitychange", onVis);
 
   return () => {
     stopped = true;
     clearTimeout(boot);
-    if (reconnectTimer) clearTimeout(reconnectTimer);
     clearFallback();
     document.removeEventListener("visibilitychange", onVis);
-    try {
-      es?.close();
-    } catch {
-      /* */
-    }
+    stopLeader();
   };
 }

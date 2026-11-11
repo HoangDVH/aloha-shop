@@ -8,6 +8,7 @@ import type { Db } from "mongodb";
 import { SHOP_ACCOUNTS, normalizeCtvCode } from "../shopAuth/models.js";
 import { SHOP_CTV_FRAUD_EVENTS, type CtvSettings } from "./commissionModels.js";
 import { SHOP_ORDERS } from "./models.js";
+import { dateRangeMatch } from "../utils/mongoDate.js";
 
 function normPhone(raw: string): string {
   const d = String(raw || "").replace(/\D/g, "");
@@ -142,11 +143,11 @@ export async function checkOrderFraudFlags(
       !selfHit &&
       settings.phoneRepeatSoftWarn !== false
     ) {
-      const since = new Date(Date.now() - 90 * 86400_000).toISOString();
+      const since = new Date(Date.now() - 90 * 86400_000);
       const matchCount = await shopDb.collection(SHOP_ORDERS).countDocuments({
         customerPhone: { $regex: recvPhone.slice(-9) },
         ctvCodes: ctv,
-        createdAt: { $gte: since },
+        ...dateRangeMatch("createdAt", { gte: since }),
         orderStatus: { $nin: ["huy"] },
       });
       const threshold = Math.max(1, Number(settings.addressMatchMaxHits) || 10);

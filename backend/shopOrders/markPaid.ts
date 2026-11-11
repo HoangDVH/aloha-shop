@@ -20,6 +20,12 @@ import {
   releasePromotionHold,
 } from "../shopPromotions/redemptionService.js";
 import { recordFirstPurchaseConsumedForRegularOrder } from "../shopPromotions/claimService.js";
+import { ADMIN_NOTIFICATION_TYPES } from "../../shared/opsContracts.js";
+import {
+  ADMIN_NOTIFICATIONS,
+  buildOrderNotificationFields,
+  syncAdminNotificationEntity,
+} from "../shopNotifications/adminNotificationStore.js";
 
 export type MarkPaidSource = "sepay" | "admin" | "kiotqr";
 
@@ -231,7 +237,7 @@ export async function markShopOrderPaid(opts: {
           kvInvoiceCode,
           kvInvoiceMode: "paid",
           kvInvoiceCancelledAt: null,
-          updatedAt: new Date().toISOString(),
+          updatedAt: new Date(),
         },
       }
     );
@@ -253,7 +259,7 @@ export async function markShopOrderPaid(opts: {
         $set: {
           paymentStatus: "failed",
           paymentFailReason: failMsg.slice(0, 300),
-          updatedAt: new Date().toISOString(),
+          updatedAt: new Date(),
         },
       }
     );
@@ -299,7 +305,7 @@ export async function markShopOrderPaid(opts: {
         paidSource: opts.source,
         confirmedBy: opts.confirmedBy || opts.source,
         ...(opts.kvPaymentProof ? { kvPaymentVerifiedAt: paidAt, kvPaymentEvidence: opts.kvPaymentProof } : {}),
-        updatedAt: paidAt,
+        updatedAt: new Date(),
         ...(opts.sepayTransactionId != null
           ? { sepayTransactionId: opts.sepayTransactionId }
           : {}),
@@ -317,7 +323,12 @@ export async function markShopOrderPaid(opts: {
   const finalDoc = await col.findOne({ _id: existing._id });
   const { _id: ___, ...order } = (finalDoc || claimed) as any;
 
-  syncBus.publish(["shop_orders", "aloha_products"], `shop-paid:${opts.source}`, {
+  await syncAdminNotificationEntity(opts.shopDb, {
+    entityType: ADMIN_NOTIFICATION_TYPES.ORDER,
+    entityId: String(order.code || code),
+    fields: buildOrderNotificationFields(order),
+  });
+  syncBus.publish(["shop_orders", "aloha_products", ADMIN_NOTIFICATIONS], `shop-paid:${opts.source}`, {
     ids: [String(order.code || code)],
   });
 
@@ -381,7 +392,7 @@ export async function expireUnpaidShopOrders(
           orderStatus: "huy",
           status: "huy",
           statusValue: "Hết hạn CK",
-          updatedAt: nowIso,
+          updatedAt: now,
           kvInvoiceCancelledAt: nowIso,
         },
       }
@@ -394,7 +405,20 @@ export async function expireUnpaidShopOrders(
 
     totalModified += r.modifiedCount;
     if (r.modifiedCount > 0) {
-      syncBus.publish(["shop_orders"], "shop-expire", { ids: codes });
+      await Promise.all(
+        expired.map((doc: any) =>
+          syncAdminNotificationEntity(shopDb, {
+            entityType: ADMIN_NOTIFICATION_TYPES.ORDER,
+            entityId: String(doc.code || doc.id || doc._id),
+            fields: buildOrderNotificationFields({
+              ...doc,
+              paymentStatus: "expired",
+              orderStatus: "huy",
+            }),
+          })
+        )
+      );
+      syncBus.publish(["shop_orders", ADMIN_NOTIFICATIONS], "shop-expire", { ids: codes });
     }
 
     // Nếu số đơn tìm được ít hơn batchSize thì đã xử lý hết

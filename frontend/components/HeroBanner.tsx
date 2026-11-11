@@ -213,9 +213,18 @@ export function HeroBanner({
     emblaApi.on("reInit", onSelect);
     const t = window.setTimeout(() => emblaApi.reInit(), 50);
     const onResize = () => emblaApi.reInit();
+    const syncAutoplay = () => {
+      const autoplay = emblaApi.plugins()?.autoplay as { play?: () => void; stop?: () => void } | undefined;
+      if (!autoplay) return;
+      if (document.visibilityState === "visible") autoplay.play?.();
+      else autoplay.stop?.();
+    };
+    syncAutoplay();
+    document.addEventListener("visibilitychange", syncAutoplay);
     window.addEventListener("resize", onResize);
     return () => {
       window.clearTimeout(t);
+      document.removeEventListener("visibilitychange", syncAutoplay);
       window.removeEventListener("resize", onResize);
       emblaApi.off("select", onSelect);
       emblaApi.off("reInit", onSelect);

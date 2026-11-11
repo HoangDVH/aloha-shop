@@ -28,6 +28,12 @@ import {
 } from "../shopInvoices/invoiceService.js";
 import { shopPaymentQrForOrder, resolveShopPaymentQrForOrder } from "./bankConfig.js";
 import { syncBus } from "../syncBus.js";
+import { ADMIN_NOTIFICATION_TYPES } from "../../shared/opsContracts.js";
+import {
+  ADMIN_NOTIFICATIONS,
+  buildOrderNotificationFields,
+  syncAdminNotificationEntity,
+} from "../shopNotifications/adminNotificationStore.js";
 import { shopRateLimitOrReject } from "../shopRateLimit.js";
 import {
   type GetMainDb,
@@ -183,7 +189,7 @@ export function registerShopOrderCustomerActionRoutes(
                   ? now
                   : ((existing as any).kvInvoiceCancelledAt ?? null),
               kiotvietQr: null,
-              updatedAt: now,
+              updatedAt: new Date(),
             },
           },
           { returnDocument: "after" }
@@ -210,7 +216,7 @@ export function registerShopOrderCustomerActionRoutes(
             });
             await shopDb.collection(SHOP_ORDERS).updateOne(
               { _id: (doc as any)._id },
-              { $set: { stockHeld: true, updatedAt: new Date().toISOString() } }
+              { $set: { stockHeld: true, updatedAt: new Date() } }
             );
           } catch (e: any) {
             console.warn(
@@ -282,7 +288,7 @@ export function registerShopOrderCustomerActionRoutes(
               orderStatus: "huy",
               status: "huy",
               statusValue: "Đã hủy",
-              updatedAt: now,
+              updatedAt: new Date(),
             },
           },
           { returnDocument: "after" }
@@ -316,7 +322,12 @@ export function registerShopOrderCustomerActionRoutes(
             console.warn("[shop-cancel] kv order", e?.message || e);
           }
         }
-        syncBus.publish(["shop_orders"], "shop-cancel", { ids: [String((doc as any).code)] });
+        await syncAdminNotificationEntity(db, {
+          entityType: ADMIN_NOTIFICATION_TYPES.ORDER,
+          entityId: String((doc as any).code),
+          fields: buildOrderNotificationFields(doc as any),
+        });
+        syncBus.publish(["shop_orders", ADMIN_NOTIFICATIONS], "shop-cancel", { ids: [String((doc as any).code)] });
         const { _id, ...rest } = doc as any;
         return res.json({ ok: true, data: rest });
       } catch (e: any) {
@@ -354,7 +365,7 @@ export function registerShopOrderCustomerActionRoutes(
             $set: {
               customerReportedPaidAt: now,
               statusValue: "Chờ shop xác nhận CK",
-              updatedAt: now,
+              updatedAt: new Date(),
             },
           },
           { returnDocument: "after" }
@@ -365,7 +376,12 @@ export function registerShopOrderCustomerActionRoutes(
             error: "Không cập nhật được (đơn đã xử lý hoặc không tồn tại)",
           });
         }
-        syncBus.publish(["shop_orders"], "shop-reported-paid", {
+        await syncAdminNotificationEntity(db, {
+          entityType: ADMIN_NOTIFICATION_TYPES.ORDER,
+          entityId: String((doc as any).code),
+          fields: buildOrderNotificationFields(doc as any),
+        });
+        syncBus.publish(["shop_orders", ADMIN_NOTIFICATIONS], "shop-reported-paid", {
           ids: [String((doc as any).code)],
         });
         const { _id, ...rest } = doc as any;

@@ -363,6 +363,17 @@ app.listen(PORT, '0.0.0.0', () => {
   // Ephemeral đã chuyển Redis — bỏ collection Mongo cũ nếu còn.
   void getDb()
     .then(async (db) => {
+      try {
+        const [{ normalizeShopOrderAndAccountDates }, notifStore] = await Promise.all([
+          import("./shopNotifications/dateMigration.js"),
+          import("./shopNotifications/adminNotificationStore.js"),
+        ]);
+        await normalizeShopOrderAndAccountDates(db);
+        await notifStore.ensureAdminNotificationIndexes(db);
+        await notifStore.backfillNotificationsIfEmpty(db);
+      } catch (err) {
+        console.warn("[startup] shop notifications/date init warning:", err);
+      }
       const legacy = [
         "aloha_shop_checkout_lock",
         "aloha_shop_si_sessions",

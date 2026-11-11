@@ -8,6 +8,7 @@ import { markShopOrderPaid } from "./markPaid.js";
 import { completeShopOrderDelivered } from "./completeDelivered.js";
 import { getKvInvoice } from "../shopInvoices/kvInvoiceClient.js";
 import { syncBus } from "../syncBus.js";
+import { dateRangeMatch } from "../utils/mongoDate.js";
 
 export type GetShopDb = () => Promise<Db>;
 export type GetMainDb = () => Promise<Db>;
@@ -135,7 +136,7 @@ export async function reconcileAwaitingKvPayments(
     const mainDb = await getMainDb();
     await ensureShopOrderIndexes(shopDb);
 
-    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const rows = await shopDb
       .collection(SHOP_ORDERS)
       .find({
@@ -143,7 +144,7 @@ export async function reconcileAwaitingKvPayments(
         paymentStatus: { $in: ["unpaid", "processing", "underpaid", "expired", "failed"] },
         $and: [
           { $or: [{ kvInvoiceId: { $ne: null } }, { kvInvoiceCode: { $type: "string", $ne: "" } }] },
-          { $or: [{ createdAt: { $gte: since } }, { "kvPaymentVerification.state": "pending" }] },
+          { $or: [dateRangeMatch("createdAt", { gte: since }), { "kvPaymentVerification.state": "pending" }] },
         ],
       })
       .sort({ "kvPaymentVerification.lastAttemptAt": 1, createdAt: 1 })

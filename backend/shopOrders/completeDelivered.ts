@@ -18,6 +18,12 @@ import { fullAddressForKv } from "./orderRouteShared.js";
 import { notifyOrderStatus } from "./notifyOrderStatus.js";
 import { shopOrderLookupFilter } from "./findShopOrder.js";
 import { markRedemptionUsed } from "../shopPromotions/redemptionService.js";
+import { ADMIN_NOTIFICATION_TYPES } from "../../shared/opsContracts.js";
+import {
+  ADMIN_NOTIFICATIONS,
+  buildOrderNotificationFields,
+  syncAdminNotificationEntity,
+} from "../shopNotifications/adminNotificationStore.js";
 
 export type CompleteDeliveredOpts = {
   shopDb: Db;
@@ -183,7 +189,7 @@ export async function completeShopOrderDelivered(
         {
           $set: {
             kvPushError: msg.slice(0, 500),
-            updatedAt: new Date().toISOString(),
+            updatedAt: new Date(),
           },
         }
       );
@@ -206,7 +212,7 @@ export async function completeShopOrderDelivered(
       $set: {
         orderStatus: "hoan_thanh",
         deliveredAt: now,
-        updatedAt: now,
+        updatedAt: new Date(),
         deliveredBy: opts.confirmedBy || "system",
         confirmedBy: opts.confirmedBy || "system",
         ...(kvOrderId != null && kvOrderId !== ""
@@ -247,7 +253,7 @@ export async function completeShopOrderDelivered(
         $set: {
           stockApplied: true,
           stockShortfall: shortfall.length ? shortfall : undefined,
-          updatedAt: new Date().toISOString(),
+          updatedAt: new Date(),
         },
       }
     );
@@ -258,7 +264,12 @@ export async function completeShopOrderDelivered(
   await markRedemptionUsed(shopDb, code).catch(() => undefined);
 
   const hold = await holdCommissionsForOrder(shopDb, mainDb, doc as any);
-  syncBus.publish(["shop_orders", "aloha_shop_commissions"], "delivered", {
+  await syncAdminNotificationEntity(shopDb, {
+    entityType: ADMIN_NOTIFICATION_TYPES.ORDER,
+    entityId: code,
+    fields: buildOrderNotificationFields(doc as any),
+  });
+  syncBus.publish(["shop_orders", "aloha_shop_commissions", ADMIN_NOTIFICATIONS], "delivered", {
     ids: [code],
   });
   void notifyOrderStatus(shopDb, doc as any, "giao_thanh_cong").catch((e) =>

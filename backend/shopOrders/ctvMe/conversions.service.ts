@@ -3,6 +3,7 @@
  */
 import type { GetDb } from "../../auth/middleware.js";
 import { getCtvSettings, SHOP_COMMISSIONS } from "../commissionModels.js";
+import { toIsoString } from "../../utils/mongoDate.js";
 import { summarizeCtvCommissionStatus, type ActiveCtvContext } from "./shared.js";
 
 export async function getCtvConversions(
@@ -279,9 +280,7 @@ export async function getCtvConversions(
     )
       .trim()
       .toUpperCase();
-    const purchasedAt = (o as any).createdAt
-      ? String((o as any).createdAt)
-      : null;
+    const purchasedAt = toIsoString((o as any).createdAt) || null;
     const completedAt = (o as any).deliveredAt || (o as any).completedAt || null;
     const clickAt = firstMa ? clickByMa.get(firstMa) || null : null;
 

@@ -12,6 +12,12 @@ import { releaseShopStockHolds } from "./stockHold.js";
 import { releasePromotionHold } from "../shopPromotions/redemptionService.js";
 import { undoCampaignHoldsForPurge } from "../shopCampaigns/orderCampaign.js";
 import { syncBus } from "../syncBus.js";
+import { ADMIN_NOTIFICATION_TYPES } from "../../shared/opsContracts.js";
+import {
+  ADMIN_NOTIFICATIONS,
+  buildOrderNotificationFields,
+  syncAdminNotificationEntity,
+} from "../shopNotifications/adminNotificationStore.js";
 
 const PAID_STATES = new Set(["paid", "underpaid", "processing"]);
 const SHIPPED_STATES = new Set(["dang_giao", "hoan_thanh"]);
@@ -101,7 +107,7 @@ export async function voidTestOrder(args: {
           statusValue: "Đã hủy (đơn test)",
           voidedTestAt: now,
           voidedTestBy: actor,
-          updatedAt: now,
+          updatedAt: new Date(),
           ...(hasRef(doc.kvInvoiceId) ? { kvInvoiceCancelledAt: doc.kvInvoiceCancelledAt || now, kvInvoiceMode: null } : {}),
         },
       }
@@ -110,7 +116,12 @@ export async function voidTestOrder(args: {
     await releaseShopStockHolds(shopDb, code).catch(() => 0);
     await releasePromotionHold(shopDb, code).catch(() => undefined);
     await undoCampaignHoldsForPurge(shopDb, code).catch(() => undefined);
-    syncBus.publish(["shop_orders"], "void-test", { ids: [code] });
+    await syncAdminNotificationEntity(shopDb, {
+      entityType: ADMIN_NOTIFICATION_TYPES.ORDER,
+      entityId: code,
+      fields: buildOrderNotificationFields({ ...doc, paymentStatus: "cancelled", orderStatus: "huy" }),
+    });
+    syncBus.publish(["shop_orders", ADMIN_NOTIFICATIONS], "void-test", { ids: [code] });
     return { ok: true, code, kvCancelled };
   } finally {
     await col.updateOne({ _id: doc._id }, { $unset: { voidTestLockAt: "" } }).catch(() => undefined);

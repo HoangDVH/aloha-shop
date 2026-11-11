@@ -20,6 +20,7 @@ import { undoCampaignHoldsForPurge } from "../../shopCampaigns/orderCampaign.js"
 import { voidTestOrder } from "../voidTestOrder.js";
 import type { GetShopDb } from "../routes.js";
 import { ensureAdminOrderIndexes } from "./adminOrderQueryController.js";
+import { ADMIN_NOTIFICATIONS } from "../../shopNotifications/adminNotificationStore.js";
 
 export async function handleSyncKv(
   req: AuthRequest,
@@ -111,11 +112,11 @@ export async function handleRetryKvPush(
             kvOrderCode: ord.kvOrderCode,
             kvPushError: null,
             kvDeliveryAddress: ord.kvDeliveryAddress || null,
-            updatedAt: new Date().toISOString(),
+            updatedAt: new Date(),
           },
         }
       );
-      syncBus.publish(["shop_orders"], "retry-kv-push", { ids: [code] });
+      syncBus.publish(["shop_orders", ADMIN_NOTIFICATIONS], "retry-kv-push", { ids: [code] });
       return res.json({
         ok: true,
         kvOrderId: ord.kvOrderId,
@@ -128,7 +129,7 @@ export async function handleRetryKvPush(
         {
           $set: {
             kvPushError: msg.slice(0, 500),
-            updatedAt: new Date().toISOString(),
+            updatedAt: new Date(),
           },
         }
       );
@@ -249,7 +250,13 @@ export async function handlePurgeTest(
       deletedMongo.push(code);
     }
 
-    syncBus.publish(["shop_orders"], "purge-test", { ids: deletedMongo });
+    if (deletedMongo.length) {
+      await shopDb
+        .collection(ADMIN_NOTIFICATIONS)
+        .deleteMany({ entityType: "order", entityId: { $in: deletedMongo } })
+        .catch(() => {});
+    }
+    syncBus.publish(["shop_orders", ADMIN_NOTIFICATIONS], "purge-test", { ids: deletedMongo });
     return res.json({
       ok: true,
       cancelledKv,

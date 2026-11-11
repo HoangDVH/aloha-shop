@@ -15,9 +15,7 @@ import { SHOP_ACCOUNTS, shopAccountIdQuery } from "../shopAuth/models.js";
 import { SHOP_ORDERS, newPaymentCode, newShopOrderCode, transferTtlMinutes } from "./models.js";
 import { annotatePreOrderDetails, assertStockAvailable } from "./stockApply.js";
 import { resolveShopPaymentQrForOrder } from "./bankConfig.js";
-import { syncBus } from "../syncBus.js";
-import { broadcastAdminWebPush } from "../shopPush/webPushService.js";
-import { zaloNotifyService } from "../shopWholesale/zaloNotifyService.js";
+import { emitOrderCreated } from "../shopNotifications/domainEvents.js";
 import {
   type GetMainDb,
   applyCatalogPrices,
@@ -191,6 +189,41 @@ async function createShopOrder(
       body,
       details: orderDetails,
     });
+    if (result.status === 201 && (result.body as any)?.data) {
+      const bo = (result.body as any).data as Record<string, any>;
+      const boTotalStr = new Intl.NumberFormat("vi-VN").format(Number(bo.total || 0));
+      await emitOrderCreated({
+        shopDb,
+        order: bo,
+        syncSource: "shop-backorder-request",
+        pushPayload: {
+          title: "🕒 ALOHA - Có đơn đặt trước mới!",
+          body: `Đơn ${bo.code} (${bo.customerName || "Khách web"} - ${boTotalStr}đ)`,
+          url: `/admin/don-hang-web?code=${encodeURIComponent(String(bo.code || ""))}`,
+          tag: `order-${bo.code}`,
+        },
+        zaloPayload: {
+          orderCode: String(bo.code || ""),
+          customerName: String(bo.customerName || "Khách web"),
+          phone: String(bo.customerPhone || ""),
+          address:
+            bo.deliveryMethod === "nhan_cua_hang"
+              ? "Nhận tại cửa hàng Aloha"
+              : [bo.shippingAddress, bo.ward, bo.district, bo.province].filter(Boolean).join(", "),
+          deliveryMethod: String(bo.deliveryMethod || "giao_tan_noi"),
+          paymentMethod: "Đơn đặt trước (Chờ Aloha xác nhận)",
+          total: Number(bo.total || 0),
+          items: (orderDetails || []).map((it) => ({
+            name: it.productName,
+            quantity: it.quantity,
+            price: it.price,
+            variant: it.variantLabel,
+          })),
+          customerNote: bo.customerNote || undefined,
+          createdAt: bo.createdAt || new Date(),
+        },
+      }).catch(() => {});
+    }
     releaseLock(res);
     return res.status(result.status).json(result.body);
   }
@@ -310,7 +343,6 @@ async function createShopOrder(
 
   const paymentCode = isTransfer ? newPaymentCode(code) : undefined;
   const nowDate = new Date();
-  const now = nowDate.toISOString();
   const expiresAt = isTransfer
     ? new Date(nowDate.getTime() + transferTtlMinutes() * 60_000)
     : undefined;
@@ -358,7 +390,7 @@ async function createShopOrder(
     idempotencyKey,
     bodyHash,
     expiresAt,
-    now,
+    now: nowDate,
     campaignHolds: campaignHeld.holds,
     flashSavings: campaign.flashSavings,
     anchorSavings: campaign.anchorSavings,
@@ -411,18 +443,11 @@ async function createShopOrder(
   const pushed = await pushOrderToKv(pushCtx);
   if (isStepFail(pushed)) return res.status(pushed.status).json(pushed.body);
   code = pushed.code;
+  doc.code = code;
   await confirmFunnelOrder(shopDb, { ...doc, code }).catch(() => {});
 
-  syncBus.publish(["shop_orders"], "shop-order-create", { ids: [code] });
   const finalAmount = Number(doc.total || total || 0);
   const amountStr = new Intl.NumberFormat("vi-VN").format(finalAmount);
-  void broadcastAdminWebPush(shopDb, {
-    title: "🔔 ALOHA - Có đơn hàng mới!",
-    body: `Đơn ${code} (${customerName || "Khách web"} - ${amountStr}đ)`,
-    url: `/admin/don-hang-web?code=${encodeURIComponent(code)}`,
-    tag: `order-${code}`,
-  }).catch((e) => console.warn("[web-push] order push failed:", e?.message || e));
-
   const fullAddress = deliveryMethod === "nhan_cua_hang"
     ? "Nhận tại cửa hàng Aloha"
     : [shippingAddress, ward, district, province].filter(Boolean).join(", ");
@@ -438,18 +463,29 @@ async function createShopOrder(
       ? "COD (Thanh toán khi nhận hàng)"
       : (method || "Khác");
 
-  void zaloNotifyService.sendNewOrderNotice({
-    orderCode: code,
-    customerName: customerName || "Khách web",
-    phone: customerPhone,
-    address: fullAddress,
-    deliveryMethod,
-    paymentMethod: paymentMethodLabel,
-    total: finalAmount,
-    items: orderItemsSummary,
-    customerNote: customerNote || undefined,
-    createdAt: (doc.createdAt as any) || new Date(),
-  }).catch((e) => console.warn("[zalo] order notice failed:", e?.message || e));
+  await emitOrderCreated({
+    shopDb,
+    order: { ...doc, code },
+    syncSource: "shop-order-create",
+    pushPayload: {
+      title: "🔔 ALOHA - Có đơn hàng mới!",
+      body: `Đơn ${code} (${customerName || "Khách web"} - ${amountStr}đ)`,
+      url: `/admin/don-hang-web?code=${encodeURIComponent(code)}`,
+      tag: `order-${code}`,
+    },
+    zaloPayload: {
+      orderCode: code,
+      customerName: customerName || "Khách web",
+      phone: customerPhone,
+      address: fullAddress,
+      deliveryMethod,
+      paymentMethod: paymentMethodLabel,
+      total: finalAmount,
+      items: orderItemsSummary,
+      customerNote: customerNote || undefined,
+      createdAt: (doc.createdAt as any) || new Date(),
+    },
+  }).catch(() => {});
   void notifyOrderStatus(shopDb, doc, "dat_hang").catch((e) =>
     console.warn("[shop-notify] dat_hang", code, e?.message || e)
   );

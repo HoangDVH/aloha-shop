@@ -50,7 +50,7 @@ export function SmartFreeshipBar({
   const targetHref = moreHref || defaultMoreHref;
   const { user, loading } = useShopAuth();
   const availability = useQuery({ queryKey: ["shop", "shipping-progress", user?.id, user?.siStatus, user?.siRegion],
-    queryFn: getAvailablePromotions, enabled: !loading, refetchInterval: 15000 });
+    queryFn: getAvailablePromotions, enabled: !loading, staleTime: 30_000, refetchInterval: 45_000, refetchOnWindowFocus: false });
   const promos = useMemo(() => shippingProgressPromotions(availability.data || []), [availability.data]);
 
   const tiers: FreeshipTier[] = useMemo(() => {

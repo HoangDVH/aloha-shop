@@ -35,6 +35,13 @@ import { checkStatusTransition } from "./transitions.js";
 import { cvPath, deleteCv } from "./cvStorage.js";
 import { CV_FORMAT_META, cvDownloadName } from "./cvFormat.js";
 import { readAccountSummary } from "./applicant.js";
+import { syncBus } from "../syncBus.js";
+import { ADMIN_NOTIFICATION_TYPES } from "../../shared/opsContracts.js";
+import {
+  ADMIN_NOTIFICATIONS,
+  buildRecruitmentNotificationFields,
+  syncAdminNotificationEntity,
+} from "../shopNotifications/adminNotificationStore.js";
 
 const HISTORY_WARN_AT = MAX_HISTORY - 20;
 
@@ -239,6 +246,20 @@ export function registerRecruitmentApplicationsAdminRoutes(
         return;
       }
       const next = await col.findOne({ _id: oid! });
+      if (next) {
+        await syncAdminNotificationEntity(db, {
+          entityType: ADMIN_NOTIFICATION_TYPES.RECRUITMENT,
+          entityId: String(oid),
+          fields: buildRecruitmentNotificationFields(next as any),
+        });
+        try {
+          syncBus.publish([APPLICATIONS_COL, "recruitment_applications", ADMIN_NOTIFICATIONS], "recruitment_status_changed", {
+            ids: [String(oid)],
+          });
+        } catch {
+          /* ignore */
+        }
+      }
       const historyCount = next?.history?.length || 0;
       res.json({
         ok: true,

@@ -47,7 +47,7 @@ export function registerWholesaleSyncAdmin(app: Express, getDb: GetDb, getOps: G
       const result = await accounts.updateOne({ _id: account._id, applicationRevision: revision,
         kvCustomerId: account.kvCustomerId ?? null, phoneNorm: account.phoneNorm ?? null, siStatus: "active" }, {
         $set: { kvCustomerId: customerId, kvCustomerCode: String(found.customers[0].code), kvRetailer: found.retailer,
-          siKvSyncStatus: "synced", updatedAt: new Date().toISOString() }, $inc: { applicationRevision: 1 },
+          siKvSyncStatus: "synced", updatedAt: new Date() }, $inc: { applicationRevision: 1 },
         $push: { siAudit: { id: randomUUID(), action: "link_kv_customer", actorAdminId: req.auth!.userId,
           customerId, reason: String(reason).slice(0, 1000), at: new Date().toISOString() } } as any });
       if (!result.modifiedCount) return fail(res);

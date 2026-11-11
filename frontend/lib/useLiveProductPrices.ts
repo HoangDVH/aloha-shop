@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ShopProduct } from "@/lib/api";
 import type { CampaignPromoUI } from "@/lib/campaign/campaignApi";
 import { useCampaignRequoteKey } from "@/lib/campaign/campaignQuote";
+import { isPageVisible, onPageVisible } from "@/lib/sharedSseLeader";
 
 export type LiveProductPrice = {
   gia: number;
@@ -35,6 +36,7 @@ export function useLiveProductPrices(products: ShopProduct[]) {
       return;
     }
 
+    let pendingReload = false;
     const load = async () => {
       try {
         const { fetchLivePrices } = await import("@/lib/livePrices");
@@ -59,15 +61,31 @@ export function useLiveProductPrices(products: ShopProduct[]) {
       }
     };
 
-    void load();
+    const runOrDefer = () => {
+      if (!isPageVisible()) {
+        pendingReload = true;
+        return;
+      }
+      pendingReload = false;
+      void load();
+    };
+
+    runOrDefer();
+    const stopVis = onPageVisible(() => {
+      if (!cancelled && pendingReload) {
+        pendingReload = false;
+        void load();
+      }
+    });
     const onSession = () => {
       setLiveMap({});
-      void load();
+      runOrDefer();
     };
     window.addEventListener("aloha-price-session", onSession);
 
     let onCatalog: (() => void) | undefined;
     let onCampaign: (() => void) | undefined;
+    let campaignTimer: number | undefined;
     void import("@/lib/catalogSync").then(({ onShopCatalogChanged, onShopCampaignChanged }) => {
       if (cancelled) return;
       onCatalog = onShopCatalogChanged((detail) => {
@@ -78,15 +96,21 @@ export function useLiveProductPrices(products: ShopProduct[]) {
         ) {
           return;
         }
-        void load();
+        runOrDefer();
       });
       onCampaign = onShopCampaignChanged(() => {
-        window.setTimeout(() => void load(), Math.floor(Math.random() * 2000));
+        if (campaignTimer) window.clearTimeout(campaignTimer);
+        campaignTimer = window.setTimeout(() => {
+          campaignTimer = undefined;
+          runOrDefer();
+        }, Math.floor(Math.random() * 2000));
       });
     });
 
     return () => {
       cancelled = true;
+      stopVis();
+      if (campaignTimer) window.clearTimeout(campaignTimer);
       onCatalog?.();
       onCampaign?.();
       window.removeEventListener("aloha-price-session", onSession);
@@ -97,7 +121,13 @@ export function useLiveProductPrices(products: ShopProduct[]) {
   const lastSlotKey = useRef(slotKey);
   useEffect(() => {
     if (!hasPromo || !masKey) return;
+    let promoDirty = false;
     const refresh = async () => {
+      if (!isPageVisible()) {
+        promoDirty = true;
+        return;
+      }
+      promoDirty = false;
       const { fetchLivePrices } = await import("@/lib/livePrices");
       const mas = masKey.split("|").filter(Boolean);
       const rows = await fetchLivePrices(mas).catch(() => null);
@@ -115,8 +145,14 @@ export function useLiveProductPrices(products: ShopProduct[]) {
       lastSlotKey.current = slotKey;
       void refresh();
     }
+    const stopVis = onPageVisible(() => {
+      if (promoDirty) void refresh();
+    });
     const id = window.setInterval(refresh, PROMO_REFRESH_MS);
-    return () => window.clearInterval(id);
+    return () => {
+      stopVis();
+      window.clearInterval(id);
+    };
   }, [hasPromo, masKey, slotKey]);
 
   return liveMap;

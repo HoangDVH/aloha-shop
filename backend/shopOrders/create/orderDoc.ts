@@ -46,7 +46,7 @@ export type OrderDocInput = {
   idempotencyKey: string;
   bodyHash: string;
   expiresAt?: Date;
-  now: string;
+  now: Date | string;
   campaignHolds?: CampaignHolds | null;
   flashSavings?: number;
   anchorSavings?: number;
@@ -54,13 +54,14 @@ export type OrderDocInput = {
 
 function shippingEstimateFor(input: OrderDocInput) {
   const { deliveryMethod, quoteVerified, now } = input;
+  const nowIso = now instanceof Date ? now.toISOString() : String(now);
   if (deliveryMethod === "nhan_cua_hang") {
     return {
       status: "estimated",
       estimatedFee: 0,
       pricingSource: "shop_policy",
       packageDataSource: "verified_preset",
-      estimatedAt: now,
+      estimatedAt: nowIso,
     };
   }
   if (quoteVerified) {
@@ -71,7 +72,7 @@ function shippingEstimateFor(input: OrderDocInput) {
         quoteVerified.pricingSource ||
         (quoteVerified.freeShipApplied ? "shop_policy" : "carrier_api"),
       packageDataSource: quoteVerified.packageDataSource || "inferred",
-      estimatedAt: now,
+      estimatedAt: nowIso,
     };
   }
   return {
@@ -79,7 +80,7 @@ function shippingEstimateFor(input: OrderDocInput) {
     estimatedFee: null,
     pricingSource: "shop_policy",
     packageDataSource: "unknown",
-    estimatedAt: now,
+    estimatedAt: nowIso,
   };
 }
 
@@ -116,6 +117,8 @@ function statusFields(input: OrderDocInput) {
 /** Dựng bản ghi đơn lưu vào aloha_shop_orders. */
 export function buildOrderDoc(input: OrderDocInput): Record<string, unknown> {
   const { user, deliveryMethod, now } = input;
+  const nowDate = now instanceof Date ? now : new Date(now);
+  const nowIso = now instanceof Date ? now.toISOString() : String(now);
   const ship = deliveryMethod === "giao_tan_noi";
   const isSi = user?.siStatus === "active" && user?.roles?.includes("si");
   const status = statusFields(input);
@@ -179,7 +182,7 @@ export function buildOrderDoc(input: OrderDocInput): Record<string, unknown> {
     paymentStatus: status.paymentStatus,
     orderStatus: status.orderStatus,
     ...(input.reviewFirst
-      ? { policyAcceptedAt: now, reviewNote: input.reviewKvDescription }
+      ? { policyAcceptedAt: nowIso, reviewNote: input.reviewKvDescription }
       : {}),
     ...(input.paymentCode ? { paymentCode: input.paymentCode } : {}),
     ...(input.idempotencyKey
@@ -195,9 +198,9 @@ export function buildOrderDoc(input: OrderDocInput): Record<string, unknown> {
     status: status.status,
     statusValue: status.statusValue,
     done: false,
-    purchaseDate: now,
+    purchaseDate: nowDate,
     source: "shop_web",
-    createdAt: now,
-    updatedAt: now,
+    createdAt: nowDate,
+    updatedAt: nowDate,
   };
 }

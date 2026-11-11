@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useId, useState } from "react";
+import { isPageVisible, onPageVisible } from "@/lib/sharedSseLeader";
 import { Tooltip } from "antd";
 import {
   Activity,
@@ -113,6 +114,7 @@ export function AdminSidebar({
   useEffect(() => {
     let active = true;
     const refresh = async () => {
+      if (!isPageVisible()) return;
       try {
         const data = await adminFetch<{ newCount: number }>("/api/shop/admin/quote-requests/counts");
         if (active) setNewQuotes(data.newCount);
@@ -122,10 +124,14 @@ export function AdminSidebar({
     };
     void refresh();
     const timer = setInterval(refresh, 60_000);
+    const stopVis = onPageVisible(() => {
+      void refresh();
+    });
     window.addEventListener(QUOTE_COUNT_EVENT, refresh);
     return () => {
       active = false;
       clearInterval(timer);
+      stopVis();
       window.removeEventListener(QUOTE_COUNT_EVENT, refresh);
     };
   }, []);
