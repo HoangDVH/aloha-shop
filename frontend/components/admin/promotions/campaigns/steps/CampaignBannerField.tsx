@@ -15,6 +15,8 @@ type Props = {
   /** Tỉ lệ khoá khi cắt, ví dụ 8/3 cho banner chính. */
   aspect: number;
   ratioLabel: string;
+  /** "share" giữ ảnh PNG lossless để chia sẻ Facebook/Zalo sắc nét; "banner" nén WebP cho web. */
+  uploadKind?: "banner" | "share";
 };
 
 function readAsDataUrl(file: File): Promise<string> {
@@ -48,8 +50,14 @@ function BannerPreview({ url }: { url: string }) {
   return <img key={src} src={src} alt="" onError={onError} className="h-full w-full object-cover" />;
 }
 
-/** Chọn ảnh → cắt đúng tỉ lệ ô → tải lên (server lưu WebP). Chặn SVG / file không phải ảnh / > 4MB. */
-export function CampaignBannerField({ value, onChange, aspect, ratioLabel }: Props) {
+/** Chọn ảnh → cắt đúng tỉ lệ ô → tải lên (banner lưu WebP, share lưu PNG không nén mất nét). Chặn SVG / file không phải ảnh / > 4MB. */
+export function CampaignBannerField({
+  value,
+  onChange,
+  aspect,
+  ratioLabel,
+  uploadKind = "banner",
+}: Props) {
   const { message } = App.useApp();
   const input = useRef<HTMLInputElement>(null);
   const [src, setSrc] = useState("");
@@ -65,7 +73,7 @@ export function CampaignBannerField({ value, onChange, aspect, ratioLabel }: Pro
     try {
       const r = await websiteApi<{ url: string }>("/api/shop/admin/appearance/upload", {
         method: "POST",
-        body: JSON.stringify({ data: dataUrl, kind: "banner" }),
+        body: JSON.stringify({ data: dataUrl, kind: uploadKind }),
       });
       onChange(r.url);
       setSrc("");
@@ -107,6 +115,7 @@ export function CampaignBannerField({ value, onChange, aspect, ratioLabel }: Pro
         aspect={aspect}
         title={`Cắt ảnh theo tỉ lệ ${ratioLabel}`}
         busy={busy}
+        highQuality={uploadKind === "share"}
         onCancel={() => setSrc("")}
         onApply={upload}
       />

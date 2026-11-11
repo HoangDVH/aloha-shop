@@ -129,13 +129,7 @@ export function fileToDataUrl(file: File): Promise<string> {
 
 export type CropArea = { x: number; y: number; width: number; height: number };
 
-/** Xuất vùng crop ở độ phân giải gốc (không xuống mẫu theo khung màn hình). */
-export async function getCroppedImageDataUrl(
-  imageSrc: string,
-  pixelCrop: CropArea,
-  mime: "image/jpeg" | "image/webp" = "image/jpeg",
-  quality = 0.92
-): Promise<string> {
+async function renderCroppedCanvas(imageSrc: string, pixelCrop: CropArea): Promise<HTMLCanvasElement> {
   const image = await loadImage(imageSrc);
   const canvas = document.createElement("canvas");
   const w = Math.max(1, Math.round(pixelCrop.width));
@@ -144,8 +138,42 @@ export async function getCroppedImageDataUrl(
   canvas.height = h;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Không tạo được ảnh cắt");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
   ctx.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, w, h);
-  return canvas.toDataURL(mime, quality);
+  return canvas;
+}
+
+function estimateDataUrlBytes(dataUrl: string): number {
+  const comma = dataUrl.indexOf(",");
+  if (comma < 0) return dataUrl.length;
+  const b64 = dataUrl.slice(comma + 1);
+  const pad = b64.endsWith("==") ? 2 : b64.endsWith("=") ? 1 : 0;
+  return Math.max(0, Math.floor((b64.length * 3) / 4) - pad);
+}
+
+/** Xuất vùng crop ở độ phân giải gốc (không xuống mẫu theo khung màn hình). */
+export async function getCroppedImageDataUrl(
+  imageSrc: string,
+  pixelCrop: CropArea,
+  mime: "image/jpeg" | "image/webp" | "image/png" = "image/jpeg",
+  quality = 0.92
+): Promise<string> {
+  const canvas = await renderCroppedCanvas(imageSrc, pixelCrop);
+  return mime === "image/png" ? canvas.toDataURL("image/png") : canvas.toDataURL(mime, quality);
+}
+
+/** Xuất vùng crop không nén mất chi tiết (PNG gốc) cho ảnh chia sẻ; chỉ fallback JPEG q95 nếu vượt giới hạn upload. */
+export async function getHighQualityCroppedDataUrl(
+  imageSrc: string,
+  pixelCrop: CropArea,
+  maxDecodedBytes = 3_800_000
+): Promise<string> {
+  const canvas = await renderCroppedCanvas(imageSrc, pixelCrop);
+  const pngUrl = canvas.toDataURL("image/png");
+  if (estimateDataUrlBytes(pngUrl) <= maxDecodedBytes) return pngUrl;
+  const jpeg95 = canvas.toDataURL("image/jpeg", 0.95);
+  return estimateDataUrlBytes(jpeg95) <= maxDecodedBytes ? jpeg95 : canvas.toDataURL("image/jpeg", 0.92);
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {

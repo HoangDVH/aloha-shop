@@ -73,6 +73,50 @@ function resolveAppearanceUploadsDir() {
   return dir;
 }
 
+const MAX_SHARE_PNG_BYTES = 2_500_000;
+
+/**
+ * Chuẩn hóa ảnh tải lên từ admin appearance/campaign.
+ * - `share`: giữ bản gốc không nén chồng lớp (PNG lossless nếu <= 2.5MB, fallback Baseline JPEG q94)
+ *   để đăng Photo Post lẫn tạo OG 1200×630 sạch nhất.
+ * - `banner` / `logo` / `favicon`: giữ WebP tối ưu cho tốc độ tải storefront.
+ */
+export async function processAppearanceUploadBuffer(
+  buffer: Buffer,
+  kindRaw: string,
+  maxSharePngBytes = MAX_SHARE_PNG_BYTES
+): Promise<{ out: Buffer; ext: "png" | "jpg" | "webp"; prefix: string }> {
+  if (kindRaw === "share") {
+    const resized = sharp(buffer, { failOn: "none" })
+      .rotate()
+      .resize({ width: 1600, height: 1600, fit: "inside", withoutEnlargement: true });
+    const png = await resized.clone().png({ compressionLevel: 9 }).toBuffer();
+    if (png.length <= maxSharePngBytes) {
+      return { out: png, ext: "png", prefix: "share" };
+    }
+    const jpg = await resized.jpeg({ quality: 94, progressive: false, mozjpeg: false }).toBuffer();
+    return { out: jpg, ext: "jpg", prefix: "share" };
+  }
+
+  const kind = kindRaw === "logo" || kindRaw === "favicon" ? "logo" : "banner";
+  const maxSide = kind === "logo" ? (kindRaw === "favicon" ? 256 : 1200) : 1600;
+  const out = await sharp(buffer, { failOn: "none" })
+    .rotate()
+    .resize({
+      width: maxSide,
+      height: maxSide,
+      fit: kindRaw === "favicon" ? "cover" : "inside",
+      withoutEnlargement: kindRaw !== "favicon",
+    })
+    .webp({ quality: kind === "logo" ? 90 : 88, alphaQuality: 90 })
+    .toBuffer();
+  return {
+    out,
+    ext: "webp",
+    prefix: kindRaw === "favicon" ? "favicon" : kind,
+  };
+}
+
 async function bumpShopAppearance(source: string) {
   await publicReadCache.invalidate('appearance');
   syncBus.publish([APPEARANCE_COL, "aloha_shop_appearance"], source);
@@ -583,7 +627,6 @@ export function registerShopAppearanceRoutes(
       try {
         const data = String(req.body?.data || "");
         const kindRaw = String(req.body?.kind || "banner");
-        const kind = kindRaw === "logo" || kindRaw === "favicon" ? "logo" : "banner";
         const matches = data.match(/^data:([A-Za-z0-9.+/-]+);base64,(.+)$/);
         if (!matches) {
           res.status(400).json({
@@ -609,21 +652,10 @@ export function registerShopAppearanceRoutes(
           return;
         }
 
-        const maxSide = kind === "logo" ? (kindRaw === "favicon" ? 256 : 1200) : 1600;
-        let pipeline = sharp(buffer, { failOn: "none" }).rotate();
-        pipeline = pipeline.resize({
-          width: maxSide,
-          height: maxSide,
-          fit: kindRaw === "favicon" ? "cover" : "inside",
-          withoutEnlargement: kindRaw !== "favicon",
-        });
-        const out = await pipeline
-          .webp({ quality: kind === "logo" ? 90 : 85, alphaQuality: 90 })
-          .toBuffer();
-
+        const { out, ext, prefix } = await processAppearanceUploadBuffer(buffer, kindRaw);
         const stamp = Date.now();
         const rand = Math.random().toString(36).slice(2, 8);
-        const fileName = `${kindRaw === "favicon" ? "favicon" : kind}_${stamp}_${rand}.webp`;
+        const fileName = `${prefix}_${stamp}_${rand}.${ext}`;
         const dir = resolveAppearanceUploadsDir();
         fs.writeFileSync(path.join(dir, fileName), out);
 

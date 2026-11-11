@@ -56,6 +56,19 @@ export function canShareFilesOnDevice(): boolean {
   }
 }
 
+/** Nhận diện trình duyệt điện thoại để ưu tiên Web Share API đính kèm file ảnh gốc. */
+export function isMobileBrowser(): boolean {
+  if (typeof window === "undefined" || typeof navigator === "undefined") return false;
+  const nav = navigator as Navigator & { userAgentData?: { mobile?: boolean } };
+  if (typeof nav.userAgentData?.mobile === "boolean") {
+    return nav.userAgentData.mobile;
+  }
+  const ua = navigator.userAgent || "";
+  const isMobileUa = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+  const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+  return isMobileUa || (isTouch && window.innerWidth <= 820);
+}
+
 export function downloadFile(file: File) {
   const href = URL.createObjectURL(file);
   const a = document.createElement("a");

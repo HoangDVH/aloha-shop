@@ -4,7 +4,7 @@ import React, { useCallback, useState } from "react";
 import Cropper, { type Area } from "react-easy-crop";
 import "react-easy-crop/react-easy-crop.css";
 import { Loader2, RotateCcw, X } from "lucide-react";
-import { getCroppedImageDataUrl } from "./articleMediaUtils";
+import { getCroppedImageDataUrl, getHighQualityCroppedDataUrl } from "./articleMediaUtils";
 
 type Props = {
   open: boolean;
@@ -13,6 +13,8 @@ type Props = {
   aspect?: number | null;
   title?: string;
   busy?: boolean;
+  /** Xuất PNG lossless cho ảnh chia sẻ chữ/banner để không mất chi tiết trước khi upload */
+  highQuality?: boolean;
   onCancel: () => void;
   onApply: (croppedDataUrl: string) => void | Promise<void>;
 };
@@ -26,6 +28,7 @@ export function ArticleImageCropDialog({
   aspect = null,
   title = "Cắt ảnh",
   busy = false,
+  highQuality = false,
   onCancel,
   onApply,
 }: Props) {
@@ -47,7 +50,9 @@ export function ArticleImageCropDialog({
     if (!croppedAreaPixels || applying || busy) return;
     setApplying(true);
     try {
-      const dataUrl = await getCroppedImageDataUrl(imageSrc, croppedAreaPixels);
+      const dataUrl = highQuality
+        ? await getHighQualityCroppedDataUrl(imageSrc, croppedAreaPixels)
+        : await getCroppedImageDataUrl(imageSrc, croppedAreaPixels);
       await onApply(dataUrl);
     } finally {
       setApplying(false);

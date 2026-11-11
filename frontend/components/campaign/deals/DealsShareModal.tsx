@@ -4,8 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   Copy,
+  Download,
   ExternalLink,
   Gift,
+  Loader2,
   QrCode,
   Share2,
   Sparkles,
@@ -16,8 +18,16 @@ import type { CampaignUI } from "@/lib/campaign/campaignApi";
 import { useShopAuth } from "@/components/ShopAuthProvider";
 import { useToast } from "@/components/Toast";
 import { normalizeCtvCode } from "@/lib/ctv";
-import { copyText } from "@/lib/shareMedia";
-import { SHOP_ORIGIN } from "@/lib/seo";
+import {
+  canShareFilesOnDevice,
+  copyText,
+  downloadFile,
+  isMobileBrowser,
+  loadShareFile,
+} from "@/lib/shareMedia";
+import { productShareData } from "@/lib/productShareData";
+import { absUrl, SHOP_ORIGIN, shortHash } from "@/lib/seo";
+import { ProductExtensionGuideModal } from "@/components/pdp/ProductExtensionGuideModal";
 
 export function DealsShareModal({
   campaign,
@@ -27,25 +37,29 @@ export function DealsShareModal({
   onClose: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const cachedFile = useRef<File | null>(null);
   const toast = useToast();
   const { user } = useShopAuth();
 
   const [copied, setCopied] = useState(false);
   const [copiedCaption, setCopiedCaption] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const [canShare, setCanShare] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [deviceShare, setDeviceShare] = useState(false);
+  const [hasExtension, setHasExtension] = useState(false);
+  const [showExtensionGuide, setShowExtensionGuide] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   // CHỈ coi là CTV khi tài khoản đang đăng nhập có quyền CTV thực thụ:
   const isCtv = Boolean(user?.roles?.includes("ctv") && user?.ctvCode);
   const ctvCode = isCtv && user?.ctvCode ? normalizeCtvCode(user.ctvCode) : "";
 
-  // Tạo URL chia sẻ: Gắn mã CTV (khi người dùng thực sự là CTV) hoặc dùng link chuẩn canonical không kèm query params
-  // để tránh phân mảnh cache Open Graph trên Facebook/Zalo
+  // Tạo URL chia sẻ: gắn mã CTV khi đủ điều kiện, còn lại dùng URL canonical để gom cache OG
   const shareUrl = useMemo(() => {
     try {
       const u = new URL("/uu-dai", SHOP_ORIGIN);
-      if (ctvCode) {
-        u.searchParams.set("ctv", ctvCode);
-      }
+      if (ctvCode) u.searchParams.set("ctv", ctvCode);
       return u.toString();
     } catch {
       return `${SHOP_ORIGIN}/uu-dai`;
@@ -62,31 +76,68 @@ export function DealsShareModal({
     campaign?.display?.banners?.find((b) => b.kind === "main" && b.imageUrl)?.imageUrl ||
     "/banners/banner-1010-desktop.webp";
 
+  // Ưu tiên ảnh PNG/JPG gốc độ nét cao cho Photo Post & tải về; fallback /og/uu-dai.jpg 1200x630 nếu ảnh cũ là WebP
+  const hdShareImageUrl = useMemo(() => {
+    const trimmed = String(bannerImage || "").trim();
+    if (!trimmed) return "";
+    if (/\.(png|jpe?g)(\?|$)/i.test(trimmed)) return absUrl(trimmed);
+    const u = new URL("/og/uu-dai.jpg", SHOP_ORIGIN);
+    if (campaign?.id) u.searchParams.set("cid", campaign.id);
+    u.searchParams.set("v", shortHash(`${trimmed}_og1200_v2`));
+    return u.toString();
+  }, [bannerImage, campaign?.id]);
+
   const defaultCaption = `🔥 ${campaignTitle.toUpperCase()} TẠI ALOHA!
 ${campaignSubtitle}
 
 👉 Vào săn voucher và mua sắm ngay tại:
 ${shareUrl}`;
 
-  // Kiểm tra thiết bị có hỗ trợ Web Share API chuẩn không (Mobile iOS Safari, Android Chrome,...)
-  const [canShare, setCanShare] = useState(false);
   useEffect(() => {
-    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
-      setCanShare(true);
-    }
-  }, []);
+    cachedFile.current = null;
+  }, [hdShareImageUrl]);
 
-  // Khóa cuộn trang khi mở modal
+  // Phát hiện Web Share API & Chrome Extension nạp ảnh Facebook 1-click
   useEffect(() => {
     const el = dialog.current;
     const overflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     el?.showModal();
+
+    setCanShare(typeof navigator !== "undefined" && typeof navigator.share === "function");
+    setIsMobile(isMobileBrowser());
+    setDeviceShare(canShareFilesOnDevice());
+
+    const checkExt = () => {
+      if (document.documentElement.getAttribute("data-aloha-extension-installed") === "true") {
+        setHasExtension(true);
+      }
+    };
+    checkExt();
+    const handleReady = () => setHasExtension(true);
+    window.addEventListener("aloha-extension-ready", handleReady);
+    const extTimer = setTimeout(checkExt, 300);
+
     return () => {
       el?.close();
       document.body.style.overflow = overflow;
+      window.removeEventListener("aloha-extension-ready", handleReady);
+      clearTimeout(extTimer);
     };
   }, []);
+
+  const loadBannerFile = async (): Promise<File | null> => {
+    if (!hdShareImageUrl) return null;
+    if (cachedFile.current) return cachedFile.current;
+    try {
+      const baseName = `aloha-uu-dai-${shortHash(hdShareImageUrl)}`;
+      const file = await loadShareFile({ src: hdShareImageUrl, kind: "image" }, baseName);
+      cachedFile.current = file;
+      return file;
+    } catch {
+      return null;
+    }
+  };
 
   // Sao chép link 1-click
   const handleCopyLink = async () => {
@@ -112,40 +163,125 @@ ${shareUrl}`;
     }
   };
 
-  // Native Web Share API
-  const handleNativeShare = async () => {
-    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
-      try {
-        await navigator.share({
-          title: campaignTitle,
-          text: campaignSubtitle,
-          url: shareUrl,
-        });
-      } catch (err: unknown) {
-        // Người dùng hủy chia sẻ (AbortError) thì không báo lỗi
-        if (err instanceof Error && err.name !== "AbortError") {
-          toast.push("Không thể mở menu chia sẻ của thiết bị.");
-        }
+  // Native Web Share API kèm File ảnh độ nét cao trên mobile để đăng Photo Post thay vì Link Card mờ
+  const shareNativeWithFile = async (target: "facebook" | "zalo" | "system") => {
+    try {
+      setDownloading(true);
+      const file = await loadBannerFile();
+      setDownloading(false);
+      await copyText(defaultCaption);
+
+      const files = file ? [file] : [];
+      const data =
+        files.length > 0 && target !== "system"
+          ? productShareData({
+              selectedCount: files.length,
+              files,
+              target,
+              title: campaignTitle,
+              caption: defaultCaption,
+              url: shareUrl,
+              canShare: (d) => Boolean(navigator.canShare?.(d)),
+            })
+          : {
+              title: campaignTitle,
+              text: defaultCaption,
+              url: shareUrl,
+              ...(files.length > 0 && navigator.canShare?.({ files }) ? { files } : {}),
+            };
+
+      await navigator.share(data);
+      toast.push(
+        files.length > 0
+          ? "Đã đính kèm ảnh ưu đãi nét cao — chạm 'Dán' lời nhắn để đăng!"
+          : `Đã mở chia sẻ ${target === "zalo" ? "Zalo" : "Facebook"}.`
+      );
+    } catch (err: unknown) {
+      setDownloading(false);
+      if (err instanceof Error && err.name === "AbortError") return;
+      if (target === "facebook") {
+        window.open(
+          `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
+          "_blank",
+          "noopener,noreferrer,width=640,height=600"
+        );
+      } else if (target === "zalo") {
+        window.open("https://chat.zalo.me/", "_blank", "noopener,noreferrer");
+      } else {
+        toast.push("Không thể mở menu chia sẻ của thiết bị.");
       }
     }
   };
 
-  // Chia sẻ Zalo - mở trực tiếp không await để trình duyệt không chặn pop-up
+  // Tự động đẩy ảnh gốc & nội dung sang Aloha Facebook Extension để đăng Photo Post nét 100%
+  const handleExtensionPhotoPost = () => {
+    if (!hasExtension || !hdShareImageUrl) {
+      setShowExtensionGuide(true);
+      return;
+    }
+    void copyText(defaultCaption);
+    window.postMessage(
+      {
+        type: "ALOHA_SHARE_TO_FB_EXTENSION",
+        payload: {
+          name: campaignTitle,
+          caption: defaultCaption,
+          url: shareUrl,
+          media: [{ src: hdShareImageUrl, kind: "image" }],
+          images: [hdShareImageUrl],
+        },
+      },
+      "*"
+    );
+    toast.push("Đang mở Facebook và tự động nạp ảnh ưu đãi độ nét cao...");
+  };
+
+  // Tải 1-click ảnh nét về máy (PNG/JPG) kèm copy sẵn caption
+  const handleDownloadHdImage = async () => {
+    if (downloading) return;
+    setDownloading(true);
+    const file = await loadBannerFile();
+    setDownloading(false);
+    void copyText(defaultCaption);
+    if (file) {
+      downloadFile(file);
+      toast.push("Đã lưu ảnh ưu đãi nét & chép lời nhắn — kéo ảnh vào bài viết Facebook sẽ không bị mờ!");
+    } else if (hdShareImageUrl) {
+      window.open(hdShareImageUrl, "_blank", "noopener,noreferrer");
+      toast.push("Đã mở ảnh gốc trong tab mới để bạn lưu về máy.");
+    } else {
+      toast.push("Không tìm thấy ảnh chiến dịch để tải xuống.");
+    }
+  };
+
+  // Chia sẻ Zalo - mobile có file ưu tiên Web Share đính kèm ảnh; desktop mở Zalo Web không block pop-up
   const handleZaloShare = () => {
+    if (isMobile && deviceShare) {
+      void shareNativeWithFile("zalo");
+      return;
+    }
     void copyText(defaultCaption);
     window.open("https://chat.zalo.me/", "_blank", "noopener,noreferrer");
     toast.push("Đã sao chép nội dung & mở Zalo — dán vào tin nhắn để gửi ngay!");
   };
 
-  // Chia sẻ Facebook - mở trực tiếp không await để trình duyệt không chặn pop-up
+  // Chia sẻ Facebook - mobile đính kèm ảnh; desktop ưu tiên Aloha Extension Photo Post, fallback sharer.php
   const handleFacebookShare = () => {
+    if (isMobile && deviceShare) {
+      void shareNativeWithFile("facebook");
+      return;
+    }
+    if (hasExtension && hdShareImageUrl) {
+      handleExtensionPhotoPost();
+      return;
+    }
     void copyText(defaultCaption);
     window.open(
       `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
       "_blank",
       "noopener,noreferrer,width=640,height=600"
     );
-    toast.push("Đã mở Facebook & sao chép nội dung bài đăng!");
+    toast.push("Đã mở Facebook & chép lời nhắn! Mẹo: bấm 'Lưu ảnh nét' để đăng dạng ảnh nếu muốn sắc nét nhất.");
   };
 
   return (
@@ -182,16 +318,19 @@ ${shareUrl}`;
       </div>
 
       <div className="mt-4 space-y-4">
-        {/* Thẻ xem trước (Preview Card) chuẩn Open Graph — Tỉ lệ 8:3 hiển thị trọn vẹn 100% banner */}
+        {/* Thẻ xem trước đúng tỉ lệ 1.91:1 (1200x630) nếu có ảnh chia sẻ riêng, hoặc 8:3 với banner chính */}
         <div className="overflow-hidden rounded-2xl border border-stone-200/80 bg-stone-50 shadow-xs">
-          <div className="relative aspect-[8/3] w-full bg-stone-100 overflow-hidden flex items-center justify-center">
+          <div
+            className={`relative w-full bg-stone-100 overflow-hidden flex items-center justify-center ${
+              shareBanner ? "aspect-[1200/630]" : "aspect-[8/3]"
+            }`}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={bannerImage}
               alt={campaignTitle}
-              className="h-full w-full object-contain sm:object-cover"
+              className={shareBanner ? "h-full w-full object-cover" : "h-full w-full object-contain sm:object-cover"}
               onError={(e) => {
-                // Fallback nếu ảnh không tải được
                 (e.currentTarget as HTMLImageElement).src = "/banners/banner-1010-desktop.webp";
               }}
             />
@@ -259,13 +398,26 @@ ${shareUrl}`;
 
         {/* Các kênh chia sẻ nhanh (Social / Apps) */}
         <div>
-          <p className="text-xs font-semibold text-stone-700 mb-2">Chia sẻ nhanh qua</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-stone-700">Chia sẻ nhanh qua</p>
+            {canShare && (
+              <button
+                type="button"
+                onClick={() => void shareNativeWithFile("system")}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-stone-600 hover:text-stone-900"
+              >
+                <ExternalLink size={12} />
+                Chia sẻ khác...
+              </button>
+            )}
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {/* Zalo */}
             <button
               type="button"
               onClick={handleZaloShare}
-              className="group flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-blue-100 bg-blue-50/60 p-3 text-xs font-semibold text-blue-900 hover:bg-blue-100 hover:border-blue-200 transition active:scale-95"
+              disabled={downloading}
+              className="group flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-blue-100 bg-blue-50/60 p-3 text-xs font-semibold text-blue-900 hover:bg-blue-100 hover:border-blue-200 transition active:scale-95 disabled:opacity-60"
             >
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0068FF] text-white shadow-xs group-hover:scale-105 transition-transform">
                 <span className="font-black text-xs tracking-tighter">Zalo</span>
@@ -277,14 +429,33 @@ ${shareUrl}`;
             <button
               type="button"
               onClick={handleFacebookShare}
-              className="group flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-blue-100 bg-blue-50/60 p-3 text-xs font-semibold text-blue-900 hover:bg-blue-100 hover:border-blue-200 transition active:scale-95"
+              disabled={downloading}
+              className="group relative flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-blue-100 bg-blue-50/60 p-3 text-xs font-semibold text-blue-900 hover:bg-blue-100 hover:border-blue-200 transition active:scale-95 disabled:opacity-60"
             >
+              {(hasExtension || (isMobile && deviceShare)) && (
+                <span className="absolute top-1.5 right-1.5 rounded-full bg-emerald-600 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                  Nét
+                </span>
+              )}
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1877F2] text-white shadow-xs group-hover:scale-105 transition-transform">
                 <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
                   <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                 </svg>
               </div>
-              <span>Facebook</span>
+              <span>{hasExtension ? "Đăng FB" : "Facebook"}</span>
+            </button>
+
+            {/* Lưu ảnh nét (Photo Post thủ công giữ nguyên 100% độ phân giải) */}
+            <button
+              type="button"
+              onClick={handleDownloadHdImage}
+              disabled={downloading}
+              className="group flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3 text-xs font-semibold text-emerald-900 hover:bg-emerald-100 transition active:scale-95 disabled:opacity-60"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-white shadow-xs group-hover:scale-105 transition-transform">
+                {downloading ? <Loader2 size={17} className="animate-spin" /> : <Download size={17} />}
+              </div>
+              <span>Lưu ảnh nét</span>
             </button>
 
             {/* Mã QR */}
@@ -302,32 +473,26 @@ ${shareUrl}`;
               </div>
               <span>{showQr ? "Ẩn mã QR" : "Mã QR"}</span>
             </button>
-
-            {/* Native Web Share nếu thiết bị hỗ trợ */}
-            {canShare ? (
-              <button
-                type="button"
-                onClick={handleNativeShare}
-                className="group flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-stone-200 bg-stone-50/80 p-3 text-xs font-semibold text-stone-800 hover:bg-stone-100 transition active:scale-95"
-              >
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-stone-700 text-white shadow-xs group-hover:scale-105 transition-transform">
-                  <ExternalLink size={17} />
-                </div>
-                <span>Thêm...</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleCopyCaption}
-                className="group flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-stone-200 bg-stone-50/80 p-3 text-xs font-semibold text-stone-800 hover:bg-stone-100 transition active:scale-95"
-              >
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500 text-white shadow-xs group-hover:scale-105 transition-transform">
-                  <Sparkles size={17} />
-                </div>
-                <span>Lời nhắn</span>
-              </button>
-            )}
           </div>
+
+          {!isMobile && (
+            <div className="mt-2.5 flex items-start justify-between gap-2 rounded-xl border border-amber-200/80 bg-amber-50/70 px-3 py-2 text-[11px] text-amber-950">
+              <p className="leading-relaxed">
+                {hasExtension
+                  ? "Đã bật Aloha Extension: bấm Đăng FB để tự động đính kèm ảnh gốc (tránh bị Facebook thu nhỏ làm mờ chữ như thẻ link)."
+                  : "Mẹo giữ ảnh nét 100% trên Facebook: bấm Lưu ảnh nét rồi thả ảnh vào bài đăng (thay vì chỉ dán link), hoặc dùng tiện ích tự động."}
+              </p>
+              {!hasExtension && (
+                <button
+                  type="button"
+                  onClick={() => setShowExtensionGuide(true)}
+                  className="shrink-0 rounded-lg bg-amber-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-amber-700 transition"
+                >
+                  Đăng 1-click
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Khung hiển thị Mã QR khi bật */}
@@ -371,6 +536,22 @@ ${shareUrl}`;
           </p>
         </div>
       </div>
+
+      {showExtensionGuide && (
+        <ProductExtensionGuideModal
+          onClose={() => setShowExtensionGuide(false)}
+          onCheckAgain={() => {
+            const ok = document.documentElement.getAttribute("data-aloha-extension-installed") === "true";
+            setHasExtension(ok);
+            if (ok) {
+              setShowExtensionGuide(false);
+              toast.push("Đã kết nối Aloha Extension! Bấm Đăng FB để tự động nạp ảnh nét.");
+            } else {
+              toast.push("Chưa thấy tiện ích — hãy tải lại trang (F5) sau khi bật extension.");
+            }
+          }}
+        />
+      )}
     </dialog>
   );
 }

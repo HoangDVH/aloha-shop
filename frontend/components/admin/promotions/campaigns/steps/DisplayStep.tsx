@@ -82,10 +82,11 @@ function ShareBannerCard({
         value={b?.imageUrl}
         aspect={1200 / 630}
         ratioLabel="1.91:1 (1200x630)"
+        uploadKind="share"
         onChange={(url) => set({ imageUrl: url })}
       />
       <p className="text-[11px] text-slate-500">
-        Khung hình tỉ lệ chuẩn 1.91:1 khi đăng lên Facebook, gửi Zalo, Messenger. Không bị phóng to, không bị cắt mép chữ.
+        Khung hình tỉ lệ chuẩn 1.91:1 (giữ nguyên độ nét PNG gốc) khi đăng lên Facebook, gửi Zalo, Messenger — không vỡ chữ, không bị cắt mép.
       </p>
     </div>
   );

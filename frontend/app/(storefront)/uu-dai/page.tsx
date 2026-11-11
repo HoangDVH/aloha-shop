@@ -5,13 +5,15 @@ import { SHOP_BRAND, shopBrand } from "@/lib/brand";
 import { fetchAppearance, fallbackAppearance } from "@/lib/appearance";
 import type { CurrentCampaignResponse } from "@/lib/campaign/campaignApi";
 import { DealsPage } from "@/components/campaign/deals/DealsPage";
-import { SHOP_ORIGIN, shortHash } from "@/lib/seo";
+import { OG_H, OG_W, SHOP_ORIGIN, shortHash } from "@/lib/seo";
+
+export const dynamic = "force-dynamic";
 
 async function currentCampaignForMeta(): Promise<CurrentCampaignResponse | null> {
   try {
     const res = await fetch(`${shopApiBase()}/api/shop/campaigns/current`, {
       headers: { Accept: "application/json" },
-      next: { revalidate: 60 },
+      cache: "no-store",
     });
     return res.ok ? ((await res.json()) as CurrentCampaignResponse) : null;
   } catch {
@@ -41,9 +43,9 @@ export async function generateMetadata(): Promise<Metadata> {
   const mainBanner = shareBanner || banners.find((b) => b.kind === "main") || banners[0];
   const bannerUrl = String(mainBanner?.imageUrl || "").trim();
   const hasBanner = Boolean(bannerUrl);
-  const vHash = bannerUrl ? shortHash(bannerUrl + "_q98") : "auto";
+  const vHash = bannerUrl ? shortHash(`${bannerUrl}_og1200_v2`) : "auto";
   const ogImageUrl = hasBanner
-    ? `${SHOP_ORIGIN}/og/uu-dai?v=${vHash}`
+    ? `${SHOP_ORIGIN}/og/uu-dai.jpg?v=${vHash}`
     : undefined;
 
   return {
@@ -62,8 +64,8 @@ export async function generateMetadata(): Promise<Metadata> {
               {
                 url: ogImageUrl,
                 secureUrl: ogImageUrl,
-                width: 1600,
-                height: 840,
+                width: OG_W,
+                height: OG_H,
                 alt: `${title} · ${site}`,
                 type: "image/jpeg",
               },

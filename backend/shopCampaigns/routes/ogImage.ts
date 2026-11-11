@@ -13,20 +13,29 @@ const OG_WIDTH = 1200;
 const OG_HEIGHT = 630;
 const MEM_CACHE = new Map<string, { buffer: Buffer; expiresAt: number }>();
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 phút trong RAM
+const MAX_CACHE_ENTRIES = 50;
+
+function resolveUploadsDir(): string {
+  const cwd = process.cwd();
+  const prod = path.resolve(cwd, "..", "uploads");
+  const dev = path.resolve(cwd, "uploads");
+  return fs.existsSync(prod) ? prod : dev;
+}
 
 async function readImageBuffer(imageUrl: string): Promise<Buffer | null> {
   try {
-    const uploadsDir = path.resolve(process.cwd(), "uploads");
+    const uploadsDir = resolveUploadsDir();
     let rel = "";
     if (imageUrl.startsWith("/uploads/")) {
       rel = imageUrl.slice("/uploads/".length);
     } else if (imageUrl.includes("/uploads/")) {
-      rel = imageUrl.split("/uploads/")[1];
+      rel = imageUrl.split("/uploads/")[1] || "";
     }
+    rel = rel.split(/[?#]/)[0] || "";
 
     if (rel) {
       const localPath = path.resolve(uploadsDir, rel);
-      if (localPath.startsWith(uploadsDir) && fs.existsSync(localPath)) {
+      if (localPath.startsWith(uploadsDir + path.sep) && fs.existsSync(localPath)) {
         return await fs.promises.readFile(localPath);
       }
     }
@@ -35,12 +44,90 @@ async function readImageBuffer(imageUrl: string): Promise<Buffer | null> {
     const fullUrl = imageUrl.startsWith("http")
       ? imageUrl
       : `https://alohathegioichaucay.com${imageUrl.startsWith("/") ? "" : "/"}${imageUrl}`;
-    const resp = await fetch(fullUrl, { headers: { "User-Agent": "Aloha-OG-Fetcher/1.0" } });
+    const resp = await fetch(fullUrl, {
+      signal: AbortSignal.timeout(8000),
+      headers: { "User-Agent": "Aloha-OG-Fetcher/1.0" },
+    });
     if (!resp.ok) return null;
     return Buffer.from(await resp.arrayBuffer());
   } catch {
     return null;
   }
+}
+
+/**
+ * Chuẩn hoá ảnh OG cho Facebook/Zalo (1200×630 Baseline JPEG):
+ * - Giữ kích thước chuẩn 1200×630 & dung lượng gọn (~150-250 KB) để Facebook không ép nén gắt
+ * - Không sharpen nhân tạo, không 4:4:4 phình file (tránh lem chữ đỏ khi FB chuyển về 4:2:0)
+ */
+export async function renderCampaignOgImage(
+  rawBuffer: Buffer,
+  options?: { isCustomShare?: boolean }
+): Promise<Buffer> {
+  const meta = await sharp(rawBuffer, { failOn: "none" }).metadata();
+  const rawW = meta.width || OG_WIDTH;
+  const rawH = meta.height || OG_HEIGHT;
+  const rawAspect = rawW / Math.max(1, rawH);
+
+  const jpegOpts = { quality: 90, progressive: false, mozjpeg: false } as const;
+
+  if (options?.isCustomShare || rawAspect <= 2.05) {
+    return sharp(rawBuffer, { failOn: "none" })
+      .rotate()
+      .resize(OG_WIDTH, OG_HEIGHT, { fit: "cover", position: "center" })
+      .jpeg(jpegOpts)
+      .toBuffer();
+  }
+
+  // Banner ngang rộng (panoramic > 2.05:1 như 8:3):
+  // Hiển thị trọn vẹn nội dung chữ & sản phẩm ở giữa trên nền mờ cùng tông màu
+  const [bg, fg] = await Promise.all([
+    sharp(rawBuffer, { failOn: "none" })
+      .rotate()
+      .resize(OG_WIDTH, OG_HEIGHT, { fit: "cover", position: "center" })
+      .blur(36)
+      .modulate({ brightness: 0.85, saturation: 1.05 })
+      .toBuffer(),
+    sharp(rawBuffer, { failOn: "none" })
+      .rotate()
+      .resize(OG_WIDTH, OG_HEIGHT, { fit: "inside" })
+      .toBuffer(),
+  ]);
+
+  const fgMeta = await sharp(fg).metadata();
+  const fgW = fgMeta.width || OG_WIDTH;
+  const fgH = fgMeta.height || OG_HEIGHT;
+  const left = Math.max(0, Math.round((OG_WIDTH - fgW) / 2));
+  const top = Math.max(0, Math.round((OG_HEIGHT - fgH) / 2));
+
+  return sharp(bg)
+    .composite([{ input: fg, left, top }])
+    .jpeg(jpegOpts)
+    .toBuffer();
+}
+
+function sendOgJpeg(res: Response, buffer: Buffer): void {
+  res.removeHeader("ETag");
+  res.setHeader("Content-Type", "image/jpeg");
+  res.setHeader("Content-Length", String(buffer.length));
+  res.setHeader("Cache-Control", "public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800");
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Accept-Ranges", "bytes");
+  res.end(buffer);
+}
+
+function putMemCache(key: string, buffer: Buffer): void {
+  const now = Date.now();
+  if (MEM_CACHE.size >= MAX_CACHE_ENTRIES) {
+    for (const [k, v] of MEM_CACHE.entries()) {
+      if (v.expiresAt <= now) MEM_CACHE.delete(k);
+    }
+    if (MEM_CACHE.size >= MAX_CACHE_ENTRIES) {
+      const oldest = MEM_CACHE.keys().next().value;
+      if (oldest) MEM_CACHE.delete(oldest);
+    }
+  }
+  MEM_CACHE.set(key, { buffer, expiresAt: now + CACHE_TTL_MS });
 }
 
 export async function campaignOgImageHandler(getDb: GetDb, req: Request, res: Response): Promise<void> {
@@ -76,15 +163,10 @@ export async function campaignOgImageHandler(getDb: GetDb, req: Request, res: Re
       return;
     }
 
-    const cacheKey = `${cid || "current"}_${rawUrl.slice(-30)}_${fitMode}_fullres_q98`;
+    const cacheKey = `${cid || "current"}_${rawUrl.slice(-40)}_${fitMode}_og1200_v2`;
     const cached = MEM_CACHE.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
-      res.removeHeader("ETag");
-      res.setHeader("Content-Type", "image/jpeg");
-      res.setHeader("Cache-Control", "public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800");
-      res.setHeader("Access-Control-Allow-Origin", "*");
-      res.setHeader("Accept-Ranges", "bytes");
-      res.end(cached.buffer);
+      sendOgJpeg(res, cached.buffer);
       return;
     }
 
@@ -94,66 +176,9 @@ export async function campaignOgImageHandler(getDb: GetDb, req: Request, res: Re
       return;
     }
 
-    const meta = await sharp(rawBuffer, { failOn: "none" }).metadata();
-    const rawW = meta.width || OG_WIDTH;
-    const rawH = meta.height || OG_HEIGHT;
-    const rawAspect = rawW / Math.max(1, rawH);
-
-    // Giữ nguyên độ phân giải gốc cao (ví dụ 1600x840 px) nếu ảnh đã có tỉ lệ chuẩn 1.91:1, không bị co nhỏ
-    let targetW = Math.max(OG_WIDTH, Math.min(2400, rawW));
-    let targetH = Math.round(targetW / (1200 / 630));
-    if (isCustomShare && rawW >= OG_WIDTH && rawH >= OG_HEIGHT && Math.abs(rawAspect - (1200 / 630)) < 0.08) {
-      targetW = rawW;
-      targetH = rawH;
-    }
-
-    let finalBuffer: Buffer;
-
-    // Nếu là ảnh chia sẻ thiết kế riêng hoặc ảnh có tỉ lệ gần chuẩn 1.91:1
-    if (isCustomShare || rawAspect <= 2.05) {
-      finalBuffer = await sharp(rawBuffer, { failOn: "none" })
-        .rotate()
-        .resize(targetW, targetH, { fit: "cover", position: "center" })
-        .sharpen({ sigma: 0.6, m1: 0.4, m2: 1.2 })
-        .jpeg({ quality: 98, chromaSubsampling: "4:4:4", mozjpeg: true })
-        .toBuffer();
-    } else {
-      // Banner ngang rộng (panoramic > 2.05:1 như 8:3):
-      // Thu nhỏ hiển thị trọn vẹn 100% nội dung chữ và hình ảnh ở giữa (không phóng to, không cắt chữ)
-      // Nền trên dưới: Ambient Glow chuyển màu tự nhiên, làm tối nhẹ để banner chính nổi bật
-      const bg = await sharp(rawBuffer, { failOn: "none" })
-        .rotate()
-        .resize(targetW, targetH, { fit: "cover", position: "center" })
-        .blur(40)
-        .modulate({ brightness: 0.82, saturation: 1.05 })
-        .toBuffer();
-
-      const fg = await sharp(rawBuffer, { failOn: "none" })
-        .rotate()
-        .resize(targetW, targetH, { fit: "inside" })
-        .toBuffer();
-
-      const fgMeta = await sharp(fg).metadata();
-      const fgW = fgMeta.width || targetW;
-      const fgH = fgMeta.height || targetH;
-      const left = Math.max(0, Math.round((targetW - fgW) / 2));
-      const top = Math.max(0, Math.round((targetH - fgH) / 2));
-
-      finalBuffer = await sharp(bg)
-        .composite([{ input: fg, left, top }])
-        .sharpen({ sigma: 0.6, m1: 0.4, m2: 1.2 })
-        .jpeg({ quality: 98, chromaSubsampling: "4:4:4", mozjpeg: true })
-        .toBuffer();
-    }
-
-    MEM_CACHE.set(cacheKey, { buffer: finalBuffer, expiresAt: Date.now() + CACHE_TTL_MS });
-
-    res.removeHeader("ETag");
-    res.setHeader("Content-Type", "image/jpeg");
-    res.setHeader("Cache-Control", "public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800");
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Accept-Ranges", "bytes");
-    res.end(finalBuffer);
+    const finalBuffer = await renderCampaignOgImage(rawBuffer, { isCustomShare });
+    putMemCache(cacheKey, finalBuffer);
+    sendOgJpeg(res, finalBuffer);
   } catch {
     res.redirect(302, "/brand/logo-full.png");
   }

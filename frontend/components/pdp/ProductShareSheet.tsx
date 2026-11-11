@@ -35,6 +35,7 @@ import {
   canShareFilesOnDevice,
   copyText,
   downloadFile,
+  isMobileBrowser,
   isShareableVideoUrl,
   loadShareFile,
   type ShareMediaItem,
@@ -45,18 +46,6 @@ const MAX_PICK = 9;
 const DEFAULT_PICK = 6;
 
 type LoadState = "loading" | "ok" | "error";
-
-function isMobileBrowser(): boolean {
-  if (typeof window === "undefined" || typeof navigator === "undefined") return false;
-  const nav = navigator as Navigator & { userAgentData?: { mobile?: boolean } };
-  if (typeof nav.userAgentData?.mobile === "boolean") {
-    return nav.userAgentData.mobile;
-  }
-  const ua = navigator.userAgent || "";
-  const isMobileUa = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
-  const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
-  return isMobileUa || (isTouch && window.innerWidth <= 820);
-}
 
 function publicShareUrl(raw: string): string {
   try {
