@@ -30,9 +30,20 @@ test("renderCampaignOgImage: 1600x840 share banner -> 1200x630 Baseline JPEG 4:2
   assert.ok(out.length < 450_000, `Expected compact JPEG (<450KB), got ${out.length} bytes`);
 });
 
-test("renderCampaignOgImage: 1600x600 banner dai -> 1200x630 Baseline JPEG nen mo hai vien", async () => {
+test("renderCampaignOgImage: 1600x600 banner dai -> mac dinh 1200x630 Baseline JPEG tran vien (cover) net toan man hinh", async () => {
   const input = await makeSolidPng(1600, 600, 45, 90, 40);
   const out = await renderCampaignOgImage(input, { isCustomShare: false });
+  const meta = await sharp(out).metadata();
+
+  assert.equal(meta.format, "jpeg");
+  assert.equal(meta.width, 1200);
+  assert.equal(meta.height, 630);
+  assert.equal(meta.isProgressive, false);
+});
+
+test("renderCampaignOgImage: 1600x600 banner dai -> fit=blur van ho tro nen mo hai vien khi co yeu cau", async () => {
+  const input = await makeSolidPng(1600, 600, 45, 90, 40);
+  const out = await renderCampaignOgImage(input, { isCustomShare: false, fit: "blur" });
   const meta = await sharp(out).metadata();
 
   assert.equal(meta.format, "jpeg");

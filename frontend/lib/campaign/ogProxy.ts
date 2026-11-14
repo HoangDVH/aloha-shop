@@ -9,6 +9,7 @@ import { absUrl } from "@/lib/seo";
 export async function proxyCampaignOgImage(req: Request, explicitCid?: string): Promise<NextResponse> {
   const url = new URL(req.url);
   const v = url.searchParams.get("v") || "";
+  const fit = url.searchParams.get("fit") || "";
   const cid = (explicitCid ?? url.searchParams.get("cid") ?? "").trim();
 
   const fallback = () => NextResponse.redirect(absUrl("/brand/logo-aloha.png"), 302);
@@ -16,7 +17,7 @@ export async function proxyCampaignOgImage(req: Request, explicitCid?: string): 
   try {
     const apiTarget = `${shopApiBase()}/api/shop/campaigns/og-image.jpg?${
       cid ? `cid=${encodeURIComponent(cid)}&` : ""
-    }v=${encodeURIComponent(v)}`;
+    }${fit ? `fit=${encodeURIComponent(fit)}&` : ""}v=${encodeURIComponent(v)}`;
     const res = await fetch(apiTarget, {
       signal: AbortSignal.timeout(8000),
       headers: { Accept: "image/jpeg,image/*;q=0.8" },

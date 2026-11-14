@@ -83,7 +83,7 @@ export function DealsShareModal({
     if (/\.(png|jpe?g)(\?|$)/i.test(trimmed)) return absUrl(trimmed);
     const u = new URL("/og/uu-dai.jpg", SHOP_ORIGIN);
     if (campaign?.id) u.searchParams.set("cid", campaign.id);
-    u.searchParams.set("v", shortHash(`${trimmed}_og1200_v2`));
+    u.searchParams.set("v", shortHash(`${trimmed}_og1200_v3`));
     return u.toString();
   }, [bannerImage, campaign?.id]);
 
