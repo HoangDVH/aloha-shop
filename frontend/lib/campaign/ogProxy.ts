@@ -11,16 +11,19 @@ export async function proxyCampaignOgImage(req: Request, explicitCid?: string): 
   const v = url.searchParams.get("v") || "";
   const fit = url.searchParams.get("fit") || "";
   const cid = (explicitCid ?? url.searchParams.get("cid") ?? "").trim();
+  const isPng = url.pathname.endsWith(".png") || url.searchParams.get("format") === "png";
+  const ext = isPng ? "png" : "jpg";
+  const contentType = isPng ? "image/png" : "image/jpeg";
 
   const fallback = () => NextResponse.redirect(absUrl("/brand/logo-aloha.png"), 302);
 
   try {
-    const apiTarget = `${shopApiBase()}/api/shop/campaigns/og-image.jpg?${
+    const apiTarget = `${shopApiBase()}/api/shop/campaigns/og-image.${ext}?${
       cid ? `cid=${encodeURIComponent(cid)}&` : ""
-    }${fit ? `fit=${encodeURIComponent(fit)}&` : ""}v=${encodeURIComponent(v)}`;
+    }${fit ? `fit=${encodeURIComponent(fit)}&` : ""}${isPng ? "format=png&" : ""}v=${encodeURIComponent(v)}`;
     const res = await fetch(apiTarget, {
       signal: AbortSignal.timeout(8000),
-      headers: { Accept: "image/jpeg,image/*;q=0.8" },
+      headers: { Accept: isPng ? "image/png,image/*;q=0.8" : "image/jpeg,image/*;q=0.8" },
       cache: "no-store",
     });
 
@@ -31,7 +34,7 @@ export async function proxyCampaignOgImage(req: Request, explicitCid?: string): 
 
     return new NextResponse(new Uint8Array(buf), {
       headers: {
-        "Content-Type": "image/jpeg",
+        "Content-Type": contentType,
         "Content-Length": String(buf.length),
         "Cache-Control": v
           ? "public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800"

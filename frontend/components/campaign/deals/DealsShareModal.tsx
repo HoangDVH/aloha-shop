@@ -76,14 +76,14 @@ export function DealsShareModal({
     campaign?.display?.banners?.find((b) => b.kind === "main" && b.imageUrl)?.imageUrl ||
     "/banners/banner-1010-desktop.webp";
 
-  // Ưu tiên ảnh PNG/JPG gốc độ nét cao cho Photo Post & tải về; fallback /og/uu-dai.jpg 1200x630 nếu ảnh cũ là WebP
+  // Ưu tiên ảnh PNG/JPG gốc độ nét cao cho Photo Post & tải về; fallback /og/uu-dai.png 1200x630 lossless nếu ảnh cũ là WebP
   const hdShareImageUrl = useMemo(() => {
     const trimmed = String(bannerImage || "").trim();
     if (!trimmed) return "";
     if (/\.(png|jpe?g)(\?|$)/i.test(trimmed)) return absUrl(trimmed);
-    const u = new URL("/og/uu-dai.jpg", SHOP_ORIGIN);
+    const u = new URL("/og/uu-dai.png", SHOP_ORIGIN);
     if (campaign?.id) u.searchParams.set("cid", campaign.id);
-    u.searchParams.set("v", shortHash(`${trimmed}_og1200_v3`));
+    u.searchParams.set("v", shortHash(`${trimmed}_og1200_png_v4`));
     return u.toString();
   }, [bannerImage, campaign?.id]);
 

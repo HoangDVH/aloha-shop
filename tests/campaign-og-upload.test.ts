@@ -30,6 +30,17 @@ test("renderCampaignOgImage: 1600x840 share banner -> 1200x630 Baseline JPEG 4:2
   assert.ok(out.length < 450_000, `Expected compact JPEG (<450KB), got ${out.length} bytes`);
 });
 
+test("renderCampaignOgImage: format=png -> 1200x630 Lossless PNG net sac canh cho Facebook desktop", async () => {
+  const input = await makeSolidPng(1600, 840, 240, 220, 190);
+  const out = await renderCampaignOgImage(input, { isCustomShare: true, format: "png" });
+  const meta = await sharp(out).metadata();
+
+  assert.equal(meta.format, "png");
+  assert.equal(meta.width, 1200);
+  assert.equal(meta.height, 630);
+  assert.ok(out.length < 2_500_000, `Expected PNG < 2.5MB, got ${out.length} bytes`);
+});
+
 test("renderCampaignOgImage: 1600x600 banner dai -> mac dinh 1200x630 Baseline JPEG tran vien (cover) net toan man hinh", async () => {
   const input = await makeSolidPng(1600, 600, 45, 90, 40);
   const out = await renderCampaignOgImage(input, { isCustomShare: false });

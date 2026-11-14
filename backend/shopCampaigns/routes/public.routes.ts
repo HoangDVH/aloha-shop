@@ -168,8 +168,11 @@ export function registerCampaignPublicRoutes(app: Express, getDb: GetDb) {
     [
       "/api/shop/campaigns/og-image",
       "/api/shop/campaigns/og-image.jpg",
+      "/api/shop/campaigns/og-image.png",
       "/api/shop/campaigns/og.jpg",
+      "/api/shop/campaigns/og.png",
       "/api/shop/campaigns/og/:cid.jpg",
+      "/api/shop/campaigns/og/:cid.png",
     ],
     async (req, res) => {
       applyShopCors(req, res);

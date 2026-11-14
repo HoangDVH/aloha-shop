@@ -56,22 +56,31 @@ async function readImageBuffer(imageUrl: string): Promise<Buffer | null> {
 }
 
 /**
- * Chuẩn hoá ảnh OG cho Facebook/Zalo (1200×630 Baseline JPEG):
- * - Mặc định Auto-Cover: Tự động scale & căn giữa tràn đầy khung 1200×630 (không viền mờ),
- *   giúp chữ & hình ảnh chậu cây to rõ, sắc nét, lấp đầy 100% thẻ Link Card của Facebook.
+ * Chuẩn hoá ảnh OG cho Facebook/Zalo:
+ * - format="png" (Khuyên dùng cho Facebook Desktop & Mobile):
+ *   + Xuất PNG Lossless 1200×630, RGB nguyên bản không bị subsampling 4:2:0 làm nhòe chữ đỏ/vàng.
+ *   + Tích hợp bộ lọc làm nét cạnh nhẹ (.sharpen({ sigma: 0.8, m1: 0.5, m2: 1.5 })) để bù trừ
+ *     hiện tượng mờ khi Facebook CDN nén & thu nhỏ ảnh trên Desktop.
+ * - format="jpeg" (Baseline JPEG nhẹ):
+ *   + Baseline JPEG chuẩn, không progressive, phù hợp kết nối di động yếu (~180-260 KB).
+ * - Mặc định Auto-Cover: Tự động scale & căn giữa tràn đầy khung 1200×630 (không viền mờ).
  * - Chỉ fallback sang hiệu ứng làm mờ 2 dải viền (blur letterbox) khi được yêu cầu tường minh (fit=blur/contain).
- * - Sử dụng Baseline JPEG với mozjpeg chất lượng 92 để khử nhiễu viền chữ đỏ/vàng, dung lượng gọn (~180-260 KB).
  */
 export async function renderCampaignOgImage(
   rawBuffer: Buffer,
-  options?: { isCustomShare?: boolean; fit?: "cover" | "blur" | "contain" }
+  options?: {
+    isCustomShare?: boolean;
+    fit?: "cover" | "blur" | "contain";
+    format?: "png" | "jpeg";
+  }
 ): Promise<Buffer> {
   const meta = await sharp(rawBuffer, { failOn: "none" }).metadata();
   const rawW = meta.width || OG_WIDTH;
   const rawH = meta.height || OG_HEIGHT;
   const rawAspect = rawW / Math.max(1, rawH);
+  const format = options?.format || "jpeg";
 
-  const jpegOpts = { quality: 92, progressive: false, mozjpeg: true } as const;
+  const jpegOpts = { quality: 92, progressive: false, mozjpeg: false } as const;
 
   // Nếu người dùng yêu cầu tường minh hiệu ứng làm mờ viền ngoài (blur letterbox) cho ảnh banner ngang dài
   if (options?.fit === "blur" || options?.fit === "contain") {
@@ -95,25 +104,34 @@ export async function renderCampaignOgImage(
       const left = Math.max(0, Math.round((OG_WIDTH - fgW) / 2));
       const top = Math.max(0, Math.round((OG_HEIGHT - fgH) / 2));
 
-      return sharp(bg)
-        .composite([{ input: fg, left, top }])
-        .jpeg(jpegOpts)
-        .toBuffer();
+      const composed = sharp(bg).composite([{ input: fg, left, top }]);
+      if (format === "png") {
+        return composed
+          .sharpen({ sigma: 0.8, m1: 0.5, m2: 1.5 })
+          .png({ compressionLevel: 9 })
+          .toBuffer();
+      }
+      return composed.jpeg(jpegOpts).toBuffer();
     }
   }
 
   // Mặc định (chuẩn quốc tế): Auto-Cover tràn khung 1200×630, loại bỏ hoàn toàn viền mờ
-  // Tăng ~40% diện tích hiển thị trên điện thoại, chữ to rõ gấp đôi
-  return sharp(rawBuffer, { failOn: "none" })
+  const base = sharp(rawBuffer, { failOn: "none" })
     .rotate()
-    .resize(OG_WIDTH, OG_HEIGHT, { fit: "cover", position: "center" })
-    .jpeg(jpegOpts)
-    .toBuffer();
+    .resize(OG_WIDTH, OG_HEIGHT, { fit: "cover", position: "center" });
+
+  if (format === "png") {
+    return base
+      .sharpen({ sigma: 0.8, m1: 0.5, m2: 1.5 })
+      .png({ compressionLevel: 9 })
+      .toBuffer();
+  }
+  return base.jpeg(jpegOpts).toBuffer();
 }
 
-function sendOgJpeg(res: Response, buffer: Buffer): void {
+function sendOgImage(res: Response, buffer: Buffer, format: "png" | "jpeg" = "jpeg"): void {
   res.removeHeader("ETag");
-  res.setHeader("Content-Type", "image/jpeg");
+  res.setHeader("Content-Type", format === "png" ? "image/png" : "image/jpeg");
   res.setHeader("Content-Length", String(buffer.length));
   res.setHeader("Cache-Control", "public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800");
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -143,6 +161,11 @@ export async function campaignOgImageHandler(getDb: GetDb, req: Request, res: Re
       ? req.query.cid.trim()
       : "";
   const fitMode = typeof req.query.fit === "string" ? req.query.fit.trim() : "cover";
+  const reqPath = (req.path || req.originalUrl || "").split("?")[0];
+  const isPng =
+    reqPath.endsWith(".png") ||
+    req.query.format === "png";
+  const format: "png" | "jpeg" = isPng ? "png" : "jpeg";
 
   try {
     const db = await getDb();
@@ -168,10 +191,10 @@ export async function campaignOgImageHandler(getDb: GetDb, req: Request, res: Re
       return;
     }
 
-    const cacheKey = `${cid || "current"}_${rawUrl.slice(-40)}_${fitMode}_og1200_v3`;
+    const cacheKey = `${cid || "current"}_${rawUrl.slice(-40)}_${fitMode}_${format}_og1200_v4`;
     const cached = MEM_CACHE.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
-      sendOgJpeg(res, cached.buffer);
+      sendOgImage(res, cached.buffer, format);
       return;
     }
 
@@ -184,9 +207,10 @@ export async function campaignOgImageHandler(getDb: GetDb, req: Request, res: Re
     const finalBuffer = await renderCampaignOgImage(rawBuffer, {
       isCustomShare,
       fit: fitMode === "blur" || fitMode === "contain" ? "blur" : "cover",
+      format,
     });
     putMemCache(cacheKey, finalBuffer);
-    sendOgJpeg(res, finalBuffer);
+    sendOgImage(res, finalBuffer, format);
   } catch {
     res.redirect(302, "/brand/logo-full.png");
   }
